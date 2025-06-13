@@ -1,8 +1,9 @@
 
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 // Pour utiliser d'autres services Firebase, importez-les ici, par exemple :
-// import { getFirestore } from "firebase/firestore";
-// import { getAuth } from "firebase/auth";
 // import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig: FirebaseOptions = {
@@ -29,6 +30,7 @@ if (typeof window !== 'undefined' && !getApps().length) {
 
 // Exporter l'instance de l'application initialisée
 // et potentiellement d'autres services Firebase que vous initialisez
-// export const db = getFirestore(app);
-// export const auth = getAuth(app);
-export { app as firebaseApp };
+export const firebaseApp = app;
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
