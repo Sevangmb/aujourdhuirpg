@@ -1,6 +1,9 @@
 
 import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem } from './types';
 import { getMasterItemById, ALL_ITEMS } from '@/data/items'; // Import master item list and getter
+import { saveGameStateToFirestore } from '@/services/firestore-service'; // Import Firestore save function
+import { useToast } from "@/hooks/use-toast"; // Import useToast for notifications
+
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
@@ -64,9 +67,24 @@ export function getInitialScenario(player: Player): Scenario {
 }
 
 
-export function saveGameState(state: GameState): void {
+export async function saveGameState(state: GameState): Promise<void> {
   if (typeof window !== 'undefined') {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+    console.log("Game state saved to LocalStorage.");
+  }
+
+  if (state.player && state.player.uid) {
+    try {
+      await saveGameStateToFirestore(state.player.uid, state);
+      // Optional: Add a toast notification for successful cloud save
+      // const { toast } = useToast(); // This hook can't be used directly in non-React functions.
+      // toast({ title: "Progression sauvegardée dans le cloud." });
+    } catch (error) {
+      console.error("Failed to save game state to Firestore from game-logic:", error);
+      // Optional: Notify user of cloud save failure
+      // const { toast } = useToast();
+      // toast({ variant: "destructive", title: "Erreur de sauvegarde cloud", description: "Votre progression n'a pas pu être sauvegardée en ligne." });
+    }
   }
 }
 
@@ -78,6 +96,7 @@ export function loadGameState(): GameState | null {
         const parsedState = JSON.parse(savedState) as GameState;
         if (parsedState.player) {
           // Ensure older game states without new fields get defaults
+          parsedState.player.uid = parsedState.player.uid || undefined; // Ensure UID is present or undefined
           if (!parsedState.player.currentLocation) {
             parsedState.player.currentLocation = initialPlayerLocation;
           }
@@ -104,7 +123,7 @@ export function loadGameState(): GameState | null {
                 { ...getMasterItemById('wallet_01')!, quantity: 1 },
                 { ...getMasterItemById('keys_apartment_01')!, quantity: 1 },
                 { ...getMasterItemById('energy_bar_01')!, quantity: 2 },
-             ].filter(item => item.id);
+             ].filter(item => item && item.id);
           } else {
             // Ensure all items in saved inventory have all MasterItem fields
             parsedState.player.inventory = parsedState.player.inventory.map(savedItem => {
@@ -112,13 +131,15 @@ export function loadGameState(): GameState | null {
               if (masterItem) {
                 return { ...masterItem, quantity: savedItem.quantity };
               }
-              return savedItem; // Should not happen if data is consistent
-            }).filter(item => item && item.id);
+              // If masterItem is not found (e.g. item removed from game), filter it out
+              return null; 
+            }).filter(item => item !== null) as InventoryItem[];
           }
         }
+        console.log("Game state loaded from LocalStorage.");
         return parsedState;
       } catch (error) {
-        console.error("Erreur lors du chargement de l'état du jeu:", error);
+        console.error("Erreur lors du chargement de l'état du jeu depuis LocalStorage:", error);
         localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state
         return null;
       }
@@ -130,6 +151,8 @@ export function loadGameState(): GameState | null {
 export function clearGameState(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
+    console.log("Game state cleared from LocalStorage.");
+    // Note: Clearing Firestore state is handled separately, e.g., via AuthContext on signOut or a specific user action.
   }
 }
 

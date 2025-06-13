@@ -11,7 +11,10 @@ import {
   signOut as firebaseSignOut 
 } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
-import { clearGameState } from '@/lib/game-logic'; // Import clearGameState
+import { clearGameState as clearLocalGameState } from '@/lib/game-logic'; // Import clearGameState
+// Firestore delete function is not directly called here on sign out,
+// as the game state might be intentionally kept for re-login.
+// Deletion is handled in page.tsx on explicit restart for a logged-in user.
 
 interface AuthContextData {
   user: User | null;
@@ -30,7 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!auth) { // Check if auth is initialized
+    if (!auth) { 
       console.error("Firebase auth is not initialized. Check your Firebase config.");
       setLoadingAuth(false);
       return;
@@ -39,18 +42,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(firebaseUser);
       setLoadingAuth(false);
     });
-    return () => unsubscribe(); // Cleanup subscription on unmount
+    return () => unsubscribe(); 
   }, []);
 
   const signUpWithEmailPassword = async (email: string, password: string) => {
     if (!auth) return;
-    setLoadingAuth(true);
+    // setLoadingAuth(true); // Handled by onAuthStateChanged
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       toast({
         title: "Inscription réussie",
         description: "Bienvenue ! Vous êtes maintenant connecté.",
       });
+      // Game state will be loaded by useEffect in page.tsx based on the new user state
     } catch (error: any) {
       console.error("Erreur d'inscription:", error);
       toast({
@@ -58,20 +62,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Erreur d'inscription",
         description: error.message || "Impossible de créer un compte.",
       });
-      // setLoadingAuth(false) will be handled by onAuthStateChanged, or if error, set it here
-      if (!auth.currentUser) setLoadingAuth(false);
     }
   };
 
   const signInWithEmailPassword = async (email: string, password: string) => {
     if (!auth) return;
-    setLoadingAuth(true);
+    // setLoadingAuth(true); // Handled by onAuthStateChanged
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: "Connexion réussie",
         description: "Content de vous revoir !",
       });
+      // Game state will be loaded by useEffect in page.tsx
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast({
@@ -79,19 +82,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Erreur de connexion",
         description: error.message || "Email ou mot de passe incorrect.",
       });
-      if (!auth.currentUser) setLoadingAuth(false); 
     }
   };
 
-  const signInAnonymously = async () => { // Exported function name remains signInAnonymously
+  const signInAnonymously = async () => { 
     if (!auth) return;
-    setLoadingAuth(true);
+    // setLoadingAuth(true); // Handled by onAuthStateChanged
     try {
-      await firebaseSignInAnonymously(auth); // Use renamed import
+      await firebaseSignInAnonymously(auth); 
       toast({
         title: "Connecté anonymement",
         description: "Vous pouvez jouer sans compte. Votre progression sera locale.",
       });
+      // Game state will be loaded by useEffect in page.tsx (from localStorage for anon)
     } catch (error: any) {
       console.error("Erreur de connexion anonyme:", error);
       toast({
@@ -99,31 +102,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Erreur de connexion anonyme",
         description: error.message || "Impossible de se connecter anonymement.",
       });
-      if (!auth.currentUser) setLoadingAuth(false);
     }
   };
 
   const signOutUser = async () => {
     if (!auth) return;
-    setLoadingAuth(true);
+    // setLoadingAuth(true); // Handled by onAuthStateChanged
     try {
       await firebaseSignOut(auth);
-      setUser(null); 
-      clearGameState(); // Clear game state on sign out
+      // setUser(null); // This will be handled by onAuthStateChanged
+      clearLocalGameState(); // Clear local game state on sign out
       toast({
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
-    } catch (error: any)
-{
+      // page.tsx will reset its gameState to player: null due to user becoming null
+    } catch (error: any) {
       console.error("Erreur de déconnexion:", error);
       toast({
         variant: "destructive",
         title: "Erreur de déconnexion",
         description: error.message || "Impossible de se déconnecter.",
       });
-    } finally {
-        setLoadingAuth(false);
     }
   };
 

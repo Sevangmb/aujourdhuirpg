@@ -48,6 +48,7 @@ export interface MasterInventoryItem extends Omit<InventoryItem, 'quantity'> {
 
 
 export type Player = {
+  uid?: string; // Firebase Auth UID, optional for anonymous or pre-auth states
   name: string;
   gender: string;
   age: number;
