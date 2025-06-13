@@ -1,22 +1,23 @@
 
+'use server';
 /**
  * @fileOverview A Genkit tool to fetch current weather information.
  *
  * - getWeatherTool - The tool definition.
- * - GetWeatherInputSchema - Input schema for the tool (latitude, longitude).
- * - GetWeatherOutputSchema - Output schema for the tool (weatherSummary).
+ * - GetWeatherInput - Input type for the tool.
+ * - GetWeatherOutput - Output type for the tool.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const GetWeatherInputSchema = z.object({
+const GetWeatherInputSchema = z.object({
   latitude: z.number().describe('The latitude for the weather forecast.'),
   longitude: z.number().describe('The longitude for the weather forecast.'),
 });
 export type GetWeatherInput = z.infer<typeof GetWeatherInputSchema>;
 
-export const GetWeatherOutputSchema = z.object({
+const GetWeatherOutputSchema = z.object({
   weatherSummary: z
     .string()
     .describe(
@@ -70,7 +71,7 @@ export const getWeatherTool = ai.defineTool(
     inputSchema: GetWeatherInputSchema,
     outputSchema: GetWeatherOutputSchema,
   },
-  async ({ latitude, longitude }) => {
+  async ({ latitude, longitude }): Promise<GetWeatherOutput> => {
     try {
       const response = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=celsius`
@@ -78,9 +79,10 @@ export const getWeatherTool = ai.defineTool(
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Open-Meteo API error:', errorText);
-        throw new Error(
-          `Failed to fetch weather data from Open-Meteo: ${response.status} ${errorText}`
-        );
+        // Return a valid structure for GetWeatherOutputSchema even on API error
+        return {
+          weatherSummary: `Failed to fetch weather: ${response.status}`,
+        };
       }
       const data = await response.json();
 
@@ -93,12 +95,12 @@ export const getWeatherTool = ai.defineTool(
         };
       } else {
         console.error('Open-Meteo API response missing current weather data:', data);
-        throw new Error('Invalid weather data format from Open-Meteo.');
+        return {
+          weatherSummary: 'Invalid weather data from Open-Meteo.',
+        };
       }
     } catch (error) {
       console.error('Error in getWeatherTool:', error);
-      // Fallback or more specific error handling could be done here
-      // For now, let's return a generic error summary so the flow doesn't break entirely
       return {
         weatherSummary: 'Unable to fetch current weather information.',
       };

@@ -11,6 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { getWeatherTool } from '@/ai/tools/get-weather-tool';
+import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool'; // Import the new tool
 
 const LocationSchema = z.object({
   latitude: z.number().describe('The latitude of the location.'),
@@ -85,7 +86,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool],
+  tools: [getWeatherTool, getWikipediaInfoTool], // Add the Wikipedia tool
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France.
@@ -109,17 +110,18 @@ Player's Typed Action (Last Choice): {{{playerChoice}}}
 
 Task:
 1.  Use the 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to find out the current weather conditions at their location.
-2.  Incorporate the fetched weather information naturally and subtly into the scenario description if it's relevant.
-3.  Consider current events in France when creating the scenario if relevant and natural, but prioritize a fun and engaging player experience.
-4.  Generate a new scenario based on ALL the player information (including their inventory) and their typed action: "{{{playerChoice}}}".
-5.  The scenario text should be a narrative continuation of the story, describing what happens as a result of the player's action. It should be between 100 and 250 words and formatted as well-formed HTML (e.g., using <p> tags). It should NOT contain any interactive elements like buttons.
-6.  Core Stat Updates: Provide 'scenarioStatsUpdate' for direct impacts on core stats (Sante, Charisme, etc.). For example, if a choice led to a tiring activity, Sante might decrease. If no stats are affected, return an empty object or omit.
-7.  XP Awards: If the player's action represents a minor accomplishment, overcoming a small challenge, or significant learning, award a small amount of XP (e.g., 5-25 XP) by setting the 'xpGained' field. For major accomplishments, you can award more (e.g., 30-75 XP). Omit if no XP is warranted.
-8.  Inventory Changes:
+2.  If the player's action or the scenario involves a specific, identifiable real-world place (e.g., "Musée du Louvre", "Mont Saint-Michel") or historical figure that would benefit from factual context, consider using the 'getWikipediaInfoTool'. Provide the exact name as the 'searchTerm'.
+3.  Incorporate the fetched weather information and any relevant Wikipedia information naturally and subtly into the scenario description. The goal is to enrich the story, not to dump facts. Focus on details that enhance immersion or provide interesting, brief context. Do NOT use Wikipedia for generic terms (e.g. "a chair", "a car"). Only use it for well-known, specific named entities.
+4.  Consider current events in France when creating the scenario if relevant and natural, but prioritize a fun and engaging player experience.
+5.  Generate a new scenario based on ALL the player information (including their inventory) and their typed action: "{{{playerChoice}}}".
+6.  The scenario text should be a narrative continuation of the story, describing what happens as a result of the player's action. It should be between 100 and 250 words and formatted as well-formed HTML (e.g., using <p> tags). It should NOT contain any interactive elements like buttons.
+7.  Core Stat Updates: Provide 'scenarioStatsUpdate' for direct impacts on core stats (Sante, Charisme, etc.). For example, if a choice led to a tiring activity, Sante might decrease. If no stats are affected, return an empty object or omit.
+8.  XP Awards: If the player's action represents a minor accomplishment, overcoming a small challenge, or significant learning, award a small amount of XP (e.g., 5-25 XP) by setting the 'xpGained' field. For major accomplishments, you can award more (e.g., 30-75 XP). Omit if no XP is warranted.
+9.  Inventory Changes:
     *   Items Found/Gained: If the player finds or is given an item, populate the 'itemsAdded' array. Use the 'itemId' from this list of examples: 'energy_bar_01', 'water_bottle_01', 'medkit_basic_01', 'map_paris_01', 'notebook_pen_01', 'mysterious_key_01', 'data_stick_01'. Set the 'quantity'.
     *   Items Used/Lost: If the player's action implies using or losing an item from their current inventory (e.g., "je mange ma barre énergétique", "je donne ma bouteille d'eau"), populate the 'itemsRemoved' array. Use the 'itemName' (EXACTLY as it appears in the player's inventory list above) and the 'quantity' used/lost.
     *   Omit 'itemsAdded' or 'itemsRemoved' if no inventory changes occur.
-9.  Location Changes: Determine if the player's action has caused them to move to a new significant location. If so, provide 'newLocationDetails' with 'latitude', 'longitude', 'placeName', and 'reasonForMove'. Use realistic approximate coordinates for well-known places. If no significant location change, omit 'newLocationDetails'.
+10. Location Changes: Determine if the player's action has caused them to move to a new significant location. If so, provide 'newLocationDetails' with 'latitude', 'longitude', 'placeName', and 'reasonForMove'. Use realistic approximate coordinates for well-known places. If no significant location change, omit 'newLocationDetails'.
 
 Ensure the generated scenario feels relevant and responsive. Output MUST conform to the JSON schema defined for GenerateScenarioOutputSchema.
 `,
