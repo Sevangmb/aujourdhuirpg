@@ -16,34 +16,29 @@ import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
 import { getNewsTool } from '@/ai/tools/get-news-tool';
 import {
   GenerateScenarioInputSchema,
-  GenerateScenarioOutputSchema
-} from './generate-scenario-schemas'; // Import Zod schemas
+  GenerateScenarioOutputSchema,
+  QuestInputSchema as AIQuestInputSchema // Import for type consistency if needed for internal logic
+} from './generate-scenario-schemas';
 
-// Export TypeScript types inferred from Zod schemas
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
 
 export async function generateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
-  // Simplifier l'input pour l'IA concernant les quêtes actives et PNJ
   const simplifiedInput = { ...input };
   if (input.activeQuests) {
-    // @ts-ignore
     simplifiedInput.activeQuests = input.activeQuests.map(q => ({
       id: q.id,
       title: q.title,
       description: q.description,
       type: q.type,
-      moneyReward: q.moneyReward, // Pass money reward info
-      // @ts-ignore
-      currentObjectivesDescriptions: q.objectives ? q.objectives.map(obj => obj.description) : []
+      moneyReward: q.moneyReward,
+      currentObjectivesDescriptions: q.currentObjectivesDescriptions || []
     }));
   }
   if (input.encounteredPNJsSummary) {
-    // @ts-ignore
     simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => ({
       name: p.name,
-      // @ts-ignore
-      relation: p.relationStatus
+      relation: p.relationStatus // Corrected: was p.relation, should be p.relationStatus from input schema
     }));
   }
 
@@ -72,7 +67,7 @@ Player Information:
   Money: {{{playerMoney}}} €
   Inventory: {{#if playerInventory}}{{#each playerInventory}}{{{name}}} ({{quantity}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Vide{{/if}}
   Current Location: {{{playerLocation.placeName}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}})
-  Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{/each}}{{else}}Aucune quête active.{{/if}}
+  Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#if currentObjectivesDescriptions}}{{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Pas d'objectifs en cours.{{/if}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{/each}}{{else}}Aucune quête active.{{/if}}
   Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relation}}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
 
 
@@ -94,11 +89,11 @@ Task:
 10. Inventory Changes: 'itemsAdded' (with 'itemId' like 'energy_bar_01', 'data_stick_01') and 'itemsRemoved' (with 'itemName').
 11. Location Changes: 'newLocationDetails' if the player moves significantly.
 12. Quest Management:
-    *   New Quests: Define in 'newQuests'. Include 'moneyReward' if applicable.
+    *   New Quests: Define in 'newQuests'. Include 'moneyReward' if applicable. **If a PNJ gives the quest, ensure the PNJ's name or a descriptive ID is set in the 'giver' field of the QuestInputSchema.** Quests should be logical and fit the context.
     *   Quest Updates: Define in 'questUpdates'. If a quest is completed and has a 'moneyReward', the player should receive this money (reflect this implicitly in the story, the game logic will handle the actual money addition based on the quest definition).
 13. PNJ Interactions:
-    *   Proactively introduce new PNJs or have existing ones interact.
-    *   Strongly consider basing new major/recurring PNJs on real-world public figures (historical or contemporary, especially French) using 'getWikipediaInfoTool'.
+    *   Proactively introduce new PNJs or have existing ones interact. They can be sources of information, quests, conflict, or aid.
+    *   Strongly consider basing new major/recurring PNJs on real-world public figures (historical or contemporary, especially French) using 'getWikipediaInfoTool' for background. Integrate these details naturally.
     *   Record/update PNJ details in 'pnjInteractions'.
 14. Major Decisions: Log in 'majorDecisionsLogged'.
 
@@ -111,11 +106,10 @@ Be mindful of the player's current money. Actions that require money (e.g., buyi
 const generateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
-    inputSchema: GenerateScenarioInputSchema, // Use imported Zod schema
-    outputSchema: GenerateScenarioOutputSchema, // Use imported Zod schema
+    inputSchema: GenerateScenarioInputSchema,
+    outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: GenerateScenarioInput) => {
-    // L'input ici est déjà simplifié par la fonction wrapper generateScenario
     const {output} = await scenarioPrompt(input);
     if (!output) {
       console.error('AI model did not return output for generateScenarioPrompt.');
@@ -124,3 +118,4 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
