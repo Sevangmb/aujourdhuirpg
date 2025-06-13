@@ -46,6 +46,54 @@ export interface MasterInventoryItem extends Omit<InventoryItem, 'quantity'> {
   // Quantity is not part of master def, it's instance-specific
 }
 
+// --- Types pour le Journal de Quêtes, PNJ, Décisions ---
+export type QuestStatus = 'active' | 'completed' | 'failed' | 'inactive';
+export type QuestType = 'main' | 'secondary';
+
+export interface QuestObjective {
+  id: string; // e.g., "find_document"
+  description: string;
+  isCompleted: boolean;
+}
+
+export interface Quest {
+  id: string; // Unique ID for the quest, e.g., "main_story_01_paris_intro"
+  title: string;
+  description: string; // Overall description of the quest
+  type: QuestType;
+  status: QuestStatus;
+  objectives: QuestObjective[];
+  giver?: string; // Name of the PNJ who gave the quest, if any
+  reward?: string; // Text description of the reward
+  relatedLocation?: string; // Name of a relevant location
+  dateAdded: string; // ISO string date
+  dateCompleted?: string; // ISO string date
+}
+
+export type PNJRelationStatus = 'friendly' | 'neutral' | 'hostile' | 'allied' | 'rival' | 'unknown';
+export type PNJImportance = 'major' | 'minor' | 'recurring';
+
+export interface PNJ {
+  id: string; // Unique ID for the PNJ, e.g., "pnj_marie_cafe_owner"
+  name: string;
+  description: string; // Physical description, role, etc.
+  relationStatus: PNJRelationStatus;
+  trustLevel?: number; // Optional: 0-100
+  importance: PNJImportance;
+  firstEncountered: string; // Scenario/location of first encounter
+  notes?: string[]; // Player or AI notes about this PNJ
+  lastSeen?: string; // ISO string date
+}
+
+export interface MajorDecision {
+  id: string; // Unique ID for the decision, e.g., "decision_betray_contact_01"
+  summary: string; // "J'ai choisi d'aider X plutôt que Y."
+  outcome: string; // "Cela a conduit à Z."
+  scenarioContext: string; // Brief context of the scenario when decision was made
+  dateMade: string; // ISO string date
+}
+// --- Fin des types pour Journal de Quêtes, PNJ, Décisions ---
+
 
 export type Player = {
   uid?: string; // Firebase Auth UID, optional for anonymous or pre-auth states
@@ -62,6 +110,10 @@ export type Player = {
   alignment: Alignment;
   inventory: InventoryItem[];
   currentLocation: LocationData;
+  // Nouveaux champs pour le journal de quêtes, etc.
+  questLog: Quest[];
+  encounteredPNJs: PNJ[];
+  decisionLog: MajorDecision[];
 };
 
 // This type represents the data for a scenario that the player is currently in.
@@ -81,7 +133,11 @@ export type GameNotificationType =
   | 'item_removed'
   | 'leveled_up'
   | 'location_changed'
-  | 'stat_changed'; // Optional, if we want to notify for stat changes
+  | 'stat_changed'
+  | 'quest_added' // New
+  | 'quest_updated' // New
+  | 'pnj_encountered' // New
+  | 'decision_logged'; // New
 
 export interface GameNotification {
   type: GameNotificationType;
@@ -89,4 +145,3 @@ export interface GameNotification {
   description?: string;
   details?: Record<string, any>; // e.g., { itemName: 'Potion', quantity: 1 } or { amount: 50 }
 }
-

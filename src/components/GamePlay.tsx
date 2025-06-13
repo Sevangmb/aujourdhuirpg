@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, Scenario, PlayerStats, LocationData, InventoryItem, Progression, GameNotification } from '@/lib/types';
+import type { GameState, Player, Scenario, PlayerStats, LocationData, InventoryItem, Progression, GameNotification, Quest, PNJ, MajorDecision } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
@@ -11,16 +11,18 @@ import {
   saveGameState, 
   getInitialScenario, 
   initialPlayerLocation,
-  processAndApplyAIScenarioOutput // Import the refactored function
+  processAndApplyAIScenarioOutput 
 } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star } from 'lucide-react';
+import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star, ScrollText } from 'lucide-react'; // Added ScrollText for Quest Log
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import PlayerInputForm from './PlayerInputForm';
 import PlayerSheet from './PlayerSheet';
 import InventoryDisplay from './InventoryDisplay';
+// Placeholder for QuestJournalDisplay - to be created
+// import QuestJournalDisplay from './QuestJournalDisplay'; 
 import {
   Sheet,
   SheetContent,
@@ -51,6 +53,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [isPlayerSheetOpen, setIsPlayerSheetOpen] = useState(false);
   const [isInventorySheetOpen, setIsInventorySheetOpen] = useState(false);
+  const [isQuestLogOpen, setIsQuestLogOpen] = useState(false); // State for Quest Log
 
 
   useEffect(() => {
@@ -136,6 +139,25 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       xpToNextLevel: player.progression.xpToNextLevel,
       perks: player.progression.perks,
     };
+    
+    // Simplification pour l'IA
+    const activeQuestsSummary = player.questLog
+        .filter(q => q.status === 'active')
+        .map(q => ({ 
+            id: q.id, 
+            title: q.title, 
+            description: q.description.substring(0,150) + "...", // Truncate for brevity
+            type: q.type,
+            currentObjectivesDescriptions: q.objectives.filter(obj => !obj.isCompleted).map(obj => obj.description)
+        }));
+
+    const encounteredPNJsSummary = player.encounteredPNJs.map(p => ({
+        id: p.id,
+        name: p.name,
+        relationStatus: p.relationStatus,
+        importance: p.importance
+    }));
+
 
     const inputForAI: GenerateScenarioInput = {
       playerName: player.name,
@@ -151,7 +173,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerInventory: simplifiedInventory,
       playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
-      playerLocation: player.currentLocation, 
+      playerLocation: player.currentLocation,
+      activeQuests: activeQuestsSummary,
+      encounteredPNJsSummary: encounteredPNJsSummary,
     };
 
     try {
@@ -162,15 +186,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
 
       notifications.forEach(notification => {
         let toastAction;
-        if (notification.type === 'xp_gained') {
-          toastAction = <Zap className="text-yellow-400" />;
-        } else if (notification.type === 'leveled_up') {
-          toastAction = <Star className="text-yellow-500" />;
+        if (notification.type === 'xp_gained' || notification.type === 'leveled_up') {
+          toastAction = <Star className="text-yellow-400" />;
+        } else if (notification.type === 'item_added' || notification.type === 'quest_added') {
+            toastAction = <Zap className="text-green-400" />
         }
         toast({
           title: notification.title,
           description: notification.description,
           action: toastAction,
+          duration: notification.type === 'leveled_up' || notification.type === 'quest_added' ? 5000: 3000,
         });
       });
 
@@ -227,7 +252,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
          <StatDisplay stats={player.stats} previousStats={previousStats} />
       </div>
       
-      <div className="flex justify-center my-4 space-x-2">
+      <div className="flex flex-wrap justify-center my-4 gap-2">
         <Sheet open={isPlayerSheetOpen} onOpenChange={setIsPlayerSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" className="shadow-md">
@@ -259,6 +284,35 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
               </SheetDescription>
             </SheetHeader>
             <InventoryDisplay inventory={player.inventory} />
+          </SheetContent>
+        </Sheet>
+
+        {/* Bouton Journal de Quêtes */}
+        <Sheet open={isQuestLogOpen} onOpenChange={setIsQuestLogOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="shadow-md">
+              <ScrollText className="mr-2 h-4 w-4" /> Journal de Quêtes
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0 overflow-y-auto"> {/* Ajuster la taille si besoin */}
+            <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
+              <SheetTitle className="font-headline text-primary">Journal de Quêtes</SheetTitle>
+              <SheetDescription>
+                Suivez vos aventures, décisions et rencontres.
+              </SheetDescription>
+            </SheetHeader>
+            {/* <QuestJournalDisplay player={player} /> Placeholder */}
+            <div className="p-4">
+                <p className="text-muted-foreground">Le Journal de Quêtes est en cours de développement.</p>
+                <h3 className="font-semibold mt-4">Quêtes Actives :</h3>
+                {player.questLog.filter(q => q.status === 'active').length > 0 ? (
+                    player.questLog.filter(q => q.status === 'active').map(q => <p key={q.id}>- {q.title} ({q.type})</p>)
+                ) : <p className="text-sm">Aucune quête active.</p>}
+                 <h3 className="font-semibold mt-4">PNJs Rencontrés :</h3>
+                {player.encounteredPNJs.length > 0 ? (
+                    player.encounteredPNJs.map(p => <p key={p.id}>- {p.name} ({p.relationStatus})</p>)
+                ) : <p className="text-sm">Aucun PNJ rencontré.</p>}
+            </div>
           </SheetContent>
         </Sheet>
       </div>

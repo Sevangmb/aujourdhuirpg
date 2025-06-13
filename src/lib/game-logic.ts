@@ -1,5 +1,5 @@
 
-import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, GameNotification } from './types';
+import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, GameNotification, Quest, PNJ, MajorDecision } from './types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getMasterItemById, ALL_ITEMS } from '@/data/items'; // Import master item list and getter
 import { saveGameStateToFirestore } from '@/services/firestore-service'; // Import Firestore save function
@@ -59,6 +59,12 @@ export const initialPlayerLocation: LocationData = {
 };
 
 export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
+
+// --- Initial empty arrays for new player fields ---
+export const initialQuestLog: Quest[] = [];
+export const initialEncounteredPNJs: PNJ[] = [];
+export const initialDecisionLog: MajorDecision[] = [];
+// --- End initial empty arrays ---
 
 export function getInitialScenario(player: Player): Scenario {
  return {
@@ -130,6 +136,10 @@ function hydratePlayer(savedPlayer?: Partial<Player>): Player {
           .filter(item => item !== null) as InventoryItem[]
       : [...initialInventory],
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
+    // Hydrate new fields
+    questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
+    encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
+    decisionLog: Array.isArray(savedPlayer?.decisionLog) ? savedPlayer.decisionLog : [...initialDecisionLog],
   };
 
   if (player.progression.level <= 0) player.progression.level = 1;
@@ -263,22 +273,53 @@ export function addXP(currentProgression: Progression, xpGained: number): { newP
   return { newProgression, leveledUp };
 }
 
+// --- Fonctions pour gérer le journal de quêtes, PNJ, décisions ---
+export function addQuestToLog(currentQuestLog: Quest[], newQuest: Quest): Quest[] {
+  if (currentQuestLog.find(q => q.id === newQuest.id)) {
+    console.warn(`QuestLog Warning: Attempted to add quest with duplicate ID: ${newQuest.id}`);
+    return currentQuestLog; // Éviter les doublons
+  }
+  return [...currentQuestLog, newQuest];
+}
+
+export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: Partial<Omit<Quest, 'id'>>): Quest[] {
+  return currentQuestLog.map(quest =>
+    quest.id === questId ? { ...quest, ...updates, dateCompleted: updates.status === 'completed' ? new Date().toISOString() : quest.dateCompleted } : quest
+  );
+}
+
+export function addOrUpdatePNJ(currentPNJs: PNJ[], pnjData: PNJ): PNJ[] {
+  const existingPNJIndex = currentPNJs.findIndex(p => p.id === pnjData.id);
+  if (existingPNJIndex > -1) {
+    return currentPNJs.map((p, index) => index === existingPNJIndex ? { ...p, ...pnjData, lastSeen: new Date().toISOString() } : p);
+  }
+  return [...currentPNJs, { ...pnjData, lastSeen: new Date().toISOString() }];
+}
+
+export function logMajorDecision(currentDecisionLog: MajorDecision[], newDecision: MajorDecision): MajorDecision[] {
+   if (currentDecisionLog.find(d => d.id === newDecision.id)) {
+    console.warn(`DecisionLog Warning: Attempted to log decision with duplicate ID: ${newDecision.id}`);
+    return currentDecisionLog;
+  }
+  return [...currentDecisionLog, newDecision];
+}
+// --- Fin des fonctions de gestion ---
+
 
 export function processAndApplyAIScenarioOutput(
   currentPlayer: Player,
-  aiOutput: GenerateScenarioOutput
+  aiOutput: GenerateScenarioOutput // Note: This will need to be updated with new fields for quests etc.
 ): { updatedPlayer: Player; notifications: GameNotification[] } {
   let processedPlayer = { ...currentPlayer };
   const notifications: GameNotification[] = [];
 
+  // Mise à jour des stats
   if (aiOutput.scenarioStatsUpdate) {
-    const oldStats = {...processedPlayer.stats};
-    const updatedStats = applyStatChanges(processedPlayer.stats, aiOutput.scenarioStatsUpdate);
-    processedPlayer.stats = updatedStats;
-    // Potentially add stat change notifications if desired
-    // For now, only major events trigger notifications
+    // const oldStats = {...processedPlayer.stats}; // Si on veut comparer pour des notifs détaillées
+    processedPlayer.stats = applyStatChanges(processedPlayer.stats, aiOutput.scenarioStatsUpdate);
   }
 
+  // Gain d'XP
   if (typeof aiOutput.xpGained === 'number' && aiOutput.xpGained > 0) {
     const { newProgression, leveledUp } = addXP(processedPlayer.progression, aiOutput.xpGained);
     processedPlayer.progression = newProgression;
@@ -298,6 +339,7 @@ export function processAndApplyAIScenarioOutput(
     }
   }
   
+  // Objets ajoutés
   if (aiOutput.itemsAdded && aiOutput.itemsAdded.length > 0) {
     let currentInv = processedPlayer.inventory;
     aiOutput.itemsAdded.forEach(itemToAdd => {
@@ -314,6 +356,7 @@ export function processAndApplyAIScenarioOutput(
     processedPlayer.inventory = currentInv;
   }
 
+  // Objets retirés
   if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
     let currentInv = processedPlayer.inventory;
     aiOutput.itemsRemoved.forEach(itemToRemove => {
@@ -328,6 +371,7 @@ export function processAndApplyAIScenarioOutput(
     processedPlayer.inventory = currentInv;
   }
 
+  // Changement de lieu
   if (aiOutput.newLocationDetails && 
       typeof aiOutput.newLocationDetails.latitude === 'number' && 
       typeof aiOutput.newLocationDetails.longitude === 'number' && 
@@ -345,6 +389,106 @@ export function processAndApplyAIScenarioOutput(
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
   }
+
+  // --- Traitement des nouvelles données de quêtes, PNJ, décisions ---
+  // Note : aiOutput.newQuests, aiOutput.questUpdates etc. sont des placeholders.
+  // Ces champs devront être ajoutés à GenerateScenarioOutputSchema dans le flux IA.
+
+  // @ts-ignore // Temporaire, jusqu'à ce que GenerateScenarioOutput soit mis à jour
+  if (aiOutput.newQuests && Array.isArray(aiOutput.newQuests)) {
+    // @ts-ignore
+    aiOutput.newQuests.forEach(questData => {
+      // L'IA devrait fournir des QuestObjective avec isCompleted: false par défaut
+      const newQuest: Quest = {
+        id: questData.id || `quest_${Date.now()}_${Math.random().toString(36).substring(7)}`, // L'IA DOIT fournir un ID unique
+        title: questData.title,
+        description: questData.description,
+        type: questData.type || 'secondary',
+        status: questData.status || 'active',
+        objectives: questData.objectives ? questData.objectives.map((obj: any) => ({id: obj.id, description: obj.description, isCompleted: false})) : [],
+        giver: questData.giver,
+        reward: questData.reward,
+        relatedLocation: questData.relatedLocation,
+        dateAdded: new Date().toISOString(),
+      };
+      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog, newQuest);
+      notifications.push({
+        type: 'quest_added',
+        title: `Nouvelle Quête : ${newQuest.title}`,
+        description: newQuest.description.substring(0, 100) + (newQuest.description.length > 100 ? "..." : ""),
+        details: { questId: newQuest.id, questType: newQuest.type }
+      });
+    });
+  }
+
+  // @ts-ignore
+  if (aiOutput.questUpdates && Array.isArray(aiOutput.questUpdates)) {
+    // @ts-ignore
+    aiOutput.questUpdates.forEach(update => {
+      const oldQuest = processedPlayer.questLog.find(q => q.id === update.questId);
+      processedPlayer.questLog = updateQuestInLog(processedPlayer.questLog, update.questId, { status: update.newStatus, objectives: update.updatedObjectives });
+      const updatedQuest = processedPlayer.questLog.find(q => q.id === update.questId);
+      if (updatedQuest && (!oldQuest || oldQuest.status !== updatedQuest.status || JSON.stringify(oldQuest.objectives) !== JSON.stringify(updatedQuest.objectives) ) ) {
+        notifications.push({
+          type: 'quest_updated',
+          title: `Quête Mise à Jour : ${updatedQuest.title}`,
+          description: `Statut : ${updatedQuest.status}. Objectifs mis à jour.`,
+          details: { questId: updatedQuest.id, newStatus: updatedQuest.status }
+        });
+      }
+    });
+  }
+
+  // @ts-ignore
+  if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
+    // @ts-ignore
+    aiOutput.pnjInteractions.forEach(pnjData => {
+      // L'IA doit fournir un PNJ avec tous les champs requis, ou des mises à jour spécifiques
+      const pnj: PNJ = {
+        id: pnjData.id || `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`, // L'IA DOIT fournir un ID unique
+        name: pnjData.name,
+        description: pnjData.description,
+        relationStatus: pnjData.relationStatus || 'neutral',
+        importance: pnjData.importance || 'minor',
+        firstEncountered: pnjData.firstEncountered || "Contexte actuel",
+        trustLevel: pnjData.trustLevel,
+        notes: pnjData.notes,
+        lastSeen: new Date().toISOString() // Mis à jour à chaque interaction
+      };
+      const oldPNJ = processedPlayer.encounteredPNJs.find(p=>p.id === pnj.id);
+      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs, pnj);
+      if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
+        notifications.push({
+          type: 'pnj_encountered',
+          title: `Interaction PNJ : ${pnj.name}`,
+          description: `Relation : ${pnj.relationStatus}. ${pnj.description.substring(0, 70)}...`,
+          details: { pnjId: pnj.id, pnjName: pnj.name }
+        });
+      }
+    });
+  }
+  
+  // @ts-ignore
+  if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
+    // @ts-ignore
+    aiOutput.majorDecisionsLogged.forEach(decisionData => {
+      const decision: MajorDecision = {
+        id: decisionData.id || `decision_${Date.now()}_${Math.random().toString(36).substring(7)}`, // L'IA DOIT fournir un ID unique
+        summary: decisionData.summary,
+        outcome: decisionData.outcome,
+        scenarioContext: decisionData.scenarioContext,
+        dateMade: new Date().toISOString(),
+      };
+      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog, decision);
+      notifications.push({
+        type: 'decision_logged',
+        title: "Décision Importante Enregistrée",
+        description: decision.summary.substring(0, 100) + (decision.summary.length > 100 ? "..." : ""),
+        details: { decisionId: decision.id }
+      });
+    });
+  }
+  // --- Fin du traitement ---
   
   return { updatedPlayer: processedPlayer, notifications };
 }
