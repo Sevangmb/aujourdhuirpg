@@ -46,15 +46,16 @@ export default function HomePage() {
 
     if (user && !user.isAnonymous && user.uid) {
       try {
-        loadedState = await loadGameStateFromFirestore(user.uid);
-        if (loadedState) {
+        const firestoreState = await loadGameStateFromFirestore(user.uid);
+        if (firestoreState) {
+          loadedState = firestoreState; // Assumes firestoreState is already well-formed by loadGameStateFromFirestore
           toast({ title: "Progression chargée", description: "Votre partie a été restaurée depuis le cloud." });
         } else {
-           // No data in Firestore, try local as a fallback for migration scenario
+           // No data in Firestore, try local as a fallback for potential migration scenario
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
             // If local state exists, associate it with current user and save to Firestore
-            localState.player.uid = user.uid;
+            localState.player.uid = user.uid; // Ensure UID is set before saving
             await saveGameState(localState); // This will now save to Firestore + Local
             loadedState = localState;
             toast({ title: "Progression locale migrée", description: "Votre partie locale a été sauvegardée dans le cloud." });
@@ -63,58 +64,30 @@ export default function HomePage() {
       } catch (error) {
         console.error("Error loading from Firestore, falling back to local:", error);
         toast({ variant: "destructive", title: "Erreur de chargement Cloud", description: "Impossible de charger depuis le cloud. Tentative de chargement local." });
-        // Fall through to load from local storage
+        // Fall through to load from local storage if firestore load fails
       }
     }
     
-    // If not loaded from Firestore (or user is anonymous/not logged in, or Firestore load failed)
+    // If not loaded from Firestore (or user is anonymous/not logged in, or Firestore load failed and no local state was migrated)
     if (!loadedState) {
-      loadedState = loadGameStateFromLocal();
+      loadedState = loadGameStateFromLocal(); // loadGameStateFromLocal now ensures a well-formed player object or returns null
     }
     
     if (loadedState && loadedState.player) {
-      // Ensure player object is fully populated, especially for older save states or states from different sources
-      const basePlayer: Player = {
-        uid: user?.uid || loadedState.player.uid, // Prioritize current user's UID
-        name: '', // Will be overridden
-        gender: "Préfère ne pas préciser",
-        age: 25,
-        avatarUrl: defaultAvatarUrl,
-        origin: "Inconnue",
-        stats: { ...initialPlayerStats },
-        skills: { ...initialSkills },
-        traitsMentalStates: [...initialTraitsMentalStates],
-        progression: { ...initialProgression },
-        alignment: { ...initialAlignment },
-        inventory: [ ...initialInventory ],
-        currentLocation: { ...initialPlayerLocation },
-        background: '' // Will be overridden
-      };
-
-      loadedState.player = {
-        ...basePlayer,
-        ...loadedState.player,
-      };
-
-      // Specific checks for nested objects that might be missing
-      if (!loadedState.player.currentLocation) loadedState.player.currentLocation = { ...initialPlayerLocation };
-      if (!loadedState.player.stats) loadedState.player.stats = { ...initialPlayerStats };
-      if (!loadedState.player.skills) loadedState.player.skills = { ...initialSkills };
-      if (!loadedState.player.traitsMentalStates) loadedState.player.traitsMentalStates = [...initialTraitsMentalStates];
-      if (!loadedState.player.progression) loadedState.player.progression = { ...initialProgression };
-      if (typeof loadedState.player.progression.xpToNextLevel === 'undefined') {
-        loadedState.player.progression.xpToNextLevel = initialProgression.xpToNextLevel; // Recalculate if missing
-      }
-      if (!loadedState.player.alignment) loadedState.player.alignment = { ...initialAlignment };
-      if (!Array.isArray(loadedState.player.inventory) || loadedState.player.inventory.length === 0) {
-        loadedState.player.inventory = [ ...initialInventory ];
+      // Ensure player UID is consistent if user is logged in
+      if (user && !user.isAnonymous && user.uid && loadedState.player.uid !== user.uid) {
+        console.warn("Player UID mismatch between loaded state and current user. Updating state with current user's UID.");
+        loadedState.player.uid = user.uid;
+        // Optionally re-save if UID was mismatched, to correct it in storage
+        // await saveGameState(loadedState); 
       }
       setGameState(loadedState);
     } else {
+      // No game state found anywhere, or loading failed completely
       setGameState({ player: null, currentScenario: null });
     }
     setIsLoadingState(false);
-  }, [user, toast]);
+  }, [user, toast]); // Removed loadGameStateFromLocal from dependencies as it's stable
 
   useEffect(() => {
     if (!loadingAuth) { // Only perform load once auth state is resolved
@@ -123,7 +96,9 @@ export default function HomePage() {
   }, [loadingAuth, performInitialLoad]);
 
   const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' >) => {
-    const playerDetails: Omit<Player, 'currentLocation'> = {
+    // These initial values are now primarily set by hydratePlayer or if player object is totally new.
+    // CharacterCreationForm provides the core identity.
+    const playerDetails: Player = {
       ...playerDataFromForm, // name, gender, age, origin, background from form
       avatarUrl: defaultAvatarUrl, 
       stats: { ...initialPlayerStats },
@@ -132,21 +107,17 @@ export default function HomePage() {
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
-      uid: user && !user.isAnonymous ? user.uid : undefined, // Assign UID if user is authenticated
+      uid: user && !user.isAnonymous ? user.uid : undefined,
+      currentLocation: { ...initialPlayerLocation }, // Location is always initial at creation
     };
 
-    const playerWithLocation: Player = {
-      ...playerDetails,
-      currentLocation: initialPlayerLocation,
-    };
-
-    const firstScenario = getInitialScenario(playerWithLocation);
+    const firstScenario = getInitialScenario(playerDetails);
     const newGameState: GameState = {
-      player: playerWithLocation,
+      player: playerDetails,
       currentScenario: firstScenario,
     };
     setGameState(newGameState);
-    await saveGameState(newGameState); // saveGameState will handle Firestore if UID is present
+    await saveGameState(newGameState); 
     toast({ title: "Personnage créé !", description: "Votre aventure commence maintenant."});
   };
 
@@ -162,6 +133,7 @@ export default function HomePage() {
     }
     clearGameStateFromLocal(); // Always clear local state
     setGameState({ player: null, currentScenario: null });
+    // No need to call performInitialLoad here, it will set up a fresh state.
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
 

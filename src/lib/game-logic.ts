@@ -25,7 +25,8 @@ export const initialSkills: Skills = {
 export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];
 
 const calculateXpToNextLevel = (level: number): number => {
-  return level * 100 + 50 * level; // Example formula: 1=150, 2=300, 3=450 etc.
+  if (level <= 0) level = 1; // Ensure level is at least 1 for calculation
+  return level * 100 + 50 * (level -1) * level; // Example formula: 1=100, 2=250, 3=450 etc. (adjusted to be more progressive)
 };
 
 export const initialProgression: Progression = {
@@ -42,11 +43,14 @@ export const initialAlignment: Alignment = {
 
 // Initialize inventory from master item list
 export const initialInventory: InventoryItem[] = [
-  { ...getMasterItemById('smartphone_01')!, quantity: 1 },
-  { ...getMasterItemById('wallet_01')!, quantity: 1 },
-  { ...getMasterItemById('keys_apartment_01')!, quantity: 1 },
-  { ...getMasterItemById('energy_bar_01')!, quantity: 2 },
-].filter(item => item && item.id); // Filter out any undefined items if IDs are mistyped
+  getMasterItemById('smartphone_01'),
+  getMasterItemById('wallet_01'),
+  getMasterItemById('keys_apartment_01'),
+  getMasterItemById('energy_bar_01'),
+]
+.filter(item => item !== undefined) // Ensure no undefined items if ID is wrong
+.map(masterItem => ({ ...masterItem!, quantity: masterItem!.id === 'energy_bar_01' ? 2 : 1 }));
+
 
 export const initialPlayerLocation: LocationData = {
   latitude: 48.8566, // Paris latitude
@@ -101,82 +105,77 @@ export async function saveGameState(state: GameState): Promise<void> {
   }
 }
 
+function hydratePlayer(savedPlayer?: Partial<Player>): Player {
+  const player: Player = {
+    uid: savedPlayer?.uid,
+    name: savedPlayer?.name || '',
+    gender: savedPlayer?.gender || "Préfère ne pas préciser",
+    age: typeof savedPlayer?.age === 'number' && savedPlayer.age > 0 ? savedPlayer.age : 25,
+    avatarUrl: savedPlayer?.avatarUrl || defaultAvatarUrl,
+    origin: savedPlayer?.origin || "Inconnue",
+    background: savedPlayer?.background || '',
+    stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
+    skills: { ...initialSkills, ...(savedPlayer?.skills || {}) },
+    traitsMentalStates: Array.isArray(savedPlayer?.traitsMentalStates) && savedPlayer.traitsMentalStates.length > 0
+      ? [...savedPlayer.traitsMentalStates]
+      : [...initialTraitsMentalStates],
+    progression: {
+      ...initialProgression,
+      ...(savedPlayer?.progression || {}),
+    },
+    alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
+    inventory: Array.isArray(savedPlayer?.inventory) && savedPlayer.inventory.length > 0
+      ? savedPlayer.inventory
+          .map(item => {
+            const masterItem = getMasterItemById(item.id);
+            if (masterItem) {
+              return { ...masterItem, quantity: Math.max(1, item.quantity || 1) };
+            }
+            return null;
+          })
+          .filter(item => item !== null) as InventoryItem[]
+      : [...initialInventory],
+    currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
+  };
+
+  // Ensure progression is valid
+  if (player.progression.level <= 0) player.progression.level = 1;
+  if (typeof player.progression.xp !== 'number' || player.progression.xp < 0) player.progression.xp = 0;
+  player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
+  if (!Array.isArray(player.progression.perks)) player.progression.perks = [];
+
+
+  // If inventory ended up empty after potential filtering, re-initialize
+  if (player.inventory.length === 0) {
+    player.inventory = [...initialInventory];
+  }
+  
+  return player;
+}
+
+
 export function loadGameState(): GameState | null {
   if (typeof window !== 'undefined' && localStorage) {
-    const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedState) {
+    const savedStateString = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedStateString) {
       try {
-        const parsedState = JSON.parse(savedState) as GameState;
-        // Perform more thorough validation/migration if necessary
-        if (!parsedState.player || !parsedState.currentScenario) {
-            console.warn("LocalStorage Warning: Loaded game state is missing critical player or scenario data. Clearing corrupted state.");
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            return null;
-        }
-        
-        // Ensure player object is fully populated, especially for older save states
-        const basePlayer: Player = {
-            uid: parsedState.player.uid || undefined,
-            name: '', // Will be overridden if present
-            gender: "Préfère ne pas préciser",
-            age: 25,
-            avatarUrl: defaultAvatarUrl,
-            origin: "Inconnue",
-            stats: { ...initialPlayerStats },
-            skills: { ...initialSkills },
-            traitsMentalStates: [...initialTraitsMentalStates],
-            progression: { ...initialProgression },
-            alignment: { ...initialAlignment },
-            inventory: [ ...initialInventory ],
-            currentLocation: { ...initialPlayerLocation },
-            background: '' // Will be overridden if present
-        };
+        const parsedSavedState = JSON.parse(savedStateString) as Partial<GameState>;
 
-        parsedState.player = {
-            ...basePlayer,
-            ...parsedState.player,
-        };
-        
-        // Specific checks for nested objects that might be missing or need defaults
-        if (!parsedState.player.currentLocation) parsedState.player.currentLocation = { ...initialPlayerLocation };
-        if (!parsedState.player.stats) parsedState.player.stats = { ...initialPlayerStats };
-        else parsedState.player.stats = { ...initialPlayerStats, ...parsedState.player.stats }; // Merge with defaults
-
-        if (!parsedState.player.skills) parsedState.player.skills = { ...initialSkills };
-        else parsedState.player.skills = { ...initialSkills, ...parsedState.player.skills };
-
-        if (!Array.isArray(parsedState.player.traitsMentalStates)) parsedState.player.traitsMentalStates = [...initialTraitsMentalStates];
-        
-        if (!parsedState.player.progression) {
-          parsedState.player.progression = { ...initialProgression };
-        } else {
-          parsedState.player.progression = { ...initialProgression, ...parsedState.player.progression };
-          if (typeof parsedState.player.progression.xpToNextLevel === 'undefined' || parsedState.player.progression.xpToNextLevel <= 0) {
-            parsedState.player.progression.xpToNextLevel = calculateXpToNextLevel(parsedState.player.progression.level);
-          }
+        if (!parsedSavedState || typeof parsedSavedState !== 'object') {
+          console.warn("LocalStorage Warning: Loaded game state is not a valid object. Clearing corrupted state.");
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
+          return null;
         }
 
-        if (!parsedState.player.alignment) parsedState.player.alignment = { ...initialAlignment };
-        else parsedState.player.alignment = { ...initialAlignment, ...parsedState.player.alignment };
-
-        if (!Array.isArray(parsedState.player.inventory) || parsedState.player.inventory.length === 0) {
-           parsedState.player.inventory = [ ...initialInventory ];
-        } else {
-          parsedState.player.inventory = parsedState.player.inventory.map(savedItem => {
-            const masterItem = getMasterItemById(savedItem.id);
-            if (masterItem) {
-              return { ...masterItem, quantity: savedItem.quantity };
-            }
-            return null; 
-          }).filter(item => item !== null) as InventoryItem[];
-          // If after filtering, inventory is empty, re-init with starting items.
-          if(parsedState.player.inventory.length === 0) {
-            parsedState.player.inventory = [ ...initialInventory ];
-          }
-        }
+        const hydratedPlayer = hydratePlayer(parsedSavedState.player);
         
-        console.log("LocalStorage Success: Game state loaded and validated/migrated from LocalStorage.");
-        return parsedState;
+        const currentScenario = parsedSavedState.currentScenario && parsedSavedState.currentScenario.scenarioText
+          ? parsedSavedState.currentScenario
+          : getInitialScenario(hydratedPlayer);
+
+        console.log("LocalStorage Success: Game state loaded and hydrated from LocalStorage.");
+        return { player: hydratedPlayer, currentScenario };
+
       } catch (error) {
         console.error("LocalStorage Error: Error parsing game state from LocalStorage:", error);
         localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state
@@ -220,7 +219,16 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
 
   if (existingItemIndex > -1 && masterItem.stackable) {
     newInventory[existingItemIndex].quantity += quantityToAdd;
-  } else {
+  } else if (existingItemIndex > -1 && !masterItem.stackable) {
+    // For non-stackable, add as new instance if not already there, or do nothing if trying to add more of existing non-stackable
+    // Current logic doesn't prevent adding multiple non-stackable if ID is same but it comes as a "new item"
+    // This part can be refined based on desired game logic for unique non-stackables
+    console.warn(`Inventory Info: Item ${itemId} is not stackable. Adding as a new entry if not already present with quantity 1.`);
+     if (!newInventory.find(item => item.id === itemId)) { // Only add if truly not there
+        newInventory.push({ ...masterItem, quantity: 1 });
+     }
+  }
+  else {
     newInventory.push({ ...masterItem, quantity: quantityToAdd });
   }
   return newInventory;
@@ -247,6 +255,12 @@ export function removeItemFromInventory(currentInventory: InventoryItem[], itemI
 
 export function addXP(currentProgression: Progression, xpGained: number): { newProgression: Progression, leveledUp: boolean } {
   const newProgression = { ...currentProgression };
+  if (typeof newProgression.level !== 'number' || newProgression.level <= 0) newProgression.level = 1;
+  if (typeof newProgression.xp !== 'number' || newProgression.xp < 0) newProgression.xp = 0;
+  if (typeof newProgression.xpToNextLevel !== 'number' || newProgression.xpToNextLevel <= 0) {
+    newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
+  }
+
   newProgression.xp += xpGained;
   let leveledUp = false;
 
@@ -255,7 +269,10 @@ export function addXP(currentProgression: Progression, xpGained: number): { newP
     newProgression.xp -= newProgression.xpToNextLevel; 
     newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
     leveledUp = true;
+    // Potentially add perk points or other level-up rewards here
   }
+   // Ensure XP isn't negative after leveling down (if that were possible, or if xpToNextLevel calculation was off)
+  if (newProgression.xp < 0) newProgression.xp = 0;
+
   return { newProgression, leveledUp };
 }
-
