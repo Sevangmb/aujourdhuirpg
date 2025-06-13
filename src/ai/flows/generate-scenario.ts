@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getWeatherTool } from '@/ai/tools/get-weather-tool'; // Import the weather tool
 
 const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
@@ -33,11 +34,15 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
+  tools: [getWeatherTool], // Make the tool available to the prompt
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios.
 
-You are creating a scenario for a player in a text-based RPG. The game is set in modern-day France.
+You are creating a scenario for a player in a text-based RPG. The game is set in modern-day France, specifically Paris.
+The player character's current location is Paris, France (latitude 48.85, longitude 2.35).
+Use the 'getWeatherTool' with these coordinates for Paris to find out the current weather conditions.
+Incorporate the fetched weather information naturally and subtly into the scenario description if it's relevant to the player's immediate surroundings or actions. For example, if it's raining, you might mention damp streets or the sound of rain. If it's sunny, you might describe the bright light. Don't make the weather the main focus unless it's a major event (like a storm).
 
 Consider current events in France when creating the scenario if relevant and natural, but prioritize a fun and engaging player experience.
 
@@ -74,3 +79,4 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
