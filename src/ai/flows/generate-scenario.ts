@@ -115,10 +115,10 @@ Task:
     *   Provide the player's current latitude and longitude.
     *   You can specify a 'poiType' (e.g., "restaurant", "shop", "hotel", "tourism", "museum", "pharmacy") if the player's request is specific. If the player is just exploring, you can omit 'poiType' to get general amenities or use a broad category like "amenity" or "shop".
     *   The tool will return a list of nearby places.
-3.  If the player's action or the scenario involves a specific, identifiable real-world place (e.g., "Musée du Louvre", "Mont Saint-Michel"), a historical figure, or a notable event that would benefit from factual context, consider using the 'getWikipediaInfoTool'. Provide the exact name as the 'searchTerm'.
+3.  If the player's action, the scenario, or an emerging Non-Player Character (PNJ) involves a specific, identifiable real-world place (e.g., "Musée du Louvre"), a historical or contemporary public figure (e.g., a famous artist, scientist, politician encountered as a PNJ), or a notable event, consider using the 'getWikipediaInfoTool'. Provide the exact name as the 'searchTerm' to fetch factual context.
 4.  Incorporate the fetched weather, nearby POIs (if any), and Wikipedia information (if any) naturally and subtly into the scenario description. The goal is to enrich the story and provide context or options.
     *   For POIs: You might mention some of the found places, e.g., "En regardant autour de vous, vous remarquez une boulangerie animée, 'Le Pain Doré', et un petit café, 'Le Coin Tranquille', juste de l'autre côté de la rue." or "Votre recherche d'un hôtel vous indique que l'Hôtel Beau Séjour' est à quelques centaines de mètres."
-    *   For Wikipedia: Focus on details that enhance immersion or provide interesting, brief context. Do NOT use Wikipedia for generic terms.
+    *   For Wikipedia: Weave the *information and descriptions* obtained from the Wikipedia summary (for both places and PNJs) into the narrative. For example, if a PNJ is based on a real person, you might subtly include details from their known biography or achievements in their dialogue or actions. For a place, describe it using details from its Wikipedia summary to make it more vivid and recognizable. The goal is to enhance immersion and provide interesting, brief context. Do NOT use Wikipedia for generic terms or simply state facts; integrate them into the story.
 5.  Consider current events in France when creating the scenario if relevant and natural, but prioritize a fun and engaging player experience.
 6.  Generate a new scenario based on ALL the player information (including their inventory) and their typed action: "{{{playerChoice}}}".
 7.  The scenario text should be a narrative continuation of the story, describing what happens as a result of the player's action. It should be between 100 and 250 words and formatted as well-formed HTML (e.g., using <p> tags). It should NOT contain any interactive elements like buttons.
@@ -129,7 +129,7 @@ Task:
     *   Items Used/Lost: Populate 'itemsRemoved' with 'itemName' (from player's inventory) and 'quantity'.
 11. Location Changes: If the player moves, provide 'newLocationDetails' with 'latitude', 'longitude', 'placeName', and 'reasonForMove'.
 
-Always make the story feel real by mentioning famous people or real places from France whenever it makes sense.
+Always make the story feel real by mentioning famous people or real places from France whenever it makes sense, using the information gathered from tools like Wikipedia to add depth and accuracy to their portrayal or description in the story.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
 `,
 });
