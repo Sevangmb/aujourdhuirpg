@@ -15,6 +15,7 @@ import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-w
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import PlayerInputForm from './PlayerInputForm';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Added import
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -246,6 +247,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
   }
 
   const displayLocation = player.currentLocation || initialPlayerLocation;
+  // Defensive checks for quests and PNJ lists
+  const activeQuests = player?.questLog?.filter(q => q.status === 'active') || [];
+  const encounteredPNJsList = player?.encounteredPNJs || [];
 
   return (
     <div className="flex flex-col h-full max-h-screen p-4 md:p-6 space-y-4 overflow-hidden">
