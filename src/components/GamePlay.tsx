@@ -6,16 +6,14 @@ import type { GameState, Player, Scenario, PlayerStats, LocationData } from '@/l
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { applyStatChanges, saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, Send, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, RotateCcw, AlertTriangle } from 'lucide-react';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
-import WeatherDisplay from './WeatherDisplay'; // Import the new component
-
+import WeatherDisplay from './WeatherDisplay';
+import PlayerInputForm from './PlayerInputForm'; // Nouveau composant
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -44,11 +42,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       setCurrentScenario(firstScenario);
       saveGameState({ player, currentScenario: firstScenario });
     } else if (player && !player.currentLocation) {
-        // This is a fallback, should ideally not happen if initialization is correct
         console.warn("Player object missing currentLocation, re-initializing scenario with default location.");
         const playerWithDefaultLocation = { ...player, currentLocation: initialPlayerLocation };
-        setPlayer(playerWithDefaultLocation); // Update player state
-        setCurrentLocationForUI(initialPlayerLocation); // Update UI location state
+        setPlayer(playerWithDefaultLocation);
+        setCurrentLocationForUI(initialPlayerLocation);
         const firstScenario = getInitialScenario(playerWithDefaultLocation);
         setCurrentScenario(firstScenario);
         saveGameState({ player: playerWithDefaultLocation, currentScenario: firstScenario });
@@ -76,12 +73,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       }
     };
 
-    // Use player.currentLocation for fetching weather if player exists, otherwise fallback to currentLocationForUI
     const locationToFetch = player?.currentLocation || currentLocationForUI;
     if (locationToFetch) {
        fetchWeatherForLocation(locationToFetch);
     }
-  }, [player, currentLocationForUI]); // currentLocationForUI dependency is important for initial load before player location is fully set or if player is null briefly
+  }, [player, currentLocationForUI]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     if (!player || !currentScenario || !actionText.trim()) {
@@ -95,7 +91,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       return;
     }
 
-    // Defensive check for player.currentLocation
     if (!player.currentLocation) {
       console.error("Critical Error: player.currentLocation is undefined before AI call.", player);
       toast({
@@ -116,14 +111,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerStats: player.stats,
       playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
-      playerLocation: player.currentLocation, // player.currentLocation is now validated
+      playerLocation: player.currentLocation,
     };
 
     try {
       const output: GenerateScenarioOutput = await generateScenario(inputForAI);
 
       const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
-      // Ensure player is not null before spreading, though already guarded
       let updatedPlayer = { ...(player as Player), stats: updatedStats };
 
 
@@ -134,7 +128,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
           placeName: output.newLocationDetails.placeName,
         };
         updatedPlayer.currentLocation = newLoc;
-        setCurrentLocationForUI(newLoc); // Keep this to ensure UI updates immediately if player state update is batched
+        setCurrentLocationForUI(newLoc); 
          toast({
           title: "Déplacement !",
           description: `Vous êtes maintenant à ${newLoc.placeName}. ${output.newLocationDetails.reasonForMove || ''}`,
@@ -173,10 +167,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     }
   }, [player, currentScenario, toast]);
 
-  const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    handlePlayerActionSubmit(playerInput);
-  };
 
   if (!player || !currentScenario) {
     return (
@@ -190,8 +180,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     );
   }
   
-  // Ensure currentLocationForUI reflects the player's actual current location for display
-  // This helps if player state updates but UI state for location lags.
   const displayLocation = player.currentLocation || currentLocationForUI;
 
   return (
@@ -209,20 +197,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
         />
       </div>
 
-      <form onSubmit={handleSubmitForm} className="mt-4 flex gap-2 items-center">
-        <Input
-          type="text"
-          value={playerInput}
-          onChange={(e) => setPlayerInput(e.target.value)}
-          placeholder="Que faites-vous ensuite ?"
-          className="flex-grow"
-          disabled={isLoading}
-        />
-        <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-          Envoyer
-        </Button>
-      </form>
+      <PlayerInputForm
+        playerInput={playerInput}
+        onPlayerInputChange={setPlayerInput}
+        onSubmit={handlePlayerActionSubmit}
+        isLoading={isLoading}
+      />
 
       <div className="flex justify-center mt-auto pt-4">
         <Button onClick={onRestart} variant="outline" className="shadow-md" disabled={isLoading}>
