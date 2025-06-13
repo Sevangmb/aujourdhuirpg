@@ -10,6 +10,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { fetchRawWeatherData, interpretWeatherCode } from '@/services/weather-service';
+import type { RawWeatherData } from '@/services/weather-service';
 
 const GetWeatherInputSchema = z.object({
   latitude: z.number().describe('The latitude for the weather forecast.'),
@@ -26,43 +28,6 @@ const GetWeatherOutputSchema = z.object({
 });
 export type GetWeatherOutput = z.infer<typeof GetWeatherOutputSchema>;
 
-// WMO Weather interpretation codes
-// Reference: https://open-meteo.com/en/docs
-const weatherCodeMap: Record<number, string> = {
-  0: 'Clear sky',
-  1: 'Mainly clear',
-  2: 'Partly cloudy',
-  3: 'Overcast',
-  45: 'Fog',
-  48: 'Depositing rime fog',
-  51: 'Light drizzle',
-  53: 'Moderate drizzle',
-  55: 'Dense drizzle',
-  56: 'Light freezing drizzle',
-  57: 'Dense freezing drizzle',
-  61: 'Slight rain',
-  63: 'Moderate rain',
-  65: 'Heavy rain',
-  66: 'Light freezing rain',
-  67: 'Heavy freezing rain',
-  71: 'Slight snow fall',
-  73: 'Moderate snow fall',
-  75: 'Heavy snow fall',
-  77: 'Snow grains',
-  80: 'Slight rain showers',
-  81: 'Moderate rain showers',
-  82: 'Violent rain showers',
-  85: 'Slight snow showers',
-  86: 'Heavy snow showers',
-  95: 'Thunderstorm',
-  96: 'Thunderstorm with slight hail',
-  99: 'Thunderstorm with heavy hail',
-};
-
-function interpretWeatherCode(code: number): string {
-  return weatherCodeMap[code] || 'Unknown weather condition';
-}
-
 export const getWeatherTool = ai.defineTool(
   {
     name: 'getWeatherTool',
@@ -72,37 +37,28 @@ export const getWeatherTool = ai.defineTool(
     outputSchema: GetWeatherOutputSchema,
   },
   async ({ latitude, longitude }): Promise<GetWeatherOutput> => {
-    try {
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=celsius`
-      );
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Open-Meteo API error:', errorText);
-        // Return a valid structure for GetWeatherOutputSchema even on API error
-        return {
-          weatherSummary: `Failed to fetch weather: ${response.status}`,
-        };
-      }
-      const data = await response.json();
+    const rawDataResult = await fetchRawWeatherData(latitude, longitude);
 
-      if (data && data.current && typeof data.current.temperature_2m !== 'undefined' && typeof data.current.weather_code !== 'undefined') {
-        const temperature = data.current.temperature_2m;
-        const weatherCode = data.current.weather_code;
-        const description = interpretWeatherCode(weatherCode);
-        return {
-          weatherSummary: `${description}, ${temperature}°C`,
-        };
-      } else {
-        console.error('Open-Meteo API response missing current weather data:', data);
-        return {
-          weatherSummary: 'Invalid weather data from Open-Meteo.',
-        };
-      }
-    } catch (error) {
-      console.error('Error in getWeatherTool:', error);
+    if ('error' in rawDataResult) {
+      console.error('Error from weather service in getWeatherTool:', rawDataResult.error);
       return {
-        weatherSummary: 'Unable to fetch current weather information.',
+        weatherSummary: `Failed to fetch weather: ${rawDataResult.error}`,
+      };
+    }
+    
+    const rawData = rawDataResult as RawWeatherData; // Type assertion
+
+    if (rawData && rawData.current && typeof rawData.current.temperature_2m !== 'undefined' && typeof rawData.current.weather_code !== 'undefined') {
+      const temperature = rawData.current.temperature_2m;
+      const weatherCode = rawData.current.weather_code;
+      const { description } = await interpretWeatherCode(weatherCode); // Icon not needed for summary string
+      return {
+        weatherSummary: `${description}, ${temperature}°C`,
+      };
+    } else {
+      console.error('Weather service response missing current weather data in getWeatherTool:', rawData);
+      return {
+        weatherSummary: 'Invalid weather data from the weather service.',
       };
     }
   }
