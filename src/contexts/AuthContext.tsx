@@ -3,13 +3,21 @@
 
 import type { User } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { auth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from '@/lib/firebase';
+import { 
+  auth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signInAnonymously,
+  signOut as firebaseSignOut 
+} from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextData {
   user: User | null;
   loadingAuth: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
+  signInWithEmailPassword: (email: string, password: string) => Promise<void>;
+  signInAnonymously: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -28,23 +36,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe(); // Cleanup subscription on unmount
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signUpWithEmailPassword = async (email: string, password: string) => {
     setLoadingAuth(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await createUserWithEmailAndPassword(auth, email, password);
       toast({
-        title: "Connexion réussie",
-        description: "Bienvenue !",
+        title: "Inscription réussie",
+        description: "Bienvenue ! Vous êtes maintenant connecté.",
       });
     } catch (error: any) {
-      console.error("Erreur de connexion Google:", error);
+      console.error("Erreur d'inscription:", error);
+      toast({
+        variant: "destructive",
+        title: "Erreur d'inscription",
+        description: error.message || "Impossible de créer un compte.",
+      });
+      setLoadingAuth(false);
+    }
+    // setLoadingAuth(false) is handled by onAuthStateChanged
+  };
+
+  const signInWithEmailPassword = async (email: string, password: string) => {
+    setLoadingAuth(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({
+        title: "Connexion réussie",
+        description: "Content de vous revoir !",
+      });
+    } catch (error: any) {
+      console.error("Erreur de connexion:", error);
       toast({
         variant: "destructive",
         title: "Erreur de connexion",
-        description: error.message || "Impossible de se connecter avec Google.",
+        description: error.message || "Email ou mot de passe incorrect.",
       });
-      setLoadingAuth(false); // Ensure loading is false on error
+      setLoadingAuth(false); 
+    }
+    // setLoadingAuth(false) is handled by onAuthStateChanged
+  };
+
+  const signInAnonymously = async () => {
+    setLoadingAuth(true);
+    try {
+      await signInAnonymously(auth);
+      toast({
+        title: "Connecté anonymement",
+        description: "Vous pouvez jouer sans compte. Votre progression sera locale.",
+      });
+    } catch (error: any) {
+      console.error("Erreur de connexion anonyme:", error);
+      toast({
+        variant: "destructive",
+        title: "Erreur de connexion anonyme",
+        description: error.message || "Impossible de se connecter anonymement.",
+      });
+      setLoadingAuth(false);
     }
     // setLoadingAuth(false) is handled by onAuthStateChanged
   };
@@ -53,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoadingAuth(true);
     try {
       await firebaseSignOut(auth);
-      setUser(null); // Explicitly set user to null
+      setUser(null); 
       toast({
         title: "Déconnexion réussie",
         description: "À bientôt !",
@@ -71,7 +118,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loadingAuth, signInWithGoogle, signOutUser }}>
+    <AuthContext.Provider value={{ user, loadingAuth, signUpWithEmailPassword, signInWithEmailPassword, signInAnonymously, signOutUser }}>
       {children}
     </AuthContext.Provider>
   );

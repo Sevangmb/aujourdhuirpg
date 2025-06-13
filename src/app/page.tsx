@@ -7,13 +7,18 @@ import GamePlay from '@/components/GamePlay';
 import type { GameState, Player } from '@/lib/types';
 import { loadGameState, saveGameState, clearGameState, getInitialScenario } from '@/lib/game-logic';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, UserCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; 
 
 export default function HomePage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoadingState, setIsLoadingState] = useState(true);
-  const { user, loadingAuth, signInWithGoogle, signOutUser } = useAuth(); // Use auth context
+  const { user, loadingAuth, signUpWithEmailPassword, signInWithEmailPassword, signInAnonymously, signOutUser } = useAuth();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     const loadedState = loadGameState();
@@ -30,7 +35,6 @@ export default function HomePage() {
     const newGameState: GameState = {
       player: {
         ...player,
-        // Potentially link Firebase user ID here if needed later
         // uid: user?.uid 
       },
       currentScenario: firstScenario,
@@ -42,11 +46,18 @@ export default function HomePage() {
   const handleRestart = () => {
     clearGameState();
     setGameState({ player: null, currentScenario: null });
-    // Optionally sign out the user on game restart, or handle separately
-    // if (user) signOutUser(); 
   };
   
-  // Display a loading message for auth or game state loading
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await signUpWithEmailPassword(email, password);
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await signInWithEmailPassword(email, password);
+  };
+
   if (loadingAuth || isLoadingState) {
     return (
       <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 bg-background">
@@ -64,15 +75,55 @@ export default function HomePage() {
         <div className="mb-6 p-4 border border-border rounded-lg shadow-md bg-card text-card-foreground">
           {user ? (
             <div className="flex items-center justify-between">
-              <p>Bienvenue, <span className="font-semibold">{user.displayName || user.email}</span> !</p>
+              <div>
+                <p>Bienvenue, <span className="font-semibold">{user.isAnonymous ? "Joueur Anonyme" : user.email}</span> !</p>
+                {user.isAnonymous && <p className="text-sm text-muted-foreground">Votre progression est sauvegardée localement.</p>}
+              </div>
               <Button onClick={signOutUser} variant="outline">Déconnexion</Button>
             </div>
           ) : (
-            <div className="flex flex-col items-center space-y-2">
-              <p>Connectez-vous pour sauvegarder votre progression (bientôt !).</p>
-              <Button onClick={signInWithGoogle} variant="default" size="lg">
-                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
-                Connexion avec Google
+            <div className="flex flex-col items-center space-y-4">
+              <UserCircle2 className="w-16 h-16 text-primary mb-2" />
+              <h2 className="text-2xl font-headline text-primary">Rejoignez l'Aventure</h2>
+              <p className="text-center text-muted-foreground">Créez un compte pour sauvegarder votre progression en ligne ou continuez anonymement.</p>
+              
+              <form className="w-full max-w-sm space-y-3">
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="votreadresse@email.com" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="********" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex space-x-2 pt-2">
+                  <Button onClick={handleSignIn} type="submit" className="flex-1">Se Connecter</Button>
+                  <Button onClick={handleSignUp} type="button" variant="secondary" className="flex-1">S'inscrire</Button>
+                </div>
+              </form>
+              
+              <div className="relative w-full max-w-sm flex items-center my-4">
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink mx-4 text-muted-foreground text-xs">OU</span>
+                <div className="flex-grow border-t border-border"></div>
+              </div>
+
+              <Button onClick={signInAnonymously} variant="outline" className="w-full max-w-sm">
+                Continuer en tant qu'anonyme
               </Button>
             </div>
           )}
