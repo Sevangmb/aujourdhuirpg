@@ -77,6 +77,28 @@ export const MajorDecisionSchema = z.object({
   scenarioContext: z.string().describe("Brève description du contexte du scénario au moment de la décision.")
 }).describe("Structure pour enregistrer une décision majeure du joueur.");
 
+// --- Schémas pour Indices & Documents ---
+export const ClueInputSchema = z.object({
+  id: z.string().describe("Identifiant unique pour l'indice (ex: 'indice_photo_scene_01', 'temoignage_voisin_02'). Doit être unique et mémorable."),
+  title: z.string().describe("Titre concis de l'indice."),
+  description: z.string().describe("Description détaillée de l'indice. Ce que le joueur apprend ou observe."),
+  type: z.enum(['photo', 'testimony', 'text_extract', 'object_observation', 'digital_trace', 'audio_recording', 'misc_clue']).describe("Type d'indice."),
+  source: z.string().optional().describe("Source de l'indice (ex: 'Trouvé sur le bureau de la victime', 'Entretien avec Mr. X')."),
+  imageUrl: z.string().url().optional().describe("URL de l'image si le type est 'photo'. Utiliser https://placehold.co pour les placeholders."),
+  keywords: z.array(z.string()).optional().describe("Mots-clés pertinents pour cet indice (1-3 mots).")
+}).describe("Structure pour un nouvel indice découvert par le joueur.");
+
+export const DocumentInputSchema = z.object({
+  id: z.string().describe("Identifiant unique pour le document (ex: 'doc_lettre_victime_01', 'article_journal_affaire_x'). Doit être unique et mémorable."),
+  title: z.string().describe("Titre du document."),
+  content: z.string().describe("Contenu textuel du document (peut être du HTML simple pour la mise en forme)."),
+  type: z.enum(['article', 'letter', 'note', 'journal_entry', 'computer_log', 'report', 'misc_document']).describe("Type de document."),
+  source: z.string().optional().describe("Source du document (ex: 'Récupéré dans les emails de Y', 'Archive de la bibliothèque')."),
+  keywords: z.array(z.string()).optional().describe("Mots-clés pertinents pour ce document (1-3 mots).")
+}).describe("Structure pour un nouveau document obtenu par le joueur.");
+// --- Fin Schémas pour Indices & Documents ---
+
+
 export const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
   playerGender: z.string().describe("The player character's gender."),
@@ -94,7 +116,10 @@ export const GenerateScenarioInputSchema = z.object({
   currentScenario: z.string().describe('The current scenario context (the HTML text of the previous scenario).'),
   playerLocation: LocationSchema.describe("The player's current location."),
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
-  encounteredPNJsSummary: z.array(z.object({name: z.string(), relation: z.string()})).optional().describe("Résumé des PNJ importants déjà rencontrés et leur relation actuelle.")
+  encounteredPNJsSummary: z.array(z.object({name: z.string(), relation: z.string()})).optional().describe("Résumé des PNJ importants déjà rencontrés et leur relation actuelle."),
+  currentCluesSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
+  currentDocumentsSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
+  currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")
 });
 
 export const NewLocationDetailsSchema = LocationSchema.extend({
@@ -119,4 +144,7 @@ export const GenerateScenarioOutputSchema = z.object({
   questUpdates: z.array(QuestUpdateSchema).optional().describe("Mises à jour des quêtes existantes (objectifs complétés, statut changé)."),
   pnjInteractions: z.array(PNJInteractionSchema).optional().describe("PNJ rencontrés ou dont la relation/information a changé de manière significative."),
   majorDecisionsLogged: z.array(MajorDecisionSchema).optional().describe("Décisions importantes prises par le joueur qui méritent d'être enregistrées."),
+  newClues: z.array(ClueInputSchema).optional().describe("Liste des nouveaux indices découverts par le joueur dans ce scénario."),
+  newDocuments: z.array(DocumentInputSchema).optional().describe("Liste des nouveaux documents obtenus par le joueur dans ce scénario."),
+  investigationNotesUpdate: z.string().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision.")
 });

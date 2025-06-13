@@ -1,5 +1,5 @@
 
-import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision } from './types';
+import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument } from './types';
 import { getMasterItemById, ALL_ITEMS } from '@/data/items';
 import { saveGameStateToFirestore } from '@/services/firestore-service';
 
@@ -63,6 +63,9 @@ export const initialPlayerMoney: number = 50;
 export const initialQuestLog: Quest[] = [];
 export const initialEncounteredPNJs: PNJ[] = [];
 export const initialDecisionLog: MajorDecision[] = [];
+export const initialClues: Clue[] = [];
+export const initialDocuments: GameDocument[] = [];
+export const initialInvestigationNotes: string = "Aucune note d'enquête pour le moment.";
 // --- End Initial Player Data ---
 
 export function getInitialScenario(player: Player): Scenario {
@@ -140,6 +143,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
     encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
     decisionLog: Array.isArray(savedPlayer?.decisionLog) ? savedPlayer.decisionLog : [...initialDecisionLog],
+    clues: Array.isArray(savedPlayer?.clues) ? savedPlayer.clues : [...initialClues],
+    documents: Array.isArray(savedPlayer?.documents) ? savedPlayer.documents : [...initialDocuments],
+    investigationNotes: typeof savedPlayer?.investigationNotes === 'string' ? savedPlayer.investigationNotes : initialInvestigationNotes,
   };
 
   if (player.progression.level <= 0) player.progression.level = 1;

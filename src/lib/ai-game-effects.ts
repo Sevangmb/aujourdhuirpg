@@ -3,10 +3,10 @@
  * @fileOverview Functions for processing and applying the effects of an AI-generated scenario to the player state.
  */
 
-import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData } from './types';
-import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema } from '@/ai/flows/generate-scenario'; // Assuming QuestInputSchema from AI matches structure needed for Player Quest
+import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType } from './types';
+import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario';
 import { getMasterItemById } from '@/data/items';
-import { initialPlayerMoney } from './game-logic'; // For default money if needed
+import { initialPlayerMoney, initialInvestigationNotes } from './game-logic'; // For default money if needed
 
 // --- Helper: Calculate XP needed for next level ---
 // This function could also live in game-logic.ts and be imported, but is closely tied to addXP.
@@ -180,6 +180,43 @@ export function logMajorDecision(currentDecisionLog: MajorDecision[], decisionDa
   return [...logToUpdate, newDecision];
 }
 
+export function addClue(currentClues: Clue[], clueData: AIClueInputSchema): Clue[] {
+  const newClue: Clue = {
+    ...clueData,
+    id: clueData.id || `clue_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+    dateFound: new Date().toISOString(),
+    // keywords are optional and come directly from AIClueInputSchema
+  };
+  if ((currentClues || []).find(c => c.id === newClue.id)) {
+    console.warn(`ClueLog Warning: Attempted to add clue with duplicate ID: ${newClue.id}`);
+    return currentClues || [];
+  }
+  return [...(currentClues || []), newClue];
+}
+
+export function addDocument(currentDocuments: GameDocument[], documentData: AIDocumentInputSchema): GameDocument[] {
+  const newDocument: GameDocument = {
+    ...documentData,
+    id: documentData.id || `doc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+    dateAcquired: new Date().toISOString(),
+    // keywords are optional and come directly from AIDocumentInputSchema
+  };
+  if ((currentDocuments || []).find(d => d.id === newDocument.id)) {
+    console.warn(`DocumentLog Warning: Attempted to add document with duplicate ID: ${newDocument.id}`);
+    return currentDocuments || [];
+  }
+  return [...(currentDocuments || []), newDocument];
+}
+
+export function updateInvestigationNotes(currentNotes: string, notesUpdate: string): string {
+  // Simple append for now. AI can be instructed to provide a full replacement if needed.
+  // "Indicate if this is an addition or a concise revision of existing notes."
+  if (notesUpdate.toLowerCase().startsWith("révision:") || notesUpdate.toLowerCase().startsWith("revision:")) {
+    return notesUpdate.substring(notesUpdate.indexOf(":") + 1).trim();
+  }
+  return (currentNotes || initialInvestigationNotes) + "\n\n---\n\n" + notesUpdate;
+}
+
 
 export function processAndApplyAIScenarioOutput(
   currentPlayer: Player,
@@ -191,6 +228,9 @@ export function processAndApplyAIScenarioOutput(
   processedPlayer.questLog = processedPlayer.questLog || [];
   processedPlayer.encounteredPNJs = processedPlayer.encounteredPNJs || [];
   processedPlayer.decisionLog = processedPlayer.decisionLog || [];
+  processedPlayer.clues = processedPlayer.clues || [];
+  processedPlayer.documents = processedPlayer.documents || [];
+  processedPlayer.investigationNotes = typeof processedPlayer.investigationNotes === 'string' ? processedPlayer.investigationNotes : initialInvestigationNotes;
   processedPlayer.money = typeof processedPlayer.money === 'number' ? processedPlayer.money : initialPlayerMoney;
 
 
@@ -369,6 +409,42 @@ export function processAndApplyAIScenarioOutput(
       }
     });
   }
+
+  // --- Process new clues, documents, and investigation notes ---
+  if (aiOutput.newClues && Array.isArray(aiOutput.newClues)) {
+    aiOutput.newClues.forEach(clueData => {
+      processedPlayer.clues = addClue(processedPlayer.clues, clueData);
+      notifications.push({
+        type: 'clue_added',
+        title: `Nouvel Indice : ${clueData.title}`,
+        description: clueData.description.substring(0,100) + "...",
+        details: { clueId: clueData.id, clueType: clueData.type }
+      });
+    });
+  }
+
+  if (aiOutput.newDocuments && Array.isArray(aiOutput.newDocuments)) {
+    aiOutput.newDocuments.forEach(docData => {
+      processedPlayer.documents = addDocument(processedPlayer.documents, docData);
+      notifications.push({
+        type: 'document_added',
+        title: `Nouveau Document : ${docData.title}`,
+        description: `Un document de type "${docData.type}" a été ajouté.`,
+        details: { documentId: docData.id, documentType: docData.type }
+      });
+    });
+  }
+
+  if (aiOutput.investigationNotesUpdate) {
+    processedPlayer.investigationNotes = updateInvestigationNotes(processedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
+    notifications.push({
+      type: 'investigation_notes_updated',
+      title: "Notes d'enquête mises à jour",
+      description: "Vos notes et hypothèses ont été actualisées.",
+      details: { updateLength: aiOutput.investigationNotesUpdate.length }
+    });
+  }
+  // --- End process new clues, documents, investigation notes ---
 
   return { updatedPlayer: processedPlayer, notifications };
 }

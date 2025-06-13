@@ -95,6 +95,33 @@ export interface MajorDecision {
 }
 // --- Fin des types pour Journal de Quêtes, PNJ, Décisions ---
 
+// --- Types pour Indices & Documents ---
+export type ClueType = 'photo' | 'testimony' | 'text_extract' | 'object_observation' | 'digital_trace' | 'audio_recording' | 'misc_clue';
+
+export interface Clue {
+  id: string; // Unique ID for the clue, e.g., "clue_photo_crime_scene_01"
+  title: string;
+  description: string; // Detailed description of the clue
+  type: ClueType;
+  dateFound: string; // ISO string date
+  source?: string; // How/where the clue was found (e.g., "PNJ Interview: Témoin X", "Fouille: Bureau de la victime")
+  imageUrl?: string; // Optional URL if it's a photo clue
+  keywords?: string[]; // Keywords for searching/tagging, suggested by AI or player
+}
+
+export type DocumentType = 'article' | 'letter' | 'note' | 'journal_entry' | 'computer_log' | 'report' | 'misc_document';
+
+export interface GameDocument {
+  id: string; // Unique ID for the document, e.g., "doc_letter_victim_01"
+  title: string;
+  content: string; // Can be plain text or HTML for formatting
+  type: DocumentType;
+  dateAcquired: string; // ISO string date
+  source?: string; // How/where the document was acquired
+  keywords?: string[]; // Keywords for searching/tagging
+}
+// --- Fin des types pour Indices & Documents ---
+
 
 export type Player = {
   uid?: string; // Firebase Auth UID, optional for anonymous or pre-auth states
@@ -116,6 +143,10 @@ export type Player = {
   questLog: Quest[];
   encounteredPNJs: PNJ[];
   decisionLog: MajorDecision[];
+  // Nouveaux champs pour Indices & Documents
+  clues: Clue[];
+  documents: GameDocument[];
+  investigationNotes: string; // Un texte libre pour les hypothèses, suspects, lieux
 };
 
 // This type represents the data for a scenario that the player is currently in.
@@ -140,7 +171,10 @@ export type GameNotificationType =
   | 'quest_updated'
   | 'pnj_encountered'
   | 'decision_logged'
-  | 'money_changed'; // New notification type for money
+  | 'money_changed'
+  | 'clue_added' // New
+  | 'document_added' // New
+  | 'investigation_notes_updated'; // New
 
 export interface GameNotification {
   type: GameNotificationType;

@@ -17,6 +17,8 @@ import { getNewsTool } from '@/ai/tools/get-news-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
+  ClueInputSchema, // Import for type consistency if needed for internal logic
+  DocumentInputSchema, // Import for type consistency
   QuestInputSchema as AIQuestInputSchema // Import for type consistency if needed for internal logic
 } from './generate-scenario-schemas';
 
@@ -41,6 +43,14 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
       relation: p.relationStatus // Corrected: was p.relation, should be p.relationStatus from input schema
     }));
   }
+  // Add summarization for clues and documents if they exist
+  if (input.currentCluesSummary) {
+     simplifiedInput.currentCluesSummary = input.currentCluesSummary.map(c => ({ title: c.title, type: c.type}));
+  }
+  if (input.currentDocumentsSummary) {
+      simplifiedInput.currentDocumentsSummary = input.currentDocumentsSummary.map(d => ({ title: d.title, type: d.type}));
+  }
+
 
   return generateScenarioFlow(simplifiedInput);
 }
@@ -51,7 +61,7 @@ const scenarioPrompt = ai.definePrompt({
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
-  prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France.
+  prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element.
 
 Player Information:
   Name: {{{playerName}}}
@@ -69,7 +79,9 @@ Player Information:
   Current Location: {{{playerLocation.placeName}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}})
   Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#if currentObjectivesDescriptions}}{{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Pas d'objectifs en cours.{{/if}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{/each}}{{else}}Aucune quête active.{{/if}}
   Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relation}}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
-
+  Current Clues (Summary): {{#if currentCluesSummary}}{{#each currentCluesSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun indice découvert.{{/if}}
+  Current Documents (Summary): {{#if currentDocumentsSummary}}{{#each currentDocumentsSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun document obtenu.{{/if}}
+  Current Investigation Notes: {{{currentInvestigationNotes}}}
 
 Current Scenario Context: {{{currentScenario}}} (This was the text of the previous scenario.)
 Player's Typed Action (Last Choice): {{{playerChoice}}}
@@ -96,6 +108,11 @@ Task:
     *   Strongly consider basing new major/recurring PNJs on real-world public figures (historical or contemporary, especially French) using 'getWikipediaInfoTool' for background. Integrate these details naturally.
     *   Record/update PNJ details in 'pnjInteractions'.
 14. Major Decisions: Log in 'majorDecisionsLogged'.
+15. Investigation Elements:
+    *   If the player's action leads to the discovery of clues or documents relevant to an ongoing mystery or quest, populate 'newClues' or 'newDocuments'.
+        *   Clues ('newClues') are typically observations, photos, short testimonies, or small physical items. For 'photo' type clues, use a placeholder URL from 'https://placehold.co/WIDTHxHEIGHT.png' and add relevant 'keywords'.
+        *   Documents ('newDocuments') are more text-heavy items like letters, articles, notes, reports. For 'content', use simple HTML if needed (e.g. <p>, <ul>). Provide relevant 'keywords'.
+    *   If the scenario or player action significantly advances an investigation or changes the player's understanding, provide a concise update in 'investigationNotesUpdate'. This text will be appended to or integrated with the player's existing notes. Indicate if this is an addition or a concise revision of existing notes.
 
 Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals and use gathered information (Wikipedia, News) to add depth to their portrayal.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
@@ -118,4 +135,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-

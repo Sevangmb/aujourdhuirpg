@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, PlayerStats, LocationData, Scenario, Quest, PNJ } from '@/lib/types';
+import type { GameState, Player, PlayerStats, LocationData, Scenario, Quest, PNJ, Clue, GameDocument } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
@@ -10,14 +10,14 @@ import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutp
 import { saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { processAndApplyAIScenarioOutput } from '@/lib/ai-game-effects';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star, ScrollText, Euro } from 'lucide-react';
+import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star, ScrollText, Euro, FileText, Search } from 'lucide-react'; // Added FileText, Search
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import PlayerInputForm from './PlayerInputForm';
 import PlayerSheet from './PlayerSheet';
 import InventoryDisplay from './InventoryDisplay';
-import QuestJournalDisplay from './QuestJournalDisplay'; // Import the new component
+import QuestJournalDisplay from './QuestJournalDisplay';
 import {
   Sheet,
   SheetContent,
@@ -49,6 +49,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [isPlayerSheetOpen, setIsPlayerSheetOpen] = useState(false);
   const [isInventorySheetOpen, setIsInventorySheetOpen] = useState(false);
   const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
+  const [isEvidenceLogOpen, setIsEvidenceLogOpen] = useState(false); // New state for Evidence Log
 
 
   useEffect(() => {
@@ -151,6 +152,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
         relationStatus: p.relationStatus,
     }));
 
+    const currentCluesSummary = (player.clues || []).map(c => ({ title: c.title, type: c.type }));
+    const currentDocumentsSummary = (player.documents || []).map(d => ({ title: d.title, type: d.type }));
+
 
     const inputForAI: GenerateScenarioInput = {
       playerName: player.name,
@@ -170,6 +174,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerLocation: player.currentLocation,
       activeQuests: activeQuestsSummary,
       encounteredPNJsSummary: encounteredPNJsSummary,
+      currentCluesSummary: currentCluesSummary,
+      currentDocumentsSummary: currentDocumentsSummary,
+      currentInvestigationNotes: player.investigationNotes,
     };
 
     try {
@@ -182,16 +189,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
         let toastAction;
         if (notification.type === 'xp_gained' || notification.type === 'leveled_up') {
           toastAction = <Star className="text-yellow-400" />;
-        } else if (notification.type === 'item_added' || notification.type === 'quest_added') {
+        } else if (['item_added', 'quest_added', 'clue_added', 'document_added'].includes(notification.type)) {
             toastAction = <Zap className="text-green-400" />
         } else if (notification.type === 'money_changed') {
             toastAction = <Euro className="text-accent" />;
+        } else if (notification.type === 'investigation_notes_updated') {
+            toastAction = <Search className="text-blue-400" />;
         }
         toast({
           title: notification.title,
           description: notification.description,
           action: toastAction,
-          duration: notification.type === 'leveled_up' || notification.type === 'quest_added' || notification.type === 'money_changed' ? 5000: 3000,
+          duration: ['leveled_up', 'quest_added', 'money_changed', 'clue_added', 'document_added', 'investigation_notes_updated'].includes(notification.type) ? 5000: 3000,
         });
       });
 
@@ -236,9 +245,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   }
 
   const displayLocation = player.currentLocation || initialPlayerLocation;
-  // These are now initialized robustly inside the component
-  // const activeQuests: Quest[] = player?.questLog?.filter(q => q.status === 'active') || [];
-  // const encounteredPNJsList: PNJ[] = player?.encounteredPNJs || [];
+  const activeQuests: Quest[] = player?.questLog?.filter(q => q.status === 'active') || [];
+  const encounteredPNJsList: PNJ[] = player?.encounteredPNJs || [];
+  const currentCluesList: Clue[] = player?.clues || [];
+  const currentDocumentsList: GameDocument[] = player?.documents || [];
+
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-6">
@@ -300,6 +311,35 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
               </SheetDescription>
             </SheetHeader>
             <QuestJournalDisplay player={player} />
+          </SheetContent>
+        </Sheet>
+
+        <Sheet open={isEvidenceLogOpen} onOpenChange={setIsEvidenceLogOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="shadow-md">
+              <FileText className="mr-2 h-4 w-4" /> Dossier d'Enquête
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0 overflow-y-auto">
+            <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
+              <SheetTitle className="font-headline text-primary">Dossier d'Enquête</SheetTitle>
+              <SheetDescription>
+                Indices, documents et résumé de votre enquête.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="p-4">
+              <p className="text-muted-foreground">Le Dossier d'Enquête est en cours de développement.</p>
+              <h3 className="font-semibold mt-4">Indices Découverts :</h3>
+               {currentCluesList.length > 0 ? (
+                    currentCluesList.map(clue => <p key={clue.id}>- {clue.title} ({clue.type})</p>)
+                ) : <p className="text-sm">Aucun indice pour le moment.</p>}
+              <h3 className="font-semibold mt-4">Documents Obtenus :</h3>
+                {currentDocumentsList.length > 0 ? (
+                    currentDocumentsList.map(doc => <p key={doc.id}>- {doc.title} ({doc.type})</p>)
+                ) : <p className="text-sm">Aucun document pour le moment.</p>}
+              <h3 className="font-semibold mt-4">Notes d'Enquête :</h3>
+              <p className="text-sm whitespace-pre-wrap">{player.investigationNotes || "Aucune note."}</p>
+            </div>
           </SheetContent>
         </Sheet>
       </div>
