@@ -43,7 +43,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => ({
       name: p.name,
       // @ts-ignore // Assuming the input 'p' object has 'relationStatus' based on previous logic
-      relation: p.relationStatus 
+      relation: p.relationStatus
     }));
   }
 
@@ -84,12 +84,13 @@ Task:
 2.  If the player's action involves exploring the immediate surroundings, looking for a specific type of place (e.g., "je cherche un café", "où trouver un magasin ?", "y a-t-il un hôtel près d'ici ?"), or if simply describing the environment would benefit from knowing what's nearby, use the 'getNearbyPoisTool'.
     *   Provide the player's current latitude and longitude.
     *   You can specify a 'poiType' (e.g., "restaurant", "shop", "hotel", "tourism", "museum", "pharmacy") if the player's request is specific. If the player is just exploring, you can omit 'poiType' to get general amenities or use a broad category like "amenity" or "shop".
-3.  If the player's action, the scenario, or an emerging Non-Player Character (PNJ) involves a specific, identifiable real-world place (e.g., "Musée du Louvre"), a historical or contemporary public figure (e.g., a famous artist, scientist, politician encountered as a PNJ), or a notable event, consider using the 'getWikipediaInfoTool'. Provide the exact name as the 'searchTerm' to fetch factual context.
+3.  If the player's action, the scenario, or an emerging Non-Player Character (PNJ) involves a specific, identifiable real-world place (e.g., "Musée du Louvre"), or if an *emerging PNJ could be based on a historical or contemporary public figure* (e.g., a famous artist, scientist, politician), consider using the 'getWikipediaInfoTool'. Provide the exact name of the place or person as the 'searchTerm' to fetch factual context.
 4.  To make the world feel current and alive, consider using the 'getNewsTool' (especially for 'fr' - France) at the beginning of a new game session (if currentScenario is initial) or if the player interacts with news sources (TV, radio, internet cafe).
     *   The news should be woven into the narrative subtly – perhaps as background chatter, a headline glimpsed, or a topic of conversation for PNJs. It could inspire minor events or a general mood. Avoid just listing news.
 5.  Incorporate the fetched weather, nearby POIs, Wikipedia information, and news (if any) naturally and subtly into the scenario description. The goal is to enrich the story and provide context or options.
     *   For POIs: You might mention some of the found places, e.g., "En regardant autour de vous, vous remarquez une boulangerie animée, 'Le Pain Doré', et un petit café, 'Le Coin Tranquille', juste de l'autre côté de la rue."
-    *   For Wikipedia: Weave the *information and descriptions* obtained from the Wikipedia summary (for both places and PNJs) into the narrative. For example, if a PNJ is based on a real person, you might subtly include details from their known biography or achievements in their dialogue or actions. For a place, describe it using details from its Wikipedia summary to make it more vivid and recognizable.
+    *   For Wikipedia (places): Weave the *information and descriptions* obtained from the Wikipedia summary for places into the narrative. Describe places using details from their Wikipedia summary to make them more vivid and recognizable.
+    *   For Wikipedia (PNJs): See point 13.
     *   For News: A radio in a cafe might be discussing a recent event, or a discarded newspaper headline could hint at something larger.
 6.  Generate a new scenario based on ALL the player information (including their inventory, active quests, and PNJ relations) and their typed action: "{{{playerChoice}}}".
 7.  The scenario text should be a narrative continuation of the story, describing what happens as a result of the player's action. It should be between 100 and 250 words and formatted as well-formed HTML (e.g., using <p> tags). It should NOT contain any interactive elements like buttons.
@@ -103,12 +104,14 @@ Task:
     *   If the player's actions or the unfolding story naturally lead to a new quest (main or secondary), define it in 'newQuests'. Ensure quest IDs are unique and descriptive. Objectives should be clear.
     *   If an existing quest is progressed (e.g., an objective is met) or its status changes (e.g., completed, failed due to player action), provide details in 'questUpdates'.
 13. PNJ Interactions:
-    *   If the player meets a new PNJ or significantly interacts with an existing one, record/update their details in 'pnjInteractions'. Assign a unique ID. Describe their appearance/role, set their initial or new relation status, and importance.
-    *   Use Wikipedia for inspiration if a PNJ could be based on a real public figure, incorporating details subtly.
+    *   Proactively introduce new Non-Player Characters (PNJs) or have existing ones interact with the player when narratively appropriate.
+    *   When creating a *new major or recurring PNJ*, strongly consider basing them on a real-world public figure (historical or contemporary, particularly from France or relevant to the story context). Use the 'getWikipediaInfoTool' to fetch their background by providing the person's name as 'searchTerm'.
+    *   For *all* PNJs (new or existing), if they are based on a real person or if their background could be enriched by real-world information obtained via 'getWikipediaInfoTool', use the Wikipedia summary to add depth to their personality, dialogue, motivations, and how they are described. For instance, a PNJ based on a historical artist might talk about their past works or struggles in a way that reflects their known biography. A scientist PNJ might discuss concepts related to their field of expertise. Integrate these details subtly and naturally into the PNJ's character and the story.
+    *   Record/update the PNJ's details in 'pnjInteractions'. Assign a unique ID. Describe their appearance/role, set their initial or new relation status, and importance. If based on a real person, ensure the description and interactions are inspired by, but not necessarily a direct copy of, their Wikipedia entry.
 14. Major Decisions:
     *   If the player makes a choice with significant, lasting consequences, log it in 'majorDecisionsLogged'. Ensure the ID is unique.
 
-Always make the story feel real by mentioning famous people or real places from France whenever it makes sense, using the information gathered from tools like Wikipedia and NewsAPI to add depth and accuracy to their portrayal or description in the story.
+Always make the story feel real by mentioning famous people or real places from France whenever it makes sense. For PNJs, *actively seek opportunities to base them on real individuals* and use the information gathered from tools like Wikipedia (using 'getWikipediaInfoTool') and NewsAPI (using 'getNewsTool') to add depth, accuracy, and flavor to their portrayal or description in the story.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
 `,
 });
