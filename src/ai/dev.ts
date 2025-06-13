@@ -3,7 +3,8 @@ import { config } from 'dotenv';
 config();
 
 import '@/ai/flows/generate-scenario.ts';
+import '@/ai/flows/generate-scenario-schemas.ts'; // Ensure schemas are part of the build context if needed by Genkit CLI
 import '@/ai/tools/get-weather-tool.ts';
 import '@/ai/tools/get-wikipedia-info-tool.ts';
 import '@/ai/tools/get-nearby-pois-tool.ts';
-import '@/ai/tools/get-news-tool.ts'; // Add this line
+import '@/ai/tools/get-news-tool.ts';
