@@ -1,4 +1,5 @@
-import type { PlayerStats, GameState, Scenario, Player, LocationData } from './types';
+
+import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment } from './types';
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
@@ -9,11 +10,34 @@ export const initialPlayerStats: PlayerStats = {
   Force: 50,
 };
 
+export const initialSkills: Skills = {
+  Informatique: 10,
+  Discretion: 5,
+  Dialogue: 15,
+  Perception: 12,
+  Survie: 8,
+};
+
+export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];
+
+export const initialProgression: Progression = {
+  level: 1,
+  xp: 0,
+  perks: [],
+};
+
+export const initialAlignment: Alignment = {
+  chaosLawful: 0, // Neutre
+  goodEvil: 0,    // Neutre
+};
+
 export const initialPlayerLocation: LocationData = {
   latitude: 48.8566, // Paris latitude
   longitude: 2.3522, // Paris longitude
   placeName: 'Paris, France',
 };
+
+export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
 
 export function getInitialScenario(player: Player): Scenario {
  return {
@@ -38,9 +62,20 @@ export function loadGameState(): GameState | null {
     if (savedState) {
       try {
         const parsedState = JSON.parse(savedState) as GameState;
-        // Ensure older game states without location get a default
-        if (parsedState.player && !parsedState.player.currentLocation) {
-          parsedState.player.currentLocation = initialPlayerLocation;
+        if (parsedState.player) {
+          // Ensure older game states without location get a default
+          if (!parsedState.player.currentLocation) {
+            parsedState.player.currentLocation = initialPlayerLocation;
+          }
+          // Ensure older game states without new fields get defaults
+          if (!parsedState.player.gender) parsedState.player.gender = "Préfère ne pas préciser";
+          if (typeof parsedState.player.age !== 'number') parsedState.player.age = 25;
+          if (!parsedState.player.avatarUrl) parsedState.player.avatarUrl = defaultAvatarUrl;
+          if (!parsedState.player.origin) parsedState.player.origin = "Inconnue";
+          if (!parsedState.player.skills) parsedState.player.skills = { ...initialSkills };
+          if (!parsedState.player.traitsMentalStates) parsedState.player.traitsMentalStates = [...initialTraitsMentalStates];
+          if (!parsedState.player.progression) parsedState.player.progression = { ...initialProgression };
+          if (!parsedState.player.alignment) parsedState.player.alignment = { ...initialAlignment };
         }
         return parsedState;
       } catch (error) {
@@ -65,7 +100,6 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Record<stri
     if (Object.prototype.hasOwnProperty.call(newStats, key)) {
       newStats[key] = Math.max(0, newStats[key] + changes[key]); // Ensure stats don't go below 0
     } else {
-      // If a new stat is introduced by AI, add it, ensuring it's not negative
       newStats[key] = Math.max(0, changes[key]);
     }
   }

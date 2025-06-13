@@ -5,9 +5,20 @@ import React, { useState, useEffect } from 'react';
 import CharacterCreationForm from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
 import AuthDisplay from '@/components/AuthDisplay';
-import WelcomeMessage from '@/components/WelcomeMessage'; // Nouveau composant
+import WelcomeMessage from '@/components/WelcomeMessage';
 import type { GameState, Player } from '@/lib/types';
-import { loadGameState, saveGameState, clearGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
+import { 
+  loadGameState, 
+  saveGameState, 
+  clearGameState, 
+  getInitialScenario, 
+  initialPlayerLocation,
+  initialSkills,
+  initialTraitsMentalStates,
+  initialProgression,
+  initialAlignment,
+  defaultAvatarUrl
+} from '@/lib/game-logic';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,8 +38,25 @@ export default function HomePage() {
   useEffect(() => {
     const loadedState = loadGameState();
     if (loadedState) {
-      if (loadedState.player && !loadedState.player.currentLocation) {
-        loadedState.player.currentLocation = initialPlayerLocation;
+      // Ensure player object is fully populated, especially for older save states
+      if (loadedState.player) {
+        loadedState.player = {
+          ...{ // Provide all default values first
+            gender: "Préfère ne pas préciser",
+            age: 25,
+            avatarUrl: defaultAvatarUrl,
+            origin: "Inconnue",
+            skills: { ...initialSkills },
+            traitsMentalStates: [...initialTraitsMentalStates],
+            progression: { ...initialProgression },
+            alignment: { ...initialAlignment },
+            currentLocation: initialPlayerLocation,
+          },
+          ...loadedState.player, // Then override with saved player data
+        };
+         if (!loadedState.player.currentLocation) { // Final check for location
+           loadedState.player.currentLocation = initialPlayerLocation;
+         }
       }
       setGameState(loadedState);
     } else {
@@ -39,7 +67,7 @@ export default function HomePage() {
 
   const handleCharacterCreate = (playerData: Omit<Player, 'currentLocation'>) => {
     const playerWithLocation: Player = {
-      ...playerData,
+      ...playerData, // This now includes all new fields from CharacterCreationForm
       currentLocation: initialPlayerLocation,
     };
     const firstScenario = getInitialScenario(playerWithLocation);
