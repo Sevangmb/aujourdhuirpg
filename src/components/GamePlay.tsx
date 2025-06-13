@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -5,7 +6,8 @@ import type { GameState, Player, Scenario, PlayerStats } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
-import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
+// Updated import for generateScenario to use simplified types for debugging
+import { generateScenario, type SimplifiedInput, type SimplifiedOutput } from '@/ai/flows/generate-scenario';
 import { applyStatChanges, saveGameState, getInitialScenario } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, RotateCcw } from 'lucide-react';
@@ -23,7 +25,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Ensure initial scenario is set if player exists but no scenario (e.g., after character creation)
     if (player && !currentScenario) {
       const firstScenario = getInitialScenario(player);
       setCurrentScenario(firstScenario);
@@ -37,8 +38,15 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     if (!player || !currentScenario) return;
 
     setIsLoading(true);
-    setPreviousStats(player.stats); // Store stats before change for animation
+    setPreviousStats(player.stats);
 
+    // --- TEMPORARY: Send simplified input for debugging ---
+    const inputForAI: SimplifiedInput = {
+      debugPrompt: `Player chose: ${choiceText}. Current scenario context: ${currentScenario.scenarioText.substring(0, 100)}...`,
+    };
+    // --- END TEMPORARY ---
+
+    /* --- ORIGINAL INPUT (commented out for debugging) ---
     const inputForAI: GenerateScenarioInput = {
       playerName: player.name,
       playerBackground: player.background,
@@ -46,34 +54,39 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerChoice: choiceText,
       currentScenario: currentScenario.scenarioText,
     };
+    */
 
     try {
-      const output: GenerateScenarioOutput = await generateScenario(inputForAI);
+      // Temporarily expect SimplifiedOutput
+      const output: SimplifiedOutput = await generateScenario(inputForAI);
       
-      const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
-      const updatedPlayer: Player = { ...player, stats: updatedStats };
-      
+      // Since we are using simplified output, we can't update stats or scenario text in the same way.
+      // We'll just display the AI's response for now.
       const nextScenario: Scenario = {
-        scenarioText: output.scenarioText,
+        scenarioText: `<p><strong>Debug AI Response:</strong></p><p>${output.responseText}</p><p><em>(Original scenario update logic is temporarily bypassed. Make a choice to continue debugging.)</em></p><div><button data-choice-text="Debug Choice 1">Debug Choice 1</button><button data-choice-text="Debug Choice 2">Debug Choice 2</button></div>`,
       };
 
-      setPlayer(updatedPlayer);
+      // We won't update player stats with the simplified output for now.
+      // const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
+      // const updatedPlayer: Player = { ...player, stats: updatedStats };
+      // setPlayer(updatedPlayer);
+
       setCurrentScenario(nextScenario);
       
-      const newGameState: GameState = { player: updatedPlayer, currentScenario: nextScenario };
+      const newGameState: GameState = { player, currentScenario: nextScenario }; // Player stats are not updated in this debug state
       saveGameState(newGameState);
 
       toast({
-        title: "Progression...",
-        description: "Votre histoire continue.",
+        title: "Debug Progression...",
+        description: "AI response received (simplified flow).",
       });
 
     } catch (error) {
-      console.error("Erreur lors de la génération du scénario:", error);
+      console.error("Erreur lors de la génération du scénario (simplified flow):", error);
       toast({
         variant: "destructive",
-        title: "Erreur de Connexion",
-        description: "Impossible de générer le prochain scénario. Veuillez réessayer.",
+        title: "Erreur de Connexion (Debug)",
+        description: `Impossible de générer le prochain scénario. Erreur: ${error instanceof Error ? error.message : String(error)}`,
       });
     } finally {
       setIsLoading(false);
