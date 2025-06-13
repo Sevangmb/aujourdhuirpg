@@ -8,7 +8,7 @@ import AuthDisplay from '@/components/AuthDisplay';
 import WelcomeMessage from '@/components/WelcomeMessage';
 import type { GameState, Player } from '@/lib/types';
 import { 
-  loadGameState as loadGameStateFromLocal, 
+  loadGameStateFromLocal, 
   saveGameState, 
   clearGameState as clearGameStateFromLocal, 
   getInitialScenario, 
@@ -48,15 +48,13 @@ export default function HomePage() {
       try {
         const firestoreState = await loadGameStateFromFirestore(user.uid);
         if (firestoreState) {
-          loadedState = firestoreState; // Assumes firestoreState is already well-formed by loadGameStateFromFirestore
+          loadedState = firestoreState; 
           toast({ title: "Progression chargée", description: "Votre partie a été restaurée depuis le cloud." });
         } else {
-           // No data in Firestore, try local as a fallback for potential migration scenario
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
-            // If local state exists, associate it with current user and save to Firestore
-            localState.player.uid = user.uid; // Ensure UID is set before saving
-            await saveGameState(localState); // This will now save to Firestore + Local
+            localState.player.uid = user.uid; 
+            await saveGameState(localState); 
             loadedState = localState;
             toast({ title: "Progression locale migrée", description: "Votre partie locale a été sauvegardée dans le cloud." });
           }
@@ -64,42 +62,34 @@ export default function HomePage() {
       } catch (error) {
         console.error("Error loading from Firestore, falling back to local:", error);
         toast({ variant: "destructive", title: "Erreur de chargement Cloud", description: "Impossible de charger depuis le cloud. Tentative de chargement local." });
-        // Fall through to load from local storage if firestore load fails
       }
     }
     
-    // If not loaded from Firestore (or user is anonymous/not logged in, or Firestore load failed and no local state was migrated)
     if (!loadedState) {
-      loadedState = loadGameStateFromLocal(); // loadGameStateFromLocal now ensures a well-formed player object or returns null
+      loadedState = loadGameStateFromLocal(); 
     }
     
     if (loadedState && loadedState.player) {
-      // Ensure player UID is consistent if user is logged in
       if (user && !user.isAnonymous && user.uid && loadedState.player.uid !== user.uid) {
         console.warn("Player UID mismatch between loaded state and current user. Updating state with current user's UID.");
         loadedState.player.uid = user.uid;
-        // Optionally re-save if UID was mismatched, to correct it in storage
-        // await saveGameState(loadedState); 
       }
       setGameState(loadedState);
     } else {
-      // No game state found anywhere, or loading failed completely
       setGameState({ player: null, currentScenario: null });
     }
     setIsLoadingState(false);
-  }, [user, toast]); // Removed loadGameStateFromLocal from dependencies as it's stable
+  }, [user, toast]); 
 
   useEffect(() => {
-    if (!loadingAuth) { // Only perform load once auth state is resolved
+    if (!loadingAuth) { 
       performInitialLoad();
     }
   }, [loadingAuth, performInitialLoad]);
 
   const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' >) => {
-    // These initial values are now primarily set by hydratePlayer or if player object is totally new.
-    // CharacterCreationForm provides the core identity.
     const playerDetails: Player = {
-      ...playerDataFromForm, // name, gender, age, origin, background from form
+      ...playerDataFromForm, 
       avatarUrl: defaultAvatarUrl, 
       stats: { ...initialPlayerStats },
       skills: { ...initialSkills },
@@ -108,7 +98,7 @@ export default function HomePage() {
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
       uid: user && !user.isAnonymous ? user.uid : undefined,
-      currentLocation: { ...initialPlayerLocation }, // Location is always initial at creation
+      currentLocation: { ...initialPlayerLocation }, 
     };
 
     const firstScenario = getInitialScenario(playerDetails);
@@ -131,9 +121,8 @@ export default function HomePage() {
         toast({ variant: "destructive", title: "Erreur de suppression Cloud", description: "Impossible de supprimer la sauvegarde en ligne." });
       }
     }
-    clearGameStateFromLocal(); // Always clear local state
+    clearGameStateFromLocal(); 
     setGameState({ player: null, currentScenario: null });
-    // No need to call performInitialLoad here, it will set up a fresh state.
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
 

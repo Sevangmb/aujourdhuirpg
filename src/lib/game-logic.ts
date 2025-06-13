@@ -1,8 +1,8 @@
 
-import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem } from './types';
+import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, GameNotification } from './types';
+import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getMasterItemById, ALL_ITEMS } from '@/data/items'; // Import master item list and getter
 import { saveGameStateToFirestore } from '@/services/firestore-service'; // Import Firestore save function
-// import { useToast } from "@/hooks/use-toast"; // Cannot use hooks directly in non-React functions
 
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
@@ -83,7 +83,6 @@ export async function saveGameState(state: GameState): Promise<void> {
       console.log("LocalStorage Success: Game state saved to LocalStorage.");
     } catch (error) {
       console.error("LocalStorage Error: Failed to save game state to LocalStorage:", error);
-      // Potentially notify user if LocalStorage is critical and fails
     }
   } else {
     console.warn("Save Game Warning: LocalStorage is not available. Skipping local save.");
@@ -92,12 +91,7 @@ export async function saveGameState(state: GameState): Promise<void> {
   if (state.player && state.player.uid) {
     try {
       await saveGameStateToFirestore(state.player.uid, state);
-      // Firestore save success/error is logged within saveGameStateToFirestore
     } catch (error) {
-      // Error already logged by saveGameStateToFirestore.
-      // We might want to inform the user here specifically that cloud save failed.
-      // This usually means `saveGameState` itself doesn't need to show a generic Firestore error toast
-      // as the service function handles more specific logging.
       console.log("GameLogic Info: Cloud save attempt finished (check Firestore logs for details).");
     }
   } else {
@@ -138,14 +132,11 @@ function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
   };
 
-  // Ensure progression is valid
   if (player.progression.level <= 0) player.progression.level = 1;
   if (typeof player.progression.xp !== 'number' || player.progression.xp < 0) player.progression.xp = 0;
   player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
   if (!Array.isArray(player.progression.perks)) player.progression.perks = [];
 
-
-  // If inventory ended up empty after potential filtering, re-initialize
   if (player.inventory.length === 0) {
     player.inventory = [...initialInventory];
   }
@@ -154,7 +145,7 @@ function hydratePlayer(savedPlayer?: Partial<Player>): Player {
 }
 
 
-export function loadGameState(): GameState | null {
+export function loadGameStateFromLocal(): GameState | null {
   if (typeof window !== 'undefined' && localStorage) {
     const savedStateString = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedStateString) {
@@ -220,11 +211,8 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
   if (existingItemIndex > -1 && masterItem.stackable) {
     newInventory[existingItemIndex].quantity += quantityToAdd;
   } else if (existingItemIndex > -1 && !masterItem.stackable) {
-    // For non-stackable, add as new instance if not already there, or do nothing if trying to add more of existing non-stackable
-    // Current logic doesn't prevent adding multiple non-stackable if ID is same but it comes as a "new item"
-    // This part can be refined based on desired game logic for unique non-stackables
     console.warn(`Inventory Info: Item ${itemId} is not stackable. Adding as a new entry if not already present with quantity 1.`);
-     if (!newInventory.find(item => item.id === itemId)) { // Only add if truly not there
+     if (!newInventory.find(item => item.id === itemId)) { 
         newInventory.push({ ...masterItem, quantity: 1 });
      }
   }
@@ -269,10 +257,94 @@ export function addXP(currentProgression: Progression, xpGained: number): { newP
     newProgression.xp -= newProgression.xpToNextLevel; 
     newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
     leveledUp = true;
-    // Potentially add perk points or other level-up rewards here
   }
-   // Ensure XP isn't negative after leveling down (if that were possible, or if xpToNextLevel calculation was off)
   if (newProgression.xp < 0) newProgression.xp = 0;
 
   return { newProgression, leveledUp };
+}
+
+
+export function processAndApplyAIScenarioOutput(
+  currentPlayer: Player,
+  aiOutput: GenerateScenarioOutput
+): { updatedPlayer: Player; notifications: GameNotification[] } {
+  let processedPlayer = { ...currentPlayer };
+  const notifications: GameNotification[] = [];
+
+  if (aiOutput.scenarioStatsUpdate) {
+    const oldStats = {...processedPlayer.stats};
+    const updatedStats = applyStatChanges(processedPlayer.stats, aiOutput.scenarioStatsUpdate);
+    processedPlayer.stats = updatedStats;
+    // Potentially add stat change notifications if desired
+    // For now, only major events trigger notifications
+  }
+
+  if (typeof aiOutput.xpGained === 'number' && aiOutput.xpGained > 0) {
+    const { newProgression, leveledUp } = addXP(processedPlayer.progression, aiOutput.xpGained);
+    processedPlayer.progression = newProgression;
+    notifications.push({
+      type: 'xp_gained',
+      title: "Expérience gagnée !",
+      description: `Vous avez gagné ${aiOutput.xpGained} XP.`,
+      details: { amount: aiOutput.xpGained }
+    });
+    if (leveledUp) {
+      notifications.push({
+        type: 'leveled_up',
+        title: "Niveau Supérieur !",
+        description: `Félicitations, vous êtes maintenant niveau ${newProgression.level} !`,
+        details: { newLevel: newProgression.level }
+      });
+    }
+  }
+  
+  if (aiOutput.itemsAdded && aiOutput.itemsAdded.length > 0) {
+    let currentInv = processedPlayer.inventory;
+    aiOutput.itemsAdded.forEach(itemToAdd => {
+      const masterItem = getMasterItemById(itemToAdd.itemId);
+      const itemName = masterItem ? masterItem.name : itemToAdd.itemId;
+      currentInv = addItemToInventory(currentInv, itemToAdd.itemId, itemToAdd.quantity);
+      notifications.push({
+        type: 'item_added',
+        title: "Objet obtenu !",
+        description: `Vous avez obtenu : ${itemName} (x${itemToAdd.quantity})`,
+        details: { itemName: itemName, quantity: itemToAdd.quantity, itemId: itemToAdd.itemId }
+      });
+    });
+    processedPlayer.inventory = currentInv;
+  }
+
+  if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
+    let currentInv = processedPlayer.inventory;
+    aiOutput.itemsRemoved.forEach(itemToRemove => {
+      currentInv = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
+       notifications.push({
+        type: 'item_removed',
+        title: "Objet utilisé/perdu",
+        description: `${itemToRemove.itemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
+        details: { itemName: itemToRemove.itemName, quantity: itemToRemove.quantity }
+      });
+    });
+    processedPlayer.inventory = currentInv;
+  }
+
+  if (aiOutput.newLocationDetails && 
+      typeof aiOutput.newLocationDetails.latitude === 'number' && 
+      typeof aiOutput.newLocationDetails.longitude === 'number' && 
+      aiOutput.newLocationDetails.placeName) {
+    const newLoc: LocationData = {
+      latitude: aiOutput.newLocationDetails.latitude,
+      longitude: aiOutput.newLocationDetails.longitude,
+      placeName: aiOutput.newLocationDetails.placeName,
+    };
+    processedPlayer.currentLocation = newLoc;
+     notifications.push({
+      type: 'location_changed',
+      title: "Déplacement !",
+      description: `Vous êtes maintenant à ${newLoc.placeName}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
+      details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
+    });
+  }
+  
+  return { updatedPlayer: processedPlayer, notifications };
 }

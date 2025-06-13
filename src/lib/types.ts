@@ -74,3 +74,19 @@ export type GameState = {
   currentScenario: Scenario | null;
 };
 
+// Notification types for UI feedback after AI processing
+export type GameNotificationType =
+  | 'xp_gained'
+  | 'item_added'
+  | 'item_removed'
+  | 'leveled_up'
+  | 'location_changed'
+  | 'stat_changed'; // Optional, if we want to notify for stat changes
+
+export interface GameNotification {
+  type: GameNotificationType;
+  title: string;
+  description?: string;
+  details?: Record<string, any>; // e.g., { itemName: 'Potion', quantity: 1 } or { amount: 50 }
+}
+
