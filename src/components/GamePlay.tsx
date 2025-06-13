@@ -9,11 +9,20 @@ import { Button } from '@/components/ui/button';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { applyStatChanges, saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Loader2, RotateCcw, AlertTriangle, UserCircle2 } from 'lucide-react'; // Added UserCircle2
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import PlayerInputForm from './PlayerInputForm';
+import PlayerSheet from './PlayerSheet'; // Import PlayerSheet
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"; // Import Sheet components
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -28,28 +37,26 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [playerInput, setPlayerInput] = useState('');
   const { toast } = useToast();
 
-  // This state is primarily for ensuring the UI updates when location changes
   const [currentLocationForUI, setCurrentLocationForUI] = useState<LocationData>(
     initialGameState.player?.currentLocation || initialPlayerLocation
   );
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [isPlayerSheetOpen, setIsPlayerSheetOpen] = useState(false);
 
 
   useEffect(() => {
     if (player && player.currentLocation && !currentScenario) {
       const firstScenario = getInitialScenario(player);
       setCurrentScenario(firstScenario);
-      // No saveGameState here, as initialGameState is already from load or new
     } else if (player && !player.currentLocation) {
         console.warn("Player object missing currentLocation, re-initializing scenario with default location.");
         const playerWithDefaultLocation = { ...player, currentLocation: initialPlayerLocation };
-        setPlayer(playerWithDefaultLocation); // Update player state
-        setCurrentLocationForUI(initialPlayerLocation); // Update UI-specific location state
+        setPlayer(playerWithDefaultLocation); 
+        setCurrentLocationForUI(initialPlayerLocation); 
         const firstScenario = getInitialScenario(playerWithDefaultLocation);
         setCurrentScenario(firstScenario);
-        // Save if this was a repair of an invalid state
         saveGameState({ player: playerWithDefaultLocation, currentScenario: firstScenario });
     }
   }, [player, currentScenario]);
@@ -75,21 +82,19 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       }
     };
 
-    // Use player.currentLocation if available and valid, otherwise fallback to currentLocationForUI
     const locationToFetch = player?.currentLocation;
-    if (locationToFetch && locationToFetch.latitude && locationToFetch.longitude) {
+    if (locationToFetch && typeof locationToFetch.latitude === 'number' && typeof locationToFetch.longitude === 'number') {
        fetchWeatherForLocation(locationToFetch);
        if (currentLocationForUI.placeName !== locationToFetch.placeName || 
            currentLocationForUI.latitude !== locationToFetch.latitude ||
            currentLocationForUI.longitude !== locationToFetch.longitude) {
-         setCurrentLocationForUI(locationToFetch); // Sync UI location if player's location changed
+         setCurrentLocationForUI(locationToFetch); 
        }
-    } else if (currentLocationForUI.latitude && currentLocationForUI.longitude) {
-      // Fallback if player.currentLocation is somehow invalid/missing at this point
+    } else if (typeof currentLocationForUI.latitude === 'number' && typeof currentLocationForUI.longitude === 'number') {
       fetchWeatherForLocation(currentLocationForUI);
     }
 
-  }, [player, player?.currentLocation, currentLocationForUI]); // Depend on player.currentLocation for re-fetch
+  }, [player?.currentLocation, currentLocationForUI]); // Depend on player.currentLocation for re-fetch
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     if (!player || !currentScenario || !actionText.trim()) {
@@ -103,12 +108,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       return;
     }
 
-    if (!player.currentLocation) {
-      console.error("Critical Error: player.currentLocation is undefined before AI call.", player);
+    if (!player.currentLocation || typeof player.currentLocation.latitude !== 'number' || typeof player.currentLocation.longitude !== 'number') {
+      console.error("Critical Error: player.currentLocation is invalid before AI call.", player);
       toast({
           variant: "destructive",
           title: "Erreur Critique du Jeu",
-          description: "La localisation du joueur est manquante. Essayez de redémarrer le jeu.",
+          description: "La localisation du joueur est manquante ou invalide. Essayez de redémarrer le jeu.",
       });
       setIsLoading(false);
       return;
@@ -137,16 +142,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       const output: GenerateScenarioOutput = await generateScenario(inputForAI);
 
       const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
-      let updatedPlayer = { ...(player as Player), stats: updatedStats }; // Cast to Player for full type
+      let updatedPlayer = { ...(player as Player), stats: updatedStats }; 
 
-      if (output.newLocationDetails && output.newLocationDetails.latitude && output.newLocationDetails.longitude && output.newLocationDetails.placeName) {
+      if (output.newLocationDetails && 
+          typeof output.newLocationDetails.latitude === 'number' && 
+          typeof output.newLocationDetails.longitude === 'number' && 
+          output.newLocationDetails.placeName) {
         const newLoc: LocationData = {
           latitude: output.newLocationDetails.latitude,
           longitude: output.newLocationDetails.longitude,
           placeName: output.newLocationDetails.placeName,
         };
         updatedPlayer.currentLocation = newLoc;
-        // setCurrentLocationForUI(newLoc); // This will be handled by the useEffect watching player.currentLocation
          toast({
           title: "Déplacement !",
           description: `Vous êtes maintenant à ${newLoc.placeName}. ${output.newLocationDetails.reasonForMove || ''}`,
@@ -198,16 +205,38 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     );
   }
   
-  // Ensure displayLocation uses the most up-to-date player location
   const displayLocation = player.currentLocation || initialPlayerLocation;
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-6">
-      <div className="md:sticky md:top-4 md:z-10 grid gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.placeName} />
          <MapDisplay latitude={displayLocation.latitude} longitude={displayLocation.longitude} placeName={displayLocation.placeName} />
+      </div>
+      
+      <div className="md:sticky md:top-4 md:z-10 grid gap-4">
          <StatDisplay stats={player.stats} previousStats={previousStats} />
       </div>
+      
+      <div className="flex justify-center my-4">
+        <Sheet open={isPlayerSheetOpen} onOpenChange={setIsPlayerSheetOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="shadow-md">
+              <UserCircle2 className="mr-2 h-4 w-4" /> Fiche Personnage
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0">
+            <SheetHeader className="p-4 border-b">
+              <SheetTitle className="font-headline text-primary">Fiche de Personnage</SheetTitle>
+              <SheetDescription>
+                Consultez les détails de votre personnage.
+              </SheetDescription>
+            </SheetHeader>
+            <PlayerSheet player={player} />
+          </SheetContent>
+        </Sheet>
+      </div>
+
 
       <div className="flex-grow flex">
         <ScenarioDisplay
