@@ -5,8 +5,10 @@ import type { Player } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { User, Shield, Brain, Sparkles, BarChart3, TrendingUp, Palette, Euro } from 'lucide-react'; // Added Euro
-import { Progress } from "@/components/ui/progress"; // Import Progress component
+import { User, Shield, Brain, Sparkles, TrendingUp, Palette, Euro } from 'lucide-react';
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from './ui/scroll-area';
+
 
 interface PlayerSheetProps {
   player: Player;
@@ -20,57 +22,59 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
     : 0;
 
   return (
-    <div className="p-4 h-full"> {/* Removed overflow-y-auto as parent SheetContent handles it */}
-      <Tabs defaultValue="identity" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 mb-4">
-          <TabsTrigger value="identity"><User className="w-4 h-4 mr-2 inline-block" />Identité</TabsTrigger>
-          <TabsTrigger value="stats"><Shield className="w-4 h-4 mr-2 inline-block" />Stats</TabsTrigger>
-          <TabsTrigger value="skills"><Sparkles className="w-4 h-4 mr-2 inline-block" />Compétences</TabsTrigger>
-          <TabsTrigger value="traits"><Brain className="w-4 h-4 mr-2 inline-block" />Traits</TabsTrigger>
-          <TabsTrigger value="progression"><TrendingUp className="w-4 h-4 mr-2 inline-block" />Progression</TabsTrigger>
-          <TabsTrigger value="alignment"><Palette className="w-4 h-4 mr-2 inline-block" />Alignement</TabsTrigger>
-          <TabsTrigger value="money"><Euro className="w-4 h-4 mr-2 inline-block" />Argent</TabsTrigger>
+    // Removed fixed height, parent ScrollArea will handle it
+    <Tabs defaultValue="identity" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 mb-2 text-xs">
+          <TabsTrigger value="identity" className="text-xs p-1.5"><User className="w-3 h-3 mr-1 inline-block" />Identité</TabsTrigger>
+          <TabsTrigger value="stats" className="text-xs p-1.5"><Shield className="w-3 h-3 mr-1 inline-block" />Stats</TabsTrigger>
+          <TabsTrigger value="skills" className="text-xs p-1.5"><Sparkles className="w-3 h-3 mr-1 inline-block" />Compétences</TabsTrigger>
+          <TabsTrigger value="traits" className="text-xs p-1.5"><Brain className="w-3 h-3 mr-1 inline-block" />Traits</TabsTrigger>
+          <TabsTrigger value="progression" className="text-xs p-1.5"><TrendingUp className="w-3 h-3 mr-1 inline-block" />Progrès</TabsTrigger>
+          <TabsTrigger value="alignment" className="text-xs p-1.5"><Palette className="w-3 h-3 mr-1 inline-block" />Align.</TabsTrigger>
+          <TabsTrigger value="money" className="text-xs p-1.5"><Euro className="w-3 h-3 mr-1 inline-block" />Argent</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="identity">
+        <TabsContent value="identity" className="mt-0">
           <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-4">
+            <CardHeader className="p-3">
+              <div className="flex items-center space-x-3">
                 <Image 
-                  src={player.avatarUrl || 'https://placehold.co/100x100.png'} 
+                  src={player.avatarUrl || 'https://placehold.co/80x80.png'} 
                   alt={`Avatar de ${player.name}`} 
-                  width={100} 
-                  height={100} 
+                  width={80} 
+                  height={80} 
                   className="rounded-full border-2 border-primary"
                   data-ai-hint="character portrait"
                 />
                 <div>
-                  <CardTitle className="text-2xl font-headline text-primary">{player.name}</CardTitle>
-                  <CardDescription>{player.age} ans, {player.gender}</CardDescription>
+                  <CardTitle className="text-xl font-headline text-primary">{player.name}</CardTitle>
+                  <CardDescription className="text-xs">{player.age} ans, {player.gender}</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 p-3 text-sm">
               <div>
-                <h4 className="font-semibold text-muted-foreground">Origine</h4>
-                <p>{player.origin}</p>
+                <h4 className="font-semibold text-muted-foreground text-xs">Origine</h4>
+                <p className="text-xs">{player.origin}</p>
               </div>
               <div>
-                <h4 className="font-semibold text-muted-foreground">Historique (RP)</h4>
-                <p className="whitespace-pre-wrap">{player.background}</p>
+                <h4 className="font-semibold text-muted-foreground text-xs">Historique (RP)</h4>
+                <ScrollArea className="h-24">
+                   <p className="whitespace-pre-wrap text-xs">{player.background}</p>
+                </ScrollArea>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="stats">
+        <TabsContent value="stats" className="mt-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-primary">Caractéristiques Principales</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="font-headline text-primary text-lg">Caractéristiques</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-1 p-3 text-sm">
               {Object.entries(player.stats).map(([stat, value]) => (
-                <div key={stat} className="flex justify-between p-2 bg-muted/30 rounded-md">
+                <div key={stat} className="flex justify-between p-1.5 bg-muted/30 rounded-md text-xs">
                   <span className="font-medium">{stat}</span>
                   <span className="font-bold text-primary">{value}</span>
                 </div>
@@ -79,109 +83,107 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="skills">
+        <TabsContent value="skills" className="mt-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-primary">Compétences</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="font-headline text-primary text-lg">Compétences</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {Object.entries(player.skills).map(([skill, value]) => (
-                <div key={skill} className="flex justify-between p-2 bg-muted/30 rounded-md">
+            <CardContent className="space-y-1 p-3 text-sm">
+              {player.skills && Object.keys(player.skills).length > 0 ? Object.entries(player.skills).map(([skill, value]) => (
+                <div key={skill} className="flex justify-between p-1.5 bg-muted/30 rounded-md text-xs">
                   <span className="font-medium">{skill}</span>
                   <span className="font-bold text-primary">{value}</span>
                 </div>
-              ))}
-               {Object.keys(player.skills).length === 0 && <p className="text-muted-foreground">Aucune compétence acquise.</p>}
+              )) : <p className="text-muted-foreground text-xs">Aucune compétence acquise.</p>}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="traits">
+        <TabsContent value="traits" className="mt-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-primary">Traits & États Mentaux</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="font-headline text-primary text-lg">Traits & États</CardTitle>
             </CardHeader>
-            <CardContent>
-              {player.traitsMentalStates.length > 0 ? (
-                <ul className="list-disc list-inside space-y-1">
+            <CardContent className="p-3 text-sm">
+              {player.traitsMentalStates && player.traitsMentalStates.length > 0 ? (
+                <ul className="list-disc list-inside space-y-0.5 text-xs">
                   {player.traitsMentalStates.map((trait, index) => (
                     <li key={index}>{trait}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-muted-foreground">Aucun trait ou état mental particulier.</p>
+                <p className="text-muted-foreground text-xs">Aucun trait particulier.</p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="progression">
+        <TabsContent value="progression" className="mt-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-primary">Progression</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="font-headline text-primary text-lg">Progression</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 p-3 text-sm">
               <div>
-                <h4 className="font-semibold text-muted-foreground">Niveau</h4>
-                <p className="text-2xl font-bold text-primary">{player.progression.level}</p>
+                <h4 className="font-semibold text-muted-foreground text-xs">Niveau</h4>
+                <p className="text-xl font-bold text-primary">{player.progression.level}</p>
               </div>
               <div>
-                <div className="flex justify-between items-end mb-1">
-                    <h4 className="font-semibold text-muted-foreground">Points d'Expérience (XP)</h4>
-                    <p className="text-sm text-primary/80">{player.progression.xp} / {player.progression.xpToNextLevel}</p>
+                <div className="flex justify-between items-end mb-0.5">
+                    <h4 className="font-semibold text-muted-foreground text-xs">Expérience (XP)</h4>
+                    <p className="text-xs text-primary/80">{player.progression.xp} / {player.progression.xpToNextLevel}</p>
                 </div>
-                <Progress value={xpPercentage} className="w-full h-3" />
+                <Progress value={xpPercentage} className="w-full h-2.5" />
               </div>
               <div>
-                <h4 className="font-semibold text-muted-foreground">Talents (Perks)</h4>
-                {player.progression.perks.length > 0 ? (
-                  <ul className="list-disc list-inside space-y-1">
+                <h4 className="font-semibold text-muted-foreground text-xs">Talents (Perks)</h4>
+                {player.progression.perks && player.progression.perks.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
                     {player.progression.perks.map((perk, index) => (
                       <li key={index}>{perk}</li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-muted-foreground">Aucun talent débloqué.</p>
+                  <p className="text-muted-foreground text-xs">Aucun talent débloqué.</p>
                 )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="alignment">
+        <TabsContent value="alignment" className="mt-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-primary">Alignement & Personnalité</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="font-headline text-primary text-lg">Alignement</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 p-3 text-sm">
               <div>
-                <h4 className="font-semibold text-muted-foreground">Chaos / Loi</h4>
-                <p className="text-lg">Valeur : <span className="font-bold text-primary">{player.alignment.chaosLawful}</span></p>
+                <h4 className="font-semibold text-muted-foreground text-xs">Chaos / Loi</h4>
+                <p className="text-md">Valeur : <span className="font-bold text-primary">{player.alignment.chaosLawful}</span></p>
                 <p className="text-xs text-muted-foreground">(-100 Chaos, 0 Neutre, 100 Loi)</p>
               </div>
               <div>
-                <h4 className="font-semibold text-muted-foreground">Bien / Mal</h4>
-                <p className="text-lg">Valeur : <span className="font-bold text-primary">{player.alignment.goodEvil}</span></p>
+                <h4 className="font-semibold text-muted-foreground text-xs">Bien / Mal</h4>
+                <p className="text-md">Valeur : <span className="font-bold text-primary">{player.alignment.goodEvil}</span></p>
                 <p className="text-xs text-muted-foreground">(-100 Mal, 0 Neutre, 100 Bien)</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="money">
+        <TabsContent value="money" className="mt-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-primary flex items-center">
-                <Euro className="w-6 h-6 mr-2" /> Argent
+            <CardHeader className="p-3">
+              <CardTitle className="font-headline text-primary text-lg flex items-center">
+                <Euro className="w-4 h-4 mr-1" /> Argent
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-accent text-center">{player.money} €</p>
-              <p className="text-sm text-muted-foreground text-center mt-1">Votre solde actuel.</p>
+            <CardContent className="p-3 text-sm">
+              <p className="text-2xl font-bold text-accent text-center">{player.money} €</p>
+              <p className="text-xs text-muted-foreground text-center mt-0.5">Votre solde actuel.</p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
   );
 };
 

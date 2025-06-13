@@ -11,8 +11,8 @@ interface ScenarioDisplayProps {
 
 const ScenarioDisplay: React.FC<ScenarioDisplayProps> = ({ scenarioHTML, isLoading }) => {
   return (
-    <Card className="shadow-lg flex-grow flex flex-col">
-      <CardContent className="p-6 flex-grow scenario-html-content">
+    <Card className="shadow-lg flex-grow flex flex-col min-h-0"> {/* Added min-h-0 to help with flex scroll */}
+      <CardContent className="p-4 md:p-6 flex-grow scenario-html-content overflow-y-auto"> {/* Added overflow-y-auto here */}
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

@@ -4,7 +4,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import CharacterCreationForm from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
-import AuthDisplay from '@/components/AuthDisplay';
 import WelcomeMessage from '@/components/WelcomeMessage';
 import type { GameState, Player } from '@/lib/types';
 import { 
@@ -20,26 +19,27 @@ import {
   initialInventory, 
   defaultAvatarUrl,
   initialPlayerStats,
-  hydratePlayer, // Import hydratePlayer
-  initialPlayerMoney // Import initial player money
+  hydratePlayer,
+  initialPlayerMoney
 } from '@/lib/game-logic';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, AuthProvider } from '@/contexts/AuthContext'; // AuthProvider needed here if page is the root for auth context
 import { useToast } from "@/hooks/use-toast";
 
+// Sidebar components
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import LeftSidebar from '@/components/LeftSidebar';
+import RightSidebar from '@/components/RightSidebar';
 
-export default function HomePage() {
+
+function HomePageContent() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoadingState, setIsLoadingState] = useState(true);
   const {
     user,
     loadingAuth,
-    signUpWithEmailPassword,
-    signInWithEmailPassword,
-    signInAnonymously,
-    signOutUser
-  } = useAuth();
+  } = useAuth(); // AuthDisplay is now in LeftSidebar, which will get context from AuthProvider in RootLayout
   const { toast } = useToast();
 
   const performInitialLoad = useCallback(async () => {
@@ -49,7 +49,7 @@ export default function HomePage() {
     if (user && !user.isAnonymous && user.uid) {
       try {
         const firestoreState = await loadGameStateFromFirestore(user.uid);
-        if (firestoreState && firestoreState.player) { // Ensure player exists
+        if (firestoreState && firestoreState.player) {
           const hydratedPlayerFromFirestore = hydratePlayer(firestoreState.player);
           loadedState = {
             ...firestoreState,
@@ -59,12 +59,12 @@ export default function HomePage() {
         } else {
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
-            const playerToSave = { ...localState.player, uid: user.uid }; // Ensure UID is set
-            const hydratedPlayerForCloud = hydratePlayer(playerToSave); // Hydrate before saving
+            const playerToSave = { ...localState.player, uid: user.uid };
+            const hydratedPlayerForCloud = hydratePlayer(playerToSave);
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
             
             await saveGameState(stateToSave); 
-            loadedState = stateToSave; // Use the hydrated state
+            loadedState = stateToSave;
             toast({ title: "Progression locale migrée", description: "Votre partie locale a été sauvegardée dans le cloud." });
           }
         }
@@ -76,19 +76,17 @@ export default function HomePage() {
     
     if (!loadedState) {
       loadedState = loadGameStateFromLocal(); 
-      // loadGameStateFromLocal already calls hydratePlayer internally
     }
     
     if (loadedState && loadedState.player) {
       if (user && !user.isAnonymous && user.uid && loadedState.player.uid !== user.uid) {
         console.warn("Player UID mismatch between loaded state and current user. Updating state with current user's UID.");
-        // Re-hydrate if UID changes to ensure consistency
         const playerWithCorrectUID = hydratePlayer({ ...loadedState.player, uid: user.uid });
         loadedState = { ...loadedState, player: playerWithCorrectUID };
       }
       setGameState(loadedState);
     } else {
-      setGameState({ player: null, currentScenario: null }); // Ensure it's a valid initial state if nothing loads
+      setGameState({ player: null, currentScenario: null });
     }
     setIsLoadingState(false);
   }, [user, toast]); 
@@ -99,8 +97,8 @@ export default function HomePage() {
     }
   }, [loadingAuth, performInitialLoad]);
 
-  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'money' >) => {
-    const playerBaseDetails: Partial<Player> = { // Use Partial<Player> to build up
+  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' >) => {
+    const playerBaseDetails: Partial<Player> = {
       ...playerDataFromForm, 
       avatarUrl: defaultAvatarUrl, 
       stats: { ...initialPlayerStats },
@@ -109,13 +107,12 @@ export default function HomePage() {
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
-      money: initialPlayerMoney, // Set initial money
+      money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: { ...initialPlayerLocation },
-      // New fields will be added by hydratePlayer
     };
 
-    const hydratedPlayer = hydratePlayer(playerBaseDetails); // Hydrate to ensure all fields are present
+    const hydratedPlayer = hydratePlayer(playerBaseDetails);
 
     const firstScenario = getInitialScenario(hydratedPlayer);
     const newGameState: GameState = {
@@ -144,7 +141,7 @@ export default function HomePage() {
 
   if (loadingAuth || isLoadingState) {
     return (
-      <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 bg-background">
+      <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 bg-background h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
         <p className="mt-4 text-xl font-headline">
           {loadingAuth ? "Vérification de l'authentification..." : "Chargement de votre aventure..."}
@@ -154,27 +151,43 @@ export default function HomePage() {
   }
 
   return (
-    <main className="flex-grow flex flex-col items-center p-4 md:p-8 bg-background">
-      <div className="w-full max-w-4xl">
-        <AuthDisplay
-          user={user}
-          loadingAuth={loadingAuth}
-          signUp={signUpWithEmailPassword}
-          signIn={signInWithEmailPassword}
-          signInAnon={signInAnonymously}
-          signOut={signOutUser}
-        />
-
-        {user ? ( 
-          gameState && gameState.player && gameState.currentScenario ? (
-            <GamePlay initialGameState={gameState} onRestart={handleRestart} />
-          ) : (
-            <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
-          )
-        ) : (
-          <WelcomeMessage />
-        )}
-      </div>
-    </main>
+      <SidebarProvider defaultOpen={true}>
+        <Sidebar side="left" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px]">
+          <LeftSidebar 
+            player={gameState?.player || null}
+            onRestart={handleRestart}
+            isLoading={isLoadingState} // or a more specific loading for AI actions
+          />
+        </Sidebar>
+        <SidebarInset>
+          <div className="flex flex-col h-screen max-h-screen overflow-hidden">
+            {!user ? (
+              <div className="flex-grow flex items-center justify-center">
+                 <WelcomeMessage />
+              </div>
+            ) : gameState && gameState.player && gameState.currentScenario ? (
+              <GamePlay 
+                initialGameState={gameState} 
+                onRestart={handleRestart} 
+                setGameState={setGameState} // Pass setGameState to allow GamePlay to update player directly
+              />
+            ) : (
+              <div className="flex-grow flex items-center justify-center p-4">
+                 <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
+              </div>
+            )}
+          </div>
+        </SidebarInset>
+        <Sidebar side="right" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px]">
+           <RightSidebar player={gameState?.player || null} />
+        </Sidebar>
+      </SidebarProvider>
   );
+}
+
+
+// Wrap HomePageContent with AuthProvider if it's not already in RootLayout
+// For this structure, AuthProvider is in RootLayout, so HomePageContent doesn't need to re-wrap.
+export default function HomePage() {
+  return <HomePageContent />;
 }
