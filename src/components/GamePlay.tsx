@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { applyStatChanges, saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, Send } from 'lucide-react';
+import { Loader2, RotateCcw, Send, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
@@ -70,7 +70,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [playerInput, setPlayerInput] = useState('');
   const { toast } = useToast();
 
-  const [currentLocation, setCurrentLocation] = useState<LocationData>(
+  const [currentLocationForUI, setCurrentLocationForUI] = useState<LocationData>(
     initialGameState.player?.currentLocation || initialPlayerLocation
   );
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -79,13 +79,19 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
 
 
   useEffect(() => {
-    if (player && !currentScenario) {
-      // This ensures if a player is loaded without a scenario (e.g., after restart before full load)
-      // or if somehow player exists but scenario is null, we generate the initial one.
-      // Crucially, use the player's current location, which should be set by now.
+    if (player && player.currentLocation && !currentScenario) {
       const firstScenario = getInitialScenario(player);
       setCurrentScenario(firstScenario);
       saveGameState({ player, currentScenario: firstScenario });
+    } else if (player && !player.currentLocation) {
+        // This is a fallback, should ideally not happen if initialization is correct
+        console.warn("Player object missing currentLocation, re-initializing scenario with default location.");
+        const playerWithDefaultLocation = { ...player, currentLocation: initialPlayerLocation };
+        setPlayer(playerWithDefaultLocation); // Update player state
+        setCurrentLocationForUI(initialPlayerLocation); // Update UI location state
+        const firstScenario = getInitialScenario(playerWithDefaultLocation);
+        setCurrentScenario(firstScenario);
+        saveGameState({ player: playerWithDefaultLocation, currentScenario: firstScenario });
     }
   }, [player, currentScenario]);
 
@@ -110,10 +116,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       }
     };
 
-    if (player && currentLocation) {
-       fetchWeatherForLocation(currentLocation);
+    // Use player.currentLocation for fetching weather if player exists, otherwise fallback to currentLocationForUI
+    const locationToFetch = player?.currentLocation || currentLocationForUI;
+    if (locationToFetch) {
+       fetchWeatherForLocation(locationToFetch);
     }
-  }, [player, currentLocation]); // Re-fetch weather when player or currentLocation changes
+  }, [player, currentLocationForUI]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     if (!player || !currentScenario || !actionText.trim()) {
@@ -127,6 +135,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       return;
     }
 
+    // Defensive check for player.currentLocation
+    if (!player.currentLocation) {
+      console.error("Critical Error: player.currentLocation is undefined before AI call.", player);
+      toast({
+          variant: "destructive",
+          title: "Erreur Critique du Jeu",
+          description: "La localisation du joueur est manquante. Essayez de redémarrer le jeu.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setPreviousStats(player.stats);
 
@@ -136,16 +156,17 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerStats: player.stats,
       playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
-      playerLocation: player.currentLocation, // Pass current location to AI
+      playerLocation: player.currentLocation, // player.currentLocation is now validated
     };
 
     try {
       const output: GenerateScenarioOutput = await generateScenario(inputForAI);
 
       const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
-      let updatedPlayer = { ...player, stats: updatedStats };
+      // Ensure player is not null before spreading, though already guarded
+      let updatedPlayer = { ...(player as Player), stats: updatedStats };
 
-      // Update location if AI provides new details
+
       if (output.newLocationDetails && output.newLocationDetails.latitude && output.newLocationDetails.longitude && output.newLocationDetails.placeName) {
         const newLoc: LocationData = {
           latitude: output.newLocationDetails.latitude,
@@ -153,7 +174,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
           placeName: output.newLocationDetails.placeName,
         };
         updatedPlayer.currentLocation = newLoc;
-        setCurrentLocation(newLoc); // Update local state for map/weather display
+        setCurrentLocationForUI(newLoc); 
          toast({
           title: "Déplacement !",
           description: `Vous êtes maintenant à ${newLoc.placeName}. ${output.newLocationDetails.reasonForMove || ''}`,
@@ -190,7 +211,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [player, currentScenario, toast]); // currentLocation is implicitly handled via 'player'
+  }, [player, currentScenario, toast]);
 
   const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -208,12 +229,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       </div>
     );
   }
+  
+  // Ensure currentLocationForUI reflects the player's actual current location for display
+  // This helps if player state updates but UI state for location lags.
+  const displayLocation = player.currentLocation || currentLocationForUI;
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-6">
       <div className="md:sticky md:top-4 md:z-10 grid gap-4">
-         <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={currentLocation.placeName} />
-         <MapDisplay latitude={currentLocation.latitude} longitude={currentLocation.longitude} placeName={currentLocation.placeName} />
+         <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.placeName} />
+         <MapDisplay latitude={displayLocation.latitude} longitude={displayLocation.longitude} placeName={displayLocation.placeName} />
          <StatDisplay stats={player.stats} previousStats={previousStats} />
       </div>
 
@@ -250,3 +275,4 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
 };
 
 export default GamePlay;
+
