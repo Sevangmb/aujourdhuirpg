@@ -2,15 +2,15 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, Scenario, PlayerStats } from '@/lib/types';
+import type { GameState, Player, Scenario, PlayerStats, LocationData } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Import Input
+import { Input } from '@/components/ui/input';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
-import { applyStatChanges, saveGameState, getInitialScenario } from '@/lib/game-logic';
+import { applyStatChanges, saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, Send } from 'lucide-react'; // Added Send icon
+import { Loader2, RotateCcw, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
@@ -22,12 +22,12 @@ interface GamePlayProps {
   onRestart: () => void;
 }
 
-const WeatherDisplay: React.FC<{ weatherData: WeatherData | null; isLoading: boolean; error: string | null }> = ({ weatherData, isLoading, error }) => {
+const WeatherDisplay: React.FC<{ weatherData: WeatherData | null; isLoading: boolean; error: string | null; placeName: string; }> = ({ weatherData, isLoading, error, placeName }) => {
   if (isLoading) {
     return (
       <div className="flex items-center text-sm text-muted-foreground p-3 bg-card rounded-lg shadow-md mb-4 border border-border">
         <LucideIcons.Loader2 className="h-4 w-4 animate-spin mr-2" />
-        Chargement de la météo...
+        Chargement de la météo à {placeName}...
       </div>
     );
   }
@@ -36,7 +36,7 @@ const WeatherDisplay: React.FC<{ weatherData: WeatherData | null; isLoading: boo
     return (
       <div className="flex items-center text-sm text-destructive p-3 bg-destructive/10 border border-destructive/30 rounded-lg shadow-md mb-4">
         <LucideIcons.AlertTriangle className="h-4 w-4 mr-2 text-destructive" />
-        Météo indisponible: {displayError}
+        Météo ({placeName}) indisponible: {displayError}
       </div>
     );
   }
@@ -51,7 +51,7 @@ const WeatherDisplay: React.FC<{ weatherData: WeatherData | null; isLoading: boo
       <CardHeader className="pb-2 pt-3 px-4">
         <CardTitle className="text-lg font-headline flex items-center text-primary/90">
           <IconComponent className="w-5 h-5 mr-2" />
-          Météo à Paris
+          Météo à {placeName}
         </CardTitle>
       </CardHeader>
       <CardContent className="text-sm px-4 pb-3 text-foreground/90">
@@ -67,47 +67,53 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(initialGameState.currentScenario);
   const [previousStats, setPreviousStats] = useState<PlayerStats | undefined>(initialGameState.player?.stats);
   const [isLoading, setIsLoading] = useState(false);
-  const [playerInput, setPlayerInput] = useState(''); // State for the player's text input
+  const [playerInput, setPlayerInput] = useState('');
   const { toast } = useToast();
 
+  const [currentLocation, setCurrentLocation] = useState<LocationData>(
+    initialGameState.player?.currentLocation || initialPlayerLocation
+  );
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
-  const parisLatitude = 48.8566;
-  const parisLongitude = 2.3522;
 
   useEffect(() => {
     if (player && !currentScenario) {
+      // This ensures if a player is loaded without a scenario (e.g., after restart before full load)
+      // or if somehow player exists but scenario is null, we generate the initial one.
+      // Crucially, use the player's current location, which should be set by now.
       const firstScenario = getInitialScenario(player);
       setCurrentScenario(firstScenario);
-      const newGameState: GameState = { player, currentScenario: firstScenario };
-      saveGameState(newGameState);
+      saveGameState({ player, currentScenario: firstScenario });
     }
   }, [player, currentScenario]);
-  
+
   useEffect(() => {
-    const fetchWeather = async () => {
+    const fetchWeatherForLocation = async (loc: LocationData) => {
       setWeatherLoading(true);
       setWeatherError(null);
       try {
-        const result = await getCurrentWeather(parisLatitude, parisLongitude);
+        const result = await getCurrentWeather(loc.latitude, loc.longitude);
         if ('error' in result) {
           setWeatherError(result.error);
+          setWeather(null);
         } else {
           setWeather(result);
         }
       } catch (e: any) {
         const errorMessage = e.message || "Une erreur inconnue est survenue lors de la récupération de la météo.";
         setWeatherError(errorMessage);
+        setWeather(null);
       } finally {
         setWeatherLoading(false);
       }
     };
-    if (player) { 
-       fetchWeather();
+
+    if (player && currentLocation) {
+       fetchWeatherForLocation(currentLocation);
     }
-  }, [player]);
+  }, [player, currentLocation]); // Re-fetch weather when player or currentLocation changes
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     if (!player || !currentScenario || !actionText.trim()) {
@@ -128,26 +134,43 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerName: player.name,
       playerBackground: player.background,
       playerStats: player.stats,
-      playerChoice: actionText.trim(), // Use the text from input
+      playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
+      playerLocation: player.currentLocation, // Pass current location to AI
     };
 
     try {
       const output: GenerateScenarioOutput = await generateScenario(inputForAI);
-      
+
       const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
-      const updatedPlayer: Player = { ...player, stats: updatedStats };
+      let updatedPlayer = { ...player, stats: updatedStats };
+
+      // Update location if AI provides new details
+      if (output.newLocationDetails && output.newLocationDetails.latitude && output.newLocationDetails.longitude && output.newLocationDetails.placeName) {
+        const newLoc: LocationData = {
+          latitude: output.newLocationDetails.latitude,
+          longitude: output.newLocationDetails.longitude,
+          placeName: output.newLocationDetails.placeName,
+        };
+        updatedPlayer.currentLocation = newLoc;
+        setCurrentLocation(newLoc); // Update local state for map/weather display
+         toast({
+          title: "Déplacement !",
+          description: `Vous êtes maintenant à ${newLoc.placeName}. ${output.newLocationDetails.reasonForMove || ''}`,
+        });
+      }
       setPlayer(updatedPlayer);
+
 
       const nextScenario: Scenario = {
         scenarioText: output.scenarioText,
       };
       setCurrentScenario(nextScenario);
-      
+
       const newGameState: GameState = { player: updatedPlayer, currentScenario: nextScenario };
       saveGameState(newGameState);
 
-      setPlayerInput(''); // Clear input field after submission
+      setPlayerInput('');
       toast({
         title: "Votre action a été prise en compte...",
         description: "Le récit continue.",
@@ -167,7 +190,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [player, currentScenario, toast]);
+  }, [player, currentScenario, toast]); // currentLocation is implicitly handled via 'player'
 
   const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -189,15 +212,15 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-6">
       <div className="md:sticky md:top-4 md:z-10 grid gap-4">
-         <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} />
-         <MapDisplay latitude={parisLatitude} longitude={parisLongitude} placeName="Paris, France" />
+         <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={currentLocation.placeName} />
+         <MapDisplay latitude={currentLocation.latitude} longitude={currentLocation.longitude} placeName={currentLocation.placeName} />
          <StatDisplay stats={player.stats} previousStats={previousStats} />
       </div>
-     
+
       <div className="flex-grow flex">
-        <ScenarioDisplay 
-          scenarioHTML={currentScenario.scenarioText} 
-          isLoading={isLoading} // Pass isLoading to show spinner in scenario display if needed
+        <ScenarioDisplay
+          scenarioHTML={currentScenario.scenarioText}
+          isLoading={isLoading}
         />
       </div>
 
@@ -215,7 +238,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
           Envoyer
         </Button>
       </form>
-      
+
       <div className="flex justify-center mt-auto pt-4">
         <Button onClick={onRestart} variant="outline" className="shadow-md" disabled={isLoading}>
           <RotateCcw className="mr-2 h-4 w-4" />

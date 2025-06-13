@@ -6,26 +6,30 @@ import CharacterCreationForm from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
 import AuthDisplay from '@/components/AuthDisplay';
 import type { GameState, Player } from '@/lib/types';
-import { loadGameState, saveGameState, clearGameState, getInitialScenario } from '@/lib/game-logic';
+import { loadGameState, saveGameState, clearGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 
 export default function HomePage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoadingState, setIsLoadingState] = useState(true);
-  const { 
-    user, 
-    loadingAuth, 
-    signUpWithEmailPassword, 
-    signInWithEmailPassword, 
-    signInAnonymously, 
-    signOutUser 
+  const {
+    user,
+    loadingAuth,
+    signUpWithEmailPassword,
+    signInWithEmailPassword,
+    signInAnonymously,
+    signOutUser
   } = useAuth();
 
   useEffect(() => {
     const loadedState = loadGameState();
     if (loadedState) {
+      // Ensure player has a location, even if loading from an older save
+      if (loadedState.player && !loadedState.player.currentLocation) {
+        loadedState.player.currentLocation = initialPlayerLocation;
+      }
       setGameState(loadedState);
     } else {
       setGameState({ player: null, currentScenario: null });
@@ -33,13 +37,14 @@ export default function HomePage() {
     setIsLoadingState(false);
   }, []);
 
-  const handleCharacterCreate = (playerData: Player) => {
-    const firstScenario = getInitialScenario(playerData);
+  const handleCharacterCreate = (playerData: Omit<Player, 'currentLocation'>) => {
+    const playerWithLocation: Player = {
+      ...playerData,
+      currentLocation: initialPlayerLocation, // Set initial location for new characters
+    };
+    const firstScenario = getInitialScenario(playerWithLocation);
     const newGameState: GameState = {
-      player: {
-        ...playerData,
-        // uid: user?.uid // Potentiellement lier à l'utilisateur authentifié plus tard
-      },
+      player: playerWithLocation,
       currentScenario: firstScenario,
     };
     setGameState(newGameState);
@@ -50,7 +55,7 @@ export default function HomePage() {
     clearGameState();
     setGameState({ player: null, currentScenario: null });
   };
-  
+
   if (loadingAuth || isLoadingState) {
     return (
       <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 bg-background">
@@ -80,17 +85,17 @@ export default function HomePage() {
           ) : (
             <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
           )
-        ) : ( 
+        ) : (
           // Si l'utilisateur n'est pas encore authentifié, afficher un message de bienvenue
           <div className="text-center p-8 mt-6 bg-card shadow-xl rounded-lg">
             <h1 className="text-3xl font-bold font-headline mb-4 text-primary">Aujourd'hui RPG</h1>
             <p className="text-lg text-muted-foreground mb-6">
               Bienvenue dans une aventure textuelle se déroulant à notre époque, en France.
             </p>
-            <Image 
-              src="https://placehold.co/600x400.png" 
-              alt="Illustration du jeu RPG Aujourd'hui" 
-              data-ai-hint="Paris street adventure" 
+            <Image
+              src="https://placehold.co/600x400.png"
+              alt="Illustration du jeu RPG Aujourd'hui"
+              data-ai-hint="Paris street adventure"
               className="rounded-lg shadow-md mx-auto mb-6"
               width={600}
               height={400}

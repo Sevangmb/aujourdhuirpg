@@ -1,5 +1,4 @@
-
-import type { PlayerStats, GameState, Scenario, Player } from './types';
+import type { PlayerStats, GameState, Scenario, Player, LocationData } from './types';
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
@@ -10,11 +9,17 @@ export const initialPlayerStats: PlayerStats = {
   Force: 50,
 };
 
+export const initialPlayerLocation: LocationData = {
+  latitude: 48.8566, // Paris latitude
+  longitude: 2.3522, // Paris longitude
+  placeName: 'Paris, France',
+};
+
 export function getInitialScenario(player: Player): Scenario {
  return {
     scenarioText: `
       <h1 class="font-headline">Bienvenue, ${player.name}</h1>
-      <p>Vous êtes ${player.name}, ${player.background}. Vous vous trouvez au cœur de Paris, une ville pleine d'opportunités et de mystères. Le soleil du matin commence à réchauffer les rues pavées.</p>
+      <p>Vous êtes ${player.name}, ${player.background}. Vous vous trouvez à ${player.currentLocation.placeName}, une ville pleine d'opportunités et de mystères. Le soleil du matin commence à réchauffer les rues pavées.</p>
       <p>Tapez ci-dessous ce que vous souhaitez faire pour commencer votre journée.</p>
     `,
   };
@@ -32,7 +37,12 @@ export function loadGameState(): GameState | null {
     const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedState) {
       try {
-        return JSON.parse(savedState) as GameState;
+        const parsedState = JSON.parse(savedState) as GameState;
+        // Ensure older game states without location get a default
+        if (parsedState.player && !parsedState.player.currentLocation) {
+          parsedState.player.currentLocation = initialPlayerLocation;
+        }
+        return parsedState;
       } catch (error) {
         console.error("Erreur lors du chargement de l'état du jeu:", error);
         localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state

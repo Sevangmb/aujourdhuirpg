@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -9,9 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Player, PlayerStats } from '@/lib/types';
+import type { Player, PlayerStats } from '@/lib/types'; // LocationData is not directly used here
 import StatDisplay from './StatDisplay';
-import { initialPlayerStats } from '@/lib/game-logic';
+import { initialPlayerStats, initialPlayerLocation } from '@/lib/game-logic'; // Import initialPlayerLocation
 import { User } from 'lucide-react';
 
 const characterSchema = z.object({
@@ -22,7 +23,8 @@ const characterSchema = z.object({
 type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (player: Player) => void;
+  // onCharacterCreate now expects a Player object that will have currentLocation added later
+  onCharacterCreate: (playerData: Omit<Player, 'currentLocation'>) => void;
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate }) => {
@@ -35,12 +37,13 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    const newPlayer: Player = {
+    // currentLocation will be added in HomePage by onCharacterCreate
+    const newPlayerData: Omit<Player, 'currentLocation'> = {
       name: data.name,
       background: data.background,
       stats: { ...initialPlayerStats },
     };
-    onCharacterCreate(newPlayer);
+    onCharacterCreate(newPlayerData);
   };
 
   return (
@@ -85,6 +88,9 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
               <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90">Statistiques de Départ</h3>
               <StatDisplay stats={initialPlayerStats} />
             </div>
+            <p className="text-sm text-center text-muted-foreground">
+              Votre aventure commencera à {initialPlayerLocation.placeName}.
+            </p>
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" variant="default" size="lg">
