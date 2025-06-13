@@ -105,7 +105,7 @@ export async function saveGameState(state: GameState): Promise<void> {
   }
 }
 
-function hydratePlayer(savedPlayer?: Partial<Player>): Player {
+export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   const player: Player = {
     uid: savedPlayer?.uid,
     name: savedPlayer?.name || '',
@@ -391,27 +391,22 @@ export function processAndApplyAIScenarioOutput(
   }
 
   // --- Traitement des nouvelles données de quêtes, PNJ, décisions ---
-  // Note : aiOutput.newQuests, aiOutput.questUpdates etc. sont des placeholders.
-  // Ces champs devront être ajoutés à GenerateScenarioOutputSchema dans le flux IA.
 
-  // @ts-ignore // Temporaire, jusqu'à ce que GenerateScenarioOutput soit mis à jour
   if (aiOutput.newQuests && Array.isArray(aiOutput.newQuests)) {
-    // @ts-ignore
     aiOutput.newQuests.forEach(questData => {
-      // L'IA devrait fournir des QuestObjective avec isCompleted: false par défaut
       const newQuest: Quest = {
-        id: questData.id || `quest_${Date.now()}_${Math.random().toString(36).substring(7)}`, // L'IA DOIT fournir un ID unique
+        id: questData.id || `quest_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         title: questData.title,
         description: questData.description,
         type: questData.type || 'secondary',
         status: questData.status || 'active',
-        objectives: questData.objectives ? questData.objectives.map((obj: any) => ({id: obj.id, description: obj.description, isCompleted: false})) : [],
+        objectives: questData.objectives ? questData.objectives.map((obj: any) => ({id: obj.id, description: obj.description, isCompleted: obj.isCompleted === undefined ? false : obj.isCompleted })) : [],
         giver: questData.giver,
         reward: questData.reward,
         relatedLocation: questData.relatedLocation,
         dateAdded: new Date().toISOString(),
       };
-      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog, newQuest);
+      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog || [], newQuest);
       notifications.push({
         type: 'quest_added',
         title: `Nouvelle Quête : ${newQuest.title}`,
@@ -421,13 +416,27 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  // @ts-ignore
   if (aiOutput.questUpdates && Array.isArray(aiOutput.questUpdates)) {
-    // @ts-ignore
     aiOutput.questUpdates.forEach(update => {
-      const oldQuest = processedPlayer.questLog.find(q => q.id === update.questId);
-      processedPlayer.questLog = updateQuestInLog(processedPlayer.questLog, update.questId, { status: update.newStatus, objectives: update.updatedObjectives });
-      const updatedQuest = processedPlayer.questLog.find(q => q.id === update.questId);
+      const oldQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
+      const questUpdatesPayload: Partial<Omit<Quest, 'id'>> = {};
+      if (update.newStatus) questUpdatesPayload.status = update.newStatus;
+      if (update.updatedObjectives) {
+        questUpdatesPayload.objectives = (oldQuest?.objectives || []).map(obj => {
+          const objectiveUpdate = update.updatedObjectives?.find(uObj => uObj.objectiveId === obj.id);
+          return objectiveUpdate ? { ...obj, isCompleted: objectiveUpdate.isCompleted } : obj;
+        });
+      }
+      if (update.newObjectiveDescription && oldQuest) {
+         const newObjectiveId = `${oldQuest.id}_obj_${(oldQuest.objectives?.length || 0) + 1}`;
+         questUpdatesPayload.objectives = [
+            ...(questUpdatesPayload.objectives || oldQuest?.objectives || []),
+            {id: newObjectiveId, description: update.newObjectiveDescription, isCompleted: false}
+         ];
+      }
+
+      processedPlayer.questLog = updateQuestInLog(processedPlayer.questLog || [], update.questId, questUpdatesPayload);
+      const updatedQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
       if (updatedQuest && (!oldQuest || oldQuest.status !== updatedQuest.status || JSON.stringify(oldQuest.objectives) !== JSON.stringify(updatedQuest.objectives) ) ) {
         notifications.push({
           type: 'quest_updated',
@@ -439,13 +448,10 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  // @ts-ignore
   if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
-    // @ts-ignore
     aiOutput.pnjInteractions.forEach(pnjData => {
-      // L'IA doit fournir un PNJ avec tous les champs requis, ou des mises à jour spécifiques
       const pnj: PNJ = {
-        id: pnjData.id || `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`, // L'IA DOIT fournir un ID unique
+        id: pnjData.id || `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         name: pnjData.name,
         description: pnjData.description,
         relationStatus: pnjData.relationStatus || 'neutral',
@@ -453,10 +459,10 @@ export function processAndApplyAIScenarioOutput(
         firstEncountered: pnjData.firstEncountered || "Contexte actuel",
         trustLevel: pnjData.trustLevel,
         notes: pnjData.notes,
-        lastSeen: new Date().toISOString() // Mis à jour à chaque interaction
+        lastSeen: new Date().toISOString()
       };
-      const oldPNJ = processedPlayer.encounteredPNJs.find(p=>p.id === pnj.id);
-      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs, pnj);
+      const oldPNJ = (processedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
+      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs || [], pnj);
       if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
         notifications.push({
           type: 'pnj_encountered',
@@ -468,18 +474,16 @@ export function processAndApplyAIScenarioOutput(
     });
   }
   
-  // @ts-ignore
   if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
-    // @ts-ignore
     aiOutput.majorDecisionsLogged.forEach(decisionData => {
       const decision: MajorDecision = {
-        id: decisionData.id || `decision_${Date.now()}_${Math.random().toString(36).substring(7)}`, // L'IA DOIT fournir un ID unique
+        id: decisionData.id || `decision_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         summary: decisionData.summary,
         outcome: decisionData.outcome,
         scenarioContext: decisionData.scenarioContext,
         dateMade: new Date().toISOString(),
       };
-      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog, decision);
+      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog || [], decision);
       notifications.push({
         type: 'decision_logged',
         title: "Décision Importante Enregistrée",

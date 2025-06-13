@@ -141,17 +141,17 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     };
     
     // Simplification pour l'IA
-    const activeQuestsSummary = player.questLog
+    const activeQuestsSummary = (player.questLog || [])
         .filter(q => q.status === 'active')
         .map(q => ({ 
             id: q.id, 
             title: q.title, 
             description: q.description.substring(0,150) + "...", // Truncate for brevity
             type: q.type,
-            currentObjectivesDescriptions: q.objectives.filter(obj => !obj.isCompleted).map(obj => obj.description)
+            currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
         }));
 
-    const encounteredPNJsSummary = player.encounteredPNJs.map(p => ({
+    const encounteredPNJsSummary = (player.encounteredPNJs || []).map(p => ({
         id: p.id,
         name: p.name,
         relationStatus: p.relationStatus,
@@ -240,6 +240,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   }
   
   const displayLocation = player.currentLocation || initialPlayerLocation;
+  const activeQuests = player?.questLog?.filter(q => q.status === 'active') || [];
+  const encounteredPNJsList = player?.encounteredPNJs || [];
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-6">
@@ -305,12 +307,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
             <div className="p-4">
                 <p className="text-muted-foreground">Le Journal de Quêtes est en cours de développement.</p>
                 <h3 className="font-semibold mt-4">Quêtes Actives :</h3>
-                {player.questLog.filter(q => q.status === 'active').length > 0 ? (
-                    player.questLog.filter(q => q.status === 'active').map(q => <p key={q.id}>- {q.title} ({q.type})</p>)
+                {activeQuests.length > 0 ? (
+                    activeQuests.map(q => <p key={q.id}>- {q.title} ({q.type})</p>)
                 ) : <p className="text-sm">Aucune quête active.</p>}
                  <h3 className="font-semibold mt-4">PNJs Rencontrés :</h3>
-                {player.encounteredPNJs.length > 0 ? (
-                    player.encounteredPNJs.map(p => <p key={p.id}>- {p.name} ({p.relationStatus})</p>)
+                {encounteredPNJsList.length > 0 ? (
+                    encounteredPNJsList.map(p => <p key={p.id}>- {p.name} ({p.relationStatus})</p>)
                 ) : <p className="text-sm">Aucun PNJ rencontré.</p>}
             </div>
           </SheetContent>

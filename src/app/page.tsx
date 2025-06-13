@@ -19,7 +19,8 @@ import {
   initialAlignment,
   initialInventory, 
   defaultAvatarUrl,
-  initialPlayerStats
+  initialPlayerStats,
+  hydratePlayer // Import hydratePlayer
 } from '@/lib/game-logic';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 import { Loader2 } from 'lucide-react';
@@ -47,15 +48,22 @@ export default function HomePage() {
     if (user && !user.isAnonymous && user.uid) {
       try {
         const firestoreState = await loadGameStateFromFirestore(user.uid);
-        if (firestoreState) {
-          loadedState = firestoreState; 
+        if (firestoreState && firestoreState.player) { // Ensure player exists
+          const hydratedPlayerFromFirestore = hydratePlayer(firestoreState.player);
+          loadedState = {
+            ...firestoreState,
+            player: hydratedPlayerFromFirestore,
+          };
           toast({ title: "Progression chargée", description: "Votre partie a été restaurée depuis le cloud." });
         } else {
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
-            localState.player.uid = user.uid; 
-            await saveGameState(localState); 
-            loadedState = localState;
+            const playerToSave = { ...localState.player, uid: user.uid }; // Ensure UID is set
+            const hydratedPlayerForCloud = hydratePlayer(playerToSave); // Hydrate before saving
+            const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
+            
+            await saveGameState(stateToSave); 
+            loadedState = stateToSave; // Use the hydrated state
             toast({ title: "Progression locale migrée", description: "Votre partie locale a été sauvegardée dans le cloud." });
           }
         }
@@ -67,16 +75,19 @@ export default function HomePage() {
     
     if (!loadedState) {
       loadedState = loadGameStateFromLocal(); 
+      // loadGameStateFromLocal already calls hydratePlayer internally
     }
     
     if (loadedState && loadedState.player) {
       if (user && !user.isAnonymous && user.uid && loadedState.player.uid !== user.uid) {
         console.warn("Player UID mismatch between loaded state and current user. Updating state with current user's UID.");
-        loadedState.player.uid = user.uid;
+        // Re-hydrate if UID changes to ensure consistency
+        const playerWithCorrectUID = hydratePlayer({ ...loadedState.player, uid: user.uid });
+        loadedState = { ...loadedState, player: playerWithCorrectUID };
       }
       setGameState(loadedState);
     } else {
-      setGameState({ player: null, currentScenario: null });
+      setGameState({ player: null, currentScenario: null }); // Ensure it's a valid initial state if nothing loads
     }
     setIsLoadingState(false);
   }, [user, toast]); 
@@ -87,8 +98,8 @@ export default function HomePage() {
     }
   }, [loadingAuth, performInitialLoad]);
 
-  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' >) => {
-    const playerDetails: Player = {
+  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' >) => {
+    const playerBaseDetails: Partial<Player> = { // Use Partial<Player> to build up
       ...playerDataFromForm, 
       avatarUrl: defaultAvatarUrl, 
       stats: { ...initialPlayerStats },
@@ -98,12 +109,15 @@ export default function HomePage() {
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
       uid: user && !user.isAnonymous ? user.uid : undefined,
-      currentLocation: { ...initialPlayerLocation }, 
+      currentLocation: { ...initialPlayerLocation },
+      // New fields will be added by hydratePlayer
     };
 
-    const firstScenario = getInitialScenario(playerDetails);
+    const hydratedPlayer = hydratePlayer(playerBaseDetails); // Hydrate to ensure all fields are present
+
+    const firstScenario = getInitialScenario(hydratedPlayer);
     const newGameState: GameState = {
-      player: playerDetails,
+      player: hydratedPlayer,
       currentScenario: firstScenario,
     };
     setGameState(newGameState);
