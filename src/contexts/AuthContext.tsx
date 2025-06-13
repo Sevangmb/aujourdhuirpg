@@ -11,17 +11,14 @@ import {
   signOut as firebaseSignOut 
 } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
-import { clearGameState as clearLocalGameState } from '@/lib/game-logic'; // Import clearGameState
-// Firestore delete function is not directly called here on sign out,
-// as the game state might be intentionally kept for re-login.
-// Deletion is handled in page.tsx on explicit restart for a logged-in user.
+import { clearGameState as clearLocalGameState } from '@/lib/game-logic'; 
 
 interface AuthContextData {
   user: User | null;
   loadingAuth: boolean;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
-  signInAnonymously: () => Promise<void>; // Kept the same name for the exported function
+  signInAnonymously: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -46,57 +43,109 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signUpWithEmailPassword = async (email: string, password: string) => {
-    if (!auth) return;
-    // setLoadingAuth(true); // Handled by onAuthStateChanged
+    if (!auth) {
+        console.error("Auth service not available for sign up.");
+        toast({ variant: "destructive", title: "Erreur de service", description: "Le service d'authentification n'est pas disponible." });
+        return;
+    }
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       toast({
         title: "Inscription réussie",
         description: "Bienvenue ! Vous êtes maintenant connecté.",
       });
-      // Game state will be loaded by useEffect in page.tsx based on the new user state
     } catch (error: any) {
-      console.error("Erreur d'inscription:", error);
+      console.error("Erreur d'inscription Firebase:", error.code, error.message);
+      let description = "Une erreur inconnue est survenue lors de l'inscription.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            description = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+            break;
+          case 'auth/invalid-email':
+            description = "L'adresse e-mail n'est pas valide.";
+            break;
+          case 'auth/operation-not-allowed':
+            description = "L'inscription par e-mail et mot de passe n'est pas activée. Vérifiez la configuration de votre projet Firebase.";
+            break;
+          case 'auth/weak-password':
+            description = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
+            break;
+          default:
+            description = error.message || description;
+        }
+      } else if (error.message) {
+        description = error.message;
+      }
       toast({
         variant: "destructive",
         title: "Erreur d'inscription",
-        description: error.message || "Impossible de créer un compte.",
+        description: description,
       });
     }
   };
 
   const signInWithEmailPassword = async (email: string, password: string) => {
-    if (!auth) return;
-    // setLoadingAuth(true); // Handled by onAuthStateChanged
+    if (!auth) {
+        console.error("Auth service not available for sign in.");
+        toast({ variant: "destructive", title: "Erreur de service", description: "Le service d'authentification n'est pas disponible." });
+        return;
+    }
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: "Connexion réussie",
         description: "Content de vous revoir !",
       });
-      // Game state will be loaded by useEffect in page.tsx
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
+      console.error("Erreur de connexion Firebase:", error.code, error.message);
+      let description = "Une erreur inconnue est survenue lors de la connexion.";
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/invalid-email':
+            description = "L'adresse e-mail n'est pas valide.";
+            break;
+          case 'auth/user-disabled':
+            description = "Ce compte utilisateur a été désactivé.";
+            break;
+          case 'auth/user-not-found':
+          case 'auth/wrong-password': // Grouped for similar user experience
+            description = "Adresse e-mail ou mot de passe incorrect.";
+            break;
+          case 'auth/invalid-credential':
+             description = "Identifiants invalides. Veuillez vérifier votre e-mail et mot de passe.";
+            break;
+          case 'auth/operation-not-allowed':
+             description = "La connexion par e-mail et mot de passe n'est pas activée. Vérifiez la configuration de votre projet Firebase.";
+             break;
+          default:
+            description = error.message || description;
+        }
+      } else if (error.message) {
+        description = error.message;
+      }
       toast({
         variant: "destructive",
         title: "Erreur de connexion",
-        description: error.message || "Email ou mot de passe incorrect.",
+        description: description,
       });
     }
   };
 
   const signInAnonymously = async () => { 
-    if (!auth) return;
-    // setLoadingAuth(true); // Handled by onAuthStateChanged
+    if (!auth) {
+        console.error("Auth service not available for anonymous sign in.");
+        toast({ variant: "destructive", title: "Erreur de service", description: "Le service d'authentification n'est pas disponible." });
+        return;
+    }
     try {
       await firebaseSignInAnonymously(auth); 
       toast({
         title: "Connecté anonymement",
         description: "Vous pouvez jouer sans compte. Votre progression sera locale.",
       });
-      // Game state will be loaded by useEffect in page.tsx (from localStorage for anon)
     } catch (error: any) {
-      console.error("Erreur de connexion anonyme:", error);
+      console.error("Erreur de connexion anonyme Firebase:", error.code, error.message);
       toast({
         variant: "destructive",
         title: "Erreur de connexion anonyme",
@@ -106,19 +155,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signOutUser = async () => {
-    if (!auth) return;
-    // setLoadingAuth(true); // Handled by onAuthStateChanged
+    if (!auth) {
+        console.error("Auth service not available for sign out.");
+        // Don't necessarily need a toast here unless sign out itself fails rarely
+        return;
+    }
     try {
       await firebaseSignOut(auth);
-      // setUser(null); // This will be handled by onAuthStateChanged
-      clearLocalGameState(); // Clear local game state on sign out
+      clearLocalGameState(); 
       toast({
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
-      // page.tsx will reset its gameState to player: null due to user becoming null
     } catch (error: any) {
-      console.error("Erreur de déconnexion:", error);
+      console.error("Erreur de déconnexion Firebase:", error.code, error.message);
       toast({
         variant: "destructive",
         title: "Erreur de déconnexion",
