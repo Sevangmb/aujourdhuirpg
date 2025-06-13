@@ -24,7 +24,7 @@ import {
 } from '@/lib/game-logic';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 import { Loader2 } from 'lucide-react';
-import { useAuth, AuthProvider } from '@/contexts/AuthContext'; // AuthProvider needed here if page is the root for auth context
+import { useAuth } from '@/contexts/AuthContext'; 
 import { useToast } from "@/hooks/use-toast";
 
 // Sidebar components
@@ -39,7 +39,7 @@ function HomePageContent() {
   const {
     user,
     loadingAuth,
-  } = useAuth(); // AuthDisplay is now in LeftSidebar, which will get context from AuthProvider in RootLayout
+  } = useAuth(); 
   const { toast } = useToast();
 
   const performInitialLoad = useCallback(async () => {
@@ -59,7 +59,7 @@ function HomePageContent() {
         } else {
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
-            const playerToSave = { ...localState.player, uid: user.uid };
+            const playerToSave = { ...localState.player, uid: user.uid }; // Ensure UID is set for cloud save
             const hydratedPlayerForCloud = hydratePlayer(playerToSave);
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
             
@@ -79,12 +79,15 @@ function HomePageContent() {
     }
     
     if (loadedState && loadedState.player) {
-      if (user && !user.isAnonymous && user.uid && loadedState.player.uid !== user.uid) {
+      const hydratedPlayer = hydratePlayer(loadedState.player);
+      let finalLoadedState = { ...loadedState, player: hydratedPlayer };
+
+      if (user && !user.isAnonymous && user.uid && finalLoadedState.player.uid !== user.uid) {
         console.warn("Player UID mismatch between loaded state and current user. Updating state with current user's UID.");
-        const playerWithCorrectUID = hydratePlayer({ ...loadedState.player, uid: user.uid });
-        loadedState = { ...loadedState, player: playerWithCorrectUID };
+        const playerWithCorrectUID = hydratePlayer({ ...finalLoadedState.player, uid: user.uid });
+        finalLoadedState = { ...finalLoadedState, player: playerWithCorrectUID };
       }
-      setGameState(loadedState);
+      setGameState(finalLoadedState);
     } else {
       setGameState({ player: null, currentScenario: null });
     }
@@ -110,6 +113,12 @@ function HomePageContent() {
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: { ...initialPlayerLocation },
+      questLog: [],
+      encounteredPNJs: [],
+      decisionLog: [],
+      clues: [],
+      documents: [],
+      investigationNotes: "",
     };
 
     const hydratedPlayer = hydratePlayer(playerBaseDetails);
@@ -152,15 +161,15 @@ function HomePageContent() {
 
   return (
       <SidebarProvider defaultOpen={true}>
-        <Sidebar side="left" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px]">
+        <Sidebar side="left" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px] border-r">
           <LeftSidebar 
             player={gameState?.player || null}
             onRestart={handleRestart}
-            isLoading={isLoadingState} // or a more specific loading for AI actions
+            isLoading={isLoadingState} 
           />
         </Sidebar>
         <SidebarInset>
-          <div className="flex flex-col h-screen max-h-screen overflow-hidden">
+          <div className="flex flex-col h-screen max-h-screen overflow-hidden"> {/* This overflow-hidden is important for the central panel */}
             {!user ? (
               <div className="flex-grow flex items-center justify-center">
                  <WelcomeMessage />
@@ -169,7 +178,7 @@ function HomePageContent() {
               <GamePlay 
                 initialGameState={gameState} 
                 onRestart={handleRestart} 
-                setGameState={setGameState} // Pass setGameState to allow GamePlay to update player directly
+                setGameState={setGameState} 
               />
             ) : (
               <div className="flex-grow flex items-center justify-center p-4">
@@ -178,7 +187,7 @@ function HomePageContent() {
             )}
           </div>
         </SidebarInset>
-        <Sidebar side="right" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px]">
+        <Sidebar side="right" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px] border-l">
            <RightSidebar player={gameState?.player || null} />
         </Sidebar>
       </SidebarProvider>
@@ -186,8 +195,7 @@ function HomePageContent() {
 }
 
 
-// Wrap HomePageContent with AuthProvider if it's not already in RootLayout
-// For this structure, AuthProvider is in RootLayout, so HomePageContent doesn't need to re-wrap.
 export default function HomePage() {
   return <HomePageContent />;
 }
+
