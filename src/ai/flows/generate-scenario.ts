@@ -12,7 +12,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { getWeatherTool } from '@/ai/tools/get-weather-tool';
 import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool';
-import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool'; // Import the new POI tool
+import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
+import { getNewsTool } from '@/ai/tools/get-news-tool'; // Import the new news tool
 
 const LocationSchema = z.object({
   latitude: z.number().describe('The latitude of the location.'),
@@ -50,7 +51,7 @@ const GenerateScenarioInputSchema = z.object({
   playerStats: z.record(z.number()).describe('A record of the player character stats (e.g., {"Sante": 100, "Charisme": 50}).'),
   playerSkills: SkillsSchema,
   playerTraitsMentalStates: TraitsMentalStatesSchema,
-  playerProgression: ProgressionInputSchema, // Use the new input schema
+  playerProgression: ProgressionInputSchema,
   playerAlignment: AlignmentSchema,
   playerInventory: z.array(InventoryItemInputSchema).describe("A list of items the player currently possesses, with their names and quantities."),
   playerChoice: z.string().describe('The free-form text action the player typed.'),
@@ -69,13 +70,13 @@ const GenerateScenarioOutputSchema = z.object({
   scenarioStatsUpdate: z.record(z.number()).optional().describe('A record of the changes that will happen to the player stats as a result of entering this new scenario (e.g., {"Sante": -10, "Intelligence": 5}). If there is no impact, the record can be empty or omitted.'),
   newLocationDetails: NewLocationDetailsSchema.optional(),
   xpGained: z.number().optional().describe("Experience points gained from this scenario's outcome, if any. Award reasonably (e.g., 5-50 XP)."),
-  itemsAdded: z.array(z.object({ 
-      itemId: z.string().describe("The unique ID of the item from the master item list (e.g. 'energy_bar_01', 'medkit_basic_01', 'mysterious_key_01', 'data_stick_01')."), 
-      quantity: z.number().min(1).describe("Quantity of the item added.") 
+  itemsAdded: z.array(z.object({
+      itemId: z.string().describe("The unique ID of the item from the master item list (e.g. 'energy_bar_01', 'medkit_basic_01', 'mysterious_key_01', 'data_stick_01')."),
+      quantity: z.number().min(1).describe("Quantity of the item added.")
     })).optional().describe("List of items to be added to the player's inventory if they discover something."),
-  itemsRemoved: z.array(z.object({ 
-      itemName: z.string().describe("The NAME of the item as it appears in player's inventory (e.g. 'Smartphone', 'Barre énergétique')."), 
-      quantity: z.number().min(1).describe("Quantity of the item removed.") 
+  itemsRemoved: z.array(z.object({
+      itemName: z.string().describe("The NAME of the item as it appears in player's inventory (e.g. 'Smartphone', 'Barre énergétique')."),
+      quantity: z.number().min(1).describe("Quantity of the item removed.")
     })).optional().describe("List of items to be removed from the player's inventory if they use or lose something."),
 });
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
@@ -87,7 +88,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool], // Add the POI tool
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool], // Add the news tool
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France.
@@ -114,12 +115,13 @@ Task:
 2.  If the player's action involves exploring the immediate surroundings, looking for a specific type of place (e.g., "je cherche un café", "où trouver un magasin ?", "y a-t-il un hôtel près d'ici ?"), or if simply describing the environment would benefit from knowing what's nearby, use the 'getNearbyPoisTool'.
     *   Provide the player's current latitude and longitude.
     *   You can specify a 'poiType' (e.g., "restaurant", "shop", "hotel", "tourism", "museum", "pharmacy") if the player's request is specific. If the player is just exploring, you can omit 'poiType' to get general amenities or use a broad category like "amenity" or "shop".
-    *   The tool will return a list of nearby places.
 3.  If the player's action, the scenario, or an emerging Non-Player Character (PNJ) involves a specific, identifiable real-world place (e.g., "Musée du Louvre"), a historical or contemporary public figure (e.g., a famous artist, scientist, politician encountered as a PNJ), or a notable event, consider using the 'getWikipediaInfoTool'. Provide the exact name as the 'searchTerm' to fetch factual context.
-4.  Incorporate the fetched weather, nearby POIs (if any), and Wikipedia information (if any) naturally and subtly into the scenario description. The goal is to enrich the story and provide context or options.
-    *   For POIs: You might mention some of the found places, e.g., "En regardant autour de vous, vous remarquez une boulangerie animée, 'Le Pain Doré', et un petit café, 'Le Coin Tranquille', juste de l'autre côté de la rue." or "Votre recherche d'un hôtel vous indique que l'Hôtel Beau Séjour' est à quelques centaines de mètres."
-    *   For Wikipedia: Weave the *information and descriptions* obtained from the Wikipedia summary (for both places and PNJs) into the narrative. For example, if a PNJ is based on a real person, you might subtly include details from their known biography or achievements in their dialogue or actions. For a place, describe it using details from its Wikipedia summary to make it more vivid and recognizable. The goal is to enhance immersion and provide interesting, brief context. Do NOT use Wikipedia for generic terms or simply state facts; integrate them into the story.
-5.  Consider current events in France when creating the scenario if relevant and natural, but prioritize a fun and engaging player experience.
+4.  To make the world feel current and alive, consider using the 'getNewsTool' (especially for 'fr' - France) at the beginning of a new game session (if currentScenario is initial) or if the player interacts with news sources (TV, radio, internet cafe).
+    *   The news should be woven into the narrative subtly – perhaps as background chatter, a headline glimpsed, or a topic of conversation for PNJs. It could inspire minor events or a general mood. Avoid just listing news.
+5.  Incorporate the fetched weather, nearby POIs, Wikipedia information, and news (if any) naturally and subtly into the scenario description. The goal is to enrich the story and provide context or options.
+    *   For POIs: You might mention some of the found places, e.g., "En regardant autour de vous, vous remarquez une boulangerie animée, 'Le Pain Doré', et un petit café, 'Le Coin Tranquille', juste de l'autre côté de la rue."
+    *   For Wikipedia: Weave the *information and descriptions* obtained from the Wikipedia summary (for both places and PNJs) into the narrative. For example, if a PNJ is based on a real person, you might subtly include details from their known biography or achievements in their dialogue or actions. For a place, describe it using details from its Wikipedia summary to make it more vivid and recognizable.
+    *   For News: A radio in a cafe might be discussing a recent event, or a discarded newspaper headline could hint at something larger.
 6.  Generate a new scenario based on ALL the player information (including their inventory) and their typed action: "{{{playerChoice}}}".
 7.  The scenario text should be a narrative continuation of the story, describing what happens as a result of the player's action. It should be between 100 and 250 words and formatted as well-formed HTML (e.g., using <p> tags). It should NOT contain any interactive elements like buttons.
 8.  Core Stat Updates: Provide 'scenarioStatsUpdate' for direct impacts on core stats.
@@ -129,7 +131,7 @@ Task:
     *   Items Used/Lost: Populate 'itemsRemoved' with 'itemName' (from player's inventory) and 'quantity'.
 11. Location Changes: If the player moves, provide 'newLocationDetails' with 'latitude', 'longitude', 'placeName', and 'reasonForMove'.
 
-Always make the story feel real by mentioning famous people or real places from France whenever it makes sense, using the information gathered from tools like Wikipedia to add depth and accuracy to their portrayal or description in the story.
+Always make the story feel real by mentioning famous people or real places from France whenever it makes sense, using the information gathered from tools like Wikipedia and NewsAPI to add depth and accuracy to their portrayal or description in the story.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
 `,
 });
@@ -149,5 +151,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
