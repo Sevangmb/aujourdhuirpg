@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
@@ -14,31 +15,42 @@ const ScenarioDisplay: React.FC<ScenarioDisplayProps> = ({ scenarioHTML, onChoic
 
   useEffect(() => {
     const currentContentRef = contentRef.current;
-    if (currentContentRef && !isLoading) {
-      const choiceButtons = currentContentRef.querySelectorAll('button[data-choice-text]');
-      
-      const eventListeners: Array<{element: Element, type: string, listener: EventListener}> = [];
 
-      choiceButtons.forEach(button => {
+    if (!currentContentRef || isLoading) {
+      // Si la référence n'est pas encore disponible ou si nous chargeons,
+      // s'assurer qu'aucun ancien écouteur ne persiste et ne rien faire de plus.
+      // La fonction de nettoyage de l'effet précédent s'en est déjà occupée.
+      return;
+    }
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Remonter dans l'arbre DOM pour trouver le bouton si l'utilisateur a cliqué sur un enfant du bouton
+      const button = target.closest('button[data-choice-text]') as HTMLButtonElement | null;
+
+      if (button) {
         const choiceText = button.getAttribute('data-choice-text');
         if (choiceText) {
-          const handleClick = (event: Event) => {
-            event.preventDefault(); // Prevent default button behavior if any
-            onChoiceMade(choiceText);
-          };
-          button.addEventListener('click', handleClick);
-          eventListeners.push({element: button, type: 'click', listener: handleClick});
+          event.preventDefault(); // Empêcher le comportement par défaut du bouton
+          onChoiceMade(choiceText);
         }
-      });
+      }
+    };
 
-      // Cleanup function to remove event listeners
-      return () => {
-        eventListeners.forEach(({element, type, listener}) => {
-          element.removeEventListener(type, listener);
-        });
-      };
-    }
-  }, [scenarioHTML, onChoiceMade, isLoading]); // Rerun when HTML changes or loading state changes
+    // Attacher l'écouteur d'événement au conteneur
+    currentContentRef.addEventListener('click', handleClick);
+
+    // Fonction de nettoyage pour retirer l'écouteur d'événement
+    return () => {
+      if (currentContentRef) {
+        currentContentRef.removeEventListener('click', handleClick);
+      }
+    };
+    // Dépendances :
+    // - scenarioHTML : pour ré-attacher si le HTML de base change fondamentalement (même si la délégation le rend moins critique pour les enfants)
+    // - onChoiceMade : pour s'assurer que la dernière version du callback est utilisée
+    // - isLoading : pour s'assurer que les écouteurs sont (ré)attachés une fois le chargement terminé
+  }, [scenarioHTML, onChoiceMade, isLoading]);
 
   return (
     <Card className="shadow-lg flex-grow flex flex-col">
