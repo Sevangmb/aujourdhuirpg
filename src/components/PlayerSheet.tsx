@@ -5,7 +5,7 @@ import type { Player } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { User, Shield, Brain, Sparkles, BarChart3, TrendingUp, Palette } from 'lucide-react';
+import { User, Shield, Brain, Sparkles, BarChart3, TrendingUp, Palette, Euro } from 'lucide-react'; // Added Euro
 import { Progress } from "@/components/ui/progress"; // Import Progress component
 
 interface PlayerSheetProps {
@@ -22,13 +22,14 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   return (
     <div className="p-4 h-full"> {/* Removed overflow-y-auto as parent SheetContent handles it */}
       <Tabs defaultValue="identity" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 mb-4">
           <TabsTrigger value="identity"><User className="w-4 h-4 mr-2 inline-block" />Identité</TabsTrigger>
           <TabsTrigger value="stats"><Shield className="w-4 h-4 mr-2 inline-block" />Stats</TabsTrigger>
           <TabsTrigger value="skills"><Sparkles className="w-4 h-4 mr-2 inline-block" />Compétences</TabsTrigger>
           <TabsTrigger value="traits"><Brain className="w-4 h-4 mr-2 inline-block" />Traits</TabsTrigger>
           <TabsTrigger value="progression"><TrendingUp className="w-4 h-4 mr-2 inline-block" />Progression</TabsTrigger>
           <TabsTrigger value="alignment"><Palette className="w-4 h-4 mr-2 inline-block" />Alignement</TabsTrigger>
+          <TabsTrigger value="money"><Euro className="w-4 h-4 mr-2 inline-block" />Argent</TabsTrigger>
         </TabsList>
 
         <TabsContent value="identity">
@@ -163,6 +164,19 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                 <p className="text-lg">Valeur : <span className="font-bold text-primary">{player.alignment.goodEvil}</span></p>
                 <p className="text-xs text-muted-foreground">(-100 Mal, 0 Neutre, 100 Bien)</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="money">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-primary flex items-center">
+                <Euro className="w-6 h-6 mr-2" /> Argent
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-accent text-center">{player.money} €</p>
+              <p className="text-sm text-muted-foreground text-center mt-1">Votre solde actuel.</p>
             </CardContent>
           </Card>
         </TabsContent>

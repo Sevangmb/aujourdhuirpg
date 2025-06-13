@@ -20,10 +20,11 @@ import {
   initialTraitsMentalStates, 
   initialProgression, 
   initialAlignment,
-  initialInventory, // Import initial inventory
+  initialInventory,
+  initialPlayerMoney, // Import initial money
   defaultAvatarUrl
 } from '@/lib/game-logic';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase } from 'lucide-react'; // Added Briefcase for Inventory
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react'; // Added Euro for money
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react'; // Import all icons
 
@@ -38,7 +39,7 @@ const characterSchema = z.object({
 type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation'>) => void;
+  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money'>) => void;
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate }) => {
@@ -54,7 +55,8 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    const newPlayerData: Omit<Player, 'currentLocation'> = {
+    // Note: 'money' will be set by page.tsx or hydratePlayer
+    const newPlayerData: Omit<Player, 'currentLocation' | 'money'> = {
       name: data.name,
       gender: data.gender,
       age: data.age,
@@ -66,7 +68,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       traitsMentalStates: [...initialTraitsMentalStates],
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
-      inventory: [ ...initialInventory ], // Add initial inventory
+      inventory: [ ...initialInventory ],
     };
     onCharacterCreate(newPlayerData);
   };
@@ -199,6 +201,12 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                     );
                   })}
                 </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90 flex items-center justify-center">
+                  <Euro className="w-5 h-5 mr-2" />Argent de Départ
+                </h3>
+                <p className="text-center text-lg font-bold text-accent">{initialPlayerMoney} €</p>
               </div>
             </div>
 

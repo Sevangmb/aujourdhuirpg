@@ -20,7 +20,8 @@ import {
   initialInventory, 
   defaultAvatarUrl,
   initialPlayerStats,
-  hydratePlayer // Import hydratePlayer
+  hydratePlayer, // Import hydratePlayer
+  initialPlayerMoney // Import initial player money
 } from '@/lib/game-logic';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 import { Loader2 } from 'lucide-react';
@@ -98,7 +99,7 @@ export default function HomePage() {
     }
   }, [loadingAuth, performInitialLoad]);
 
-  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' >) => {
+  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'money' >) => {
     const playerBaseDetails: Partial<Player> = { // Use Partial<Player> to build up
       ...playerDataFromForm, 
       avatarUrl: defaultAvatarUrl, 
@@ -108,6 +109,7 @@ export default function HomePage() {
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
+      money: initialPlayerMoney, // Set initial money
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: { ...initialPlayerLocation },
       // New fields will be added by hydratePlayer

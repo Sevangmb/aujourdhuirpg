@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, Scenario, PlayerStats, LocationData, InventoryItem, Progression, GameNotification, Quest, PNJ, MajorDecision } from '@/lib/types';
+import type { GameState, Player, PlayerStats, LocationData, InventoryItem, Progression, GameNotification, Quest, PNJ, MajorDecision } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   processAndApplyAIScenarioOutput 
 } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star, ScrollText } from 'lucide-react'; // Added ScrollText for Quest Log
+import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star, ScrollText, Euro } from 'lucide-react'; // Added Euro
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
@@ -148,6 +148,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
             title: q.title, 
             description: q.description.substring(0,150) + "...", // Truncate for brevity
             type: q.type,
+            moneyReward: q.moneyReward,
             currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
         }));
 
@@ -171,6 +172,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerProgression: playerProgressionForAI,
       playerAlignment: player.alignment,
       playerInventory: simplifiedInventory,
+      playerMoney: player.money, // Pass current money
       playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
       playerLocation: player.currentLocation,
@@ -190,12 +192,14 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
           toastAction = <Star className="text-yellow-400" />;
         } else if (notification.type === 'item_added' || notification.type === 'quest_added') {
             toastAction = <Zap className="text-green-400" />
+        } else if (notification.type === 'money_changed') {
+            toastAction = <Euro className="text-accent" />;
         }
         toast({
           title: notification.title,
           description: notification.description,
           action: toastAction,
-          duration: notification.type === 'leveled_up' || notification.type === 'quest_added' ? 5000: 3000,
+          duration: notification.type === 'leveled_up' || notification.type === 'quest_added' || notification.type === 'money_changed' ? 5000: 3000,
         });
       });
 

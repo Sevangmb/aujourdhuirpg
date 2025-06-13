@@ -44,7 +44,7 @@ export const initialAlignment: Alignment = {
 // Initialize inventory from master item list
 export const initialInventory: InventoryItem[] = [
   getMasterItemById('smartphone_01'),
-  getMasterItemById('wallet_01'),
+  getMasterItemById('wallet_01'), // Wallet might imply initial cash
   getMasterItemById('keys_apartment_01'),
   getMasterItemById('energy_bar_01'),
 ]
@@ -59,6 +59,7 @@ export const initialPlayerLocation: LocationData = {
 };
 
 export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
+export const initialPlayerMoney: number = 50; // Starting money, e.g., 50 euros
 
 // --- Initial empty arrays for new player fields ---
 export const initialQuestLog: Quest[] = [];
@@ -70,7 +71,7 @@ export function getInitialScenario(player: Player): Scenario {
  return {
     scenarioText: `
       <h1 class="font-headline">Bienvenue, ${player.name}</h1>
-      <p>Vous êtes ${player.name}, ${player.background}. Vous vous trouvez à ${player.currentLocation.placeName}, une ville pleine d'opportunités et de mystères. Le soleil du matin commence à réchauffer les rues pavées.</p>
+      <p>Vous êtes ${player.name}, ${player.background}. Vous vous trouvez à ${player.currentLocation.placeName}, une ville pleine d'opportunités et de mystères. Vous avez ${player.money}€ en poche. Le soleil du matin commence à réchauffer les rues pavées.</p>
       <p>Tapez ci-dessous ce que vous souhaitez faire pour commencer votre journée.</p>
     `,
   };
@@ -124,6 +125,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       ...(savedPlayer?.progression || {}),
     },
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
+    money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
     inventory: Array.isArray(savedPlayer?.inventory) && savedPlayer.inventory.length > 0
       ? savedPlayer.inventory
           .map(item => {
@@ -136,7 +138,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
           .filter(item => item !== null) as InventoryItem[]
       : [...initialInventory],
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
-    // Hydrate new fields
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
     encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
     decisionLog: Array.isArray(savedPlayer?.decisionLog) ? savedPlayer.decisionLog : [...initialDecisionLog],
@@ -146,6 +147,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   if (typeof player.progression.xp !== 'number' || player.progression.xp < 0) player.progression.xp = 0;
   player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
   if (!Array.isArray(player.progression.perks)) player.progression.perks = [];
+  if (typeof player.money !== 'number') player.money = initialPlayerMoney; // Ensure money is always a number
 
   if (player.inventory.length === 0) {
     player.inventory = [...initialInventory];
@@ -273,6 +275,11 @@ export function addXP(currentProgression: Progression, xpGained: number): { newP
   return { newProgression, leveledUp };
 }
 
+export function addMoney(currentMoney: number, amount: number): number {
+  return Math.max(0, currentMoney + amount); // Prevent negative money unless debt is a feature
+}
+
+
 // --- Fonctions pour gérer le journal de quêtes, PNJ, décisions ---
 export function addQuestToLog(currentQuestLog: Quest[], newQuest: Quest): Quest[] {
   if (currentQuestLog.find(q => q.id === newQuest.id)) {
@@ -282,10 +289,22 @@ export function addQuestToLog(currentQuestLog: Quest[], newQuest: Quest): Quest[
   return [...currentQuestLog, newQuest];
 }
 
-export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: Partial<Omit<Quest, 'id'>>): Quest[] {
-  return currentQuestLog.map(quest =>
-    quest.id === questId ? { ...quest, ...updates, dateCompleted: updates.status === 'completed' ? new Date().toISOString() : quest.dateCompleted } : quest
-  );
+export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: Partial<Omit<Quest, 'id'>>): { updatedLog: Quest[], completedQuestWithMoneyReward?: Quest } {
+  let completedQuestWithMoneyReward: Quest | undefined = undefined;
+  const updatedLog = currentQuestLog.map(quest => {
+    if (quest.id === questId) {
+      const updatedQuest = { ...quest, ...updates };
+      if (updates.status === 'completed') {
+        updatedQuest.dateCompleted = new Date().toISOString();
+        if (updatedQuest.moneyReward && updatedQuest.moneyReward > 0) {
+          completedQuestWithMoneyReward = updatedQuest;
+        }
+      }
+      return updatedQuest;
+    }
+    return quest;
+  });
+  return { updatedLog, completedQuestWithMoneyReward };
 }
 
 export function addOrUpdatePNJ(currentPNJs: PNJ[], pnjData: PNJ): PNJ[] {
@@ -308,14 +327,20 @@ export function logMajorDecision(currentDecisionLog: MajorDecision[], newDecisio
 
 export function processAndApplyAIScenarioOutput(
   currentPlayer: Player,
-  aiOutput: GenerateScenarioOutput // Note: This will need to be updated with new fields for quests etc.
+  aiOutput: GenerateScenarioOutput
 ): { updatedPlayer: Player; notifications: GameNotification[] } {
   let processedPlayer = { ...currentPlayer };
   const notifications: GameNotification[] = [];
 
+  // Initialize arrays if they are undefined
+  processedPlayer.questLog = processedPlayer.questLog || [];
+  processedPlayer.encounteredPNJs = processedPlayer.encounteredPNJs || [];
+  processedPlayer.decisionLog = processedPlayer.decisionLog || [];
+  processedPlayer.money = typeof processedPlayer.money === 'number' ? processedPlayer.money : initialPlayerMoney;
+
+
   // Mise à jour des stats
   if (aiOutput.scenarioStatsUpdate) {
-    // const oldStats = {...processedPlayer.stats}; // Si on veut comparer pour des notifs détaillées
     processedPlayer.stats = applyStatChanges(processedPlayer.stats, aiOutput.scenarioStatsUpdate);
   }
 
@@ -339,6 +364,18 @@ export function processAndApplyAIScenarioOutput(
     }
   }
   
+  // Changement d'argent direct (hors récompense de quête)
+  if (typeof aiOutput.moneyChange === 'number' && aiOutput.moneyChange !== 0) {
+    const oldMoney = processedPlayer.money;
+    processedPlayer.money = addMoney(processedPlayer.money, aiOutput.moneyChange);
+    notifications.push({
+      type: 'money_changed',
+      title: aiOutput.moneyChange > 0 ? "Argent gagné !" : "Argent dépensé/perdu.",
+      description: `Vous ${aiOutput.moneyChange > 0 ? 'recevez' : 'perdez'} ${Math.abs(aiOutput.moneyChange)}€. Votre solde : ${processedPlayer.money}€.`,
+      details: { amount: aiOutput.moneyChange, oldBalance: oldMoney, newBalance: processedPlayer.money }
+    });
+  }
+
   // Objets ajoutés
   if (aiOutput.itemsAdded && aiOutput.itemsAdded.length > 0) {
     let currentInv = processedPlayer.inventory;
@@ -390,8 +427,7 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  // --- Traitement des nouvelles données de quêtes, PNJ, décisions ---
-
+  // Nouvelles quêtes
   if (aiOutput.newQuests && Array.isArray(aiOutput.newQuests)) {
     aiOutput.newQuests.forEach(questData => {
       const newQuest: Quest = {
@@ -403,22 +439,24 @@ export function processAndApplyAIScenarioOutput(
         objectives: questData.objectives ? questData.objectives.map((obj: any) => ({id: obj.id, description: obj.description, isCompleted: obj.isCompleted === undefined ? false : obj.isCompleted })) : [],
         giver: questData.giver,
         reward: questData.reward,
+        moneyReward: questData.moneyReward,
         relatedLocation: questData.relatedLocation,
         dateAdded: new Date().toISOString(),
       };
-      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog || [], newQuest);
+      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog, newQuest);
       notifications.push({
         type: 'quest_added',
         title: `Nouvelle Quête : ${newQuest.title}`,
         description: newQuest.description.substring(0, 100) + (newQuest.description.length > 100 ? "..." : ""),
-        details: { questId: newQuest.id, questType: newQuest.type }
+        details: { questId: newQuest.id, questType: newQuest.type, moneyReward: newQuest.moneyReward }
       });
     });
   }
 
+  // Mises à jour de quêtes
   if (aiOutput.questUpdates && Array.isArray(aiOutput.questUpdates)) {
     aiOutput.questUpdates.forEach(update => {
-      const oldQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
+      const oldQuest = processedPlayer.questLog.find(q => q.id === update.questId);
       const questUpdatesPayload: Partial<Omit<Quest, 'id'>> = {};
       if (update.newStatus) questUpdatesPayload.status = update.newStatus;
       if (update.updatedObjectives) {
@@ -435,8 +473,21 @@ export function processAndApplyAIScenarioOutput(
          ];
       }
 
-      processedPlayer.questLog = updateQuestInLog(processedPlayer.questLog || [], update.questId, questUpdatesPayload);
-      const updatedQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
+      const { updatedLog, completedQuestWithMoneyReward } = updateQuestInLog(processedPlayer.questLog, update.questId, questUpdatesPayload);
+      processedPlayer.questLog = updatedLog;
+
+      if (completedQuestWithMoneyReward && completedQuestWithMoneyReward.moneyReward && completedQuestWithMoneyReward.moneyReward > 0) {
+        const oldMoney = processedPlayer.money;
+        processedPlayer.money = addMoney(processedPlayer.money, completedQuestWithMoneyReward.moneyReward);
+        notifications.push({
+            type: 'money_changed',
+            title: "Récompense de quête !",
+            description: `Quête "${completedQuestWithMoneyReward.title}" terminée. Vous recevez ${completedQuestWithMoneyReward.moneyReward}€. Votre solde : ${processedPlayer.money}€.`,
+            details: { amount: completedQuestWithMoneyReward.moneyReward, oldBalance: oldMoney, newBalance: processedPlayer.money, questId: completedQuestWithMoneyReward.id }
+        });
+      }
+      
+      const updatedQuest = processedPlayer.questLog.find(q => q.id === update.questId);
       if (updatedQuest && (!oldQuest || oldQuest.status !== updatedQuest.status || JSON.stringify(oldQuest.objectives) !== JSON.stringify(updatedQuest.objectives) ) ) {
         notifications.push({
           type: 'quest_updated',
@@ -448,6 +499,7 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
+  // Interactions PNJ
   if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
     aiOutput.pnjInteractions.forEach(pnjData => {
       const pnj: PNJ = {
@@ -461,8 +513,8 @@ export function processAndApplyAIScenarioOutput(
         notes: pnjData.notes,
         lastSeen: new Date().toISOString()
       };
-      const oldPNJ = (processedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
-      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs || [], pnj);
+      const oldPNJ = processedPlayer.encounteredPNJs.find(p=>p.id === pnj.id);
+      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs, pnj);
       if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
         notifications.push({
           type: 'pnj_encountered',
@@ -474,6 +526,7 @@ export function processAndApplyAIScenarioOutput(
     });
   }
   
+  // Décisions majeures
   if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
     aiOutput.majorDecisionsLogged.forEach(decisionData => {
       const decision: MajorDecision = {
@@ -483,7 +536,7 @@ export function processAndApplyAIScenarioOutput(
         scenarioContext: decisionData.scenarioContext,
         dateMade: new Date().toISOString(),
       };
-      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog || [], decision);
+      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog, decision);
       notifications.push({
         type: 'decision_logged',
         title: "Décision Importante Enregistrée",
@@ -492,7 +545,6 @@ export function processAndApplyAIScenarioOutput(
       });
     });
   }
-  // --- Fin du traitement ---
   
   return { updatedPlayer: processedPlayer, notifications };
 }

@@ -38,7 +38,7 @@ export interface InventoryItem {
   iconName: string; // Preferably a keyof typeof LucideIcons, or a generic one
   quantity: number;
   stackable?: boolean; // Added to determine if items stack
-  // properties?: Record<string, any>; // e.g., for weapon: { damage: 10 }, for food: { healthRestore: 20 }
+  value?: number; // Optional monetary value of the item
 }
 
 // Master definition for an item, used in the item database
@@ -64,7 +64,8 @@ export interface Quest {
   status: QuestStatus;
   objectives: QuestObjective[];
   giver?: string; // Name of the PNJ who gave the quest, if any
-  reward?: string; // Text description of the reward
+  reward?: string; // Text description of the reward (items, XP)
+  moneyReward?: number; // Monetary reward for completing the quest
   relatedLocation?: string; // Name of a relevant location
   dateAdded: string; // ISO string date
   dateCompleted?: string; // ISO string date
@@ -109,6 +110,7 @@ export type Player = {
   progression: Progression;
   alignment: Alignment;
   inventory: InventoryItem[];
+  money: number; // Player's current money (euros)
   currentLocation: LocationData;
   // Nouveaux champs pour le journal de quêtes, etc.
   questLog: Quest[];
@@ -134,10 +136,11 @@ export type GameNotificationType =
   | 'leveled_up'
   | 'location_changed'
   | 'stat_changed'
-  | 'quest_added' // New
-  | 'quest_updated' // New
-  | 'pnj_encountered' // New
-  | 'decision_logged'; // New
+  | 'quest_added'
+  | 'quest_updated'
+  | 'pnj_encountered'
+  | 'decision_logged'
+  | 'money_changed'; // New notification type for money
 
 export interface GameNotification {
   type: GameNotificationType;

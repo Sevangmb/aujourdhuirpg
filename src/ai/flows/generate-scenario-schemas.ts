@@ -44,7 +44,8 @@ export const QuestInputSchema = z.object({
   status: z.enum(['active', 'inactive', 'completed', 'failed']).default('active').describe("Statut de la quête."),
   objectives: z.array(QuestObjectiveInputSchema).describe("Liste des objectifs de la quête."),
   giver: z.string().optional().describe("Nom du PNJ qui a donné la quête."),
-  reward: z.string().optional().describe("Description textuelle de la récompense potentielle."),
+  reward: z.string().optional().describe("Description textuelle de la récompense potentielle (objets, XP)."),
+  moneyReward: z.number().optional().describe("Montant d'argent (euros) offert en récompense pour la quête."),
   relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
 }).describe("Structure pour une nouvelle quête à ajouter au journal du joueur.");
 
@@ -88,6 +89,7 @@ export const GenerateScenarioInputSchema = z.object({
   playerProgression: ProgressionInputSchema,
   playerAlignment: AlignmentSchema,
   playerInventory: z.array(InventoryItemInputSchema).describe("A list of items the player currently possesses, with their names and quantities."),
+  playerMoney: z.number().describe("The player's current amount of money (in euros)."),
   playerChoice: z.string().describe('The free-form text action the player typed.'),
   currentScenario: z.string().describe('The current scenario context (the HTML text of the previous scenario).'),
   playerLocation: LocationSchema.describe("The player's current location."),
@@ -104,6 +106,7 @@ export const GenerateScenarioOutputSchema = z.object({
   scenarioStatsUpdate: z.record(z.number()).optional().describe('A record of the changes that will happen to the player stats as a result of entering this new scenario (e.g., {"Sante": -10, "Intelligence": 5}). If there is no impact, the record can be empty or omitted.'),
   newLocationDetails: NewLocationDetailsSchema.optional(),
   xpGained: z.number().optional().describe("Experience points gained from this scenario's outcome, if any. Award reasonably (e.g., 5-50 XP)."),
+  moneyChange: z.number().optional().describe("Amount of money (euros) the player gains (positive value) or loses (negative value) in this scenario. E.g., for rewards, purchases, finding/losing money. Do not include quest completion rewards here, use 'moneyReward' in 'newQuests' or 'questUpdates' for that."),
   itemsAdded: z.array(z.object({
       itemId: z.string().describe("The unique ID of the item from the master item list (e.g. 'energy_bar_01', 'medkit_basic_01', 'mysterious_key_01', 'data_stick_01')."),
       quantity: z.number().min(1).describe("Quantity of the item added.")
