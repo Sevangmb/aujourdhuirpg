@@ -1,3 +1,4 @@
+
 import type { PlayerStats, GameState, Scenario, Player } from './types';
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
@@ -14,12 +15,7 @@ export function getInitialScenario(player: Player): Scenario {
     scenarioText: `
       <h1 class="font-headline">Bienvenue, ${player.name}</h1>
       <p>Vous êtes ${player.name}, ${player.background}. Vous vous trouvez au cœur de Paris, une ville pleine d'opportunités et de mystères. Le soleil du matin commence à réchauffer les rues pavées.</p>
-      <p>Que souhaitez-vous faire pour commencer votre journée ?</p>
-      <div>
-        <button data-choice-text="Explorer les environs immédiats">Explorer les environs immédiats</button>
-        <button data-choice-text="Trouver un café et observer les passants">Trouver un café et observer les passants</button>
-        <button data-choice-text="Consulter les actualités sur votre téléphone">Consulter les actualités sur votre téléphone</button>
-      </div>
+      <p>Tapez ci-dessous ce que vous souhaitez faire pour commencer votre journée.</p>
     `,
   };
 }

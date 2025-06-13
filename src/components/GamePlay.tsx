@@ -6,13 +6,14 @@ import type { GameState, Player, Scenario, PlayerStats } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // Import Input
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { applyStatChanges, saveGameState, getInitialScenario } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw } from 'lucide-react';
+import { Loader2, RotateCcw, Send } from 'lucide-react'; // Added Send icon
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
-import MapDisplay from './MapDisplay'; // Import the new MapDisplay component
+import MapDisplay from './MapDisplay';
 import * as LucideIcons from 'lucide-react';
 
 
@@ -66,13 +67,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(initialGameState.currentScenario);
   const [previousStats, setPreviousStats] = useState<PlayerStats | undefined>(initialGameState.player?.stats);
   const [isLoading, setIsLoading] = useState(false);
+  const [playerInput, setPlayerInput] = useState(''); // State for the player's text input
   const { toast } = useToast();
 
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
-  // Hardcoded coordinates for Paris for the map
   const parisLatitude = 48.8566;
   const parisLongitude = 2.3522;
 
@@ -89,7 +90,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     const fetchWeather = async () => {
       setWeatherLoading(true);
       setWeatherError(null);
-      // Using Paris coordinates for weather as well, consistent with map and scenario context
       try {
         const result = await getCurrentWeather(parisLatitude, parisLongitude);
         if ('error' in result) {
@@ -109,8 +109,17 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     }
   }, [player]);
 
-  const handleChoice = useCallback(async (choiceText: string) => {
-    if (!player || !currentScenario) return;
+  const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
+    if (!player || !currentScenario || !actionText.trim()) {
+      if (!actionText.trim()){
+        toast({
+          variant: "destructive",
+          title: "Action vide",
+          description: "Veuillez entrer une action.",
+        });
+      }
+      return;
+    }
 
     setIsLoading(true);
     setPreviousStats(player.stats);
@@ -119,7 +128,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerName: player.name,
       playerBackground: player.background,
       playerStats: player.stats,
-      playerChoice: choiceText,
+      playerChoice: actionText.trim(), // Use the text from input
       currentScenario: currentScenario.scenarioText,
     };
 
@@ -138,9 +147,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       const newGameState: GameState = { player: updatedPlayer, currentScenario: nextScenario };
       saveGameState(newGameState);
 
+      setPlayerInput(''); // Clear input field after submission
       toast({
-        title: "Le récit continue...",
-        description: "Votre choix a façonné la suite des événements.",
+        title: "Votre action a été prise en compte...",
+        description: "Le récit continue.",
       });
 
     } catch (error) {
@@ -158,6 +168,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       setIsLoading(false);
     }
   }, [player, currentScenario, toast]);
+
+  const handleSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handlePlayerActionSubmit(playerInput);
+  };
 
   if (!player || !currentScenario) {
     return (
@@ -182,13 +197,27 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       <div className="flex-grow flex">
         <ScenarioDisplay 
           scenarioHTML={currentScenario.scenarioText} 
-          onChoiceMade={handleChoice}
-          isLoading={isLoading}
+          isLoading={isLoading} // Pass isLoading to show spinner in scenario display if needed
         />
       </div>
+
+      <form onSubmit={handleSubmitForm} className="mt-4 flex gap-2 items-center">
+        <Input
+          type="text"
+          value={playerInput}
+          onChange={(e) => setPlayerInput(e.target.value)}
+          placeholder="Que faites-vous ensuite ?"
+          className="flex-grow"
+          disabled={isLoading}
+        />
+        <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+          Envoyer
+        </Button>
+      </form>
       
       <div className="flex justify-center mt-auto pt-4">
-        <Button onClick={onRestart} variant="outline" className="shadow-md">
+        <Button onClick={onRestart} variant="outline" className="shadow-md" disabled={isLoading}>
           <RotateCcw className="mr-2 h-4 w-4" />
           Recommencer la partie
         </Button>
