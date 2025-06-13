@@ -1,6 +1,6 @@
 
 import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem } from './types';
-import { Package } from 'lucide-react'; // Default icon
+import { getMasterItemById, ALL_ITEMS } from '@/data/items'; // Import master item list and getter
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
@@ -21,9 +21,14 @@ export const initialSkills: Skills = {
 
 export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];
 
+const calculateXpToNextLevel = (level: number): number => {
+  return level * 100 + 50 * level; // Example formula: 1=150, 2=300, 3=450 etc.
+};
+
 export const initialProgression: Progression = {
   level: 1,
   xp: 0,
+  xpToNextLevel: calculateXpToNextLevel(1),
   perks: [],
 };
 
@@ -32,11 +37,13 @@ export const initialAlignment: Alignment = {
   goodEvil: 0,    // Neutre
 };
 
+// Initialize inventory from master item list
 export const initialInventory: InventoryItem[] = [
-  { id: 'smartphone_01', name: 'Smartphone', description: 'Un smartphone moderne, batterie presque pleine.', type: 'electronic', iconName: 'Smartphone', quantity: 1 },
-  { id: 'wallet_01', name: 'Portefeuille', description: 'Contient une carte bancaire et quelques billets.', type: 'misc', iconName: 'Wallet', quantity: 1 },
-  { id: 'keys_01', name: "Clés d'appartement", description: "Un trousseau de clés qui semble ouvrir une porte quelque part.", type: 'key', iconName: 'KeyRound', quantity: 1 },
-];
+  { ...getMasterItemById('smartphone_01')!, quantity: 1 },
+  { ...getMasterItemById('wallet_01')!, quantity: 1 },
+  { ...getMasterItemById('keys_apartment_01')!, quantity: 1 },
+  { ...getMasterItemById('energy_bar_01')!, quantity: 2 },
+].filter(item => item.id); // Filter out any undefined items if IDs are mistyped
 
 export const initialPlayerLocation: LocationData = {
   latitude: 48.8566, // Paris latitude
@@ -80,9 +87,34 @@ export function loadGameState(): GameState | null {
           if (!parsedState.player.origin) parsedState.player.origin = "Inconnue";
           if (!parsedState.player.skills) parsedState.player.skills = { ...initialSkills };
           if (!parsedState.player.traitsMentalStates) parsedState.player.traitsMentalStates = [...initialTraitsMentalStates];
-          if (!parsedState.player.progression) parsedState.player.progression = { ...initialProgression };
+          
+          if (!parsedState.player.progression) {
+            parsedState.player.progression = { ...initialProgression };
+          } else { // Ensure xpToNextLevel is present even for older saves
+            if (typeof parsedState.player.progression.xpToNextLevel === 'undefined') {
+              parsedState.player.progression.xpToNextLevel = calculateXpToNextLevel(parsedState.player.progression.level);
+            }
+          }
+
           if (!parsedState.player.alignment) parsedState.player.alignment = { ...initialAlignment };
-          if (!parsedState.player.inventory) parsedState.player.inventory = [ ...initialInventory ];
+          if (!parsedState.player.inventory || parsedState.player.inventory.length === 0) {
+             // Re-initialize from master list if inventory is missing or empty in save
+             parsedState.player.inventory = [
+                { ...getMasterItemById('smartphone_01')!, quantity: 1 },
+                { ...getMasterItemById('wallet_01')!, quantity: 1 },
+                { ...getMasterItemById('keys_apartment_01')!, quantity: 1 },
+                { ...getMasterItemById('energy_bar_01')!, quantity: 2 },
+             ].filter(item => item.id);
+          } else {
+            // Ensure all items in saved inventory have all MasterItem fields
+            parsedState.player.inventory = parsedState.player.inventory.map(savedItem => {
+              const masterItem = getMasterItemById(savedItem.id);
+              if (masterItem) {
+                return { ...masterItem, quantity: savedItem.quantity };
+              }
+              return savedItem; // Should not happen if data is consistent
+            }).filter(item => item && item.id);
+          }
         }
         return parsedState;
       } catch (error) {
@@ -111,4 +143,58 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Record<stri
     }
   }
   return newStats;
+}
+
+export function addItemToInventory(currentInventory: InventoryItem[], itemId: string, quantityToAdd: number): InventoryItem[] {
+  const masterItem = getMasterItemById(itemId);
+  if (!masterItem) {
+    console.warn(`Attempted to add unknown item ID: ${itemId}`);
+    return currentInventory;
+  }
+
+  const newInventory = [...currentInventory];
+  const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
+
+  if (existingItemIndex > -1 && masterItem.stackable) {
+    newInventory[existingItemIndex].quantity += quantityToAdd;
+  } else {
+    // If not stackable or not found, add as new entry (or new stack if stackable but not found)
+    newInventory.push({ ...masterItem, quantity: quantityToAdd });
+  }
+  return newInventory;
+}
+
+export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): InventoryItem[] {
+  const newInventory = [...currentInventory];
+  // Try to find by ID first, then by name if ID doesn't match an existing item (for AI `itemName` removal)
+  let itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName);
+  if (itemIndex === -1) {
+    itemIndex = newInventory.findIndex(item => item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
+  }
+
+  if (itemIndex > -1) {
+    if (newInventory[itemIndex].quantity <= quantityToRemove) {
+      newInventory.splice(itemIndex, 1); // Remove item if quantity becomes 0 or less
+    } else {
+      newInventory[itemIndex].quantity -= quantityToRemove;
+    }
+  } else {
+    console.warn(`Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);
+  }
+  return newInventory;
+}
+
+export function addXP(currentProgression: Progression, xpGained: number): { newProgression: Progression, leveledUp: boolean } {
+  const newProgression = { ...currentProgression };
+  newProgression.xp += xpGained;
+  let leveledUp = false;
+
+  while (newProgression.xp >= newProgression.xpToNextLevel) {
+    newProgression.level += 1;
+    newProgression.xp -= newProgression.xpToNextLevel; // Subtract cost of current level
+    newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
+    leveledUp = true;
+    // Potentially add skill points or perk unlocks here in the future
+  }
+  return { newProgression, leveledUp };
 }

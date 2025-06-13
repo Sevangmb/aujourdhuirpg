@@ -15,17 +15,20 @@ export interface LocationData {
 
 export type Skills = Record<string, number>; // e.g., {"Informatique": 10, "Discretion": 5}
 export type TraitsMentalStates = string[]; // e.g., ["Stressé", "Fatigué"]
+
 export type Progression = {
   level: number;
   xp: number;
+  xpToNextLevel: number; // Added to track target for next level
   perks: string[];
 };
+
 export type Alignment = {
   chaosLawful: number; // e.g., -100 (Chaos) to 100 (Lawful)
   goodEvil: number; // e.g., -100 (Evil) to 100 (Good)
 };
 
-export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'misc';
+export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'misc' | 'quest';
 
 export interface InventoryItem {
   id: string; // Unique ID for the item
@@ -34,8 +37,15 @@ export interface InventoryItem {
   type: InventoryItemType;
   iconName: string; // Preferably a keyof typeof LucideIcons, or a generic one
   quantity: number;
+  stackable?: boolean; // Added to determine if items stack
   // properties?: Record<string, any>; // e.g., for weapon: { damage: 10 }, for food: { healthRestore: 20 }
 }
+
+// Master definition for an item, used in the item database
+export interface MasterInventoryItem extends Omit<InventoryItem, 'quantity'> {
+  // Quantity is not part of master def, it's instance-specific
+}
+
 
 export type Player = {
   name: string;
@@ -62,3 +72,4 @@ export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
 };
+

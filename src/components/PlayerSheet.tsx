@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { User, Shield, Brain, Sparkles, BarChart3, TrendingUp, Palette } from 'lucide-react';
+import { Progress } from "@/components/ui/progress"; // Import Progress component
 
 interface PlayerSheetProps {
   player: Player;
@@ -14,8 +15,12 @@ interface PlayerSheetProps {
 const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   if (!player) return null;
 
+  const xpPercentage = player.progression.xpToNextLevel > 0 
+    ? (player.progression.xp / player.progression.xpToNextLevel) * 100 
+    : 0;
+
   return (
-    <div className="p-4 h-full overflow-y-auto">
+    <div className="p-4 h-full"> {/* Removed overflow-y-auto as parent SheetContent handles it */}
       <Tabs defaultValue="identity" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-4">
           <TabsTrigger value="identity"><User className="w-4 h-4 mr-2 inline-block" />Identité</TabsTrigger>
@@ -114,14 +119,17 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
             <CardHeader>
               <CardTitle className="font-headline text-primary">Progression</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div>
                 <h4 className="font-semibold text-muted-foreground">Niveau</h4>
-                <p className="text-xl font-bold text-primary">{player.progression.level}</p>
+                <p className="text-2xl font-bold text-primary">{player.progression.level}</p>
               </div>
               <div>
-                <h4 className="font-semibold text-muted-foreground">Points d'Expérience (XP)</h4>
-                <p className="text-xl font-bold text-primary">{player.progression.xp}</p>
+                <div className="flex justify-between items-end mb-1">
+                    <h4 className="font-semibold text-muted-foreground">Points d'Expérience (XP)</h4>
+                    <p className="text-sm text-primary/80">{player.progression.xp} / {player.progression.xpToNextLevel}</p>
+                </div>
+                <Progress value={xpPercentage} className="w-full h-3" />
               </div>
               <div>
                 <h4 className="font-semibold text-muted-foreground">Talents (Perks)</h4>

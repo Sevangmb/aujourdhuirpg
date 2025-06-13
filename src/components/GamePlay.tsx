@@ -2,20 +2,28 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, Scenario, PlayerStats, LocationData, InventoryItem } from '@/lib/types';
+import type { GameState, Player, Scenario, PlayerStats, LocationData, InventoryItem, Progression } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
-import { applyStatChanges, saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
+import { 
+  applyStatChanges, 
+  saveGameState, 
+  getInitialScenario, 
+  initialPlayerLocation,
+  addItemToInventory,
+  removeItemFromInventory,
+  addXP
+} from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, UserCircle2, Briefcase } from 'lucide-react'; // Added Briefcase
+import { Loader2, RotateCcw, UserCircle2, Briefcase, Zap, Star } from 'lucide-react';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import PlayerInputForm from './PlayerInputForm';
 import PlayerSheet from './PlayerSheet';
-import InventoryDisplay from './InventoryDisplay'; // Import InventoryDisplay
+import InventoryDisplay from './InventoryDisplay';
 import {
   Sheet,
   SheetContent,
@@ -125,6 +133,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     setPreviousStats(player.stats);
 
     const simplifiedInventory = player.inventory.map(item => ({ name: item.name, quantity: item.quantity }));
+    const playerProgressionForAI = {
+      level: player.progression.level,
+      xp: player.progression.xp,
+      xpToNextLevel: player.progression.xpToNextLevel,
+      perks: player.progression.perks,
+    };
 
     const inputForAI: GenerateScenarioInput = {
       playerName: player.name,
@@ -135,7 +149,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerStats: player.stats,
       playerSkills: player.skills,
       playerTraitsMentalStates: player.traitsMentalStates,
-      playerProgression: player.progression,
+      playerProgression: playerProgressionForAI,
       playerAlignment: player.alignment,
       playerInventory: simplifiedInventory,
       playerChoice: actionText.trim(),
@@ -146,9 +160,59 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     try {
       const output: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      const updatedStats = applyStatChanges(player.stats, output.scenarioStatsUpdate);
-      let updatedPlayer = { ...(player as Player), stats: updatedStats }; 
+      let updatedPlayer = { ...player }; // Start with current player state
 
+      // 1. Apply stat changes
+      if (output.scenarioStatsUpdate) {
+        const updatedStats = applyStatChanges(updatedPlayer.stats, output.scenarioStatsUpdate);
+        updatedPlayer.stats = updatedStats;
+      }
+
+      // 2. Apply XP changes and check for level up
+      if (typeof output.xpGained === 'number' && output.xpGained > 0) {
+        const { newProgression, leveledUp } = addXP(updatedPlayer.progression, output.xpGained);
+        updatedPlayer.progression = newProgression;
+        toast({
+          title: "Expérience gagnée !",
+          description: `Vous avez gagné ${output.xpGained} XP.`,
+          action: <Zap className="text-yellow-400" />
+        });
+        if (leveledUp) {
+          toast({
+            title: "Niveau Supérieur !",
+            description: `Félicitations, vous êtes maintenant niveau ${newProgression.level} !`,
+            action: <Star className="text-yellow-500" />
+          });
+        }
+      }
+      
+      // 3. Apply inventory changes (items added)
+      if (output.itemsAdded && output.itemsAdded.length > 0) {
+        let currentInv = updatedPlayer.inventory;
+        output.itemsAdded.forEach(itemToAdd => {
+          currentInv = addItemToInventory(currentInv, itemToAdd.itemId, itemToAdd.quantity);
+          toast({
+            title: "Objet obtenu !",
+            description: `Vous avez obtenu : ${itemToAdd.itemId} (x${itemToAdd.quantity})`,
+          });
+        });
+        updatedPlayer.inventory = currentInv;
+      }
+
+      // 4. Apply inventory changes (items removed)
+      if (output.itemsRemoved && output.itemsRemoved.length > 0) {
+        let currentInv = updatedPlayer.inventory;
+        output.itemsRemoved.forEach(itemToRemove => {
+          currentInv = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
+           toast({
+            title: "Objet utilisé/perdu",
+            description: `${itemToRemove.itemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
+          });
+        });
+        updatedPlayer.inventory = currentInv;
+      }
+
+      // 5. Update location if changed
       if (output.newLocationDetails && 
           typeof output.newLocationDetails.latitude === 'number' && 
           typeof output.newLocationDetails.longitude === 'number' && 
@@ -164,8 +228,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
           description: `Vous êtes maintenant à ${newLoc.placeName}. ${output.newLocationDetails.reasonForMove || ''}`,
         });
       }
-      setPlayer(updatedPlayer);
-
+      
+      setPlayer(updatedPlayer); // Update player state with all changes
 
       const nextScenario: Scenario = {
         scenarioText: output.scenarioText,
@@ -176,10 +240,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       saveGameState(newGameState);
 
       setPlayerInput('');
-      toast({
-        title: "Votre action a été prise en compte...",
-        description: "Le récit continue.",
-      });
+      // Removed generic success toast as specific toasts are more informative
 
     } catch (error) {
       console.error("Erreur lors de la génération du scénario:", error);
@@ -230,8 +291,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
               <UserCircle2 className="mr-2 h-4 w-4" /> Fiche Personnage
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0">
-            <SheetHeader className="p-4 border-b">
+          <SheetContent side="left" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0 overflow-y-auto">
+            <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
               <SheetTitle className="font-headline text-primary">Fiche de Personnage</SheetTitle>
               <SheetDescription>
                 Consultez les détails de votre personnage.
@@ -247,8 +308,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
               <Briefcase className="mr-2 h-4 w-4" /> Inventaire
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0">
-            <SheetHeader className="p-4 border-b">
+          <SheetContent side="right" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0 flex flex-col">
+            <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
               <SheetTitle className="font-headline text-primary">Inventaire</SheetTitle>
               <SheetDescription>
                 Objets que vous transportez.
