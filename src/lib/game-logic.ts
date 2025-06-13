@@ -2,7 +2,7 @@
 import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem } from './types';
 import { getMasterItemById, ALL_ITEMS } from '@/data/items'; // Import master item list and getter
 import { saveGameStateToFirestore } from '@/services/firestore-service'; // Import Firestore save function
-import { useToast } from "@/hooks/use-toast"; // Import useToast for notifications
+// import { useToast } from "@/hooks/use-toast"; // Cannot use hooks directly in non-React functions
 
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
@@ -46,7 +46,7 @@ export const initialInventory: InventoryItem[] = [
   { ...getMasterItemById('wallet_01')!, quantity: 1 },
   { ...getMasterItemById('keys_apartment_01')!, quantity: 1 },
   { ...getMasterItemById('energy_bar_01')!, quantity: 2 },
-].filter(item => item.id); // Filter out any undefined items if IDs are mistyped
+].filter(item => item && item.id); // Filter out any undefined items if IDs are mistyped
 
 export const initialPlayerLocation: LocationData = {
   latitude: 48.8566, // Paris latitude
@@ -68,91 +68,131 @@ export function getInitialScenario(player: Player): Scenario {
 
 
 export async function saveGameState(state: GameState): Promise<void> {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-    console.log("Game state saved to LocalStorage.");
+  if (!state || !state.player) {
+    console.warn("Save Game Warning: Attempted to save invalid or incomplete game state. Aborting save.", state);
+    return;
+  }
+
+  if (typeof window !== 'undefined' && localStorage) {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+      console.log("LocalStorage Success: Game state saved to LocalStorage.");
+    } catch (error) {
+      console.error("LocalStorage Error: Failed to save game state to LocalStorage:", error);
+      // Potentially notify user if LocalStorage is critical and fails
+    }
+  } else {
+    console.warn("Save Game Warning: LocalStorage is not available. Skipping local save.");
   }
 
   if (state.player && state.player.uid) {
     try {
       await saveGameStateToFirestore(state.player.uid, state);
-      // Optional: Add a toast notification for successful cloud save
-      // const { toast } = useToast(); // This hook can't be used directly in non-React functions.
-      // toast({ title: "Progression sauvegardée dans le cloud." });
+      // Firestore save success/error is logged within saveGameStateToFirestore
     } catch (error) {
-      console.error("Failed to save game state to Firestore from game-logic:", error);
-      // Optional: Notify user of cloud save failure
-      // const { toast } = useToast();
-      // toast({ variant: "destructive", title: "Erreur de sauvegarde cloud", description: "Votre progression n'a pas pu être sauvegardée en ligne." });
+      // Error already logged by saveGameStateToFirestore.
+      // We might want to inform the user here specifically that cloud save failed.
+      // This usually means `saveGameState` itself doesn't need to show a generic Firestore error toast
+      // as the service function handles more specific logging.
+      console.log("GameLogic Info: Cloud save attempt finished (check Firestore logs for details).");
     }
+  } else {
+    console.log("GameLogic Info: Player UID not found in game state. Skipping Firestore save. This is normal for anonymous users.");
   }
 }
 
 export function loadGameState(): GameState | null {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && localStorage) {
     const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedState) {
       try {
         const parsedState = JSON.parse(savedState) as GameState;
-        if (parsedState.player) {
-          // Ensure older game states without new fields get defaults
-          parsedState.player.uid = parsedState.player.uid || undefined; // Ensure UID is present or undefined
-          if (!parsedState.player.currentLocation) {
-            parsedState.player.currentLocation = initialPlayerLocation;
-          }
-          if (!parsedState.player.gender) parsedState.player.gender = "Préfère ne pas préciser";
-          if (typeof parsedState.player.age !== 'number') parsedState.player.age = 25;
-          if (!parsedState.player.avatarUrl) parsedState.player.avatarUrl = defaultAvatarUrl;
-          if (!parsedState.player.origin) parsedState.player.origin = "Inconnue";
-          if (!parsedState.player.skills) parsedState.player.skills = { ...initialSkills };
-          if (!parsedState.player.traitsMentalStates) parsedState.player.traitsMentalStates = [...initialTraitsMentalStates];
-          
-          if (!parsedState.player.progression) {
-            parsedState.player.progression = { ...initialProgression };
-          } else { // Ensure xpToNextLevel is present even for older saves
-            if (typeof parsedState.player.progression.xpToNextLevel === 'undefined') {
-              parsedState.player.progression.xpToNextLevel = calculateXpToNextLevel(parsedState.player.progression.level);
-            }
-          }
+        // Perform more thorough validation/migration if necessary
+        if (!parsedState.player || !parsedState.currentScenario) {
+            console.warn("LocalStorage Warning: Loaded game state is missing critical player or scenario data. Clearing corrupted state.");
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            return null;
+        }
+        
+        // Ensure player object is fully populated, especially for older save states
+        const basePlayer: Player = {
+            uid: parsedState.player.uid || undefined,
+            name: '', // Will be overridden if present
+            gender: "Préfère ne pas préciser",
+            age: 25,
+            avatarUrl: defaultAvatarUrl,
+            origin: "Inconnue",
+            stats: { ...initialPlayerStats },
+            skills: { ...initialSkills },
+            traitsMentalStates: [...initialTraitsMentalStates],
+            progression: { ...initialProgression },
+            alignment: { ...initialAlignment },
+            inventory: [ ...initialInventory ],
+            currentLocation: { ...initialPlayerLocation },
+            background: '' // Will be overridden if present
+        };
 
-          if (!parsedState.player.alignment) parsedState.player.alignment = { ...initialAlignment };
-          if (!parsedState.player.inventory || parsedState.player.inventory.length === 0) {
-             // Re-initialize from master list if inventory is missing or empty in save
-             parsedState.player.inventory = [
-                { ...getMasterItemById('smartphone_01')!, quantity: 1 },
-                { ...getMasterItemById('wallet_01')!, quantity: 1 },
-                { ...getMasterItemById('keys_apartment_01')!, quantity: 1 },
-                { ...getMasterItemById('energy_bar_01')!, quantity: 2 },
-             ].filter(item => item && item.id);
-          } else {
-            // Ensure all items in saved inventory have all MasterItem fields
-            parsedState.player.inventory = parsedState.player.inventory.map(savedItem => {
-              const masterItem = getMasterItemById(savedItem.id);
-              if (masterItem) {
-                return { ...masterItem, quantity: savedItem.quantity };
-              }
-              // If masterItem is not found (e.g. item removed from game), filter it out
-              return null; 
-            }).filter(item => item !== null) as InventoryItem[];
+        parsedState.player = {
+            ...basePlayer,
+            ...parsedState.player,
+        };
+        
+        // Specific checks for nested objects that might be missing or need defaults
+        if (!parsedState.player.currentLocation) parsedState.player.currentLocation = { ...initialPlayerLocation };
+        if (!parsedState.player.stats) parsedState.player.stats = { ...initialPlayerStats };
+        else parsedState.player.stats = { ...initialPlayerStats, ...parsedState.player.stats }; // Merge with defaults
+
+        if (!parsedState.player.skills) parsedState.player.skills = { ...initialSkills };
+        else parsedState.player.skills = { ...initialSkills, ...parsedState.player.skills };
+
+        if (!Array.isArray(parsedState.player.traitsMentalStates)) parsedState.player.traitsMentalStates = [...initialTraitsMentalStates];
+        
+        if (!parsedState.player.progression) {
+          parsedState.player.progression = { ...initialProgression };
+        } else {
+          parsedState.player.progression = { ...initialProgression, ...parsedState.player.progression };
+          if (typeof parsedState.player.progression.xpToNextLevel === 'undefined' || parsedState.player.progression.xpToNextLevel <= 0) {
+            parsedState.player.progression.xpToNextLevel = calculateXpToNextLevel(parsedState.player.progression.level);
           }
         }
-        console.log("Game state loaded from LocalStorage.");
+
+        if (!parsedState.player.alignment) parsedState.player.alignment = { ...initialAlignment };
+        else parsedState.player.alignment = { ...initialAlignment, ...parsedState.player.alignment };
+
+        if (!Array.isArray(parsedState.player.inventory) || parsedState.player.inventory.length === 0) {
+           parsedState.player.inventory = [ ...initialInventory ];
+        } else {
+          parsedState.player.inventory = parsedState.player.inventory.map(savedItem => {
+            const masterItem = getMasterItemById(savedItem.id);
+            if (masterItem) {
+              return { ...masterItem, quantity: savedItem.quantity };
+            }
+            return null; 
+          }).filter(item => item !== null) as InventoryItem[];
+          // If after filtering, inventory is empty, re-init with starting items.
+          if(parsedState.player.inventory.length === 0) {
+            parsedState.player.inventory = [ ...initialInventory ];
+          }
+        }
+        
+        console.log("LocalStorage Success: Game state loaded and validated/migrated from LocalStorage.");
         return parsedState;
       } catch (error) {
-        console.error("Erreur lors du chargement de l'état du jeu depuis LocalStorage:", error);
+        console.error("LocalStorage Error: Error parsing game state from LocalStorage:", error);
         localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state
         return null;
       }
     }
+  } else {
+      console.warn("LocalStorage Warning: LocalStorage is not available. Cannot load game state.");
   }
   return null;
 }
 
 export function clearGameState(): void {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && localStorage) {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    console.log("Game state cleared from LocalStorage.");
-    // Note: Clearing Firestore state is handled separately, e.g., via AuthContext on signOut or a specific user action.
+    console.log("LocalStorage Info: Game state cleared from LocalStorage.");
   }
 }
 
@@ -171,7 +211,7 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Record<stri
 export function addItemToInventory(currentInventory: InventoryItem[], itemId: string, quantityToAdd: number): InventoryItem[] {
   const masterItem = getMasterItemById(itemId);
   if (!masterItem) {
-    console.warn(`Attempted to add unknown item ID: ${itemId}`);
+    console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}`);
     return currentInventory;
   }
 
@@ -181,7 +221,6 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
   if (existingItemIndex > -1 && masterItem.stackable) {
     newInventory[existingItemIndex].quantity += quantityToAdd;
   } else {
-    // If not stackable or not found, add as new entry (or new stack if stackable but not found)
     newInventory.push({ ...masterItem, quantity: quantityToAdd });
   }
   return newInventory;
@@ -189,7 +228,6 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
 
 export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): InventoryItem[] {
   const newInventory = [...currentInventory];
-  // Try to find by ID first, then by name if ID doesn't match an existing item (for AI `itemName` removal)
   let itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName);
   if (itemIndex === -1) {
     itemIndex = newInventory.findIndex(item => item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
@@ -197,12 +235,12 @@ export function removeItemFromInventory(currentInventory: InventoryItem[], itemI
 
   if (itemIndex > -1) {
     if (newInventory[itemIndex].quantity <= quantityToRemove) {
-      newInventory.splice(itemIndex, 1); // Remove item if quantity becomes 0 or less
+      newInventory.splice(itemIndex, 1);
     } else {
       newInventory[itemIndex].quantity -= quantityToRemove;
     }
   } else {
-    console.warn(`Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);
+    console.warn(`Inventory Warning: Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);
   }
   return newInventory;
 }
@@ -212,12 +250,12 @@ export function addXP(currentProgression: Progression, xpGained: number): { newP
   newProgression.xp += xpGained;
   let leveledUp = false;
 
-  while (newProgression.xp >= newProgression.xpToNextLevel) {
+  while (newProgression.xp >= newProgression.xpToNextLevel && newProgression.xpToNextLevel > 0) {
     newProgression.level += 1;
-    newProgression.xp -= newProgression.xpToNextLevel; // Subtract cost of current level
+    newProgression.xp -= newProgression.xpToNextLevel; 
     newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
     leveledUp = true;
-    // Potentially add skill points or perk unlocks here in the future
   }
   return { newProgression, leveledUp };
 }
+

@@ -12,20 +12,21 @@ const GAME_STATE_COLLECTION = 'userGameStates';
  */
 export async function saveGameStateToFirestore(uid: string, gameState: GameState): Promise<void> {
   if (!db) {
-    console.error("Firestore is not initialized. Cannot save game state.");
-    throw new Error("Firestore not available");
+    console.error("Firestore Error: Firestore service is not initialized. Cannot save game state.");
+    throw new Error("Firestore not available. Check Firebase initialization and API key.");
   }
   if (!uid) {
-    console.warn("Attempted to save game state to Firestore without a UID.");
-    return;
+    console.warn("Firestore Warning: Attempted to save game state to Firestore without a UID. Skipping Firestore save.");
+    return; // Don't throw, just skip if UID is missing
   }
   try {
     const userDocRef = doc(db, GAME_STATE_COLLECTION, uid);
     await setDoc(userDocRef, gameState);
-    console.log(`Game state saved to Firestore for user ${uid}`);
+    console.log(`Firestore Success: Game state saved to Firestore for user ${uid}.`);
   } catch (error) {
-    console.error("Error saving game state to Firestore:", error);
-    // Potentially re-throw or handle more gracefully, e.g., with a toast
+    console.error(`Firestore Error: Error saving game state to Firestore for user ${uid}:`, error);
+    // Potentially re-throw or handle more gracefully, e.g., with a toast.
+    // Check Firestore rules and API key validity if errors persist.
     throw error;
   }
 }
@@ -37,11 +38,11 @@ export async function saveGameStateToFirestore(uid: string, gameState: GameState
  */
 export async function loadGameStateFromFirestore(uid: string): Promise<GameState | null> {
   if (!db) {
-    console.error("Firestore is not initialized. Cannot load game state.");
+    console.error("Firestore Error: Firestore service is not initialized. Cannot load game state.");
     return null;
   }
   if (!uid) {
-    console.warn("Attempted to load game state from Firestore without a UID.");
+    console.warn("Firestore Warning: Attempted to load game state from Firestore without a UID.");
     return null;
   }
   try {
@@ -49,21 +50,22 @@ export async function loadGameStateFromFirestore(uid: string): Promise<GameState
     const docSnap = await getDoc(userDocRef);
 
     if (docSnap.exists()) {
-      console.log(`Game state loaded from Firestore for user ${uid}`);
-      // Basic validation, can be improved with Zod or similar
+      console.log(`Firestore Success: Game state loaded from Firestore for user ${uid}.`);
       const loadedData = docSnap.data() as GameState;
+      // Basic validation, can be improved with Zod or similar
       if (loadedData && loadedData.player && loadedData.currentScenario) {
         return loadedData;
       } else {
-        console.warn("Firestore data for user UID an invalid GameState structure:", loadedData);
+        console.warn(`Firestore Warning: Data for user ${uid} in Firestore has an invalid GameState structure:`, loadedData);
         return null;
       }
     } else {
-      console.log(`No game state found in Firestore for user ${uid}`);
+      console.log(`Firestore Info: No game state found in Firestore for user ${uid}. This is normal for a new user or if data was cleared.`);
       return null;
     }
   } catch (error) {
-    console.error("Error loading game state from Firestore:", error);
+    console.error(`Firestore Error: Error loading game state from Firestore for user ${uid}:`, error);
+    // Check Firestore rules and API key validity if errors persist.
     return null; // Don't throw, allow fallback to local storage or new game
   }
 }
@@ -74,19 +76,20 @@ export async function loadGameStateFromFirestore(uid: string): Promise<GameState
  */
 export async function deletePlayerStateFromFirestore(uid: string): Promise<void> {
   if (!db) {
-    console.error("Firestore is not initialized. Cannot delete game state.");
-    throw new Error("Firestore not available");
+    console.error("Firestore Error: Firestore service is not initialized. Cannot delete game state.");
+    throw new Error("Firestore not available. Check Firebase initialization.");
   }
   if (!uid) {
-    console.warn("Attempted to delete game state from Firestore without a UID.");
+    console.warn("Firestore Warning: Attempted to delete game state from Firestore without a UID.");
     return;
   }
   try {
     const userDocRef = doc(db, GAME_STATE_COLLECTION, uid);
     await deleteDoc(userDocRef);
-    console.log(`Game state deleted from Firestore for user ${uid}`);
+    console.log(`Firestore Success: Game state deleted from Firestore for user ${uid}.`);
   } catch (error) {
-    console.error("Error deleting game state from Firestore:", error);
+    console.error(`Firestore Error: Error deleting game state from Firestore for user ${uid}:`, error);
     throw error;
   }
 }
+
