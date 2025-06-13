@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -32,7 +33,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 
 const prompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
-  model: 'googleai/gemini-2.0-flash', // Explicitly set the model here
+  model: 'googleai/gemini-1.5-flash-latest', // Changed to a stable text generation model
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios.
