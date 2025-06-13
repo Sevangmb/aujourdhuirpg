@@ -1,6 +1,5 @@
 
 'use server';
-
 /**
  * @fileOverview Generates interactive scenarios for the RPG game based on player choices.
  *
@@ -12,6 +11,50 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+// --- Temporary Simplified Schemas for Debugging ---
+const SimplifiedInputSchema = z.object({
+  debugPrompt: z.string().describe('A simple string for debugging.'),
+});
+export type SimplifiedInput = z.infer<typeof SimplifiedInputSchema>;
+
+const SimplifiedOutputSchema = z.object({
+  responseText: z.string().describe('A simple string response from the AI.'),
+});
+export type SimplifiedOutput = z.infer<typeof SimplifiedOutputSchema>;
+
+// Temporarily change the exported function to use simplified types for debugging
+export async function generateScenario(input: SimplifiedInput): Promise<SimplifiedOutput> {
+  return generateSimplifiedScenarioFlow(input);
+}
+
+const simplifiedTestPrompt = ai.definePrompt({
+  name: 'simplifiedTestPrompt', // Using a new name
+  model: 'googleai/gemini-1.5-flash-latest', // Confirmed good model for text
+  input: {schema: SimplifiedInputSchema},
+  output: {schema: SimplifiedOutputSchema},
+  prompt: `User debug prompt: {{{debugPrompt}}}. Provide a very short answer.`,
+});
+
+const generateSimplifiedScenarioFlow = ai.defineFlow(
+  {
+    name: 'generateSimplifiedScenarioFlow', // Using a new name
+    inputSchema: SimplifiedInputSchema,
+    outputSchema: SimplifiedOutputSchema,
+  },
+  async (input: SimplifiedInput) => {
+    // This is the line that has been causing the error
+    const {output} = await simplifiedTestPrompt(input); 
+    
+    if (!output) {
+      console.error('AI model did not return output for simplified prompt.');
+      throw new Error('AI model did not return output.');
+    }
+    return output;
+  }
+);
+
+// --- Original Schemas (commented out for this debugging step) ---
+/*
 const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
   playerBackground: z.string().describe('The background or history of the player character.'),
@@ -27,13 +70,13 @@ const GenerateScenarioOutputSchema = z.object({
 });
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
 
-export async function generateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
-  return generateScenarioFlow(input);
+export async function originalGenerateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
+  return originalGenerateScenarioFlow(input);
 }
 
-const prompt = ai.definePrompt({
+const originalPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Changed to a stable text generation model
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios.
@@ -59,14 +102,15 @@ Output should conform to the following schema:
 `,
 });
 
-const generateScenarioFlow = ai.defineFlow(
+const originalGenerateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
     inputSchema: GenerateScenarioInputSchema,
     outputSchema: GenerateScenarioOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input: GenerateScenarioInput) => {
+    const {output} = await originalPrompt(input);
     return output!;
   }
 );
+*/
