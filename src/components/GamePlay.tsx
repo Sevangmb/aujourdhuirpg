@@ -2,19 +2,20 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, Scenario, PlayerStats, LocationData } from '@/lib/types';
+import type { GameState, Player, Scenario, PlayerStats, LocationData, InventoryItem } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Button } from '@/components/ui/button';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { applyStatChanges, saveGameState, getInitialScenario, initialPlayerLocation } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, AlertTriangle, UserCircle2 } from 'lucide-react'; // Added UserCircle2
+import { Loader2, RotateCcw, UserCircle2, Briefcase } from 'lucide-react'; // Added Briefcase
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import PlayerInputForm from './PlayerInputForm';
-import PlayerSheet from './PlayerSheet'; // Import PlayerSheet
+import PlayerSheet from './PlayerSheet';
+import InventoryDisplay from './InventoryDisplay'; // Import InventoryDisplay
 import {
   Sheet,
   SheetContent,
@@ -22,7 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"; // Import Sheet components
+} from "@/components/ui/sheet";
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -44,6 +45,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [isPlayerSheetOpen, setIsPlayerSheetOpen] = useState(false);
+  const [isInventorySheetOpen, setIsInventorySheetOpen] = useState(false);
 
 
   useEffect(() => {
@@ -94,7 +96,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       fetchWeatherForLocation(currentLocationForUI);
     }
 
-  }, [player?.currentLocation, currentLocationForUI]); // Depend on player.currentLocation for re-fetch
+  }, [player?.currentLocation, currentLocationForUI]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     if (!player || !currentScenario || !actionText.trim()) {
@@ -122,6 +124,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     setIsLoading(true);
     setPreviousStats(player.stats);
 
+    const simplifiedInventory = player.inventory.map(item => ({ name: item.name, quantity: item.quantity }));
+
     const inputForAI: GenerateScenarioInput = {
       playerName: player.name,
       playerGender: player.gender,
@@ -133,6 +137,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       playerTraitsMentalStates: player.traitsMentalStates,
       playerProgression: player.progression,
       playerAlignment: player.alignment,
+      playerInventory: simplifiedInventory,
       playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
       playerLocation: player.currentLocation, 
@@ -218,7 +223,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
          <StatDisplay stats={player.stats} previousStats={previousStats} />
       </div>
       
-      <div className="flex justify-center my-4">
+      <div className="flex justify-center my-4 space-x-2">
         <Sheet open={isPlayerSheetOpen} onOpenChange={setIsPlayerSheetOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" className="shadow-md">
@@ -233,6 +238,23 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
               </SheetDescription>
             </SheetHeader>
             <PlayerSheet player={player} />
+          </SheetContent>
+        </Sheet>
+
+        <Sheet open={isInventorySheetOpen} onOpenChange={setIsInventorySheetOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="shadow-md">
+              <Briefcase className="mr-2 h-4 w-4" /> Inventaire
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:w-[500px] md:w-[600px] lg:w-[700px] p-0">
+            <SheetHeader className="p-4 border-b">
+              <SheetTitle className="font-headline text-primary">Inventaire</SheetTitle>
+              <SheetDescription>
+                Objets que vous transportez.
+              </SheetDescription>
+            </SheetHeader>
+            <InventoryDisplay inventory={player.inventory} />
           </SheetContent>
         </Sheet>
       </div>

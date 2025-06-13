@@ -17,6 +17,7 @@ import {
   initialTraitsMentalStates,
   initialProgression,
   initialAlignment,
+  initialInventory, // Import initial inventory
   defaultAvatarUrl
 } from '@/lib/game-logic';
 import { Loader2 } from 'lucide-react';
@@ -50,12 +51,17 @@ export default function HomePage() {
             traitsMentalStates: [...initialTraitsMentalStates],
             progression: { ...initialProgression },
             alignment: { ...initialAlignment },
+            inventory: [ ...initialInventory ], // Ensure inventory is initialized
             currentLocation: initialPlayerLocation,
           },
           ...loadedState.player, // Then override with saved player data
         };
          if (!loadedState.player.currentLocation) { // Final check for location
            loadedState.player.currentLocation = initialPlayerLocation;
+         }
+         // Ensure inventory exists, even if it's an empty array
+         if (!Array.isArray(loadedState.player.inventory)) {
+           loadedState.player.inventory = [ ...initialInventory ];
          }
       }
       setGameState(loadedState);
@@ -69,6 +75,7 @@ export default function HomePage() {
     const playerWithLocation: Player = {
       ...playerData, // This now includes all new fields from CharacterCreationForm
       currentLocation: initialPlayerLocation,
+      inventory: playerData.inventory || [ ...initialInventory ], // Ensure inventory is set
     };
     const firstScenario = getInitialScenario(playerWithLocation);
     const newGameState: GameState = {

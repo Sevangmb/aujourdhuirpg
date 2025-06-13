@@ -25,6 +25,18 @@ export type Alignment = {
   goodEvil: number; // e.g., -100 (Evil) to 100 (Good)
 };
 
+export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'misc';
+
+export interface InventoryItem {
+  id: string; // Unique ID for the item
+  name: string;
+  description: string;
+  type: InventoryItemType;
+  iconName: string; // Preferably a keyof typeof LucideIcons, or a generic one
+  quantity: number;
+  // properties?: Record<string, any>; // e.g., for weapon: { damage: 10 }, for food: { healthRestore: 20 }
+}
+
 export type Player = {
   name: string;
   gender: string;
@@ -37,6 +49,7 @@ export type Player = {
   traitsMentalStates: TraitsMentalStates;
   progression: Progression;
   alignment: Alignment;
+  inventory: InventoryItem[];
   currentLocation: LocationData;
 };
 

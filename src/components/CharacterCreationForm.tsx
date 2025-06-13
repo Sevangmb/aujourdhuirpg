@@ -20,10 +20,12 @@ import {
   initialTraitsMentalStates, 
   initialProgression, 
   initialAlignment,
+  initialInventory, // Import initial inventory
   defaultAvatarUrl
 } from '@/lib/game-logic';
-import { User, Cake, MapPin as OriginIcon, Drama } from 'lucide-react'; // Drama for Gender
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase } from 'lucide-react'; // Added Briefcase for Inventory
 import Image from 'next/image';
+import * as LucideIcons from 'lucide-react'; // Import all icons
 
 const characterSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }).max(50, { message: "Le nom ne peut pas dépasser 50 caractères." }),
@@ -64,6 +66,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       traitsMentalStates: [...initialTraitsMentalStates],
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
+      inventory: [ ...initialInventory ], // Add initial inventory
     };
     onCharacterCreate(newPlayerData);
   };
@@ -180,6 +183,22 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                   Niveau: {initialProgression.level}, XP: {initialProgression.xp} <br />
                   Alignement (C/L): {initialAlignment.chaosLawful}, Alignement (B/M): {initialAlignment.goodEvil}
                 </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90 flex items-center justify-center">
+                    <Briefcase className="w-5 h-5 mr-2" />Inventaire de Départ
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  {initialInventory.map(item => {
+                    const IconComponent = (LucideIcons as any)[item.iconName] || LucideIcons.Package;
+                    return (
+                      <div key={item.id} className="p-2 bg-muted/30 rounded flex items-center">
+                        <IconComponent className="w-4 h-4 mr-2 text-muted-foreground" />
+                        <span>{item.name} ({item.quantity})</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

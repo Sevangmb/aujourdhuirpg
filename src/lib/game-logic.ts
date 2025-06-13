@@ -1,5 +1,6 @@
 
-import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment } from './types';
+import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem } from './types';
+import { Package } from 'lucide-react'; // Default icon
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
@@ -30,6 +31,12 @@ export const initialAlignment: Alignment = {
   chaosLawful: 0, // Neutre
   goodEvil: 0,    // Neutre
 };
+
+export const initialInventory: InventoryItem[] = [
+  { id: 'smartphone_01', name: 'Smartphone', description: 'Un smartphone moderne, batterie presque pleine.', type: 'electronic', iconName: 'Smartphone', quantity: 1 },
+  { id: 'wallet_01', name: 'Portefeuille', description: 'Contient une carte bancaire et quelques billets.', type: 'misc', iconName: 'Wallet', quantity: 1 },
+  { id: 'keys_01', name: "Clés d'appartement", description: "Un trousseau de clés qui semble ouvrir une porte quelque part.", type: 'key', iconName: 'KeyRound', quantity: 1 },
+];
 
 export const initialPlayerLocation: LocationData = {
   latitude: 48.8566, // Paris latitude
@@ -63,11 +70,10 @@ export function loadGameState(): GameState | null {
       try {
         const parsedState = JSON.parse(savedState) as GameState;
         if (parsedState.player) {
-          // Ensure older game states without location get a default
+          // Ensure older game states without new fields get defaults
           if (!parsedState.player.currentLocation) {
             parsedState.player.currentLocation = initialPlayerLocation;
           }
-          // Ensure older game states without new fields get defaults
           if (!parsedState.player.gender) parsedState.player.gender = "Préfère ne pas préciser";
           if (typeof parsedState.player.age !== 'number') parsedState.player.age = 25;
           if (!parsedState.player.avatarUrl) parsedState.player.avatarUrl = defaultAvatarUrl;
@@ -76,6 +82,7 @@ export function loadGameState(): GameState | null {
           if (!parsedState.player.traitsMentalStates) parsedState.player.traitsMentalStates = [...initialTraitsMentalStates];
           if (!parsedState.player.progression) parsedState.player.progression = { ...initialProgression };
           if (!parsedState.player.alignment) parsedState.player.alignment = { ...initialAlignment };
+          if (!parsedState.player.inventory) parsedState.player.inventory = [ ...initialInventory ];
         }
         return parsedState;
       } catch (error) {
