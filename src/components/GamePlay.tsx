@@ -38,6 +38,85 @@ interface GamePlayProps {
   onRestart: () => void;
 }
 
+// Helper function to process AI output and update player state
+function processAndApplyAIScenarioOutput(
+  currentPlayer: Player,
+  aiOutput: GenerateScenarioOutput,
+  toastFn: (options: { title: string; description?: string; variant?: "default" | "destructive"; action?: React.ReactNode }) => void
+): Player {
+  let processedPlayer = { ...currentPlayer };
+
+  // 1. Apply stat changes
+  if (aiOutput.scenarioStatsUpdate) {
+    const updatedStats = applyStatChanges(processedPlayer.stats, aiOutput.scenarioStatsUpdate);
+    processedPlayer.stats = updatedStats;
+  }
+
+  // 2. Apply XP changes and check for level up
+  if (typeof aiOutput.xpGained === 'number' && aiOutput.xpGained > 0) {
+    const { newProgression, leveledUp } = addXP(processedPlayer.progression, aiOutput.xpGained);
+    processedPlayer.progression = newProgression;
+    toastFn({
+      title: "Expérience gagnée !",
+      description: `Vous avez gagné ${aiOutput.xpGained} XP.`,
+      action: <Zap className="text-yellow-400" />
+    });
+    if (leveledUp) {
+      toastFn({
+        title: "Niveau Supérieur !",
+        description: `Félicitations, vous êtes maintenant niveau ${newProgression.level} !`,
+        action: <Star className="text-yellow-500" />
+      });
+    }
+  }
+  
+  // 3. Apply inventory changes (items added)
+  if (aiOutput.itemsAdded && aiOutput.itemsAdded.length > 0) {
+    let currentInv = processedPlayer.inventory;
+    aiOutput.itemsAdded.forEach(itemToAdd => {
+      currentInv = addItemToInventory(currentInv, itemToAdd.itemId, itemToAdd.quantity);
+      toastFn({
+        title: "Objet obtenu !",
+        description: `Vous avez obtenu : ${itemToAdd.itemId} (x${itemToAdd.quantity})`,
+      });
+    });
+    processedPlayer.inventory = currentInv;
+  }
+
+  // 4. Apply inventory changes (items removed)
+  if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
+    let currentInv = processedPlayer.inventory;
+    aiOutput.itemsRemoved.forEach(itemToRemove => {
+      currentInv = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
+       toastFn({
+        title: "Objet utilisé/perdu",
+        description: `${itemToRemove.itemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
+      });
+    });
+    processedPlayer.inventory = currentInv;
+  }
+
+  // 5. Update location if changed
+  if (aiOutput.newLocationDetails && 
+      typeof aiOutput.newLocationDetails.latitude === 'number' && 
+      typeof aiOutput.newLocationDetails.longitude === 'number' && 
+      aiOutput.newLocationDetails.placeName) {
+    const newLoc: LocationData = {
+      latitude: aiOutput.newLocationDetails.latitude,
+      longitude: aiOutput.newLocationDetails.longitude,
+      placeName: aiOutput.newLocationDetails.placeName,
+    };
+    processedPlayer.currentLocation = newLoc;
+     toastFn({
+      title: "Déplacement !",
+      description: `Vous êtes maintenant à ${newLoc.placeName}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
+    });
+  }
+  
+  return processedPlayer;
+}
+
+
 const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [player, setPlayer] = useState<Player | null>(initialGameState.player);
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(initialGameState.currentScenario);
@@ -160,76 +239,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     try {
       const output: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      let updatedPlayer = { ...player }; // Start with current player state
-
-      // 1. Apply stat changes
-      if (output.scenarioStatsUpdate) {
-        const updatedStats = applyStatChanges(updatedPlayer.stats, output.scenarioStatsUpdate);
-        updatedPlayer.stats = updatedStats;
-      }
-
-      // 2. Apply XP changes and check for level up
-      if (typeof output.xpGained === 'number' && output.xpGained > 0) {
-        const { newProgression, leveledUp } = addXP(updatedPlayer.progression, output.xpGained);
-        updatedPlayer.progression = newProgression;
-        toast({
-          title: "Expérience gagnée !",
-          description: `Vous avez gagné ${output.xpGained} XP.`,
-          action: <Zap className="text-yellow-400" />
-        });
-        if (leveledUp) {
-          toast({
-            title: "Niveau Supérieur !",
-            description: `Félicitations, vous êtes maintenant niveau ${newProgression.level} !`,
-            action: <Star className="text-yellow-500" />
-          });
-        }
-      }
-      
-      // 3. Apply inventory changes (items added)
-      if (output.itemsAdded && output.itemsAdded.length > 0) {
-        let currentInv = updatedPlayer.inventory;
-        output.itemsAdded.forEach(itemToAdd => {
-          currentInv = addItemToInventory(currentInv, itemToAdd.itemId, itemToAdd.quantity);
-          toast({
-            title: "Objet obtenu !",
-            description: `Vous avez obtenu : ${itemToAdd.itemId} (x${itemToAdd.quantity})`,
-          });
-        });
-        updatedPlayer.inventory = currentInv;
-      }
-
-      // 4. Apply inventory changes (items removed)
-      if (output.itemsRemoved && output.itemsRemoved.length > 0) {
-        let currentInv = updatedPlayer.inventory;
-        output.itemsRemoved.forEach(itemToRemove => {
-          currentInv = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
-           toast({
-            title: "Objet utilisé/perdu",
-            description: `${itemToRemove.itemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
-          });
-        });
-        updatedPlayer.inventory = currentInv;
-      }
-
-      // 5. Update location if changed
-      if (output.newLocationDetails && 
-          typeof output.newLocationDetails.latitude === 'number' && 
-          typeof output.newLocationDetails.longitude === 'number' && 
-          output.newLocationDetails.placeName) {
-        const newLoc: LocationData = {
-          latitude: output.newLocationDetails.latitude,
-          longitude: output.newLocationDetails.longitude,
-          placeName: output.newLocationDetails.placeName,
-        };
-        updatedPlayer.currentLocation = newLoc;
-         toast({
-          title: "Déplacement !",
-          description: `Vous êtes maintenant à ${newLoc.placeName}. ${output.newLocationDetails.reasonForMove || ''}`,
-        });
-      }
-      
-      setPlayer(updatedPlayer); // Update player state with all changes
+      const updatedPlayer = processAndApplyAIScenarioOutput(player, output, toast);
+      setPlayer(updatedPlayer);
 
       const nextScenario: Scenario = {
         scenarioText: output.scenarioText,
@@ -240,7 +251,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
       saveGameState(newGameState);
 
       setPlayerInput('');
-      // Removed generic success toast as specific toasts are more informative
 
     } catch (error) {
       console.error("Erreur lors de la génération du scénario:", error);
@@ -346,3 +356,4 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
 };
 
 export default GamePlay;
+
