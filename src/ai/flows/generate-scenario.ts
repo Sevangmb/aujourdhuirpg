@@ -11,70 +11,26 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-// --- Temporary Simplified Schemas for Debugging ---
-const SimplifiedInputSchema = z.object({
-  debugPrompt: z.string().describe('A simple string for debugging.'),
-});
-export type SimplifiedInput = z.infer<typeof SimplifiedInputSchema>;
-
-const SimplifiedOutputSchema = z.object({
-  responseText: z.string().describe('A simple string response from the AI.'),
-});
-export type SimplifiedOutput = z.infer<typeof SimplifiedOutputSchema>;
-
-// Temporarily change the exported function to use simplified types for debugging
-export async function generateScenario(input: SimplifiedInput): Promise<SimplifiedOutput> {
-  return generateSimplifiedScenarioFlow(input);
-}
-
-const simplifiedTestPrompt = ai.definePrompt({
-  name: 'simplifiedTestPrompt', // Using a new name
-  model: 'googleai/gemini-1.5-flash-latest', // Confirmed good model for text
-  input: {schema: SimplifiedInputSchema},
-  output: {schema: SimplifiedOutputSchema},
-  prompt: `User debug prompt: {{{debugPrompt}}}. Provide a very short answer.`,
-});
-
-const generateSimplifiedScenarioFlow = ai.defineFlow(
-  {
-    name: 'generateSimplifiedScenarioFlow', // Using a new name
-    inputSchema: SimplifiedInputSchema,
-    outputSchema: SimplifiedOutputSchema,
-  },
-  async (input: SimplifiedInput) => {
-    // This is the line that has been causing the error
-    const {output} = await simplifiedTestPrompt(input); 
-    
-    if (!output) {
-      console.error('AI model did not return output for simplified prompt.');
-      throw new Error('AI model did not return output.');
-    }
-    return output;
-  }
-);
-
-// --- Original Schemas (commented out for this debugging step) ---
-/*
 const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
   playerBackground: z.string().describe('The background or history of the player character.'),
-  playerStats: z.record(z.number()).describe('A record of the player character stats.'),
+  playerStats: z.record(z.number()).describe('A record of the player character stats (e.g., {"Sante": 100, "Charisme": 50}).'),
   playerChoice: z.string().describe('The choice the player made in the previous scenario.'),
-  currentScenario: z.string().describe('The current scenario context.'),
+  currentScenario: z.string().describe('The current scenario context (the HTML text of the previous scenario).'),
 });
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 
 const GenerateScenarioOutputSchema = z.object({
-  scenarioText: z.string().describe('The generated scenario text, formatted in HTML.'),
-  scenarioStatsUpdate: z.record(z.number()).describe('A record of the changes that will happen to the player stats.'),
+  scenarioText: z.string().describe('The generated scenario text, formatted in HTML. This HTML should include <button data-choice-text="CHOICE_TEXT_HERE">Choice Description</button> elements for player choices.'),
+  scenarioStatsUpdate: z.record(z.number()).describe('A record of the changes that will happen to the player stats as a result of entering this new scenario (e.g., {"Sante": -10, "Intelligence": 5}). If there is no impact, the record should be empty.'),
 });
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
 
-export async function originalGenerateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
-  return originalGenerateScenarioFlow(input);
+export async function generateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
+  return generateScenarioFlow(input);
 }
 
-const originalPrompt = ai.definePrompt({
+const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: GenerateScenarioInputSchema},
@@ -83,34 +39,38 @@ const originalPrompt = ai.definePrompt({
 
 You are creating a scenario for a player in a text-based RPG. The game is set in modern-day France.
 
-Consider current events in France when creating the scenario.
+Consider current events in France when creating the scenario if relevant and natural, but prioritize a fun and engaging player experience.
 
-The player's name is: {{{playerName}}}
-The player's background is: {{{playerBackground}}}
-The player's current stats are: {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
-The player's last choice was: {{{playerChoice}}}
-The current scenario context is: {{{currentScenario}}}
+Player Name: {{{playerName}}}
+Player Background: {{{playerBackground}}}
+Player Current Stats: {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
+Player's Last Choice: {{{playerChoice}}}
+Current Scenario Context: {{{currentScenario}}} (This was the text of the previous scenario. Generate a NEW scenario that follows from the player's choice.)
 
-Create a new scenario based on this information. The scenario should be no more than 200 words and must be returned in HTML format. The scenario should present the player with 2-3 choices.
+Generate a new scenario based on this information. The scenario text should be between 100 and 250 words.
+The scenario MUST be returned as well-formed HTML.
+The scenario MUST present the player with 2 to 4 distinct choices. Each choice MUST be represented by an HTML button element: <button data-choice-text="TEXT_OF_THE_CHOICE">TEXT_OF_THE_CHOICE</button>.
 
-You must also provide a scenarioStatsUpdate object that reflects the impact of the scenario on the player stats. This should be a record of numbers that can be added to the player stats.  If there is no impact, the record should be empty.  Do not decrease any values below zero.
+You must also provide a scenarioStatsUpdate object. This object should reflect the impact of the *events leading to this new scenario* on the player's stats. This should be a record of numbers that can be added to (or subtracted from) the player's current stats. For example, if a choice led to a tiring activity, Sante might decrease. If no stats are affected, return an empty object for scenarioStatsUpdate. Do not decrease any stat values below zero when calculating the update, though the game logic will handle the final floor.
 
-Ensure that the generated scenario feels relevant and responsive to the player's choices and the overall game context.
+Ensure the generated scenario feels relevant and responsive to the player's choices and the overall game context.
 
-Output should conform to the following schema:
-\n{{json schema=GenerateScenarioOutputSchema}}
+Output MUST conform to the JSON schema defined for GenerateScenarioOutputSchema.
 `,
 });
 
-const originalGenerateScenarioFlow = ai.defineFlow(
+const generateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
     inputSchema: GenerateScenarioInputSchema,
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: GenerateScenarioInput) => {
-    const {output} = await originalPrompt(input);
-    return output!;
+    const {output} = await scenarioPrompt(input);
+    if (!output) {
+      console.error('AI model did not return output for generateScenarioPrompt.');
+      throw new Error('AI model did not return output.');
+    }
+    return output;
   }
 );
-*/
