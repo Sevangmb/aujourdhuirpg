@@ -7,17 +7,18 @@ import {
   auth, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signInAnonymously,
+  signInAnonymously as firebaseSignInAnonymously, // Renamed to avoid conflict
   signOut as firebaseSignOut 
 } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
+import { clearGameState } from '@/lib/game-logic'; // Import clearGameState
 
 interface AuthContextData {
   user: User | null;
   loadingAuth: boolean;
   signUpWithEmailPassword: (email: string, password: string) => Promise<void>;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
-  signInAnonymously: () => Promise<void>;
+  signInAnonymously: () => Promise<void>; // Kept the same name for the exported function
   signOutUser: () => Promise<void>;
 }
 
@@ -29,6 +30,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!auth) { // Check if auth is initialized
+      console.error("Firebase auth is not initialized. Check your Firebase config.");
+      setLoadingAuth(false);
+      return;
+    }
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
       setUser(firebaseUser);
       setLoadingAuth(false);
@@ -37,6 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signUpWithEmailPassword = async (email: string, password: string) => {
+    if (!auth) return;
     setLoadingAuth(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
@@ -51,12 +58,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Erreur d'inscription",
         description: error.message || "Impossible de créer un compte.",
       });
-      setLoadingAuth(false);
+      // setLoadingAuth(false) will be handled by onAuthStateChanged, or if error, set it here
+      if (!auth.currentUser) setLoadingAuth(false);
     }
-    // setLoadingAuth(false) is handled by onAuthStateChanged
   };
 
   const signInWithEmailPassword = async (email: string, password: string) => {
+    if (!auth) return;
     setLoadingAuth(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -71,15 +79,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Erreur de connexion",
         description: error.message || "Email ou mot de passe incorrect.",
       });
-      setLoadingAuth(false); 
+      if (!auth.currentUser) setLoadingAuth(false); 
     }
-    // setLoadingAuth(false) is handled by onAuthStateChanged
   };
 
-  const signInAnonymously = async () => {
+  const signInAnonymously = async () => { // Exported function name remains signInAnonymously
+    if (!auth) return;
     setLoadingAuth(true);
     try {
-      await signInAnonymously(auth);
+      await firebaseSignInAnonymously(auth); // Use renamed import
       toast({
         title: "Connecté anonymement",
         description: "Vous pouvez jouer sans compte. Votre progression sera locale.",
@@ -91,21 +99,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         title: "Erreur de connexion anonyme",
         description: error.message || "Impossible de se connecter anonymement.",
       });
-      setLoadingAuth(false);
+      if (!auth.currentUser) setLoadingAuth(false);
     }
-    // setLoadingAuth(false) is handled by onAuthStateChanged
   };
 
   const signOutUser = async () => {
+    if (!auth) return;
     setLoadingAuth(true);
     try {
       await firebaseSignOut(auth);
       setUser(null); 
+      clearGameState(); // Clear game state on sign out
       toast({
         title: "Déconnexion réussie",
         description: "À bientôt !",
       });
-    } catch (error: any) {
+    } catch (error: any)
+{
       console.error("Erreur de déconnexion:", error);
       toast({
         variant: "destructive",
