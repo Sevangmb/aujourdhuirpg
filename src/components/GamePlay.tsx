@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
+import MapDisplay from './MapDisplay'; // Import the new MapDisplay component
 import * as LucideIcons from 'lucide-react';
 
 
@@ -71,6 +72,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
+  // Hardcoded coordinates for Paris for the map
+  const parisLatitude = 48.8566;
+  const parisLongitude = 2.3522;
+
   useEffect(() => {
     if (player && !currentScenario) {
       const firstScenario = getInitialScenario(player);
@@ -84,10 +89,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     const fetchWeather = async () => {
       setWeatherLoading(true);
       setWeatherError(null);
-      const lat = 48.85; // Paris
-      const lon = 2.35;
+      // Using Paris coordinates for weather as well, consistent with map and scenario context
       try {
-        const result = await getCurrentWeather(lat, lon);
+        const result = await getCurrentWeather(parisLatitude, parisLongitude);
         if ('error' in result) {
           setWeatherError(result.error);
         } else {
@@ -103,7 +107,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
     if (player) { 
        fetchWeather();
     }
-  }, [player]); // Removed toast from dependencies as it's not used in this effect
+  }, [player]);
 
   const handleChoice = useCallback(async (choiceText: string) => {
     if (!player || !currentScenario) return;
@@ -169,8 +173,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart }) => {
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-6">
-      <div className="md:sticky md:top-4 md:z-10">
+      <div className="md:sticky md:top-4 md:z-10 grid gap-4">
          <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} />
+         <MapDisplay latitude={parisLatitude} longitude={parisLongitude} placeName="Paris, France" />
          <StatDisplay stats={player.stats} previousStats={previousStats} />
       </div>
      
