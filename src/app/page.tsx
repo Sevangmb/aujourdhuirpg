@@ -2,17 +2,15 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import CharacterCreationForm from '@/components/CharacterCreationForm';
-import GamePlay from '@/components/GamePlay';
-import WelcomeMessage from '@/components/WelcomeMessage';
+
+// Types and Game Logic
 import type { GameState, Player } from '@/lib/types';
 import { 
   loadGameStateFromLocal, 
   saveGameState, 
   clearGameState as clearGameStateFromLocal, 
-  getInitialScenario, 
   initialPlayerLocation,
-  initialSkills,
+ getInitialScenario, initialSkills,
   initialTraitsMentalStates,
   initialProgression,
   initialAlignment,
@@ -23,15 +21,29 @@ import {
   initialPlayerMoney
 } from '@/lib/game-logic';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
-import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext'; 
-import { useToast } from "@/hooks/use-toast";
 
-// Sidebar components
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+// Authentication
+import { useAuth } from '@/contexts/AuthContext'; 
+
+// UI Components
+import CharacterCreationForm from '@/components/CharacterCreationForm';
+import GamePlay from '@/components/GamePlay'; // Corrected import
+import WelcomeMessage from '@/components/WelcomeMessage'; // Corrected import
+import LoadingState from '@/components/LoadingState';
+
+// Shadcn UI Components
+import { useToast } from "@/hooks/use-toast";
+import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar'; 
 import LeftSidebar from '@/components/LeftSidebar';
 import RightSidebar from '@/components/RightSidebar';
+import InventoryDisplay from '@/components/InventoryDisplay';
+import QuestJournalDisplay from '@/components/QuestJournalDisplay';
+import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
+// Removed CharacterCreationSection and GamePlaySection as they are not separate files
+// WelcomeSection is replaced by WelcomeMessage
 
 function HomePageContent() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -149,48 +161,118 @@ function HomePageContent() {
   };
 
   if (loadingAuth || isLoadingState) {
-    return (
-      <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 bg-background h-screen">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="mt-4 text-xl font-headline">
-          {loadingAuth ? "Vérification de l'authentification..." : "Chargement de votre aventure..."}
-        </p>
-      </main>
-    );
-  }
+    return <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />;
+  } 
 
   return (
-      <SidebarProvider defaultOpen={false}>
-        <Sidebar side="left" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px] border-r">
-          <LeftSidebar 
-            player={gameState?.player || null}
-            onRestart={handleRestart}
-            isLoading={isLoadingState} 
-          />
-        </Sidebar>
-        <SidebarInset>
-          <div className="flex flex-col h-screen max-h-screen overflow-hidden"> {/* This overflow-hidden is important for the central panel */}
-            {!user ? (
-              <div className="flex-grow flex items-center justify-center">
-                 <WelcomeMessage />
-              </div>
-            ) : gameState && gameState.player && gameState.currentScenario ? (
-              <GamePlay 
-                initialGameState={gameState} 
-                onRestart={handleRestart} 
-                setGameState={setGameState} 
-              />
-            ) : (
-              <div className="flex-grow flex items-center justify-center p-4">
-                 <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
-              </div>
-            )}
-          </div>
-        </SidebarInset>
-        <Sidebar side="right" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px] border-l">
-           <RightSidebar player={gameState?.player || null} />
-        </Sidebar>
+    <>
+      <SidebarProvider>
+        <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden">
+          <Sidebar side="left" collapsible="icon" className="md:w-1/4 lg:w-1/5 xl:w-[320px] border-r">
+            <LeftSidebar player={gameState?.player || null} onRestart={handleRestart} isLoading={isLoadingState || loadingAuth} />
+          </Sidebar>
+
+          <SidebarInset className="flex-1 overflow-hidden"> {/* Central content area */}
+            <Menubar className="w-full rounded-none border-b border-t-0 border-l-0 border-r-0">
+              <MenubarMenu>
+                <MenubarTrigger>File</MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem onClick={handleRestart}>
+                    New Game
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem>Quit</MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+              <MenubarMenu>
+                <MenubarTrigger>Edit</MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem>Settings</MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+              <MenubarMenu>
+                <MenubarTrigger>View</MenubarTrigger>
+                <MenubarContent>
+                  {/* <MenubarItem onClick={() => document.documentElement.requestFullscreen()}>Fullscreen</MenubarItem> */}
+                </MenubarContent>
+              </MenubarMenu>
+              <MenubarMenu>
+                <MenubarTrigger>Player</MenubarTrigger>
+                <MenubarContent>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <MenubarItem onSelect={(e) => e.preventDefault()}>Character Sheet</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Character Sheet</DialogTitle>
+                      </DialogHeader>
+                      <LeftSidebar player={gameState?.player || null} isLoading={isLoadingState} onRestart={handleRestart} />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <MenubarItem onSelect={(e) => e.preventDefault()}>Inventory</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Inventory</DialogTitle>
+                      </DialogHeader>
+                      <InventoryDisplay inventory={gameState?.player?.inventory || []} />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <MenubarItem onSelect={(e) => e.preventDefault()}>Quest Log</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Quest Log</DialogTitle>
+                      </DialogHeader>
+                      <QuestJournalDisplay player={gameState?.player || null} />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <MenubarItem onSelect={(e) => e.preventDefault()}>Evidence Log</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Evidence Log</DialogTitle>
+                      </DialogHeader>
+                      <EvidenceLogDisplay player={gameState?.player || null} />
+                    </DialogContent>
+                  </Dialog>
+                </MenubarContent>
+              </MenubarMenu>
+            </Menubar>
+
+            <div className="flex-grow flex flex-col h-[calc(100vh-theme(spacing.10))] max-h-[calc(100vh-theme(spacing.10))] overflow-hidden">
+              {!user ? (
+                <div className="flex-grow flex items-center justify-center">
+                  <WelcomeMessage /> {/* Corrected usage */}
+                </div>
+              ) : gameState && gameState.player && gameState.currentScenario ? (
+                <GamePlay // Corrected usage
+                  initialGameState={gameState}
+                  onRestart={handleRestart}
+                  setGameState={setGameState}
+                />
+              ) : (
+                <div className="flex-grow flex items-center justify-center p-4">
+                  <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
+                  {/* <CharacterCreationSection onCharacterCreate={handleCharacterCreate} /> */}
+                </div>
+              )}
+            </div>
+          </SidebarInset>
+
+          <Sidebar side="right" collapsible="icon" className="md:w-1/4 lg:w-1/5 xl:w-[350px] border-l">
+            <RightSidebar player={gameState?.player || null} />
+          </Sidebar>
+        </div>
       </SidebarProvider>
+    </>
   );
 }
 
