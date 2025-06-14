@@ -160,7 +160,7 @@ function HomePageContent() {
   }
 
   return (
-      <SidebarProvider defaultOpen={true}>
+      <SidebarProvider defaultOpen={false}>
         <Sidebar side="left" variant="sidebar" collapsible="icon" className="w-[350px] md:w-[400px] lg:w-[450px] border-r">
           <LeftSidebar 
             player={gameState?.player || null}

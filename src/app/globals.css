@@ -8,33 +8,33 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 94%; /* Very light gray #F0F0F0 */
-    --foreground: 0 0% 20%; /* Dark gray #333333 for text */
+    --background: 210 20% 96%; /* #F5F7FA - Very Light Cool Gray/Blue */
+    --foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 20%;
+    --card: 210 20% 100%; /* #FFFFFF - White */
+    --card-foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
+    --popover: 210 20% 100%; /* #FFFFFF - White */
+    --popover-foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
 
-    --primary: 120 60% 67%; /* Muted Green #77DD77 */
-    --primary-foreground: 0 0% 10%; /* Dark text for Muted Green */
+    --primary: 220 50% 60%; /* #647ACB - Medium Slate Blue */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF - White */
 
-    --secondary: 0 0% 90%; /* Slightly darker gray for secondary elements */
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 210 20% 90%; /* #E0E5EB - Light Slate Gray */
+    --secondary-foreground: 215 25% 20%; /* #293342 - Darker Slate Blue for secondary text */
 
-    --muted: 0 0% 85%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 210 20% 85%; /* #D1D8E0 - Muted Slate Gray */
+    --muted-foreground: 215 20% 45%; /* #64748B - Muted Slate Blue text */
 
-    --accent: 45 61% 52%; /* Soft Gold #D4AF37 */
-    --accent-foreground: 0 0% 10%; /* Dark text for Soft Gold */
+    --accent: 30 80% 60%; /* #F9A825 - Muted Orange */
+    --accent-foreground: 0 0% 10%; /* #1A1A1A - Very Dark Gray/Black */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 80%;
-    --input: 0 0% 80%;
-    --ring: 120 60% 57%; /* Slightly darker Muted Green for focus rings */
+    --border: 210 20% 80%; /* #C2CBD6 - Slate Gray Border */
+    --input: 210 20% 80%; /* #C2CBD6 - Slate Gray Input Border */
+    --ring: 220 50% 50%; /* #4B60B2 - Darker Slate Blue for focus rings */
 
     --radius: 0.5rem;
 
@@ -45,45 +45,45 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
-    /* Sidebar specific colors (not heavily used in this app) */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar specific colors */
+    --sidebar-background: 210 20% 98%; /* #F9FAFB - Almost White Blueish */
+    --sidebar-foreground: 215 25% 30%; /* #3E4C60 - Darker Slate Blue */
+    --sidebar-primary: 220 50% 55%; /* #536CC8 - Slightly darker primary for sidebar */
+    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White */
+    --sidebar-accent: 210 20% 92%; /* #E6EAF0 - Very Light Slate for hover */
+    --sidebar-accent-foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
+    --sidebar-border: 210 20% 85%; /* #D1D8E0 - Muted Slate Gray Border */
+    --sidebar-ring: 220 50% 45%; /* #3A53A5 - Even Darker Slate Blue Ring */
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 90%;
+    --background: 220 15% 15%; /* #20242D - Dark Slate */
+    --foreground: 210 20% 85%; /* #CCD1D9 - Light Cool Gray */
 
-    --card: 0 0% 15%;
-    --card-foreground: 0 0% 90%;
+    --card: 220 15% 20%; /* #292E38 - Darker Slate Card */
+    --card-foreground: 210 20% 85%; /* #CCD1D9 - Light Cool Gray */
 
-    --popover: 0 0% 15%;
-    --popover-foreground: 0 0% 90%;
+    --popover: 220 15% 20%; /* #292E38 - Darker Slate Popover */
+    --popover-foreground: 210 20% 85%; /* #CCD1D9 - Light Cool Gray */
 
-    --primary: 120 60% 67%; /* Muted Green */
-    --primary-foreground: 0 0% 10%;
+    --primary: 220 50% 60%; /* #647ACB - Medium Slate Blue */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF - White */
 
-    --secondary: 0 0% 20%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 220 15% 25%; /* #323843 - Medium Dark Slate */
+    --secondary-foreground: 210 20% 80%; /* #C0C7CF - Lighter Cool Gray */
 
-    --muted: 0 0% 25%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 220 15% 30%; /* #3B414D - Muted Dark Slate */
+    --muted-foreground: 210 20% 60%; /* #8D99A8 - Muted Cool Gray Text */
 
-    --accent: 45 61% 52%; /* Soft Gold */
-    --accent-foreground: 0 0% 10%;
+    --accent: 30 70% 55%; /* #F59E0B - Muted Orange (Darker) */
+    --accent-foreground: 0 0% 10%; /* #1A1A1A - Very Dark Gray/Black */
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 25%;
-    --input: 0 0% 25%;
-    --ring: 120 60% 57%; /* Slightly darker Muted Green for focus rings */
+    --border: 220 15% 30%; /* #3B414D - Muted Dark Slate Border */
+    --input: 220 15% 30%; /* #3B414D - Muted Dark Slate Input Border */
+    --ring: 220 50% 50%; /* #4B60B2 - Darker Slate Blue for focus rings */
 
     /* Chart colors for dark mode */
     --chart-1: 220 70% 50%;
@@ -93,14 +93,14 @@ body {
     --chart-5: 340 75% 55%;
     
     /* Sidebar specific colors for dark mode */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 15% 10%; /* #1A1D23 - Very Dark Slate */
+    --sidebar-foreground: 210 20% 90%; /* #DDE1E6 - Very Light Cool Gray */
+    --sidebar-primary: 220 50% 65%; /* #758DE0 - Lighter Primary for Dark Sidebar */
+    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White */
+    --sidebar-accent: 220 15% 20%; /* #292E38 - Darker Slate Card for hover */
+    --sidebar-accent-foreground: 210 20% 95%; /* #F0F2F5 - Almost White */
+    --sidebar-border: 220 15% 25%; /* #323843 - Medium Dark Slate Border */
+    --sidebar-ring: 220 50% 55%; /* #536CC8 - Lighter Ring for Dark Sidebar */
   }
 }
 
