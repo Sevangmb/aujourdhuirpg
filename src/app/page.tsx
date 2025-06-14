@@ -27,23 +27,21 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // UI Components
 import CharacterCreationForm from '@/components/CharacterCreationForm';
-import GamePlay from '@/components/GamePlay'; // Corrected import
-import WelcomeMessage from '@/components/WelcomeMessage'; // Corrected import
+import GamePlay from '@/components/GamePlay';
+import WelcomeMessage from '@/components/WelcomeMessage';
 import LoadingState from '@/components/LoadingState';
 
 // Shadcn UI Components
 import { useToast } from "@/hooks/use-toast";
 import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar'; 
-import LeftSidebar from '@/components/LeftSidebar';
-import RightSidebar from '@/components/RightSidebar';
-import InventoryDisplay from '@/components/InventoryDisplay';
-import QuestJournalDisplay from '@/components/QuestJournalDisplay';
-import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
+// Sidebar components are no longer used for main layout here
+import LeftSidebar from '@/components/LeftSidebar'; // Still used for Dialog content
+import InventoryDisplay from '@/components/InventoryDisplay'; // Still used for Dialog content
+import QuestJournalDisplay from '@/components/QuestJournalDisplay'; // Still used for Dialog content
+import EvidenceLogDisplay from '@/components/EvidenceLogDisplay'; // Still used for Dialog content
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Removed CharacterCreationSection and GamePlaySection as they are not separate files
-// WelcomeSection is replaced by WelcomeMessage
 
 function HomePageContent() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -71,7 +69,7 @@ function HomePageContent() {
         } else {
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
-            const playerToSave = { ...localState.player, uid: user.uid }; // Ensure UID is set for cloud save
+            const playerToSave = { ...localState.player, uid: user.uid }; 
             const hydratedPlayerForCloud = hydratePlayer(playerToSave);
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
             
@@ -165,119 +163,110 @@ function HomePageContent() {
   } 
 
   return (
-    <>
-      <SidebarProvider>
-        <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden">
-          <Sidebar side="left" collapsible="icon" className="md:w-1/4 lg:w-1/5 xl:w-[320px] border-r">
-            <LeftSidebar player={gameState?.player || null} onRestart={handleRestart} isLoading={isLoadingState || loadingAuth} />
-          </Sidebar>
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden">
+      <Menubar className="w-full rounded-none border-b shrink-0">
+        <MenubarMenu>
+          <MenubarTrigger>Fichier</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={handleRestart}>
+              Nouvelle Partie
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={() => window.close()}>Quitter</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+        <MenubarMenu>
+          <MenubarTrigger>Édition</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>Paramètres</MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+        <MenubarMenu>
+          <MenubarTrigger>Affichage</MenubarTrigger>
+          <MenubarContent>
+            {/* <MenubarItem onClick={() => document.documentElement.requestFullscreen()}>Plein écran</MenubarItem> */}
+          </MenubarContent>
+        </MenubarMenu>
+        <MenubarMenu>
+          <MenubarTrigger>Joueur</MenubarTrigger>
+          <MenubarContent>
+            <Dialog>
+              <DialogTrigger asChild>
+                <MenubarItem onSelect={(e) => e.preventDefault()}>Fiche Personnage</MenubarItem>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Fiche Personnage</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="max-h-[70vh]">
+                  <LeftSidebar player={gameState?.player || null} isLoading={isLoadingState || loadingAuth} onRestart={handleRestart}/>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <MenubarItem onSelect={(e) => e.preventDefault()}>Inventaire</MenubarItem>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Inventaire</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="max-h-[70vh]">
+                   <InventoryDisplay inventory={gameState?.player?.inventory || []} />
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <MenubarItem onSelect={(e) => e.preventDefault()}>Journal de Quêtes</MenubarItem>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Journal de Quêtes</DialogTitle>
+                </DialogHeader>
+                 <ScrollArea className="max-h-[70vh]">
+                  <QuestJournalDisplay player={gameState?.player || null} />
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <MenubarItem onSelect={(e) => e.preventDefault()}>Dossier d'Enquête</MenubarItem>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Dossier d'Enquête</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="max-h-[70vh]">
+                  <EvidenceLogDisplay player={gameState?.player || null} />
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </MenubarContent>
+        </MenubarMenu>
+      </Menubar>
 
-          <SidebarInset className="flex-1 overflow-hidden"> {/* Central content area */}
-            <Menubar className="w-full rounded-none border-b border-t-0 border-l-0 border-r-0">
-              <MenubarMenu>
-                <MenubarTrigger>File</MenubarTrigger>
-                <MenubarContent>
-                  <MenubarItem onClick={handleRestart}>
-                    New Game
-                  </MenubarItem>
-                  <MenubarSeparator />
-                  <MenubarItem>Quit</MenubarItem>
-                </MenubarContent>
-              </MenubarMenu>
-              <MenubarMenu>
-                <MenubarTrigger>Edit</MenubarTrigger>
-                <MenubarContent>
-                  <MenubarItem>Settings</MenubarItem>
-                </MenubarContent>
-              </MenubarMenu>
-              <MenubarMenu>
-                <MenubarTrigger>View</MenubarTrigger>
-                <MenubarContent>
-                  {/* <MenubarItem onClick={() => document.documentElement.requestFullscreen()}>Fullscreen</MenubarItem> */}
-                </MenubarContent>
-              </MenubarMenu>
-              <MenubarMenu>
-                <MenubarTrigger>Player</MenubarTrigger>
-                <MenubarContent>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <MenubarItem onSelect={(e) => e.preventDefault()}>Character Sheet</MenubarItem>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Character Sheet</DialogTitle>
-                      </DialogHeader>
-                      <LeftSidebar player={gameState?.player || null} isLoading={isLoadingState} onRestart={handleRestart} />
-                    </DialogContent>
-                  </Dialog>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <MenubarItem onSelect={(e) => e.preventDefault()}>Inventory</MenubarItem>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Inventory</DialogTitle>
-                      </DialogHeader>
-                      <InventoryDisplay inventory={gameState?.player?.inventory || []} />
-                    </DialogContent>
-                  </Dialog>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <MenubarItem onSelect={(e) => e.preventDefault()}>Quest Log</MenubarItem>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Quest Log</DialogTitle>
-                      </DialogHeader>
-                      <QuestJournalDisplay player={gameState?.player || null} />
-                    </DialogContent>
-                  </Dialog>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <MenubarItem onSelect={(e) => e.preventDefault()}>Evidence Log</MenubarItem>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Evidence Log</DialogTitle>
-                      </DialogHeader>
-                      <EvidenceLogDisplay player={gameState?.player || null} />
-                    </DialogContent>
-                  </Dialog>
-                </MenubarContent>
-              </MenubarMenu>
-            </Menubar>
-
-            <div className="flex-grow flex flex-col h-[calc(100vh-theme(spacing.10))] max-h-[calc(100vh-theme(spacing.10))] overflow-hidden">
-              {!user ? (
-                <div className="flex-grow flex items-center justify-center">
-                  <WelcomeMessage /> {/* Corrected usage */}
-                </div>
-              ) : gameState && gameState.player && gameState.currentScenario ? (
-                <GamePlay // Corrected usage
-                  initialGameState={gameState}
-                  onRestart={handleRestart}
-                  setGameState={setGameState}
-                />
-              ) : (
-                <div className="flex-grow flex items-center justify-center p-4">
-                  <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
-                  {/* <CharacterCreationSection onCharacterCreate={handleCharacterCreate} /> */}
-                </div>
-              )}
-            </div>
-          </SidebarInset>
-
-          <Sidebar side="right" collapsible="icon" className="md:w-1/4 lg:w-1/5 xl:w-[350px] border-l">
-            <RightSidebar player={gameState?.player || null} />
-          </Sidebar>
-        </div>
-      </SidebarProvider>
-    </>
+      <main className="flex-grow flex flex-col overflow-y-auto p-4 md:p-6"> {/* Main content area takes remaining space and scrolls */}
+        {!user ? (
+          <div className="flex-grow flex items-center justify-center">
+            <WelcomeMessage />
+          </div>
+        ) : gameState && gameState.player && gameState.currentScenario ? (
+          <GamePlay
+            initialGameState={gameState}
+            onRestart={handleRestart}
+            setGameState={setGameState}
+          />
+        ) : (
+          <div className="flex-grow flex items-center justify-center p-4">
+            <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
-
 
 export default function HomePage() {
   return <HomePageContent />;
 }
-
