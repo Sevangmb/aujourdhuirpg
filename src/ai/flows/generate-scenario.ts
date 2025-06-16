@@ -38,10 +38,9 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     }));
   }
   if (input.encounteredPNJsSummary) {
-    // Correction: la propriété dans GenerateScenarioInputSchema est relationStatus, pas relation
     simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => ({
       name: p.name,
-      relationStatus: p.relationStatus // Doit correspondre au schéma d'entrée
+      relationStatus: p.relationStatus 
     }));
   }
   // Add summarization for clues and documents if they exist
@@ -62,6 +61,14 @@ const scenarioPrompt = ai.definePrompt({
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
+  config: { // Added safetySettings
+    safetySettings: [
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    ],
+  },
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element. The game is titled "Aujourd'hui RPG".
 
 **Guiding Principles for Output (VERY IMPORTANT - STRICTLY ENFORCE):**
@@ -157,4 +164,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-
