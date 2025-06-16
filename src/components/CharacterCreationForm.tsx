@@ -22,8 +22,9 @@ import {
   initialAlignment,
   initialInventory,
   initialPlayerMoney,
-  defaultAvatarUrl
-} from '@/data/initial-game-data'; // Updated import
+  defaultAvatarUrl,
+  initialToneSettings
+} from '@/data/initial-game-data'; 
 import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
@@ -39,7 +40,7 @@ const characterSchema = z.object({
 type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money'>) => void;
+  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'>) => void;
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate }) => {
@@ -55,7 +56,8 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    const newPlayerData: Omit<Player, 'currentLocation' | 'money'> = {
+    // Note: The 'toneSettings' will be added by the caller (HomePageContent) using initialToneSettings
+    const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'> = {
       name: data.name,
       gender: data.gender,
       age: data.age,
@@ -68,6 +70,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
+      // questLog, encounteredPNJs, etc., will be initialized by hydratePlayer or default to empty arrays
     };
     onCharacterCreate(newPlayerData);
   };
@@ -207,6 +210,15 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 </h3>
                 <p className="text-center text-lg font-bold text-accent">{initialPlayerMoney} €</p>
               </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90">Tonalité Narrative Initiale</h3>
+                <p className="text-sm text-center text-muted-foreground">
+                  {Object.entries(initialToneSettings)
+                    .map(([tone, value]) => `${tone}: ${value}`)
+                    .join(' / ')}
+                </p>
+                <p className="text-xs text-center text-muted-foreground">(Ajustable via le menu Paramètres)</p>
+              </div>
             </div>
 
             <p className="text-sm text-center text-muted-foreground">
@@ -225,3 +237,4 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
 };
 
 export default CharacterCreationForm;
+

@@ -2,12 +2,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, PlayerStats, LocationData, Scenario } from '@/lib/types';
+import type { GameState, Player, PlayerStats, LocationData, Scenario, ToneSettings } from '@/lib/types';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
 import { saveGameState, getInitialScenario } from '@/lib/game-logic';
-import { initialPlayerLocation } from '@/data/initial-game-data'; 
+import { initialPlayerLocation, initialToneSettings } from '@/data/initial-game-data'; 
 import { processAndApplyAIScenarioOutput } from '@/lib/ai-game-effects';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Star, Euro, Search as SearchIcon } from 'lucide-react'; 
@@ -106,7 +106,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
       fetchWeatherForLocation(currentLocationForUI);
     }
 
-  }, [player?.currentLocation, currentLocationForUI]); // Removed currentLocationForUI from dependency array to avoid potential loop if set inside
+  }, [player?.currentLocation, currentLocationForUI]); 
 
   useEffect(() => {
     const fetchLocationImage = async () => {
@@ -204,6 +204,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
       playerChoice: actionText.trim(),
       currentScenario: currentScenario.scenarioText,
       playerLocation: player.currentLocation,
+      toneSettings: player.toneSettings || initialToneSettings, // Pass tone settings
       activeQuests: activeQuestsSummary,
       encounteredPNJsSummary: encounteredPNJsSummary,
       currentCluesSummary: currentCluesSummary,
@@ -233,7 +234,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
           title: notification.title,
           description: notification.description,
           action: toastAction,
-          duration: ['leveled_up', 'quest_added', 'money_changed', 'clue_added', 'document_added', 'investigation_notes_updated'].includes(notification.type) ? 5000: 3000,
+          duration: ['leveled_up', 'quest_added', 'money_changed', 'clue_added', 'document_added', 'investigation_notes_updated', 'tone_settings_updated'].includes(notification.type) ? 5000: 3000,
         });
       });
 
@@ -310,3 +311,4 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
 };
 
 export default GamePlay;
+

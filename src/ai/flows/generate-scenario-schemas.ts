@@ -3,6 +3,7 @@
  * @fileOverview Zod schema definitions for the generateScenario flow.
  */
 import {z} from 'genkit';
+import { AVAILABLE_TONES } from '@/lib/types';
 
 export const LocationSchema = z.object({
   latitude: z.number().describe('The latitude of the location.'),
@@ -98,6 +99,13 @@ export const DocumentInputSchema = z.object({
 }).describe("Structure pour un nouveau document obtenu par le joueur.");
 // --- Fin Schémas pour Indices & Documents ---
 
+const ToneSettingsSchema = z.object(
+  AVAILABLE_TONES.reduce((acc, tone) => {
+    acc[tone] = z.number().min(0).max(100);
+    return acc;
+  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
+).partial().describe('Player-defined tone preferences (e.g., {"Horreur": 75, "Humour": 30}). Values 0-100. Neutral is 50.');
+
 
 export const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
@@ -115,8 +123,9 @@ export const GenerateScenarioInputSchema = z.object({
   playerChoice: z.string().describe('The free-form text action the player typed.'),
   currentScenario: z.string().describe('The current scenario context (the HTML text of the previous scenario).'),
   playerLocation: LocationSchema.describe("The player's current location."),
+  toneSettings: ToneSettingsSchema.optional(), // Added tone settings
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
-  encounteredPNJsSummary: z.array(z.object({name: z.string(), relation: z.string()})).optional().describe("Résumé des PNJ importants déjà rencontrés et leur relation actuelle."),
+  encounteredPNJsSummary: z.array(z.object({name: z.string(), relationStatus: z.string()})).optional().describe("Résumé des PNJ importants déjà rencontrés et leur relation actuelle."),
   currentCluesSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
   currentDocumentsSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
   currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Types and Game Logic
-import type { GameState, Player } from '@/lib/types';
+import type { GameState, Player, ToneSettings } from '@/lib/types';
 import { 
   loadGameStateFromLocal, 
   saveGameState, 
@@ -27,7 +27,8 @@ import {
   initialDecisionLog,
   initialClues,
   initialDocuments,
-  initialInvestigationNotes
+  initialInvestigationNotes,
+  initialToneSettings // Added initial tone settings
 } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
@@ -40,12 +41,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SlidersHorizontal } from 'lucide-react';
+
 
 // Player Info Components for Dialogs
 import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
+import ToneSettingsDialog from '@/components/ToneSettingsDialog'; // Added ToneSettingsDialog
 
 // Custom Components
 import CharacterCreationForm from '@/components/CharacterCreationForm';
@@ -57,6 +61,7 @@ import LeftSidebar from '@/components/LeftSidebar';
 function HomePageContent() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isLoadingState, setIsLoadingState] = useState(true);
+  const [isToneSettingsDialogOpen, setIsToneSettingsDialogOpen] = useState(false);
   const {
     user,
     loadingAuth,
@@ -125,7 +130,7 @@ function HomePageContent() {
     }
   }, [loadingAuth, performInitialLoad]);
 
-  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' >) => {
+  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings' >) => {
     const playerBaseDetails: Partial<Player> = {
       ...playerDataFromForm, 
       avatarUrl: defaultAvatarUrl, 
@@ -138,6 +143,7 @@ function HomePageContent() {
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: { ...initialPlayerLocation },
+      toneSettings: { ...initialToneSettings }, // Added initial tone settings
       questLog: [...initialQuestLog],
       encounteredPNJs: [...initialEncounteredPNJs],
       decisionLog: [...initialDecisionLog],
@@ -185,6 +191,17 @@ function HomePageContent() {
     }
   };
 
+  const handleSaveToneSettings = async (newSettings: ToneSettings) => {
+    if (gameState && gameState.player) {
+      const updatedPlayer = { ...gameState.player, toneSettings: newSettings };
+      const newGameState = { ...gameState, player: updatedPlayer };
+      setGameState(newGameState);
+      await saveGameState(newGameState);
+      toast({ title: "Paramètres de Tonalité Sauvegardés", description: "Le style narratif sera ajusté." });
+    }
+  };
+
+
   const isGameActive = gameState && gameState.player && gameState.currentScenario;
 
   return (
@@ -206,7 +223,18 @@ function HomePageContent() {
             <MenubarItem onClick={toggleFullScreen}>Plein écran</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
-        {gameState?.player && ( // Only show "Joueur" menu if player exists
+        {gameState?.player && (
+          <MenubarMenu>
+            <MenubarTrigger>Paramètres</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem onSelect={(e) => { e.preventDefault(); setIsToneSettingsDialogOpen(true); }}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Tonalité Narrative
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+        )}
+        {gameState?.player && ( 
           <MenubarMenu>
             <MenubarTrigger>Joueur</MenubarTrigger>
             <MenubarContent>
@@ -267,8 +295,17 @@ function HomePageContent() {
         )}
       </Menubar>
 
-      <div className="flex flex-1 overflow-hidden"> {/* Horizontal layout for sidebar and main content */}
-        {/* Left Sidebar - Shown on desktop if user is authenticated and player exists */}
+      {/* Tone Settings Dialog */}
+      {gameState?.player && (
+        <ToneSettingsDialog
+          isOpen={isToneSettingsDialogOpen}
+          onOpenChange={setIsToneSettingsDialogOpen}
+          currentSettings={gameState.player.toneSettings || initialToneSettings}
+          onSave={handleSaveToneSettings}
+        />
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
         {user && gameState?.player && (
           <aside className="w-72 md:w-80 h-full overflow-y-auto bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-2 hidden md:block shrink-0">
             <LeftSidebar
@@ -278,7 +315,6 @@ function HomePageContent() {
           </aside>
         )}
 
-        {/* Main Content Area */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           {loadingAuth || isLoadingState ? (
             <div className="flex-grow flex items-center justify-center">
@@ -315,3 +351,4 @@ function HomePageContent() {
 export default function HomePage() {
   return <HomePageContent />;
 }
+

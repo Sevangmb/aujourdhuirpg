@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, InventoryItem } from './types';
+import type { GameState, Scenario, Player, InventoryItem, ToneSettings } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveGameStateToFirestore } from '@/services/firestore-service';
 import { 
@@ -17,7 +17,8 @@ import {
   initialDecisionLog,
   initialClues,
   initialDocuments,
-  initialInvestigationNotes
+  initialInvestigationNotes,
+  initialToneSettings
 } from '@/data/initial-game-data';
 
 
@@ -90,6 +91,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
     inventory: [], 
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
+    toneSettings: { ...initialToneSettings, ...(savedPlayer?.toneSettings || {}) },
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
     encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
     decisionLog: Array.isArray(savedPlayer?.decisionLog) ? savedPlayer.decisionLog : [...initialDecisionLog],
@@ -170,3 +172,4 @@ export function clearGameState(): void {
     console.log("LocalStorage Info: Game state cleared from LocalStorage.");
   }
 }
+

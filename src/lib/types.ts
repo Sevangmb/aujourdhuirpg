@@ -122,6 +122,10 @@ export interface GameDocument {
 }
 // --- Fin des types pour Indices & Documents ---
 
+export const AVAILABLE_TONES = ["Horreur", "Romance", "Humour", "Mystère", "Action"] as const;
+export type GameTone = typeof AVAILABLE_TONES[number];
+export type ToneSettings = Partial<Record<GameTone, number>>;
+
 
 export type Player = {
   uid?: string; // Firebase Auth UID, optional for anonymous or pre-auth states
@@ -139,6 +143,7 @@ export type Player = {
   inventory: InventoryItem[];
   money: number; // Player's current money (euros)
   currentLocation: LocationData;
+  toneSettings: ToneSettings; // Added for narrative tone preferences
   // Nouveaux champs pour le journal de quêtes, etc.
   questLog: Quest[];
   encounteredPNJs: PNJ[];
@@ -174,7 +179,8 @@ export type GameNotificationType =
   | 'money_changed'
   | 'clue_added' // New
   | 'document_added' // New
-  | 'investigation_notes_updated'; // New
+  | 'investigation_notes_updated' // New
+  | 'tone_settings_updated'; // New
 
 export interface GameNotification {
   type: GameNotificationType;
@@ -182,3 +188,4 @@ export interface GameNotification {
   description?: string;
   details?: Record<string, any>; // e.g., { itemName: 'Potion', quantity: 1 } or { amount: 50 }
 }
+

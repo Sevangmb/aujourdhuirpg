@@ -2,8 +2,9 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument } from '@/lib/types';
+import type { PlayerStats, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone } from '@/lib/types';
 import { getMasterItemById } from './items'; // Assuming items.ts is in the same data directory or adjust path
+import { AVAILABLE_TONES } from '@/lib/types';
 
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
@@ -65,6 +66,12 @@ export const initialPlayerLocation: LocationData = {
 export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
 export const initialPlayerMoney: number = 50;
 
+export const initialToneSettings: ToneSettings = AVAILABLE_TONES.reduce((acc, tone) => {
+  acc[tone] = 50; // Default all tones to a neutral 50
+  return acc;
+}, {} as ToneSettings);
+
+
 export const initialQuestLog: Quest[] = [];
 export const initialEncounteredPNJs: PNJ[] = [];
 export const initialDecisionLog: MajorDecision[] = [];
@@ -72,3 +79,4 @@ export const initialClues: Clue[] = [];
 export const initialDocuments: GameDocument[] = [];
 export const initialInvestigationNotes: string = "Aucune note d'enquête pour le moment.";
 // --- End Initial Player Data ---
+
