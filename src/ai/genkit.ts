@@ -6,7 +6,7 @@ import next from '@genkit-ai/next'; // Default import
 export const ai = genkit({
   plugins: [
     googleAI(),
-    next, // Pass the plugin object directly
+    next(), // Call 'next' as a factory function
   ],
   // model: 'googleai/gemini-2.0-flash', // Removed as per Genkit v1.x guidance
 });
