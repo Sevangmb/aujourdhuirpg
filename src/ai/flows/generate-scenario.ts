@@ -25,6 +25,8 @@ import {
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
 
+const PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS = "[PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS]";
+
 export async function generateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
   const simplifiedInput = { ...input };
   if (input.activeQuests) {
@@ -61,7 +63,7 @@ const scenarioPrompt = ai.definePrompt({
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
-  config: { // Added safetySettings
+  config: {
     safetySettings: [
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -110,6 +112,12 @@ Current Scenario Context: {{{currentScenario}}} (This was the text of the previo
 Player's Typed Action (Last Choice): {{{playerChoice}}}
 
 Task:
+{{#if (eq playerChoice "${PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS}")}}
+  Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
+  This action should primarily provide narrative flavor and insight.
+  Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
+  The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
+{{else}}
 1.  Use the 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to find out the current weather conditions.
 2.  If the player's action involves exploring the immediate surroundings, looking for a specific type of place, or if describing the environment would benefit from knowing what's nearby, use the 'getNearbyPoisTool'.
 3.  If the player's action, the scenario, or an emerging PNJ involves a specific, identifiable real-world place or public figure, consider using the 'getWikipediaInfoTool'.
@@ -143,6 +151,7 @@ Task:
         *   Clues ('newClues') are typically observations, photos, short testimonies, or small physical items. For 'photo' type clues, use a placeholder URL from 'https://placehold.co/WIDTHxHEIGHT.png' and add relevant 'keywords'.
         *   Documents ('newDocuments') are more text-heavy items like letters, articles, notes, reports. For 'content', use simple HTML if needed (e.g. <p>, <ul>). Provide relevant 'keywords'.
     *   If the scenario or player action significantly advances an investigation or changes the player's understanding, provide a concise update in 'investigationNotesUpdate'. This text will be appended to or integrated with the player's existing notes. Indicate if this is an addition or a concise revision of existing notes.
+{{/if}}
 
 Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals and use gathered information (Wikipedia, News) to add depth to their portrayal.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
@@ -156,6 +165,15 @@ const generateScenarioFlow = ai.defineFlow(
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: GenerateScenarioInput) => {
+    // Define the constant for the special action string inside the flow or ensure it's accessible.
+    // It's already defined at the top-level of this module.
+    
+    // Pass the constant to the prompt context if Handlebars needs to compare it.
+    // However, the current prompt structure uses direct string comparison within Handlebars.
+    // For more complex logic or to avoid hardcoding strings in Handlebars, you could pass it like this:
+    // const {output} = await scenarioPrompt({...input, PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS});
+    // And in Handlebars: {{#if (eq playerChoice PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS)}}
+
     const {output} = await scenarioPrompt(input);
     if (!output) {
       console.error('AI model did not return output for generateScenarioPrompt.');
