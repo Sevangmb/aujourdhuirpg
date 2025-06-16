@@ -47,10 +47,10 @@ import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
 
-// Custom Components extracted from page.tsx
-import CharacterCreationSection from '@/components/sections/CharacterCreationSection';
-import GamePlaySection from '@/components/sections/GamePlaySection';
-import WelcomeSection from '@/components/sections/WelcomeSection';
+// Custom Components
+import CharacterCreationForm from '@/components/CharacterCreationForm';
+import GamePlay from '@/components/GamePlay';
+import WelcomeMessage from '@/components/WelcomeMessage';
 
 
 function HomePageContent() {
@@ -168,12 +168,25 @@ function HomePageContent() {
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
 
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        alert(`Erreur lors du passage en plein écran: ${err.message} (${err.name})`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+
   if (loadingAuth || isLoadingState) {
     return <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />;
   } 
 
   return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden">
+    <div className="flex flex-col h-screen max-h-screen">
       <Menubar className="w-full rounded-none border-b shrink-0">
         <MenubarMenu>
           <MenubarTrigger>Fichier</MenubarTrigger>
@@ -188,13 +201,25 @@ function HomePageContent() {
         <MenubarMenu>
           <MenubarTrigger>Édition</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem>Paramètres</MenubarItem>
+            <Dialog>
+              <DialogTrigger asChild>
+                <MenubarItem onSelect={(e) => e.preventDefault()}>Paramètres</MenubarItem>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Paramètres</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                  <p className="text-muted-foreground">Les options de paramètres seront disponibles ici bientôt.</p>
+                </div>
+              </DialogContent>
+            </Dialog>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
           <MenubarTrigger>Affichage</MenubarTrigger>
           <MenubarContent>
-            {/* <MenubarItem onClick={() => document.documentElement.requestFullscreen()}>Plein écran</MenubarItem> */}
+            <MenubarItem onClick={toggleFullScreen}>Plein écran</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
@@ -222,7 +247,7 @@ function HomePageContent() {
                   <DialogTitle>Inventaire</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] p-1">
-                   <InventoryDisplay inventory={gameState?.player?.inventory || []} />
+                   {gameState?.player ? <InventoryDisplay inventory={gameState.player.inventory} /> : <p>Inventaire non disponible.</p>}
                 </ScrollArea>
               </DialogContent>
             </Dialog>
@@ -258,15 +283,19 @@ function HomePageContent() {
 
       <main className="flex-grow flex flex-col overflow-y-auto p-4 md:p-6">
         {!user ? (
-          <WelcomeSection />
+          <div className="flex-grow flex items-center justify-center">
+            <WelcomeMessage />
+          </div>
         ) : gameState && gameState.player && gameState.currentScenario ? (
-          <GamePlaySection
+          <GamePlay
             initialGameState={gameState}
             onRestart={handleRestart}
             setGameState={setGameState}
           />
         ) : (
-          <CharacterCreationSection onCharacterCreate={handleCharacterCreate} />
+          <div className="flex-grow flex items-center justify-center p-4">
+            <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
+          </div>
         )}
       </main>
     </div>
@@ -276,3 +305,5 @@ function HomePageContent() {
 export default function HomePage() {
   return <HomePageContent />;
 }
+
+    
