@@ -132,8 +132,8 @@ Task:
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if describing the environment would benefit, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
    C. **News Context:** Especially at the start of a new in-game day or if the player interacts with news sources (TV, radio, newspaper, internet), use 'getNewsTool' for France ('fr'). Fetch 3-5 *pertinent* headlines. Filter for news (global or local if in a major city) that could thematically (even distantly) relate to the game's mystery/thriller ambiance (technology, crime, politics, major cultural events) and selected TONE.
-   D. **Wikipedia for Depth (PNJs & Locations):**
-      i. **PNJs ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **strongly prefer basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE.
+   D. **Wikipédia pour PNJ et Lieux ("Les Visages du Savoir") :**
+      i. **PNJ ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **strongly prefer basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE.
       ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place, use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.
 
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
@@ -153,7 +153,7 @@ Task:
        *   Respect current money ({{{playerMoney}}} €). Actions requiring money are only possible if affordable.
        *   Use 'moneyChange' for direct gains/losses (finding cash, small purchases). Determine reasonable prices.
        *   Quest completion rewards go in 'moneyReward' within 'newQuests' or 'questUpdates' (game logic handles this).
-   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master list) and 'itemsRemoved' (with 'itemName' from inventory).
+   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01') and 'itemsRemoved' (with 'itemName' from inventory).
    6.  Location Changes: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted.
    7.  Quest Management:
        *   New Quests: Define in 'newQuests'. Set 'giver' for PNJ-given quests.
@@ -162,11 +162,11 @@ Task:
        *   When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in 'pnjInteractions'.
    9.  Major Decisions: Log in 'majorDecisionsLogged'.
    10. Investigation Elements:
-       *   Populate 'newClues' or 'newDocuments' if relevant. For 'photo' clues, use 'https://placehold.co/WIDTHxHEIGHT.png' with 'keywords'. For document 'content', use simple HTML.
+       *   Populate 'newClues' or 'newDocuments' if relevant. For 'photo' clues, you MUST provide an 'imageUrl' using 'https://placehold.co/WIDTHxHEIGHT.png' and include 'keywords'. For clues that are NOT of type 'photo', the 'imageUrl' field MUST be OMITTED. For document 'content', use simple HTML.
        *   Provide concise 'investigationNotesUpdate' if the player's understanding evolves. Indicate additions/revisions.
 {{/if}}
 
-Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals and use gathered information (Wikipedia, News) to add depth to their portrayal, adapting to selected TONES.
+Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals using 'getWikipediaInfoTool' and use gathered information (Wikipedia, News) to add depth to their portrayal, adapting to selected TONES.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
 `,
 });
