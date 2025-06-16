@@ -123,7 +123,7 @@ Player's Typed Action (Last Choice): {{{playerChoice}}}
 Task:
 {{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
-  This action should primarily provide narrative flavor and insight, reflecting current tone settings if specified.
+  This action should primarily provide narrative flavor and insight, reflecting current tone settings if specified. Use the tone settings to subtly influence the mood and focus of the reflection, but DO NOT mention the tone settings themselves in the scenarioText.
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
 {{else}}
@@ -145,7 +145,7 @@ Task:
    G. **Identify Potential Clues:** Determine if any API-sourced information could serve as a subtle clue or trigger.
 
 **Phase 3: Narrative Generation & Game State Updates**
-   1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. Explicitly state if and how the tone settings influenced the narrative (e.g., "The high 'Horreur' setting makes the shadows feel more menacing.").
+   1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
    2.  Core Stat Updates: Provide 'scenarioStatsUpdate'.
    3.  XP Awards: Provide 'xpGained'.
    4.  Money Changes:
