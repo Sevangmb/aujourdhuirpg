@@ -17,7 +17,7 @@ import WeatherDisplay from './WeatherDisplay';
 import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card'; // Import Card and CardContent
+import { Card, CardContent } from '@/components/ui/card';
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -103,11 +103,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
          setCurrentLocationForUI(locationToFetch);
        }
     } else if (typeof currentLocationForUI.latitude === 'number' && typeof currentLocationForUI.longitude === 'number') {
-      // Fallback if player location somehow invalid but UI has one
       fetchWeatherForLocation(currentLocationForUI);
     }
 
-  }, [player?.currentLocation, currentLocationForUI]);
+  }, [player?.currentLocation, currentLocationForUI]); // Removed currentLocationForUI from dependency array to avoid potential loop if set inside
 
   useEffect(() => {
     const fetchLocationImage = async () => {
@@ -274,9 +273,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
 
   return (
     <div className="flex flex-col h-full max-h-screen p-4 md:p-6 space-y-4 overflow-hidden">
-      <Card className="shadow-lg shrink-0">
-        <CardContent className="p-2 md:p-3"> {/* Adjusted padding slightly */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3"> {/* Adjusted gap slightly */}
+      <Card className="shadow-lg shrink-0 border-border bg-card/80 backdrop-blur-sm">
+        <CardContent className="p-3 md:p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.placeName} />
             <MapDisplay latitude={displayLocation.latitude} longitude={displayLocation.longitude} placeName={displayLocation.placeName} />
             <LocationImageDisplay 
