@@ -28,7 +28,7 @@ import {
   initialClues,
   initialDocuments,
   initialInvestigationNotes,
-  initialToneSettings // Added initial tone settings
+  initialToneSettings
 } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal, Save } from 'lucide-react';
 
 
 // Player Info Components for Dialogs
@@ -49,7 +49,7 @@ import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
-import ToneSettingsDialog from '@/components/ToneSettingsDialog'; // Added ToneSettingsDialog
+import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 
 // Custom Components
 import CharacterCreationForm from '@/components/CharacterCreationForm';
@@ -143,7 +143,7 @@ function HomePageContent() {
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: { ...initialPlayerLocation },
-      toneSettings: { ...initialToneSettings }, // Added initial tone settings
+      toneSettings: { ...initialToneSettings },
       questLog: [...initialQuestLog],
       encounteredPNJs: [...initialEncounteredPNJs],
       decisionLog: [...initialDecisionLog],
@@ -179,6 +179,34 @@ function HomePageContent() {
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
 
+  const isGameActive = gameState && gameState.player && gameState.currentScenario;
+
+  const handleSaveGame = async () => {
+    if (isGameActive && gameState) { // gameState is guaranteed by isGameActive
+      try {
+        await saveGameState(gameState);
+        toast({
+          title: "Partie Sauvegardée",
+          description: "Votre progression a été sauvegardée.",
+          action: <Save className="text-green-500" />
+        });
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde manuelle:", error);
+        toast({
+          variant: "destructive",
+          title: "Erreur de Sauvegarde",
+          description: "Impossible de sauvegarder la partie.",
+        });
+      }
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Sauvegarde impossible",
+        description: "Aucune partie active à sauvegarder.",
+      });
+    }
+  };
+
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(err => {
@@ -202,8 +230,6 @@ function HomePageContent() {
   };
 
 
-  const isGameActive = gameState && gameState.player && gameState.currentScenario;
-
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background text-foreground">
       <Menubar className="w-full rounded-none border-b shrink-0">
@@ -212,6 +238,9 @@ function HomePageContent() {
           <MenubarContent>
             <MenubarItem onClick={handleRestart}>
               Nouvelle Partie
+            </MenubarItem>
+            <MenubarItem onClick={handleSaveGame} disabled={!isGameActive}>
+              <Save className="mr-2 h-4 w-4" /> Sauvegarder la Partie
             </MenubarItem>
             <MenubarSeparator />
             <MenubarItem onClick={() => window.close()}>Quitter</MenubarItem>
