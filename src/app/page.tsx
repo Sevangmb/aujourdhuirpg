@@ -9,38 +9,48 @@ import {
   loadGameStateFromLocal, 
   saveGameState, 
   clearGameState as clearGameStateFromLocal, 
-  initialPlayerLocation,
- getInitialScenario, initialSkills,
+  getInitialScenario,
+  hydratePlayer
+} from '@/lib/game-logic';
+import { 
+  defaultAvatarUrl,
+  initialPlayerStats,
+  initialSkills,
   initialTraitsMentalStates,
   initialProgression,
   initialAlignment,
-  initialInventory, 
-  defaultAvatarUrl,
-  initialPlayerStats,
-  hydratePlayer,
-  initialPlayerMoney
-} from '@/lib/game-logic';
+  initialInventory,
+  initialPlayerMoney,
+  initialPlayerLocation,
+  initialQuestLog,
+  initialEncounteredPNJs,
+  initialDecisionLog,
+  initialClues,
+  initialDocuments,
+  initialInvestigationNotes
+} from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
 // Authentication
 import { useAuth } from '@/contexts/AuthContext'; 
 
 // UI Components
-import CharacterCreationForm from '@/components/CharacterCreationForm';
-import GamePlay from '@/components/GamePlay';
-import WelcomeMessage from '@/components/WelcomeMessage';
 import LoadingState from '@/components/LoadingState';
-
-// Shadcn UI Components
 import { useToast } from "@/hooks/use-toast";
 import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
-// Sidebar components are no longer used for main layout here
-import LeftSidebar from '@/components/LeftSidebar'; // Still used for Dialog content
-import InventoryDisplay from '@/components/InventoryDisplay'; // Still used for Dialog content
-import QuestJournalDisplay from '@/components/QuestJournalDisplay'; // Still used for Dialog content
-import EvidenceLogDisplay from '@/components/EvidenceLogDisplay'; // Still used for Dialog content
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+
+// Player Info Components for Dialogs
+import PlayerSheet from '@/components/PlayerSheet';
+import InventoryDisplay from '@/components/InventoryDisplay';
+import QuestJournalDisplay from '@/components/QuestJournalDisplay';
+import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
+
+// Custom Components extracted from page.tsx
+import CharacterCreationSection from '@/components/sections/CharacterCreationSection';
+import GamePlaySection from '@/components/sections/GamePlaySection';
+import WelcomeSection from '@/components/sections/WelcomeSection';
 
 
 function HomePageContent() {
@@ -123,12 +133,12 @@ function HomePageContent() {
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: { ...initialPlayerLocation },
-      questLog: [],
-      encounteredPNJs: [],
-      decisionLog: [],
-      clues: [],
-      documents: [],
-      investigationNotes: "",
+      questLog: [...initialQuestLog],
+      encounteredPNJs: [...initialEncounteredPNJs],
+      decisionLog: [...initialDecisionLog],
+      clues: [...initialClues],
+      documents: [...initialDocuments],
+      investigationNotes: initialInvestigationNotes,
     };
 
     const hydratedPlayer = hydratePlayer(playerBaseDetails);
@@ -198,8 +208,8 @@ function HomePageContent() {
                 <DialogHeader>
                   <DialogTitle>Fiche Personnage</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh]">
-                  <LeftSidebar player={gameState?.player || null} isLoading={isLoadingState || loadingAuth} onRestart={handleRestart}/>
+                <ScrollArea className="max-h-[70vh] p-2">
+                  {gameState?.player ? <PlayerSheet player={gameState.player} /> : <p>Aucune donnée de personnage.</p>}
                 </ScrollArea>
               </DialogContent>
             </Dialog>
@@ -211,7 +221,7 @@ function HomePageContent() {
                 <DialogHeader>
                   <DialogTitle>Inventaire</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh]">
+                <ScrollArea className="max-h-[70vh] p-1">
                    <InventoryDisplay inventory={gameState?.player?.inventory || []} />
                 </ScrollArea>
               </DialogContent>
@@ -224,8 +234,8 @@ function HomePageContent() {
                 <DialogHeader>
                   <DialogTitle>Journal de Quêtes</DialogTitle>
                 </DialogHeader>
-                 <ScrollArea className="max-h-[70vh]">
-                  <QuestJournalDisplay player={gameState?.player || null} />
+                 <ScrollArea className="max-h-[70vh] p-1">
+                  {gameState?.player ? <QuestJournalDisplay player={gameState.player} /> : <p>Journal de quêtes non disponible.</p>}
                 </ScrollArea>
               </DialogContent>
             </Dialog>
@@ -237,8 +247,8 @@ function HomePageContent() {
                 <DialogHeader>
                   <DialogTitle>Dossier d'Enquête</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh]">
-                  <EvidenceLogDisplay player={gameState?.player || null} />
+                <ScrollArea className="max-h-[70vh] p-1">
+                  {gameState?.player ? <EvidenceLogDisplay player={gameState.player} /> : <p>Dossier d'enquête non disponible.</p>}
                 </ScrollArea>
               </DialogContent>
             </Dialog>
@@ -246,21 +256,17 @@ function HomePageContent() {
         </MenubarMenu>
       </Menubar>
 
-      <main className="flex-grow flex flex-col overflow-y-auto p-4 md:p-6"> {/* Main content area takes remaining space and scrolls */}
+      <main className="flex-grow flex flex-col overflow-y-auto p-4 md:p-6">
         {!user ? (
-          <div className="flex-grow flex items-center justify-center">
-            <WelcomeMessage />
-          </div>
+          <WelcomeSection />
         ) : gameState && gameState.player && gameState.currentScenario ? (
-          <GamePlay
+          <GamePlaySection
             initialGameState={gameState}
             onRestart={handleRestart}
             setGameState={setGameState}
           />
         ) : (
-          <div className="flex-grow flex items-center justify-center p-4">
-            <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
-          </div>
+          <CharacterCreationSection onCharacterCreate={handleCharacterCreate} />
         )}
       </main>
     </div>

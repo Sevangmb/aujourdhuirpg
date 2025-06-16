@@ -4,18 +4,15 @@
  */
 
 import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType } from './types';
-import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario';
+import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario'; // No longer GenerateScenarioInput needed here
 import { getMasterItemById } from '@/data/items';
-import { initialPlayerMoney, initialInvestigationNotes } from './game-logic'; // For default money if needed
+import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
 
-// --- Helper: Calculate XP needed for next level ---
-// This function could also live in game-logic.ts and be imported, but is closely tied to addXP.
+
 function calculateXpToNextLevel(level: number): number {
   if (level <= 0) level = 1;
   return level * 100 + 50 * (level -1) * level;
 }
-
-// --- Core Effect Application Functions ---
 
 export function applyStatChanges(currentStats: PlayerStats, changes: Record<string, number>): PlayerStats {
   const newStats = { ...currentStats };
@@ -39,18 +36,16 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
   const newInventory = [...currentInventory];
   const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
 
-  if (existingItemIndex > -1) { // Item already exists in inventory
+  if (existingItemIndex > -1) { 
     if (masterItem.stackable) {
       newInventory[existingItemIndex].quantity += quantityToAdd;
     } else {
-      // Non-stackable item already exists. Quantity should remain 1.
-      // No change needed unless quantityToAdd implies a new instance, which we don't support for non-stackables with same ID.
       console.warn(`Inventory Info: Item '${masterItem.name}' (ID: ${itemId}) is not stackable and player already possesses one. Quantity not changed.`);
     }
-  } else { // Item does not exist in inventory, add it
+  } else { 
     newInventory.push({
-      ...masterItem, // Spread all properties from master item
-      quantity: masterItem.stackable ? quantityToAdd : 1 // Non-stackable always added with quantity 1
+      ...masterItem, 
+      quantity: masterItem.stackable ? quantityToAdd : 1 
     });
   }
   return newInventory;
@@ -132,8 +127,8 @@ export function updateQuestInLog(currentQuestLog: Quest[], questId: string, upda
   const updatedLog = logToUpdate.map(quest => {
     if (quest.id === questId) {
       const updatedQuest = { ...quest, ...updates };
-      delete updatedQuest.updatedObjectives; // Remove AI-specific field
-      delete updatedQuest.newObjectiveDescription; // Remove AI-specific field
+      delete updatedQuest.updatedObjectives; 
+      delete updatedQuest.newObjectiveDescription; 
 
       if (updates.updatedObjectives) {
         updatedQuest.objectives = (quest.objectives || []).map(obj => {
@@ -190,7 +185,6 @@ export function addClue(currentClues: Clue[], clueData: AIClueInputSchema): Clue
     ...clueData,
     id: clueData.id || `clue_${Date.now()}_${Math.random().toString(36).substring(7)}`,
     dateFound: new Date().toISOString(),
-    // keywords are optional and come directly from AIClueInputSchema
   };
   if ((currentClues || []).find(c => c.id === newClue.id)) {
     console.warn(`ClueLog Warning: Attempted to add clue with duplicate ID: ${newClue.id}`);
@@ -204,7 +198,6 @@ export function addDocument(currentDocuments: GameDocument[], documentData: AIDo
     ...documentData,
     id: documentData.id || `doc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
     dateAcquired: new Date().toISOString(),
-    // keywords are optional and come directly from AIDocumentInputSchema
   };
   if ((currentDocuments || []).find(d => d.id === newDocument.id)) {
     console.warn(`DocumentLog Warning: Attempted to add document with duplicate ID: ${newDocument.id}`);
@@ -214,8 +207,6 @@ export function addDocument(currentDocuments: GameDocument[], documentData: AIDo
 }
 
 export function updateInvestigationNotes(currentNotes: string, notesUpdate: string): string {
-  // Simple append for now. AI can be instructed to provide a full replacement if needed.
-  // "Indicate if this is an addition or a concise revision of existing notes."
   if (notesUpdate.toLowerCase().startsWith("révision:") || notesUpdate.toLowerCase().startsWith("revision:")) {
     return notesUpdate.substring(notesUpdate.indexOf(":") + 1).trim();
   }
@@ -324,9 +315,8 @@ export function processAndApplyAIScenarioOutput(
 
   if (aiOutput.newQuests && Array.isArray(aiOutput.newQuests)) {
     aiOutput.newQuests.forEach(questData => {
-      // Assuming questData matches AIQuestInputSchema from generate-scenario-schemas
       processedPlayer.questLog = addQuestToLog(processedPlayer.questLog, questData);
-      const addedQuest = processedPlayer.questLog.find(q => q.id === questData.id); // Or find by title if ID is generated
+      const addedQuest = processedPlayer.questLog.find(q => q.id === questData.id);
       if (addedQuest) {
         notifications.push({
           type: 'quest_added',
@@ -346,7 +336,6 @@ export function processAndApplyAIScenarioOutput(
       if (update.newStatus) questUpdatesPayload.status = update.newStatus;
       if (update.updatedObjectives) questUpdatesPayload.updatedObjectives = update.updatedObjectives;
       if (update.newObjectiveDescription) questUpdatesPayload.newObjectiveDescription = update.newObjectiveDescription;
-
 
       const { updatedLog, completedQuestWithMoneyReward } = updateQuestInLog(processedPlayer.questLog, update.questId, questUpdatesPayload);
       processedPlayer.questLog = updatedLog;
@@ -402,7 +391,6 @@ export function processAndApplyAIScenarioOutput(
 
   if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
     aiOutput.majorDecisionsLogged.forEach(decisionData => {
-      // decisionData matches Omit<MajorDecision, 'dateMade'> from AI
       processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog, decisionData);
       const loggedDecision = (processedPlayer.decisionLog || []).find(d=>d.id === decisionData.id);
       if (loggedDecision) {
@@ -416,7 +404,6 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  // --- Process new clues, documents, and investigation notes ---
   if (aiOutput.newClues && Array.isArray(aiOutput.newClues)) {
     aiOutput.newClues.forEach(clueData => {
       processedPlayer.clues = addClue(processedPlayer.clues, clueData);
@@ -450,7 +437,6 @@ export function processAndApplyAIScenarioOutput(
       details: { updateLength: aiOutput.investigationNotesUpdate.length }
     });
   }
-  // --- End process new clues, documents, investigation notes ---
 
   return { updatedPlayer: processedPlayer, notifications };
 }

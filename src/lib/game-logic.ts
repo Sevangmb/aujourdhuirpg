@@ -1,79 +1,29 @@
 
-import type { PlayerStats, GameState, Scenario, Player, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument } from './types';
-import { getMasterItemById, ALL_ITEMS } from '@/data/items';
+import type { GameState, Scenario, Player, InventoryItem } from './types';
+import { getMasterItemById } from '@/data/items';
 import { saveGameStateToFirestore } from '@/services/firestore-service';
+import { 
+  initialPlayerStats,
+  initialSkills,
+  initialTraitsMentalStates,
+  initialProgression,
+  initialAlignment,
+  initialInventory,
+  initialPlayerLocation,
+  defaultAvatarUrl,
+  initialPlayerMoney,
+  initialQuestLog,
+  initialEncounteredPNJs,
+  initialDecisionLog,
+  initialClues,
+  initialDocuments,
+  initialInvestigationNotes
+} from '@/data/initial-game-data';
 
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
-// --- Initial Player Data ---
-export const initialPlayerStats: PlayerStats = {
-  Sante: 100,
-  Charisme: 50,
-  Intelligence: 50,
-  Force: 50,
-};
-
-export const initialSkills: Skills = {
-  Informatique: 10,
-  Discretion: 5,
-  Dialogue: 15,
-  Perception: 12,
-  Survie: 8,
-};
-
-export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];
-
-const calculateXpToNextLevelForInitial = (level: number): number => {
-  if (level <= 0) level = 1;
-  return level * 100 + 50 * (level -1) * level;
-};
-
-export const initialProgression: Progression = {
-  level: 1,
-  xp: 0,
-  xpToNextLevel: calculateXpToNextLevelForInitial(1),
-  perks: [],
-};
-
-export const initialAlignment: Alignment = {
-  chaosLawful: 0,
-  goodEvil: 0,
-};
-
-export const initialInventory: InventoryItem[] = [
-  getMasterItemById('smartphone_01'),
-  getMasterItemById('wallet_01'),
-  getMasterItemById('keys_apartment_01'),
-  getMasterItemById('energy_bar_01'),
-]
-.filter(item => item !== undefined)
-.map(masterItem => {
-  if (!masterItem) throw new Error("Unreachable: masterItem is undefined after filter"); // Should not happen
-  return { 
-    ...masterItem, 
-    quantity: masterItem.id === 'energy_bar_01' ? 2 : 1 // Non-stackable (like smartphone) defaults to 1
-  };
-});
-
-
-export const initialPlayerLocation: LocationData = {
-  latitude: 48.8566,
-  longitude: 2.3522,
-  placeName: 'Paris, France',
-};
-
-export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
-export const initialPlayerMoney: number = 50;
-
-export const initialQuestLog: Quest[] = [];
-export const initialEncounteredPNJs: PNJ[] = [];
-export const initialDecisionLog: MajorDecision[] = [];
-export const initialClues: Clue[] = [];
-export const initialDocuments: GameDocument[] = [];
-export const initialInvestigationNotes: string = "Aucune note d'enquête pour le moment.";
-// --- End Initial Player Data ---
-
+// --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
  return {
     scenarioText: `
@@ -83,7 +33,6 @@ export function getInitialScenario(player: Player): Scenario {
     `,
   };
 }
-
 
 // --- Game State Persistence ---
 export async function saveGameState(state: GameState): Promise<void> {
@@ -114,6 +63,11 @@ export async function saveGameState(state: GameState): Promise<void> {
   }
 }
 
+const calculateXpToNextLevelForHydration = (level: number): number => {
+  if (level <= 0) level = 1;
+  return level * 100 + 50 * (level -1) * level;
+};
+
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   const player: Player = {
     uid: savedPlayer?.uid,
@@ -134,7 +88,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     },
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
     money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
-    inventory: [], // Initialize as empty, will be populated below
+    inventory: [], 
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
     encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
@@ -149,7 +103,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       .map(itemFromSave => {
         const masterItem = getMasterItemById(itemFromSave.id);
         if (masterItem) {
-          // All properties from master item, only quantity from save
           return { 
             ...masterItem, 
             quantity: Math.max(1, itemFromSave.quantity || 1) 
@@ -160,18 +113,15 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       })
       .filter(item => item !== null) as InventoryItem[];
   } else {
-    // If no saved inventory or it's empty, use a deep copy of the initial inventory
     player.inventory = initialInventory.map(item => ({...item}));
   }
 
-
   if (player.progression.level <= 0) player.progression.level = 1;
   if (typeof player.progression.xp !== 'number' || player.progression.xp < 0) player.progression.xp = 0;
-  player.progression.xpToNextLevel = calculateXpToNextLevelForInitial(player.progression.level); // Use specific initial calc
+  player.progression.xpToNextLevel = calculateXpToNextLevelForHydration(player.progression.level);
   if (!Array.isArray(player.progression.perks)) player.progression.perks = [];
   if (typeof player.money !== 'number') player.money = initialPlayerMoney;
   
-  // Ensure inventory is not empty if initial inventory has items and saved one was empty
   if (player.inventory.length === 0 && initialInventory.length > 0) {
     player.inventory = initialInventory.map(item => ({...item}));
   }

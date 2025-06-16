@@ -21,12 +21,12 @@ import {
   initialProgression, 
   initialAlignment,
   initialInventory,
-  initialPlayerMoney, // Import initial money
+  initialPlayerMoney,
   defaultAvatarUrl
-} from '@/lib/game-logic';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react'; // Added Euro for money
+} from '@/data/initial-game-data'; // Updated import
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react';
 import Image from 'next/image';
-import * as LucideIcons from 'lucide-react'; // Import all icons
+import * as LucideIcons from 'lucide-react';
 
 const characterSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }).max(50, { message: "Le nom ne peut pas dépasser 50 caractères." }),
@@ -55,7 +55,6 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    // Note: 'money' will be set by page.tsx or hydratePlayer
     const newPlayerData: Omit<Player, 'currentLocation' | 'money'> = {
       name: data.name,
       gender: data.gender,
