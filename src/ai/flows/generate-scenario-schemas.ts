@@ -129,7 +129,7 @@ export const NewLocationDetailsSchema = LocationSchema.extend({
 export const GenerateScenarioOutputSchema = z.object({
   scenarioText: z.string().describe('The generated scenario text, formatted in HTML (e.g., using <p> tags). This text describes the outcome of the player action and sets the scene for the next player input. It should NOT contain interactive elements like buttons.'),
   scenarioStatsUpdate: z.record(z.number()).optional().describe('A record of the changes that will happen to the player stats as a result of entering this new scenario (e.g., {"Sante": -10, "Intelligence": 5}). If there is no impact, the record can be empty or omitted.'),
-  newLocationDetails: NewLocationDetailsSchema.optional(),
+  newLocationDetails: NewLocationDetailsSchema.nullable().optional(),
   xpGained: z.number().optional().describe("Experience points gained from this scenario's outcome, if any. Award reasonably (e.g., 5-50 XP)."),
   moneyChange: z.number().optional().describe("Amount of money (euros) the player gains (positive value) or loses (negative value) in this scenario. E.g., for rewards, purchases, finding/losing money. Do not include quest completion rewards here, use 'moneyReward' in 'newQuests' or 'questUpdates' for that."),
   itemsAdded: z.array(z.object({
@@ -148,3 +148,4 @@ export const GenerateScenarioOutputSchema = z.object({
   newDocuments: z.array(DocumentInputSchema).optional().describe("Liste des nouveaux documents obtenus par le joueur dans ce scénario."),
   investigationNotesUpdate: z.string().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision.")
 });
+
