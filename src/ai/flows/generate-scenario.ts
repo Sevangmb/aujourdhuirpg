@@ -61,7 +61,7 @@ const scenarioPrompt = ai.definePrompt({
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
-  prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element.
+  prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element. The game is titled "Aujourd'hui RPG".
 
 **Guiding Principles for Output (VERY IMPORTANT):**
 - The 'scenarioText' MUST be purely narrative and descriptive, intended for the player. It should read like a story.
@@ -116,10 +116,14 @@ Task:
 12. Quest Management:
     *   New Quests: Define in 'newQuests'. Include 'moneyReward' if applicable. **If a PNJ gives the quest, ensure the PNJ's name or a descriptive ID is set in the 'giver' field of the QuestInputSchema.** Quests should be logical and fit the context.
     *   Quest Updates: Define in 'questUpdates'. If a quest is completed and has a 'moneyReward', the player should receive this money (reflect this implicitly in the story, the game logic will handle the actual money addition based on the quest definition).
-13. PNJ Interactions:
-    *   Proactively introduce new PNJs or have existing ones interact. They can be sources of information, quests, conflict, or aid.
-    *   Strongly consider basing new major/recurring PNJs on real-world public figures (historical or contemporary, especially French) using 'getWikipediaInfoTool' for background. Integrate these details naturally.
-    *   Record/update PNJ details in 'pnjInteractions'.
+13. PNJ Interactions (Concept: "Les Visages du Savoir"):
+    *   When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **strongly prefer basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**.
+    *   Fetch information about the chosen figure (e.g., their field of expertise, known achievements, key biographical details).
+    *   **Adapt this real person** to fit the current game scenario and timeline. For example, a historical figure might be represented as an expert in their field today, a descendant, or their presence might be a mysterious anachronism.
+    *   Weave details from their Wikipedia biography (e.g., expertise, personality traits suggested by their history) into their description, dialogue, and potential role in the story.
+    *   The goal is to create rich, believable PNJ encounters that blur the lines between fiction and reality, making the world feel interconnected and subtly uncanny.
+    *   Record or update details of these PNJs (including their adapted description based on Wikipedia info) in the 'pnjInteractions' field.
+    *   Existing, less significant PNJs can still interact or be generated without direct Wikipedia backing if appropriate.
 14. Major Decisions: Log in 'majorDecisionsLogged'.
 15. Investigation Elements:
     *   If the player's action leads to the discovery of clues or documents relevant to an ongoing mystery or quest, populate 'newClues' or 'newDocuments'.
