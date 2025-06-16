@@ -38,9 +38,10 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     }));
   }
   if (input.encounteredPNJsSummary) {
+    // Correction: la propriété dans GenerateScenarioInputSchema est relationStatus, pas relation
     simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => ({
       name: p.name,
-      relationStatus: p.relationStatus // Corrected: was p.relation, should be p.relationStatus from input schema
+      relationStatus: p.relationStatus // Doit correspondre au schéma d'entrée
     }));
   }
   // Add summarization for clues and documents if they exist
@@ -63,15 +64,20 @@ const scenarioPrompt = ai.definePrompt({
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element. The game is titled "Aujourd'hui RPG".
 
-**Guiding Principles for Output (VERY IMPORTANT):**
-- The 'scenarioText' MUST be purely narrative and descriptive, intended for the player. It should read like a story.
-- NEVER, under any circumstances, include any tool invocation syntax (like 'getWeatherTool(...)', 'print(default_api.getNearbyPoisTool(...))'), raw JSON data, error messages from tools, or technical logs from tool executions within the 'scenarioText'.
-- CRITICAL: The 'scenarioText' MUST NOT contain any text resembling programming code, function calls (e.g., 'print(...)', 'toolName(...)'), or any internal system messages. This is a strict rule.
+**Guiding Principles for Output (VERY IMPORTANT - STRICTLY ENFORCE):**
+- **ABSOLUTE RULE:** The 'scenarioText' field MUST contain ONLY narrative and descriptive text intended for the player. It must read like a story or a game master's description.
+- **STRICTLY PROHIBITED in 'scenarioText':**
+    - ANY tool invocation syntax (e.g., \`getWeatherTool(...)\`, \`print(default_api.getNearbyPoisTool(...))\`, \`default_api.getWikipediaInfoTool(...)\`).
+    - ANY mention of "tool", "API", "function call", "print", "default_api", or similar technical terms referring to the underlying system.
+    - Raw JSON data, error messages from tools, or technical logs from tool executions.
+    - Any text resembling programming code, function calls (e.g., \`print(...)\`, \`toolName(...)\`), or any internal system messages.
 - Information obtained from tools (weather, POIs, news, Wikipedia) should be woven *seamlessly* and *naturally* into the narrative.
     - **CORRECT Example of using tool info:** "The sun shines brightly in the clear Parisian sky, and a nearby café called 'Le Petit Bistro' seems inviting."
     - **INCORRECT Example (DO NOT DO THIS):** "Tool output: weather: sunny. POIs: [{name: 'Le Petit Bistro'}]. The sun is sunny. I see Le Petit Bistro."
     - **INCORRECT Example (DO NOT DO THIS):** "print(getNearbyPoisTool(location='Paris')) found 'Le Petit Bistro'."
     - **INCORRECT Example (DO NOT DO THIS):** "default_api.getNearbyPoisTool(...) indicates several restaurants are nearby."
+    - **INCORRECT Example (DO NOT DO THIS):** "After calling getWeatherTool, the weather is fine." // Do not mention calling the tool.
+- Failure to adhere to these rules for 'scenarioText' will result in an invalid output.
 
 Player Information:
   Name: {{{playerName}}}
@@ -88,7 +94,7 @@ Player Information:
   Inventory: {{#if playerInventory}}{{#each playerInventory}}{{{name}}} ({{quantity}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Vide{{/if}}
   Current Location: {{{playerLocation.placeName}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}})
   Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#if currentObjectivesDescriptions}}{{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Pas d'objectifs en cours.{{/if}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{/each}}{{else}}Aucune quête active.{{/if}}
-  Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relation}}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
+  Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relationStatus}}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
   Current Clues (Summary): {{#if currentCluesSummary}}{{#each currentCluesSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun indice découvert.{{/if}}
   Current Documents (Summary): {{#if currentDocumentsSummary}}{{#each currentDocumentsSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun document obtenu.{{/if}}
   Current Investigation Notes: {{{currentInvestigationNotes}}}
