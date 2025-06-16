@@ -146,6 +146,6 @@ export const GenerateScenarioOutputSchema = z.object({
   majorDecisionsLogged: z.array(MajorDecisionSchema).optional().describe("Décisions importantes prises par le joueur qui méritent d'être enregistrées."),
   newClues: z.array(ClueInputSchema).optional().describe("Liste des nouveaux indices découverts par le joueur dans ce scénario."),
   newDocuments: z.array(DocumentInputSchema).optional().describe("Liste des nouveaux documents obtenus par le joueur dans ce scénario."),
-  investigationNotesUpdate: z.string().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision.")
+  investigationNotesUpdate: z.string().nullable().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision.")
 });
 
