@@ -50,7 +50,8 @@ import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
 // Custom Components
 import CharacterCreationForm from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
-import WelcomeMessage from '@/components/WelcomeMessage';
+import AuthDisplay from '@/components/AuthDisplay';
+import LeftSidebar from '@/components/LeftSidebar';
 
 
 function HomePageContent() {
@@ -59,6 +60,10 @@ function HomePageContent() {
   const {
     user,
     loadingAuth,
+    signUpWithEmailPassword,
+    signInWithEmailPassword,
+    signInAnonymously,
+    signOutUser,
   } = useAuth(); 
   const { toast } = useToast();
 
@@ -180,13 +185,10 @@ function HomePageContent() {
     }
   };
 
-
-  if (loadingAuth || isLoadingState) {
-    return <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />;
-  } 
+  const isGameActive = gameState && gameState.player && gameState.currentScenario;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen">
+    <div className="flex flex-col h-screen max-h-screen bg-background text-foreground">
       <Menubar className="w-full rounded-none border-b shrink-0">
         <MenubarMenu>
           <MenubarTrigger>Fichier</MenubarTrigger>
@@ -198,106 +200,115 @@ function HomePageContent() {
             <MenubarItem onClick={() => window.close()}>Quitter</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
-        <MenubarMenu>
-          <MenubarTrigger>Édition</MenubarTrigger>
-          <MenubarContent>
-            <Dialog>
-              <DialogTrigger asChild>
-                <MenubarItem onSelect={(e) => e.preventDefault()}>Paramètres</MenubarItem>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Paramètres</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                  <p className="text-muted-foreground">Les options de paramètres seront disponibles ici bientôt.</p>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </MenubarContent>
-        </MenubarMenu>
+        {/* "Edition" menu with "Paramètres" dialog removed for cleanup */}
         <MenubarMenu>
           <MenubarTrigger>Affichage</MenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={toggleFullScreen}>Plein écran</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
-        <MenubarMenu>
-          <MenubarTrigger>Joueur</MenubarTrigger>
-          <MenubarContent>
-            <Dialog>
-              <DialogTrigger asChild>
-                <MenubarItem onSelect={(e) => e.preventDefault()}>Fiche Personnage</MenubarItem>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle>Fiche Personnage</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="max-h-[70vh] p-2">
-                  {gameState?.player ? <PlayerSheet player={gameState.player} /> : <p>Aucune donnée de personnage.</p>}
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
-            <Dialog>
-              <DialogTrigger asChild>
-                <MenubarItem onSelect={(e) => e.preventDefault()}>Inventaire</MenubarItem>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle>Inventaire</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="max-h-[70vh] p-1">
-                   {gameState?.player ? <InventoryDisplay inventory={gameState.player.inventory} /> : <p>Inventaire non disponible.</p>}
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
-            <Dialog>
-              <DialogTrigger asChild>
-                <MenubarItem onSelect={(e) => e.preventDefault()}>Journal de Quêtes</MenubarItem>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle>Journal de Quêtes</DialogTitle>
-                </DialogHeader>
-                 <ScrollArea className="max-h-[70vh] p-1">
-                  {gameState?.player ? <QuestJournalDisplay player={gameState.player} /> : <p>Journal de quêtes non disponible.</p>}
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
-            <Dialog>
-              <DialogTrigger asChild>
-                <MenubarItem onSelect={(e) => e.preventDefault()}>Dossier d'Enquête</MenubarItem>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle>Dossier d'Enquête</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="max-h-[70vh] p-1">
-                  {gameState?.player ? <EvidenceLogDisplay player={gameState.player} /> : <p>Dossier d'enquête non disponible.</p>}
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
-          </MenubarContent>
-        </MenubarMenu>
+        {gameState?.player && ( // Only show "Joueur" menu if player exists
+          <MenubarMenu>
+            <MenubarTrigger>Joueur</MenubarTrigger>
+            <MenubarContent>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <MenubarItem onSelect={(e) => e.preventDefault()}>Fiche Personnage</MenubarItem>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>Fiche Personnage</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] p-2">
+                    {gameState?.player ? <PlayerSheet player={gameState.player} /> : <p>Aucune donnée de personnage.</p>}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <MenubarItem onSelect={(e) => e.preventDefault()}>Inventaire</MenubarItem>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>Inventaire</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] p-1">
+                    {gameState?.player ? <InventoryDisplay inventory={gameState.player.inventory} /> : <p>Inventaire non disponible.</p>}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <MenubarItem onSelect={(e) => e.preventDefault()}>Journal de Quêtes</MenubarItem>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>Journal de Quêtes</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] p-1">
+                    {gameState?.player ? <QuestJournalDisplay player={gameState.player} /> : <p>Journal de quêtes non disponible.</p>}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <MenubarItem onSelect={(e) => e.preventDefault()}>Dossier d'Enquête</MenubarItem>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                  <DialogHeader>
+                    <DialogTitle>Dossier d'Enquête</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-[70vh] p-1">
+                    {gameState?.player ? <EvidenceLogDisplay player={gameState.player} /> : <p>Dossier d'enquête non disponible.</p>}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+            </MenubarContent>
+          </MenubarMenu>
+        )}
       </Menubar>
 
-      <main className="flex-grow flex flex-col overflow-y-auto p-4 md:p-6">
-        {!user ? (
-          <div className="flex-grow flex items-center justify-center">
-            <WelcomeMessage />
-          </div>
-        ) : gameState && gameState.player && gameState.currentScenario ? (
-          <GamePlay
-            initialGameState={gameState}
-            onRestart={handleRestart}
-            setGameState={setGameState}
-          />
-        ) : (
-          <div className="flex-grow flex items-center justify-center p-4">
-            <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
-          </div>
+      <div className="flex flex-1 overflow-hidden"> {/* Horizontal layout for sidebar and main content */}
+        {/* Left Sidebar - Shown on desktop if user is authenticated and player exists */}
+        {user && gameState?.player && (
+          <aside className="w-72 md:w-80 h-full overflow-y-auto bg-card border-r border-border p-1 hidden md:block shrink-0">
+            <LeftSidebar
+              player={gameState.player}
+              isLoading={loadingAuth || isLoadingState}
+            />
+          </aside>
         )}
-      </main>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col overflow-y-auto">
+          {loadingAuth || isLoadingState ? (
+            <div className="flex-grow flex items-center justify-center">
+              <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />
+            </div>
+          ) : !user ? (
+            <div className="flex-grow flex items-center justify-center p-4">
+              <AuthDisplay
+                user={null}
+                loadingAuth={loadingAuth}
+                signUp={signUpWithEmailPassword}
+                signIn={signInWithEmailPassword}
+                signInAnon={signInAnonymously}
+                signOut={signOutUser}
+              />
+            </div>
+          ) : isGameActive ? (
+            <GamePlay
+              initialGameState={gameState!}
+              onRestart={handleRestart}
+              setGameState={setGameState}
+            />
+          ) : (
+            <div className="flex-grow flex items-center justify-center p-4">
+              <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
@@ -305,5 +316,3 @@ function HomePageContent() {
 export default function HomePage() {
   return <HomePageContent />;
 }
-
-    
