@@ -2,7 +2,7 @@
 import type { GameState, Scenario, Player, InventoryItem, ToneSettings } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveGameStateToFirestore } from '@/services/firestore-service';
-import { 
+import {
   initialPlayerStats,
   initialSkills,
   initialTraitsMentalStates,
@@ -28,9 +28,9 @@ export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 export function getInitialScenario(player: Player): Scenario {
  return {
     scenarioText: `
-      <h1 class="font-headline">Bienvenue, ${player.name}</h1>
-      <p>Vous êtes ${player.name}, ${player.background}. Vous vous trouvez à ${player.currentLocation.placeName}, une ville pleine d'opportunités et de mystères. Vous avez ${player.money}€ en poche. Le soleil du matin commence à réchauffer les rues pavées.</p>
-      <p>Tapez ci-dessous ce que vous souhaitez faire pour commencer votre journée.</p>
+      <h1 class="font-headline">Un nouveau jour, ${player.name}</h1>
+      <p>Le jour se lève sur ${player.currentLocation.placeName}. Vous vous réveillez avec le souvenir diffus de votre passé (${player.background}) et la sensation que cette journée ne sera pas comme les autres. Avec ${player.money}€ en poche, la ville et ses secrets vous attendent.</p>
+      <p>Une légère brise matinale balaie les rues encore calmes. Quelle sera votre première action ?</p>
     `,
   };
 }
@@ -89,7 +89,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     },
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
     money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
-    inventory: [], 
+    inventory: [],
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
     toneSettings: { ...initialToneSettings, ...(savedPlayer?.toneSettings || {}) },
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
@@ -105,9 +105,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       .map(itemFromSave => {
         const masterItem = getMasterItemById(itemFromSave.id);
         if (masterItem) {
-          return { 
-            ...masterItem, 
-            quantity: Math.max(1, itemFromSave.quantity || 1) 
+          return {
+            ...masterItem,
+            quantity: Math.max(1, itemFromSave.quantity || 1)
           };
         }
         console.warn(`Hydration Warning: Item with ID "${itemFromSave.id}" from save data not found in master item list. Skipping.`);
@@ -123,11 +123,11 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   player.progression.xpToNextLevel = calculateXpToNextLevelForHydration(player.progression.level);
   if (!Array.isArray(player.progression.perks)) player.progression.perks = [];
   if (typeof player.money !== 'number') player.money = initialPlayerMoney;
-  
+
   if (player.inventory.length === 0 && initialInventory.length > 0) {
     player.inventory = initialInventory.map(item => ({...item}));
   }
-  
+
   return player;
 }
 
@@ -146,7 +146,7 @@ export function loadGameStateFromLocal(): GameState | null {
         }
 
         const hydratedPlayer = hydratePlayer(parsedSavedState.player);
-        
+
         const currentScenario = parsedSavedState.currentScenario && parsedSavedState.currentScenario.scenarioText
           ? parsedSavedState.currentScenario
           : getInitialScenario(hydratedPlayer);
