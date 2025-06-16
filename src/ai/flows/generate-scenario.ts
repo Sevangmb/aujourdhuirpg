@@ -61,7 +61,7 @@ const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
-  input: {schema: GenerateScenarioInputSchema},
+  input: {schema: GenerateScenarioInputSchema}, // This schema doesn't need to know about isReflectAction
   output: {schema: GenerateScenarioOutputSchema},
   config: {
     safetySettings: [
@@ -111,7 +111,7 @@ Player Information (Context):
 Player's Typed Action (Last Choice): {{{playerChoice}}}
 
 Task:
-{{#if (eq playerChoice "${PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS}")}}
+{{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
   This action should primarily provide narrative flavor and insight.
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
@@ -167,16 +167,13 @@ const generateScenarioFlow = ai.defineFlow(
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: GenerateScenarioInput) => {
-    // Define the constant for the special action string inside the flow or ensure it's accessible.
-    // It's already defined at the top-level of this module.
+    const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
     
-    // Pass the constant to the prompt context if Handlebars needs to compare it.
-    // However, the current prompt structure uses direct string comparison within Handlebars.
-    // For more complex logic or to avoid hardcoding strings in Handlebars, you could pass it like this:
-    // const {output} = await scenarioPrompt({...input, PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS});
-    // And in Handlebars: {{#if (eq playerChoice PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS)}}
+    // Pass the original input along with the new boolean flag for template conditional logic
+    // The prompt's defined inputSchema doesn't need to change for Handlebars to access 'isReflectAction'.
+    const promptPayload = { ...input, isReflectAction };
 
-    const {output} = await scenarioPrompt(input);
+    const {output} = await scenarioPrompt(promptPayload);
     if (!output) {
       console.error('AI model did not return output for generateScenarioPrompt.');
       throw new Error('AI model did not return output.');
