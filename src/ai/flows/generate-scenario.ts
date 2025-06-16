@@ -96,10 +96,11 @@ Task:
 7.  Core Stat Updates: Provide 'scenarioStatsUpdate'.
 8.  XP Awards: Provide 'xpGained'.
 9.  Money Changes:
-    *   If the player gains or loses money (e.g., finding cash, paying for something, receiving a small immediate reward NOT tied to quest completion), set 'moneyChange' to the amount (positive for gain, negative for loss).
-    *   For quest completion rewards, use 'moneyReward' within the 'newQuests' or 'questUpdates' objects.
+    *   Be mindful of the player's current money ({{{playerMoney}}} €). Actions that require money (e.g., buying an item, paying for a service) should only be possible if the player has enough money. If they don't, the scenario should reflect this limitation.
+    *   If the player directly gains or loses money as a result of the scenario (e.g., finding cash, paying for a small service, purchasing an item, selling an item), set 'moneyChange' to the amount (positive for gain, negative for loss). Determine reasonable prices for items bought or sold.
+    *   For quest completion rewards, use 'moneyReward' within the 'newQuests' or 'questUpdates' objects. DO NOT use 'moneyChange' for quest completion rewards. The game logic handles adding 'moneyReward' from quests separately.
 10. Inventory Changes:
-    *   For 'itemsAdded', provide a valid 'itemId' from the game's master item list (e.g., 'energy_bar_01', 'data_stick_01', 'mysterious_key_01') and 'quantity'. For non-stackable items, the quantity should be 1.
+    *   For 'itemsAdded', provide a valid 'itemId' from the game's master item list (e.g., 'energy_bar_01', 'data_stick_01', 'mysterious_key_01') and 'quantity'. For non-stackable items, the quantity should always be 1.
     *   For 'itemsRemoved', provide the 'itemName' as it appears in the player's inventory and 'quantity'.
 11. Location Changes: 'newLocationDetails' if the player moves significantly.
 12. Quest Management:
@@ -118,7 +119,6 @@ Task:
 
 Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals and use gathered information (Wikipedia, News) to add depth to their portrayal.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
-Be mindful of the player's current money. Actions that require money (e.g., buying an item, paying for a service) should only be possible if the player has enough money. If they don't, the scenario should reflect this limitation.
 `,
 });
 

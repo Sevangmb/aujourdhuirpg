@@ -13,7 +13,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Smartphone',
     stackable: false,
-    value: 150,
+    value: 150, // Potential resale value
   },
   {
     id: 'wallet_01',
@@ -22,7 +22,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'Wallet',
     stackable: false,
-    value: 5,
+    value: 5, // Value of wallet itself if found/sold empty
   },
   {
     id: 'keys_apartment_01',
@@ -31,6 +31,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'key',
     iconName: 'KeyRound',
     stackable: false,
+    // No monetary value typically
   },
   {
     id: 'energy_bar_01',
@@ -39,7 +40,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'consumable',
     iconName: 'Cookie',
     stackable: true,
-    value: 3,
+    value: 3, // Purchase/sell price per bar
   },
   {
     id: 'water_bottle_01',
@@ -48,7 +49,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'consumable',
     iconName: 'GlassWater',
     stackable: true,
-    value: 1,
+    value: 1, // Purchase/sell price
   },
   {
     id: 'notebook_pen_01',
@@ -57,7 +58,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'NotebookPen',
     stackable: false,
-    value: 4,
+    value: 4, // Purchase/sell price
   },
    {
     id: 'map_paris_01',
@@ -66,7 +67,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'Map',
     stackable: false,
-    value: 7,
+    value: 7, // Purchase/sell price
   },
   {
     id: 'medkit_basic_01',
@@ -74,8 +75,8 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     description: 'Contient des pansements, un antiseptique. Pour les blessures légères.',
     type: 'consumable',
     iconName: 'BriefcaseMedical',
-    stackable: true,
-    value: 15,
+    stackable: true, // Typically one kit, but could be multiple small ones
+    value: 15, // Purchase/sell price
   },
   {
     id: 'mysterious_key_01',
@@ -84,6 +85,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'key',
     iconName: 'Key',
     stackable: false,
+    // Likely no direct monetary value, tied to quest/progression
   },
   {
     id: 'data_stick_01',
@@ -92,7 +94,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Usb',
     stackable: false,
-    value: 25,
+    value: 25, // Value if sold, or if it contains valuable data
   },
   {
     id: 'ancient_coin_01',
@@ -101,7 +103,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'CircleDollarSign',
     stackable: true,
-    value: 50, // Value if sold
+    value: 50, // Value if sold to a collector
   },
   {
     id: 'encrypted_laptop_01',
@@ -110,6 +112,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Laptop',
     stackable: false,
+    // Value depends on content, or if sold as hardware
   },
   {
     id: 'worn_leather_jacket_01',
@@ -118,7 +121,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'wearable',
     iconName: 'Shirt', // Placeholder, ideal icon would be specific to jacket
     stackable: false,
-    value: 40,
+    value: 40, // Resale value
   },
   {
     id: 'research_notes_quest_01',
@@ -127,6 +130,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'quest',
     iconName: 'FileText',
     stackable: false,
+    // No direct monetary value, quest critical
   },
   {
     id: 'painkillers_01',
@@ -135,7 +139,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'consumable',
     iconName: 'Pill',
     stackable: true,
-    value: 10,
+    value: 10, // Purchase/sell price
   }
 ];
 
