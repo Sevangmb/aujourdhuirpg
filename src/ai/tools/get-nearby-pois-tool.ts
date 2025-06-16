@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview A Genkit tool to fetch nearby points of interest (POIs) using the Overpass API (OpenStreetMap data).
  *
