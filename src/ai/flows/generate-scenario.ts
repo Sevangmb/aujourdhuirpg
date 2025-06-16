@@ -124,6 +124,7 @@ Task:
 {{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
   This action should primarily provide narrative flavor and insight, reflecting current tone settings if specified. Use the tone settings to subtly influence the mood and focus of the reflection, but DO NOT mention the tone settings themselves in the scenarioText.
+  **CRITICAL FOR 'scenarioText': This text MUST adhere to the "Guiding Principles for Output" detailed above, especially ensuring NO tool invocation syntax, API calls, print statements, or other technical details are included. It must be PURELY NARRATIVE.**
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
 {{else}}
