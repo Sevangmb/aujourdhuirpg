@@ -37,7 +37,7 @@ export interface InventoryItem {
   type: InventoryItemType;
   iconName: string; // Preferably a keyof typeof LucideIcons, or a generic one
   quantity: number;
-  stackable?: boolean; // Added to determine if items stack
+  stackable: boolean; // Changed from optional to mandatory
   value?: number; // Optional monetary value of the item
 }
 

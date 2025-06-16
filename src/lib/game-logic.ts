@@ -48,7 +48,13 @@ export const initialInventory: InventoryItem[] = [
   getMasterItemById('energy_bar_01'),
 ]
 .filter(item => item !== undefined)
-.map(masterItem => ({ ...masterItem!, quantity: masterItem!.id === 'energy_bar_01' ? 2 : 1 }));
+.map(masterItem => {
+  if (!masterItem) throw new Error("Unreachable: masterItem is undefined after filter"); // Should not happen
+  return { 
+    ...masterItem, 
+    quantity: masterItem.id === 'energy_bar_01' ? 2 : 1 // Non-stackable (like smartphone) defaults to 1
+  };
+});
 
 
 export const initialPlayerLocation: LocationData = {
@@ -128,17 +134,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     },
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
     money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
-    inventory: Array.isArray(savedPlayer?.inventory) && savedPlayer.inventory.length > 0
-      ? savedPlayer.inventory
-          .map(item => {
-            const masterItem = getMasterItemById(item.id);
-            if (masterItem) {
-              return { ...masterItem, quantity: Math.max(1, item.quantity || 1) };
-            }
-            return null;
-          })
-          .filter(item => item !== null) as InventoryItem[]
-      : [...initialInventory],
+    inventory: [], // Initialize as empty, will be populated below
     currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
     encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
@@ -148,14 +144,36 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     investigationNotes: typeof savedPlayer?.investigationNotes === 'string' ? savedPlayer.investigationNotes : initialInvestigationNotes,
   };
 
+  if (Array.isArray(savedPlayer?.inventory) && savedPlayer.inventory.length > 0) {
+    player.inventory = savedPlayer.inventory
+      .map(itemFromSave => {
+        const masterItem = getMasterItemById(itemFromSave.id);
+        if (masterItem) {
+          // All properties from master item, only quantity from save
+          return { 
+            ...masterItem, 
+            quantity: Math.max(1, itemFromSave.quantity || 1) 
+          };
+        }
+        console.warn(`Hydration Warning: Item with ID "${itemFromSave.id}" from save data not found in master item list. Skipping.`);
+        return null;
+      })
+      .filter(item => item !== null) as InventoryItem[];
+  } else {
+    // If no saved inventory or it's empty, use a deep copy of the initial inventory
+    player.inventory = initialInventory.map(item => ({...item}));
+  }
+
+
   if (player.progression.level <= 0) player.progression.level = 1;
   if (typeof player.progression.xp !== 'number' || player.progression.xp < 0) player.progression.xp = 0;
   player.progression.xpToNextLevel = calculateXpToNextLevelForInitial(player.progression.level); // Use specific initial calc
   if (!Array.isArray(player.progression.perks)) player.progression.perks = [];
   if (typeof player.money !== 'number') player.money = initialPlayerMoney;
-
-  if (player.inventory.length === 0 && initialInventory.length > 0) { // Ensure initial inventory is only added if current is empty AND initial has items
-    player.inventory = [...initialInventory];
+  
+  // Ensure inventory is not empty if initial inventory has items and saved one was empty
+  if (player.inventory.length === 0 && initialInventory.length > 0) {
+    player.inventory = initialInventory.map(item => ({...item}));
   }
   
   return player;

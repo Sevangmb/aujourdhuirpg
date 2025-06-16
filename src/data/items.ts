@@ -13,6 +13,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Smartphone',
     stackable: false,
+    value: 150,
   },
   {
     id: 'wallet_01',
@@ -21,6 +22,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'Wallet',
     stackable: false,
+    value: 5,
   },
   {
     id: 'keys_apartment_01',
@@ -35,8 +37,9 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     name: 'Barre énergétique',
     description: 'Une barre chocolatée aux céréales. Redonne un peu de vitalité.',
     type: 'consumable',
-    iconName: 'Cookie', // Using Cookie as a stand-in for a food bar
+    iconName: 'Cookie',
     stackable: true,
+    value: 3,
   },
   {
     id: 'water_bottle_01',
@@ -45,6 +48,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'consumable',
     iconName: 'GlassWater',
     stackable: true,
+    value: 1,
   },
   {
     id: 'notebook_pen_01',
@@ -53,6 +57,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'NotebookPen',
     stackable: false,
+    value: 4,
   },
    {
     id: 'map_paris_01',
@@ -61,6 +66,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'Map',
     stackable: false,
+    value: 7,
   },
   {
     id: 'medkit_basic_01',
@@ -69,6 +75,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'consumable',
     iconName: 'BriefcaseMedical',
     stackable: true,
+    value: 15,
   },
   {
     id: 'mysterious_key_01',
@@ -85,6 +92,50 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Usb',
     stackable: false,
+    value: 25,
+  },
+  {
+    id: 'ancient_coin_01',
+    name: 'Pièce Ancienne',
+    description: 'Une pièce de monnaie usée, d\'une époque révolue. Pourrait avoir de la valeur.',
+    type: 'misc',
+    iconName: 'CircleDollarSign',
+    stackable: true,
+    value: 50, // Value if sold
+  },
+  {
+    id: 'encrypted_laptop_01',
+    name: 'Ordinateur Portable Chiffré',
+    description: 'Un ordinateur portable qui nécessite un mot de passe pour accéder à son contenu.',
+    type: 'electronic',
+    iconName: 'Laptop',
+    stackable: false,
+  },
+  {
+    id: 'worn_leather_jacket_01',
+    name: 'Veste en Cuir Usée',
+    description: 'Une veste en cuir qui a vécu, offrant une protection modeste et un certain style.',
+    type: 'wearable',
+    iconName: 'Shirt', // Placeholder, ideal icon would be specific to jacket
+    stackable: false,
+    value: 40,
+  },
+  {
+    id: 'research_notes_quest_01',
+    name: 'Notes de Recherche (Quête)',
+    description: 'Des pages de notes griffonnées concernant une affaire ou un mystère en cours.',
+    type: 'quest',
+    iconName: 'FileText',
+    stackable: false,
+  },
+  {
+    id: 'painkillers_01',
+    name: 'Antidouleurs',
+    description: 'Quelques comprimés pour soulager une douleur modérée.',
+    type: 'consumable',
+    iconName: 'Pill',
+    stackable: true,
+    value: 10,
   }
 ];
 

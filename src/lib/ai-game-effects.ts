@@ -32,25 +32,30 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Record<stri
 export function addItemToInventory(currentInventory: InventoryItem[], itemId: string, quantityToAdd: number): InventoryItem[] {
   const masterItem = getMasterItemById(itemId);
   if (!masterItem) {
-    console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}`);
+    console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}. Item not added.`);
     return currentInventory;
   }
 
   const newInventory = [...currentInventory];
   const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
 
-  if (existingItemIndex > -1 && masterItem.stackable) {
-    newInventory[existingItemIndex].quantity += quantityToAdd;
-  } else if (existingItemIndex > -1 && !masterItem.stackable) {
-    console.warn(`Inventory Info: Item ${itemId} is not stackable. Adding as a new entry if not already present with quantity 1.`);
-     if (!newInventory.find(item => item.id === itemId)) {
-        newInventory.push({ ...masterItem, quantity: 1 });
-     }
-  } else {
-    newInventory.push({ ...masterItem, quantity: quantityToAdd });
+  if (existingItemIndex > -1) { // Item already exists in inventory
+    if (masterItem.stackable) {
+      newInventory[existingItemIndex].quantity += quantityToAdd;
+    } else {
+      // Non-stackable item already exists. Quantity should remain 1.
+      // No change needed unless quantityToAdd implies a new instance, which we don't support for non-stackables with same ID.
+      console.warn(`Inventory Info: Item '${masterItem.name}' (ID: ${itemId}) is not stackable and player already possesses one. Quantity not changed.`);
+    }
+  } else { // Item does not exist in inventory, add it
+    newInventory.push({
+      ...masterItem, // Spread all properties from master item
+      quantity: masterItem.stackable ? quantityToAdd : 1 // Non-stackable always added with quantity 1
+    });
   }
   return newInventory;
 }
+
 
 export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): InventoryItem[] {
   const newInventory = [...currentInventory];
@@ -232,6 +237,7 @@ export function processAndApplyAIScenarioOutput(
   processedPlayer.documents = processedPlayer.documents || [];
   processedPlayer.investigationNotes = typeof processedPlayer.investigationNotes === 'string' ? processedPlayer.investigationNotes : initialInvestigationNotes;
   processedPlayer.money = typeof processedPlayer.money === 'number' ? processedPlayer.money : initialPlayerMoney;
+  processedPlayer.inventory = Array.isArray(processedPlayer.inventory) ? processedPlayer.inventory : [];
 
 
   if (aiOutput.scenarioStatsUpdate) {

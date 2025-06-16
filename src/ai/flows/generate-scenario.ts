@@ -98,7 +98,9 @@ Task:
 9.  Money Changes:
     *   If the player gains or loses money (e.g., finding cash, paying for something, receiving a small immediate reward NOT tied to quest completion), set 'moneyChange' to the amount (positive for gain, negative for loss).
     *   For quest completion rewards, use 'moneyReward' within the 'newQuests' or 'questUpdates' objects.
-10. Inventory Changes: 'itemsAdded' (with 'itemId' like 'energy_bar_01', 'data_stick_01') and 'itemsRemoved' (with 'itemName').
+10. Inventory Changes:
+    *   For 'itemsAdded', provide a valid 'itemId' from the game's master item list (e.g., 'energy_bar_01', 'data_stick_01', 'mysterious_key_01') and 'quantity'. For non-stackable items, the quantity should be 1.
+    *   For 'itemsRemoved', provide the 'itemName' as it appears in the player's inventory and 'quantity'.
 11. Location Changes: 'newLocationDetails' if the player moves significantly.
 12. Quest Management:
     *   New Quests: Define in 'newQuests'. Include 'moneyReward' if applicable. **If a PNJ gives the quest, ensure the PNJ's name or a descriptive ID is set in the 'giver' field of the QuestInputSchema.** Quests should be logical and fit the context.
