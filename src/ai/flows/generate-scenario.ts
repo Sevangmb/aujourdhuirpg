@@ -63,10 +63,15 @@ const scenarioPrompt = ai.definePrompt({
   output: {schema: GenerateScenarioOutputSchema},
   prompt: `You are a creative RPG game master, adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element.
 
-**Guiding Principles for Output:**
+**Guiding Principles for Output (VERY IMPORTANT):**
 - The 'scenarioText' MUST be purely narrative and descriptive, intended for the player. It should read like a story.
-- NEVER include any tool invocation syntax (like 'getWeatherTool(...)', 'print(default_api.getNearbyPoisTool(...))'), raw JSON data, error messages from tools, or technical logs from tool executions within the 'scenarioText'.
-- Information obtained from tools (weather, POIs, news, Wikipedia) should be woven *seamlessly* and *naturally* into the narrative. For example, instead of saying "Tool output: sunny", describe "The sun shines brightly in the clear Parisian sky."
+- NEVER, under any circumstances, include any tool invocation syntax (like 'getWeatherTool(...)', 'print(default_api.getNearbyPoisTool(...))'), raw JSON data, error messages from tools, or technical logs from tool executions within the 'scenarioText'.
+- CRITICAL: The 'scenarioText' MUST NOT contain any text resembling programming code, function calls (e.g., 'print(...)', 'toolName(...)'), or any internal system messages. This is a strict rule.
+- Information obtained from tools (weather, POIs, news, Wikipedia) should be woven *seamlessly* and *naturally* into the narrative.
+    - **CORRECT Example of using tool info:** "The sun shines brightly in the clear Parisian sky, and a nearby café called 'Le Petit Bistro' seems inviting."
+    - **INCORRECT Example (DO NOT DO THIS):** "Tool output: weather: sunny. POIs: [{name: 'Le Petit Bistro'}]. The sun is sunny. I see Le Petit Bistro."
+    - **INCORRECT Example (DO NOT DO THIS):** "print(getNearbyPoisTool(location='Paris')) found 'Le Petit Bistro'."
+    - **INCORRECT Example (DO NOT DO THIS):** "default_api.getNearbyPoisTool(...) indicates several restaurants are nearby."
 
 Player Information:
   Name: {{{playerName}}}
@@ -96,7 +101,7 @@ Task:
 2.  If the player's action involves exploring the immediate surroundings, looking for a specific type of place, or if describing the environment would benefit from knowing what's nearby, use the 'getNearbyPoisTool'.
 3.  If the player's action, the scenario, or an emerging PNJ involves a specific, identifiable real-world place or public figure, consider using the 'getWikipediaInfoTool'.
 4.  To make the world feel current, consider using the 'getNewsTool' (especially for 'fr' - France) at the beginning of a new game session or if the player interacts with news sources.
-5.  Based on the information gathered from any tools used, weave these details (weather, POIs, Wikipedia info, news) *naturally and descriptively* into the 'scenarioText'. Do NOT output the raw tool calls or their direct JSON/text results in the scenario text.
+5.  Based on the information gathered from any tools used, weave these details (weather, POIs, Wikipedia info, news) *naturally and descriptively* into the 'scenarioText'. Adhere strictly to the "Guiding Principles for Output" above; do NOT output the raw tool calls or their direct JSON/text results in the scenario text.
 6.  Generate a new scenario (100-250 words, HTML formatted, no interactive elements) based on ALL player information (including their money, inventory, active quests, PNJ relations) and their action: "{{{playerChoice}}}".
 7.  Core Stat Updates: Provide 'scenarioStatsUpdate'.
 8.  XP Awards: Provide 'xpGained'.
