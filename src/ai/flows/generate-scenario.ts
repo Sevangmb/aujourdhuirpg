@@ -128,6 +128,8 @@ Task:
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
 {{else}}
+**Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.**
+
 **Phase 1: Strategic Information Gathering & API Management**
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if describing the environment would benefit, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
@@ -144,6 +146,7 @@ Task:
    E. **Mental Draft:** *Internally* combine the filtered weather, POI details, news snippets, and Wikipedia facts into a cohesive understanding of the current scene *before* writing, considering the chosen TONES.
    F. **Personalization:** Consider how the player's stats/mental state might color their perception of this synthesized information, influenced by TONES.
    G. **Identify Potential Clues:** Determine if any API-sourced information could serve as a subtle clue or trigger.
+   H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline spark an investigation? Could a POI be a quest location? Could a Wikipedia PNJ be a quest giver?
 
 **Phase 3: Narrative Generation & Game State Updates**
    1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
@@ -156,14 +159,14 @@ Task:
    5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01') and 'itemsRemoved' (with 'itemName' from inventory).
    6.  Location Changes: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted.
    7.  Quest Management:
-       *   New Quests: Define in 'newQuests'. Set 'giver' for PNJ-given quests.
-       *   Quest Updates: Define in 'questUpdates'.
+       *   New Quests: Define in newQuests. **Be proactive in creating new quests that are relevant to the current scenario, the player's recent actions, or discoveries. These quests should guide the player and provide clear goals.** Each new quest MUST have at least one clear objective in its objectives array. Try to give new quests memorable and unique id values (e.g., 'mystere_du_cafe_01', 'retrouver_le_document_perdu_A7'). Set giver for PNJ-given quests.
+       *   Quest Updates: Define in questUpdates. **Carefully analyze the playerChoice against the currentObjectivesDescriptions of activeQuests. If the player's action clearly fulfills one or more objectives, mark them as completed (isCompleted: true) in updatedObjectives for the relevant questId.** If *all* objectives of a quest are completed as a result of the player's action, update the quest's newStatus to 'completed'. If a quest is completed and has a moneyReward, the game logic will handle adding this to the player's money automatically when it processes your output, so you don't need to create a separate moneyChange for this specific reward. The AI *can* also add new objectives to an existing quest via newObjectiveDescription if it makes narrative sense (e.g., a quest develops further), but prefer creating follow-up quests for more complex steps.
    8.  PNJ Interactions ("Les Visages du Savoir" continued):
-       *   When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in 'pnjInteractions'.
-   9.  Major Decisions: Log in 'majorDecisionsLogged'.
+       *   When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions.
+   9.  Major Decisions: Log in majorDecisionsLogged.
    10. Investigation Elements:
-       *   Populate 'newClues' or 'newDocuments' if relevant. For 'photo' clues, you MUST provide an 'imageUrl' using 'https://placehold.co/WIDTHxHEIGHT.png' and include 'keywords'. For clues that are NOT of type 'photo', the 'imageUrl' field MUST be OMITTED. For document 'content', use simple HTML.
-       *   Provide concise 'investigationNotesUpdate' if the player's understanding evolves. Indicate additions/revisions.
+       *   Populate newClues or newDocuments if relevant. **Crucially, these clues and documents should often directly support active quests (refer to activeQuests in input) by helping complete an objective, or they should lay the groundwork for newQuests you are introducing.** For 'photo' clues, you MUST provide an imageUrl using 'https://placehold.co/WIDTHxHEIGHT.png' and include keywords. For clues that are NOT of type 'photo', the imageUrl field MUST be OMITTED. For document content, use simple HTML.
+       *   Provide concise investigationNotesUpdate if the player's understanding evolves. Indicate additions/revisions.
 {{/if}}
 
 Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals using 'getWikipediaInfoTool' and use gathered information (Wikipedia, News) to add depth to their portrayal, adapting to selected TONES.
