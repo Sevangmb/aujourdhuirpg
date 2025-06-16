@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, Player, PlayerStats, LocationData, Scenario } from '@/lib/types';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
-import { generateLocationImage } from '@/ai/flows/generate-location-image-flow'; // Added
+import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
 import { saveGameState, getInitialScenario } from '@/lib/game-logic';
 import { initialPlayerLocation } from '@/data/initial-game-data'; 
 import { processAndApplyAIScenarioOutput } from '@/lib/ai-game-effects';
@@ -14,9 +14,10 @@ import { Loader2, Star, Euro, Search as SearchIcon } from 'lucide-react';
 import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
-import LocationImageDisplay from './LocationImageDisplay'; // Added
+import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent } from '@/components/ui/card'; // Import Card and CardContent
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -106,7 +107,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
       fetchWeatherForLocation(currentLocationForUI);
     }
 
-  }, [player?.currentLocation, currentLocationForUI]); // Removed toast from dependencies as it's stable
+  }, [player?.currentLocation, currentLocationForUI]);
 
   useEffect(() => {
     const fetchLocationImage = async () => {
@@ -115,21 +116,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
         setLocationImageUrl(null); 
         setLocationImageError(null);
         try {
-          // console.log(`Attempting to generate image for: ${player.currentLocation.placeName}`);
           const result = await generateLocationImage({ placeName: player.currentLocation.placeName });
-          // console.log('Image generation result:', result);
           if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
             setLocationImageUrl(result.imageUrl);
           } else {
             const errorMsg = result.error || "L'IA n'a pas pu générer une image pour ce lieu.";
             setLocationImageError(errorMsg);
-            // console.warn(`Image generation failed or no URL for ${player.currentLocation.placeName}: ${errorMsg}`);
-            // Don't toast for every image error, can be too noisy if AI consistently fails for some places. Error is shown in component.
           }
         } catch (e: any) {
           const errorMsg = e.message || "Erreur inconnue lors de la génération de l'image du lieu.";
           setLocationImageError(errorMsg);
-          // console.error(`Exception during image generation for ${player.currentLocation.placeName}: ${errorMsg}`);
         } finally {
           setLocationImageLoading(false);
         }
@@ -137,7 +133,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
     };
 
     fetchLocationImage();
-  }, [player?.currentLocation?.placeName]); // Only trigger when placeName changes
+  }, [player?.currentLocation?.placeName]);
 
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
@@ -278,16 +274,20 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
 
   return (
     <div className="flex flex-col h-full max-h-screen p-4 md:p-6 space-y-4 overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
-         <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.placeName} />
-         <MapDisplay latitude={displayLocation.latitude} longitude={displayLocation.longitude} placeName={displayLocation.placeName} />
-         <LocationImageDisplay 
-            imageUrl={locationImageUrl} 
-            placeName={displayLocation.placeName} 
-            isLoading={locationImageLoading} 
-            error={locationImageError} 
-         />
-      </div>
+      <Card className="shadow-lg shrink-0">
+        <CardContent className="p-2 md:p-3"> {/* Adjusted padding slightly */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3"> {/* Adjusted gap slightly */}
+            <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.placeName} />
+            <MapDisplay latitude={displayLocation.latitude} longitude={displayLocation.longitude} placeName={displayLocation.placeName} />
+            <LocationImageDisplay 
+                imageUrl={locationImageUrl} 
+                placeName={displayLocation.placeName} 
+                isLoading={locationImageLoading} 
+                error={locationImageError} 
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex-grow flex flex-col min-h-0">
         <ScrollArea className="flex-grow">
@@ -311,4 +311,3 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
 };
 
 export default GamePlay;
-

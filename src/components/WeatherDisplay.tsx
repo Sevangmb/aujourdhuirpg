@@ -16,7 +16,8 @@ interface WeatherDisplayProps {
 const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading, error, placeName }) => {
   if (isLoading) {
     return (
-      <div className="flex items-center text-sm text-muted-foreground p-3 bg-card rounded-lg shadow-md mb-4 border border-border">
+      // Removed mb-4 from here, as parent grid will handle gaps
+      <div className="flex items-center text-sm text-muted-foreground p-3 bg-card rounded-lg shadow-md border border-border">
         <LucideIcons.Loader2 className="h-4 w-4 animate-spin mr-2" />
         Chargement de la météo à {placeName}...
       </div>
@@ -25,7 +26,8 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading,
   if (error) {
     const displayError = error.length > 70 ? error.substring(0, 70) + "..." : error;
     return (
-      <div className="flex items-center text-sm text-destructive p-3 bg-destructive/10 border border-destructive/30 rounded-lg shadow-md mb-4">
+      // Removed mb-4
+      <div className="flex items-center text-sm text-destructive p-3 bg-destructive/10 border border-destructive/30 rounded-lg shadow-md">
         <LucideIcons.AlertTriangle className="h-4 w-4 mr-2 text-destructive" />
         Météo ({placeName}) indisponible: {displayError}
       </div>
@@ -38,7 +40,8 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading,
   const IconComponent = (LucideIcons as any)[weatherData.iconName] || LucideIcons.HelpCircle;
 
   return (
-    <Card className="mb-4 shadow-md border border-border">
+    // Removed mb-4
+    <Card className="shadow-md border border-border h-full"> {/* Added h-full to try and match height with others */}
       <CardHeader className="pb-2 pt-3 px-4">
         <CardTitle className="text-lg font-headline flex items-center text-primary/90">
           <IconComponent className="w-5 h-5 mr-2" />
