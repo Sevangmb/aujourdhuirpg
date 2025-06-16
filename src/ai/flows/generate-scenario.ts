@@ -153,7 +153,7 @@ Task:
        *   Use 'moneyChange' for direct gains/losses (finding cash, small purchases). Determine reasonable prices.
        *   Quest completion rewards go in 'moneyReward' within 'newQuests' or 'questUpdates' (game logic handles this).
    5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master list) and 'itemsRemoved' (with 'itemName' from inventory).
-   6.  Location Changes: 'newLocationDetails' if significant movement.
+   6.  Location Changes: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted.
    7.  Quest Management:
        *   New Quests: Define in 'newQuests'. Set 'giver' for PNJ-given quests.
        *   Quest Updates: Define in 'questUpdates'.
@@ -190,3 +190,4 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
