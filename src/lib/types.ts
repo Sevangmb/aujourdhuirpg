@@ -39,6 +39,7 @@ export interface InventoryItem {
   quantity: number;
   stackable: boolean; // Changed from optional to mandatory
   value?: number; // Optional monetary value of the item
+  effects?: Partial<PlayerStats>; // Effects the item has when used/consumed
 }
 
 // Master definition for an item, used in the item database

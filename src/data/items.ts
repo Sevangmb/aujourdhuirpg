@@ -3,7 +3,7 @@
  * @fileOverview Master list of all items available in the game.
  * This acts as the "item database".
  */
-import type { MasterInventoryItem } from '@/lib/types';
+import type { MasterInventoryItem, PlayerStats } from '@/lib/types';
 
 export const ALL_ITEMS: MasterInventoryItem[] = [
   {
@@ -41,15 +41,17 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     iconName: 'Cookie',
     stackable: true,
     value: 3, // Purchase/sell price per bar
+    effects: { Sante: 10 } // Restores 10 Sante points
   },
   {
     id: 'water_bottle_01',
     name: 'Bouteille d\'eau',
-    description: 'Une petite bouteille d\'eau minérale (50cl).',
+    description: 'Une petite bouteille d\'eau minérale (50cl). Désaltère.',
     type: 'consumable',
     iconName: 'GlassWater',
     stackable: true,
     value: 1, // Purchase/sell price
+    effects: { Sante: 2 } // Small health boost for hydration
   },
   {
     id: 'notebook_pen_01',
@@ -77,6 +79,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     iconName: 'BriefcaseMedical',
     stackable: true, // Typically one kit, but could be multiple small ones
     value: 15, // Purchase/sell price
+    effects: { Sante: 25 } // Restores 25 Sante points
   },
   {
     id: 'mysterious_key_01',
@@ -140,6 +143,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     iconName: 'Pill',
     stackable: true,
     value: 10, // Purchase/sell price
+    effects: { Sante: 5 } // Minor health recovery, or temporary debuff removal if we add that later
   }
 ];
 

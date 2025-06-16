@@ -51,7 +51,6 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
   if (input.currentDocumentsSummary) {
       simplifiedInput.currentDocumentsSummary = input.currentDocumentsSummary.map(d => ({ title: d.title, type: d.type}));
   }
-  // Ensure toneSettings are passed through
   simplifiedInput.toneSettings = input.toneSettings;
 
 
@@ -77,10 +76,10 @@ const scenarioPrompt = ai.definePrompt({
 **Guiding Principles for Output (VERY IMPORTANT - STRICTLY ENFORCE):**
 - **ABSOLUTE RULE:** The 'scenarioText' field MUST contain ONLY narrative and descriptive text intended for the player. It must read like a story or a game master's description.
 - **STRICTLY PROHIBITED in 'scenarioText':**
-    - ANY tool invocation syntax (e.g., \`getWeatherTool(...)\`, \`print(default_api.getNearbyPoisTool(...))\`, \`default_api.getWikipediaInfoTool(...)\`).
+    - ANY tool invocation syntax (e.g., getWeatherTool(...), print(default_api.getNearbyPoisTool(...)), default_api.getWikipediaInfoTool(...)).
     - ANY mention of "tool", "API", "function call", "print", "default_api", or similar technical terms referring to the underlying system.
     - Raw JSON data, error messages from tools, or technical logs from tool executions.
-    - Any text resembling programming code, function calls (e.g., \`print(...)\`, \`toolName(...)\`), or any internal system messages.
+    - Any text resembling programming code, function calls (e.g., print(...), toolName(...)), or any internal system messages.
 - Information obtained from tools (weather, POIs, news, Wikipedia) should be woven *seamlessly* and *naturally* into the narrative.
     - **CORRECT Example of using tool info:** "The sun shines brightly in the clear Parisian sky, and a nearby café called 'Le Petit Bistro' seems inviting."
     - **INCORRECT Example (DO NOT DO THIS):** "Tool output: weather: sunny. POIs: [{name: 'Le Petit Bistro'}]. The sun is sunny. I see Le Petit Bistro."
@@ -128,14 +127,14 @@ Task:
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
 {{else}}
-**Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.**
+Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 
 **Phase 1: Strategic Information Gathering & API Management**
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if describing the environment would benefit, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
    C. **News Context:** Especially at the start of a new in-game day or if the player interacts with news sources (TV, radio, newspaper, internet), use 'getNewsTool' for France ('fr'). Fetch 3-5 *pertinent* headlines. Filter for news (global or local if in a major city) that could thematically (even distantly) relate to the game's mystery/thriller ambiance (technology, crime, politics, major cultural events) and selected TONE.
    D. **Wikipédia pour PNJ et Lieux ("Les Visages du Savoir") :**
-      i. **PNJ ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **strongly prefer basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE.
+      i. **PNJ ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **STRONGLY PREFER basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE. Actively seek opportunities to do this.
       ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place, use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.
 
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
@@ -150,13 +149,13 @@ Task:
 
 **Phase 3: Narrative Generation & Game State Updates**
    1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
-   2.  Core Stat Updates: Provide 'scenarioStatsUpdate'.
+   2.  Core Stat Updates: Provide 'scenarioStatsUpdate'. **IMPORTANT**: For items marked as 'consumable' in the item database (e.g., 'energy_bar_01' which restores Sante), which have predefined effects, the game code will automatically apply their standard effects when you list them in 'itemsRemoved'. Therefore, for these standard consumable effects, *do not* include them again in 'scenarioStatsUpdate'. You can still use 'scenarioStatsUpdate' for other contextual stat changes or for effects of non-standard items that don't have predefined effects.
    3.  XP Awards: Provide 'xpGained'.
    4.  Money Changes:
        *   Respect current money ({{{playerMoney}}} €). Actions requiring money are only possible if affordable.
        *   Use 'moneyChange' for direct gains/losses (finding cash, small purchases). Determine reasonable prices.
        *   Quest completion rewards go in 'moneyReward' within 'newQuests' or 'questUpdates' (game logic handles this).
-   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01') and 'itemsRemoved' (with 'itemName' from inventory).
+   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01', 'medkit_basic_01') and 'itemsRemoved' (with 'itemName' from inventory).
    6.  Location Changes: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted.
    7.  Quest Management:
        *   New Quests: Define in newQuests. **Be proactive in creating new quests that are relevant to the current scenario, the player's recent actions, or discoveries. These quests should guide the player and provide clear goals.** Each new quest MUST have at least one clear objective in its objectives array. Try to give new quests memorable and unique id values (e.g., 'mystere_du_cafe_01', 'retrouver_le_document_perdu_A7'). Set giver for PNJ-given quests.
@@ -183,7 +182,6 @@ const generateScenarioFlow = ai.defineFlow(
   async (input: GenerateScenarioInput) => {
     const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
     
-    // Pass the original input along with the new boolean flag for template conditional logic
     const promptPayload: GenerateScenarioInput & { isReflectAction: boolean } = { ...input, isReflectAction };
 
     const {output} = await scenarioPrompt(promptPayload);

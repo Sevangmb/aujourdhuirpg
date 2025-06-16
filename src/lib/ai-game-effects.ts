@@ -4,7 +4,7 @@
  */
 
 import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType } from './types';
-import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario'; // No longer GenerateScenarioInput needed here
+import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario';
 import { getMasterItemById } from '@/data/items';
 import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
 
@@ -52,15 +52,22 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
 }
 
 
-export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): InventoryItem[] {
+export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: InventoryItem[], removedItemEffects?: Partial<PlayerStats>, removedItemName?: string } {
   const newInventory = [...currentInventory];
   let itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName);
   if (itemIndex === -1) {
     itemIndex = newInventory.findIndex(item => item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
   }
 
+  let removedItemEffects: Partial<PlayerStats> | undefined = undefined;
+  let removedItemName: string | undefined = undefined;
+
   if (itemIndex > -1) {
-    if (newInventory[itemIndex].quantity <= quantityToRemove) {
+    const itemBeingRemoved = newInventory[itemIndex];
+    removedItemEffects = itemBeingRemoved.effects;
+    removedItemName = itemBeingRemoved.name;
+
+    if (itemBeingRemoved.quantity <= quantityToRemove) {
       newInventory.splice(itemIndex, 1);
     } else {
       newInventory[itemIndex].quantity -= quantityToRemove;
@@ -68,7 +75,7 @@ export function removeItemFromInventory(currentInventory: InventoryItem[], itemI
   } else {
     console.warn(`Inventory Warning: Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);
   }
-  return newInventory;
+  return { updatedInventory: newInventory, removedItemEffects, removedItemName };
 }
 
 export function addXP(currentProgression: Progression, xpGained: number): { newProgression: Progression, leveledUp: boolean } {
@@ -221,6 +228,7 @@ export function processAndApplyAIScenarioOutput(
   let processedPlayer = { ...currentPlayer };
   const notifications: GameNotification[] = [];
 
+  // Initialize potentially undefined fields
   processedPlayer.questLog = processedPlayer.questLog || [];
   processedPlayer.encounteredPNJs = processedPlayer.encounteredPNJs || [];
   processedPlayer.decisionLog = processedPlayer.decisionLog || [];
@@ -230,10 +238,47 @@ export function processAndApplyAIScenarioOutput(
   processedPlayer.money = typeof processedPlayer.money === 'number' ? processedPlayer.money : initialPlayerMoney;
   processedPlayer.inventory = Array.isArray(processedPlayer.inventory) ? processedPlayer.inventory : [];
 
+  let combinedStatChanges: Partial<PlayerStats> = { ...(aiOutput.scenarioStatsUpdate || {}) };
 
-  if (aiOutput.scenarioStatsUpdate) {
-    processedPlayer.stats = applyStatChanges(processedPlayer.stats, aiOutput.scenarioStatsUpdate);
+  // Process item removals and apply their effects first
+  if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
+    let currentInv = processedPlayer.inventory;
+    aiOutput.itemsRemoved.forEach(itemToRemove => {
+      const { updatedInventory, removedItemEffects, removedItemName } = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
+      currentInv = updatedInventory;
+
+      if (removedItemEffects && removedItemName) {
+        notifications.push({
+          type: 'item_removed',
+          title: "Objet utilisé/perdu",
+          description: `${removedItemName} (x${itemToRemove.quantity}) retiré. Ses effets sont appliqués.`,
+          details: { itemName: removedItemName, quantity: itemToRemove.quantity, effects: removedItemEffects }
+        });
+        // Apply consumable effects to combinedStatChanges
+        for (const statKey in removedItemEffects) {
+          if (Object.prototype.hasOwnProperty.call(removedItemEffects, statKey)) {
+            const effectValue = removedItemEffects[statKey as keyof PlayerStats] || 0;
+            combinedStatChanges[statKey as keyof PlayerStats] = (combinedStatChanges[statKey as keyof PlayerStats] || 0) + effectValue;
+          }
+        }
+      } else if (removedItemName) { // Item removed but no specific effects
+         notifications.push({
+          type: 'item_removed',
+          title: "Objet utilisé/perdu",
+          description: `${removedItemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
+          details: { itemName: removedItemName, quantity: itemToRemove.quantity }
+        });
+      }
+    });
+    processedPlayer.inventory = currentInv;
   }
+  
+  // Apply combined stat changes (from AI + consumables)
+  if (Object.keys(combinedStatChanges).length > 0) {
+    processedPlayer.stats = applyStatChanges(processedPlayer.stats, combinedStatChanges);
+    // Could add a generic stat_changed notification here if needed, or rely on consumable notification
+  }
+
 
   if (typeof aiOutput.xpGained === 'number' && aiOutput.xpGained > 0) {
     const { newProgression, leveledUp } = addXP(processedPlayer.progression, aiOutput.xpGained);
@@ -281,19 +326,7 @@ export function processAndApplyAIScenarioOutput(
     processedPlayer.inventory = currentInv;
   }
 
-  if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
-    let currentInv = processedPlayer.inventory;
-    aiOutput.itemsRemoved.forEach(itemToRemove => {
-      currentInv = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
-       notifications.push({
-        type: 'item_removed',
-        title: "Objet utilisé/perdu",
-        description: `${itemToRemove.itemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
-        details: { itemName: itemToRemove.itemName, quantity: itemToRemove.quantity }
-      });
-    });
-    processedPlayer.inventory = currentInv;
-  }
+  // itemRemoved is now handled above to integrate effects with stat changes
 
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
