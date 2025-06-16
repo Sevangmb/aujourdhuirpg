@@ -122,7 +122,7 @@ Task:
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if describing the environment would benefit, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
    C. **News Context:** Especially at the start of a new in-game day or if the player interacts with news sources (TV, radio, newspaper, internet), use 'getNewsTool' for France ('fr'). Fetch 3-5 *pertinent* headlines. Filter for news (global or local if in a major city) that could thematically (even distantly) relate to the game's mystery/thriller ambiance (technology, crime, politics, major cultural events).
    D. **Wikipedia for Depth (PNJs & Locations):**
-      i. **PNJs ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **strongly prefer basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario and timeline. For iconic locations the player visits, use 'getWikipediaInfoTool' to fetch 1-2 notable historical/cultural facts.
+      i. **PNJs ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones), **strongly prefer basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario and timeline.
       ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place, use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description.
 
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
@@ -184,3 +184,5 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
+    
