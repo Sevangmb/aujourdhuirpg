@@ -17,7 +17,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ player, isLoading }) => {
   const { user, signOutUser } = useAuth(); // Get user and signOut for AuthDisplay
 
   return (
-    <div className="h-full flex flex-col p-1 gap-2">
+    <div className="h-full flex flex-col gap-2"> {/* Removed p-1, parent aside handles padding */}
       {/* AuthDisplay will show current user info and logout button */}
       <div className="shrink-0">
         <AuthDisplay
@@ -36,11 +36,11 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ player, isLoading }) => {
       </div>
 
       {/* Placeholder for any future sidebar content, PlayerSheet removed for redundancy */}
-      <ScrollArea className="flex-grow rounded-md border p-1 min-h-0">
-         <h2 className="text-lg font-headline text-primary p-2 text-center sticky top-0 bg-sidebar z-10">Joueur Actif</h2>
-         <div className="p-2 text-sm text-muted-foreground">
-            <p>Nom: {player.name}</p>
-            <p>Niveau: {player.progression.level}</p>
+      <ScrollArea className="flex-grow rounded-md border border-sidebar-border bg-sidebar-accent/30 p-1 min-h-0">
+         <h2 className="text-lg font-headline text-sidebar-primary p-2 text-center sticky top-0 bg-sidebar z-10">Joueur Actif</h2>
+         <div className="p-2 text-sm text-sidebar-foreground/90">
+            <p><span className="font-semibold">Nom:</span> {player.name}</p>
+            <p><span className="font-semibold">Niveau:</span> {player.progression.level}</p>
             {/* Additional quick info can be added here if needed */}
          </div>
       </ScrollArea>

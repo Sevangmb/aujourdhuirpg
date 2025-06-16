@@ -200,7 +200,6 @@ function HomePageContent() {
             <MenubarItem onClick={() => window.close()}>Quitter</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
-        {/* "Edition" menu with "Paramètres" dialog removed for cleanup */}
         <MenubarMenu>
           <MenubarTrigger>Affichage</MenubarTrigger>
           <MenubarContent>
@@ -271,7 +270,7 @@ function HomePageContent() {
       <div className="flex flex-1 overflow-hidden"> {/* Horizontal layout for sidebar and main content */}
         {/* Left Sidebar - Shown on desktop if user is authenticated and player exists */}
         {user && gameState?.player && (
-          <aside className="w-72 md:w-80 h-full overflow-y-auto bg-card border-r border-border p-1 hidden md:block shrink-0">
+          <aside className="w-72 md:w-80 h-full overflow-y-auto bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-2 hidden md:block shrink-0">
             <LeftSidebar
               player={gameState.player}
               isLoading={loadingAuth || isLoadingState}
