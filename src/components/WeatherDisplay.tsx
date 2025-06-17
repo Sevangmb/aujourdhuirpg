@@ -15,29 +15,29 @@ interface WeatherDisplayProps {
 const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading, error, placeName }) => {
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center text-sm text-muted-foreground p-3 h-[274px] bg-background/50 rounded-lg">
-        <LucideIcons.Loader2 className="h-6 w-6 animate-spin mb-2" />
-        <p>Chargement de la météo...</p>
+      <div className="flex flex-col items-center justify-center text-xs text-muted-foreground p-3 h-[200px] bg-background/50 rounded-lg">
+        <LucideIcons.Loader2 className="h-5 w-5 animate-spin mb-1.5" />
+        <p>Chargement météo...</p>
         <p className="text-xs">à {placeName}</p>
       </div>
     );
   }
   if (error) {
-    const displayError = error.length > 70 ? error.substring(0, 70) + "..." : error;
+    const displayError = error.length > 60 ? error.substring(0, 60) + "..." : error;
     return (
-      <div className="flex flex-col items-center justify-center text-sm text-destructive p-3 h-[274px] bg-destructive/10 rounded-lg">
-        <LucideIcons.AlertTriangle className="h-6 w-6 mb-2 text-destructive" />
+      <div className="flex flex-col items-center justify-center text-xs text-destructive p-3 h-[200px] bg-destructive/10 rounded-lg text-center">
+        <LucideIcons.AlertTriangle className="h-5 w-5 mb-1.5 text-destructive" />
         <p>Météo indisponible:</p>
-        <p className="text-xs text-center">{displayError}</p>
-        <p className="text-xs mt-1">({placeName})</p>
+        <p className="text-xs">{displayError}</p>
+        <p className="text-xs mt-0.5">({placeName})</p>
       </div>
     );
   }
   if (!weatherData) {
     return (
-       <div className="flex flex-col items-center justify-center text-sm text-muted-foreground p-3 h-[274px] bg-background/50 rounded-lg">
-        <LucideIcons.HelpCircle className="h-6 w-6 mb-2" />
-        <p>Données météo non disponibles</p>
+       <div className="flex flex-col items-center justify-center text-xs text-muted-foreground p-3 h-[200px] bg-background/50 rounded-lg">
+        <LucideIcons.HelpCircle className="h-5 w-5 mb-1.5" />
+        <p>Données météo absentes</p>
          <p className="text-xs">pour {placeName}</p>
       </div>
     );
@@ -46,15 +46,15 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading,
   const IconComponent = (LucideIcons as any)[weatherData.iconName] || LucideIcons.HelpCircle;
 
   return (
-    <div className="p-3 bg-background/50 rounded-lg h-[274px] flex flex-col">
-      <div className="text-md font-headline flex items-center text-primary/90 mb-2">
-        <IconComponent className="w-5 h-5 mr-2 shrink-0" />
+    <div className="p-3 bg-background/50 rounded-lg h-[200px] flex flex-col">
+      <div className="text-sm font-headline flex items-center text-primary/90 mb-1.5">
+        <IconComponent className="w-4 h-4 mr-1.5 shrink-0" />
         <span className="truncate">Météo à {placeName}</span>
       </div>
       <div className="flex-grow flex flex-col items-center justify-center text-center">
-        <IconComponent className="w-16 h-16 text-primary mb-2 opacity-80" />
-        <p className="text-2xl font-semibold">{weatherData.temperature}°C</p>
-        <p className="text-sm text-foreground/80 capitalize">{weatherData.description}</p>
+        <IconComponent className="w-12 h-12 text-primary mb-1 opacity-80" />
+        <p className="text-xl font-semibold">{weatherData.temperature}°C</p>
+        <p className="text-xs text-foreground/80 capitalize">{weatherData.description}</p>
       </div>
     </div>
   );

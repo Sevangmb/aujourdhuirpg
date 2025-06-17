@@ -24,9 +24,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude},${longitude}`;
 
   return (
-    <div className="p-3 bg-background/50 rounded-lg h-[274px] flex flex-col">
-      <div className="text-md font-headline flex items-center text-primary/90 mb-2">
-        <MapPin className="w-5 h-5 mr-2 shrink-0" />
+    <div className="p-3 bg-background/50 rounded-lg h-[200px] flex flex-col">
+      <div className="text-sm font-headline flex items-center text-primary/90 mb-1.5">
+        <MapPin className="w-4 h-4 mr-1.5 shrink-0" />
         <span className="truncate">{placeName}</span>
       </div>
       <div className="flex-grow rounded-md overflow-hidden border border-border">

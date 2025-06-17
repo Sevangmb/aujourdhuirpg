@@ -27,21 +27,21 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
     : "location view";
 
   return (
-    <div className="p-3 bg-background/50 rounded-lg h-[274px] flex flex-col">
-      <div className="text-md font-headline flex items-center text-primary/90 mb-2">
-        <ImageIcon className="w-5 h-5 mr-2 shrink-0" />
+    <div className="p-3 bg-background/50 rounded-lg h-[200px] flex flex-col">
+      <div className="text-sm font-headline flex items-center text-primary/90 mb-1.5">
+        <ImageIcon className="w-4 h-4 mr-1.5 shrink-0" />
         <span className="truncate">Vue de {placeName}</span>
       </div>
       <div className="flex-grow relative bg-muted rounded-md overflow-hidden border border-border">
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-background/70">
-            <Loader2 className="w-8 h-8 animate-spin mb-2" />
-            <p className="text-xs">Génération de l'image...</p>
+            <Loader2 className="w-6 h-6 animate-spin mb-1.5" />
+            <p className="text-xs">Génération image...</p>
           </div>
         )}
         {!isLoading && error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-2 text-center bg-background/70">
-            <AlertTriangle className="w-8 h-8 mb-2" />
+            <AlertTriangle className="w-6 h-6 mb-1.5" />
             <p className="text-xs">Erreur image:</p>
             <p className="text-xs">{error.substring(0,100)}</p>
             <Image
