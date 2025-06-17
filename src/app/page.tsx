@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Types and Game Logic
-import type { GameState, Player, ToneSettings } from '@/lib/types';
+import type { GameState, Player, ToneSettings, LocationData } from '@/lib/types';
 import {
   loadGameStateFromLocal,
   saveGameState,
@@ -21,7 +21,6 @@ import {
   initialAlignment,
   initialInventory,
   initialPlayerMoney,
-  initialPlayerLocation,
   initialQuestLog,
   initialEncounteredPNJs,
   initialDecisionLog,
@@ -114,7 +113,17 @@ function HomePageContent() {
     }
   }, [loadingAuth, performInitialLoad]);
 
-  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'> & { startingCity: string }) => {
+  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => {
+    
+    // Generate random starting location
+    const randomLatitude = Math.random() * 180 - 90; // -90 to 90
+    const randomLongitude = Math.random() * 360 - 180; // -180 to 180
+    const randomLocation: LocationData = {
+      latitude: parseFloat(randomLatitude.toFixed(4)),
+      longitude: parseFloat(randomLongitude.toFixed(4)),
+      placeName: "Lieu de Départ Inconnu",
+    };
+
     const playerBaseDetails: Partial<Player> = {
       ...playerDataFromForm,
       avatarUrl: defaultAvatarUrl,
@@ -126,10 +135,7 @@ function HomePageContent() {
       inventory: [ ...initialInventory ],
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
-      currentLocation: {
-        ...initialPlayerLocation, 
-        placeName: playerDataFromForm.startingCity || initialPlayerLocation.placeName, 
-       },
+      currentLocation: randomLocation,
       toneSettings: { ...initialToneSettings },
       questLog: [...initialQuestLog],
       encounteredPNJs: [...initialEncounteredPNJs],
@@ -148,7 +154,7 @@ function HomePageContent() {
     };
     setGameState(newGameState);
     await saveGameState(newGameState);
-    toast({ title: "Personnage créé !", description: `Votre aventure commence à ${hydratedPlayer.currentLocation.placeName}.`});
+    toast({ title: "Personnage créé !", description: `Votre aventure commence dans un lieu mystérieux... L'IA va vous en dire plus.`});
   };
 
   const handleRestartGame = async () => {
@@ -216,12 +222,12 @@ function HomePageContent() {
   };
 
   const authScreenProps = {
-    user: user, // Pass null explicitly if user is null
+    user: user, 
     loadingAuth: loadingAuth,
     signUp: signUpWithEmailPassword,
     signIn: signInWithEmailPassword,
     signInAnon: signInAnonymously,
-    signOut: signOutUser, // This signOut is for the AuthDisplay context, might differ from Menubar's
+    signOut: signOutUser, 
   };
 
 
@@ -254,10 +260,10 @@ function HomePageContent() {
             isLoadingState={isLoadingState}
             gameState={gameState}
             isGameActive={isGameActive}
-            authFunctions={authScreenProps} // Pass the grouped auth functions
+            authFunctions={authScreenProps} 
             onCharacterCreate={handleCharacterCreate}
-            onRestartGame={handleRestartGame} // For GamePlay's onRestart
-            setGameState={setGameState} // For GamePlay
+            onRestartGame={handleRestartGame} 
+            setGameState={setGameState} 
         />
       </div>
     </div>

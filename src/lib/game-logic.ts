@@ -26,7 +26,15 @@ export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
- return {
+  if (player.currentLocation && player.currentLocation.placeName === "Lieu de Départ Inconnu") {
+    return {
+      scenarioText: `
+        <p>${player.name}, vous vous réveillez dans un lieu inconnu. Vos sens s'éveillent lentement...</p>
+        <p>Que faites-vous ?</p>
+      `,
+    };
+  }
+  return {
     scenarioText: `
       <p>Où vous trouvez-vous, ${player.name} ?</p>
     `,
@@ -126,6 +134,18 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     player.inventory = initialInventory.map(item => ({...item}));
   }
 
+  // Ensure currentLocation has valid numeric lat/lon
+  if (typeof player.currentLocation.latitude !== 'number' || isNaN(player.currentLocation.latitude)) {
+    player.currentLocation.latitude = initialPlayerLocation.latitude;
+  }
+  if (typeof player.currentLocation.longitude !== 'number' || isNaN(player.currentLocation.longitude)) {
+    player.currentLocation.longitude = initialPlayerLocation.longitude;
+  }
+  if (!player.currentLocation.placeName) {
+    player.currentLocation.placeName = initialPlayerLocation.placeName;
+  }
+
+
   return player;
 }
 
@@ -170,4 +190,3 @@ export function clearGameState(): void {
     console.log("LocalStorage Info: Game state cleared from LocalStorage.");
   }
 }
-

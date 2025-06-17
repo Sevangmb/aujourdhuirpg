@@ -15,7 +15,6 @@ import type { Player } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import {
   initialPlayerStats,
-  initialPlayerLocation,
   initialSkills,
   initialTraitsMentalStates,
   initialProgression,
@@ -25,7 +24,7 @@ import {
   defaultAvatarUrl,
   initialToneSettings
 } from '@/data/initial-game-data';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, MapPin } from 'lucide-react';
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 
@@ -35,13 +34,12 @@ const characterSchema = z.object({
   age: z.coerce.number().min(15, { message: "L'âge doit être d'au moins 15 ans." }).max(99, { message: "L'âge ne peut pas dépasser 99 ans." }),
   origin: z.string().min(5, { message: "L'origine doit contenir au moins 5 caractères." }).max(200, {message: "L'origine ne peut pas dépasser 200 caractères."}),
   background: z.string().min(10, { message: "L'historique doit contenir au moins 10 caractères." }).max(500, { message: "L'historique ne peut pas dépasser 500 caractères." }),
-  startingCity: z.string().min(2, { message: "La ville de départ doit contenir au moins 2 caractères." }).max(100, { message: "La ville de départ ne peut pas dépasser 100 caractères." }),
 });
 
 type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'> & { startingCity: string }) => void;
+  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes'>) => void;
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate }) => {
@@ -53,25 +51,16 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       age: 25,
       origin: '',
       background: '',
-      startingCity: initialPlayerLocation.placeName, // Default starting city
     },
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'> & { startingCity: string } = {
+    const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes'> = {
       name: data.name,
       gender: data.gender,
       age: data.age,
-      avatarUrl: defaultAvatarUrl,
       origin: data.origin,
       background: data.background,
-      stats: { ...initialPlayerStats },
-      skills: { ...initialSkills },
-      traitsMentalStates: [...initialTraitsMentalStates],
-      progression: { ...initialProgression },
-      alignment: { ...initialAlignment },
-      inventory: [ ...initialInventory ],
-      startingCity: data.startingCity, // Pass the starting city
     };
     onCharacterCreate(newPlayerData);
   };
@@ -83,7 +72,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
            <Image src={defaultAvatarUrl} alt="Avatar par défaut" width={100} height={100} className="rounded-full border-2 border-primary" data-ai-hint="character portrait"/>
         </div>
         <CardTitle className="font-headline text-3xl text-primary">Créez Votre Personnage</CardTitle>
-        <CardDescription>Donnez vie à votre avatar pour l'aventure d'aujourd'hui.</CardDescription>
+        <CardDescription>Donnez vie à votre avatar pour une aventure commençant en un lieu inconnu.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -140,21 +129,6 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="startingCity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center"><MapPin className="w-4 h-4 mr-2" />Ville de Départ</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Marseille, France" {...field} />
-                  </FormControl>
-                  <FormDescription>La ville où votre aventure commencera.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}
@@ -238,7 +212,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             </div>
 
             <p className="text-sm text-center text-muted-foreground">
-              Les coordonnées initiales de la carte et de la météo seront celles de Paris, mais votre aventure commencera narrativement dans la ville que vous avez choisie.
+              Votre aventure commencera en un lieu aléatoire sur la planète. L'IA déterminera les détails de votre environnement initial.
             </p>
           </CardContent>
           <CardFooter>
@@ -253,4 +227,3 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
 };
 
 export default CharacterCreationForm;
-

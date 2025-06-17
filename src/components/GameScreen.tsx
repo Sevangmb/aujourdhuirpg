@@ -26,7 +26,7 @@ interface GameScreenProps {
   gameState: GameState | null;
   isGameActive: boolean;
   authFunctions: AuthFunctions;
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'> & { startingCity: string }) => void;
+  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => void;
   onRestartGame: () => void;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
 }
@@ -56,10 +56,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
             signUp={authFunctions.signUp}
             signIn={authFunctions.signIn}
             signInAnon={authFunctions.signInAnon}
-            signOut={authFunctions.signOut} // This signOut is context-specific for AuthDisplay
+            signOut={authFunctions.signOut}
           />
         </div>
-      ) : isGameActive && gameState ? ( // Ensure gameState is not null here for GamePlay
+      ) : isGameActive && gameState ? (
         <GamePlay
           initialGameState={gameState}
           onRestart={onRestartGame}
