@@ -203,6 +203,3 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
 };
 
 export default PlayerSheet;
-
-
-    
