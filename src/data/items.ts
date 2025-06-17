@@ -77,7 +77,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     description: 'Contient des pansements, un antiseptique. Pour les blessures légères.',
     type: 'consumable',
     iconName: 'BriefcaseMedical',
-    stackable: true, // Typically one kit, but could be multiple small ones
+    stackable: true, 
     value: 15, // Purchase/sell price
     effects: { Sante: 25 } // Restores 25 Sante points
   },
@@ -88,7 +88,6 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'key',
     iconName: 'Key',
     stackable: false,
-    // Likely no direct monetary value, tied to quest/progression
   },
   {
     id: 'data_stick_01',
@@ -97,7 +96,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Usb',
     stackable: false,
-    value: 25, // Value if sold, or if it contains valuable data
+    value: 25, 
   },
   {
     id: 'ancient_coin_01',
@@ -106,7 +105,7 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'misc',
     iconName: 'CircleDollarSign',
     stackable: true,
-    value: 50, // Value if sold to a collector
+    value: 50, 
   },
   {
     id: 'encrypted_laptop_01',
@@ -115,16 +114,15 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'electronic',
     iconName: 'Laptop',
     stackable: false,
-    // Value depends on content, or if sold as hardware
   },
   {
     id: 'worn_leather_jacket_01',
     name: 'Veste en Cuir Usée',
     description: 'Une veste en cuir qui a vécu, offrant une protection modeste et un certain style.',
     type: 'wearable',
-    iconName: 'Shirt', // Placeholder, ideal icon would be specific to jacket
+    iconName: 'Shirt', 
     stackable: false,
-    value: 40, // Resale value
+    value: 40, 
   },
   {
     id: 'research_notes_quest_01',
@@ -133,17 +131,61 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
     type: 'quest',
     iconName: 'FileText',
     stackable: false,
-    // No direct monetary value, quest critical
   },
   {
     id: 'painkillers_01',
-    name: 'Antidouleurs',
+    name: 'Médicaments (Antidouleurs)',
     description: 'Quelques comprimés pour soulager une douleur modérée.',
     type: 'consumable',
     iconName: 'Pill',
     stackable: true,
-    value: 10, // Purchase/sell price
-    effects: { Sante: 5 } // Minor health recovery, or temporary debuff removal if we add that later
+    value: 10,
+    effects: { Sante: 5 } 
+  },
+  {
+    id: 'flashlight_01',
+    name: 'Lampe Torche',
+    description: 'Une lampe torche LED compacte mais puissante. Nécessite des piles (non incluses... ou peut-être si !).',
+    type: 'tool',
+    iconName: 'Torus', // Using Torus as a stand-in for Flashlight if not available
+    stackable: false,
+    value: 12,
+  },
+  {
+    id: 'multitool_01',
+    name: 'Outil Multifonction',
+    description: 'Un outil de poche compact avec diverses fonctions : pince, couteau, tournevis.',
+    type: 'tool',
+    iconName: 'Wrench',
+    stackable: false,
+    value: 20,
+  },
+  {
+    id: 'sim_card_01',
+    name: 'Carte SIM Prépayée',
+    description: 'Une carte SIM avec un crédit de communication limité.',
+    type: 'electronic',
+    iconName: 'Router', // Placeholder icon
+    stackable: false,
+    value: 10,
+  },
+  {
+    id: 'lighter_01',
+    name: 'Briquet',
+    description: 'Un simple briquet. Utile pour... allumer des choses.',
+    type: 'tool', // Could also be misc
+    iconName: 'Flame',
+    stackable: false,
+    value: 2,
+  },
+  {
+    id: 'lockpicks_01',
+    name: 'Crochets de Serrurier',
+    description: 'Un ensemble de crochets pour tenter d\'ouvrir des serrures simples. Nécessite de la compétence.',
+    type: 'tool',
+    iconName: 'KeySquare',
+    stackable: false,
+    value: 30,
   }
 ];
 

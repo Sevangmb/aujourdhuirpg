@@ -28,7 +28,7 @@ export type Alignment = {
   goodEvil: number; // e.g., -100 (Evil) to 100 (Good)
 };
 
-export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'misc' | 'quest';
+export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'tool' | 'misc' | 'quest';
 
 export interface InventoryItem {
   id: string; // Unique ID for the item

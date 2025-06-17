@@ -4,19 +4,20 @@
 import type { Player, InventoryItem, InventoryItemType } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InventoryItemCard from './InventoryItemCard';
-import { Package, Shirt, Utensils, KeyRound, MonitorSmartphone, Archive, Drama } from 'lucide-react';
+import { Package, Shirt, Utensils, KeyRound, MonitorSmartphone, Wrench, Archive, Drama } from 'lucide-react'; // Added Wrench
 
 interface InventoryDisplayProps {
   inventory: InventoryItem[];
 }
 
-const itemTypeCategories: InventoryItemType[] = ['wearable', 'consumable', 'key', 'electronic', 'quest', 'misc'];
+const itemTypeCategories: InventoryItemType[] = ['wearable', 'consumable', 'key', 'electronic', 'tool', 'quest', 'misc'];
 
 const categoryIcons: Record<InventoryItemType, React.ElementType> = {
   wearable: Shirt,
   consumable: Utensils,
   key: KeyRound,
   electronic: MonitorSmartphone,
+  tool: Wrench, // Added Wrench icon for 'tool'
   quest: Drama,
   misc: Archive,
 };
@@ -26,6 +27,7 @@ const categoryLabels: Record<InventoryItemType, string> = {
   consumable: "Consommable",
   key: "Clés",
   electronic: "Électronique",
+  tool: "Outils", // Added label for 'tool'
   quest: "Quête",
   misc: "Divers",
 };
@@ -39,7 +41,7 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
     // The parent (TabsContent in page.tsx's right panel) handles scrolling.
     // This component structure ensures it fills the available space correctly.
     <Tabs defaultValue="all" className="w-full flex flex-col h-full"> 
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-1 shrink-0">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 mb-1 shrink-0"> {/* Adjusted grid-cols for new category */}
           <TabsTrigger value="all" className="text-xs p-1.5"><Package className="w-3 h-3 mr-1 inline-block" />Tout</TabsTrigger>
           {itemTypeCategories.map(catType => {
             const Icon = categoryIcons[catType];

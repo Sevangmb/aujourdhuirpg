@@ -129,6 +129,13 @@ Task:
 {{else}}
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 
+**Conceptual Item Categories (for your reference when generating itemsAdded):**
+  - Utilitaires (Utilities): e.g., briquet, lampe torche, carte SIM, téléphone. Map to 'tool', 'electronic', or 'misc'.
+  - Nourriture & Soins (Food & Care): e.g., médicaments, boissons énergétiques, rations. Map to 'consumable'.
+  - Équipements (Equipment): e.g., vêtements, accessoires, protections, outils. Map to 'wearable', 'tool', or 'misc'.
+  - Objets Narratifs (Narrative Items): If these are physical items, they might be 'quest' type or 'misc' with a special description. Often, "narrative items" like documents or photos are better created as newClues or newDocuments directly.
+  - Marchandises (Goods): Items with a 'value', fitting existing types.
+
 **Phase 1: Strategic Information Gathering & API Management**
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if a quest objective points to a type of location, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
@@ -149,13 +156,14 @@ Remember to consider the player's activeQuests and currentObjectivesDescriptions
 
 **Phase 3: Narrative Generation & Game State Updates**
    1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
+       **Item Interactions**: If the player uses or examines an item, especially one of type 'quest' or 'tool', or an item with a strong narrative description, describe the outcome. Some items might trigger specific events, dialogues, or reveal clues.
    2.  Core Stat Updates: Provide 'scenarioStatsUpdate'. **IMPORTANT**: For items marked as 'consumable' in the item database (e.g., 'energy_bar_01' which restores Sante), which have predefined effects, the game code will automatically apply their standard effects when you list them in 'itemsRemoved'. Therefore, for these standard consumable effects, *do not* include them again in 'scenarioStatsUpdate'. You can still use 'scenarioStatsUpdate' for other contextual stat changes or for effects of non-standard items that don't have predefined effects.
    3.  XP Awards: Provide 'xpGained'.
    4.  Money Changes:
        *   Respect current money ({{{playerMoney}}} €). Actions requiring money are only possible if affordable.
        *   Use 'moneyChange' for direct gains/losses (finding cash, small purchases). Determine reasonable prices.
        *   Quest completion rewards go in 'moneyReward' within 'newQuests' or 'questUpdates' (game logic handles this).
-   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01', 'medkit_basic_01') and 'itemsRemoved' (with 'itemName' from inventory).
+   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01', 'medkit_basic_01', 'flashlight_01') and 'itemsRemoved' (with 'itemName' from inventory).
    6.  Location Changes: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted.
    7.  Quest Management:
        *   New Quests: Define in newQuests. **Be proactive in creating new quests that are relevant to the current scenario, the player's recent actions, or discoveries. These quests should guide the player and provide clear goals.** Each new quest MUST have at least one clear objective in its objectives array. Try to give new quests memorable and unique id values (e.g., 'mystere_du_cafe_01', 'retrouver_le_document_perdu_A7'). Set giver for PNJ-given quests; **if no specific PNJ gives the quest, OMIT the 'giver' field entirely (do not set it to null).**
@@ -192,4 +200,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-
