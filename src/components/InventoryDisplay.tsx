@@ -4,7 +4,7 @@
 import type { Player, InventoryItem, InventoryItemType } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InventoryItemCard from './InventoryItemCard';
-import { Package, Shirt, Utensils, KeyRound, MonitorSmartphone, Wrench, Archive, Drama } from 'lucide-react'; // Added Wrench
+import { Package, Shirt, Utensils, KeyRound, MonitorSmartphone, Wrench, Archive, Drama } from 'lucide-react';
 
 interface InventoryDisplayProps {
   inventory: InventoryItem[];
@@ -17,7 +17,7 @@ const categoryIcons: Record<InventoryItemType, React.ElementType> = {
   consumable: Utensils,
   key: KeyRound,
   electronic: MonitorSmartphone,
-  tool: Wrench, // Added Wrench icon for 'tool'
+  tool: Wrench, 
   quest: Drama,
   misc: Archive,
 };
@@ -27,7 +27,7 @@ const categoryLabels: Record<InventoryItemType, string> = {
   consumable: "Consommable",
   key: "Clés",
   electronic: "Électronique",
-  tool: "Outils", // Added label for 'tool'
+  tool: "Outils", 
   quest: "Quête",
   misc: "Divers",
 };
@@ -38,8 +38,6 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
   const itemsByType = (type: InventoryItemType) => inventory.filter(item => item.type === type);
 
   return (
-    // The parent (TabsContent in page.tsx's right panel) handles scrolling.
-    // This component structure ensures it fills the available space correctly.
     <Tabs defaultValue="all" className="w-full flex flex-col h-full"> 
         <TabsList className="grid w-full grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-1 mb-1 shrink-0">
           <TabsTrigger value="all" className="text-xs p-1 sm:p-1.5"><Package className="w-3 h-3 mr-1 inline-block" />Tout</TabsTrigger>
@@ -53,7 +51,7 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
           })}
         </TabsList>
         
-          <TabsContent value="all" className="mt-0 flex-1 min-h-0"> {/* flex-1 and min-h-0 for proper scrolling if needed internally */}
+          <TabsContent value="all" className="mt-0 flex-1 min-h-0"> 
             {inventory.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">Votre inventaire est vide.</p>
             ) : (

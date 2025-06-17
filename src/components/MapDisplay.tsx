@@ -38,7 +38,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   const [activeMarker, setActiveMarker] = useState<Position | null>(null);
   const [scriptLoadError, setScriptLoadError] = useState<Error | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const containerHeight = "h-[160px] md:h-[180px] lg:h-[200px]";
+  const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
 
   const handleMarkerClick = (markerPos: Position) => {
     setActiveMarker(markerPos);
@@ -58,7 +58,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   }, []);
 
   useEffect(() => {
-    if (mapRef.current && typeof google !== 'undefined' && google.maps && currentLocation) { // Added typeof google check
+    if (mapRef.current && typeof google !== 'undefined' && google.maps && currentLocation) { 
       const bounds = new google.maps.LatLngBounds();
       if (currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
         bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude });

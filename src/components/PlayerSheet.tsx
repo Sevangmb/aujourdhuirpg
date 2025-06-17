@@ -22,7 +22,6 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
     : 0;
 
   return (
-    // Removed fixed height, parent ScrollArea will handle it
     <Tabs defaultValue="identity" className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-2">
           <TabsTrigger value="identity" className="p-2" aria-label="Identité"><User className="w-4 h-4" /></TabsTrigger>
@@ -74,7 +73,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
             </CardHeader>
             <CardContent className="space-y-1 p-3 text-sm">
               {Object.entries(player.stats).map(([stat, value]) => {
-                let Icon = Zap; // Default icon
+                let Icon = Zap; 
                 if (stat === "Sante") Icon = Heart;
                 else if (stat === "Charisme") Icon = Smile;
                 else if (stat === "Intelligence") Icon = BrainIcon;

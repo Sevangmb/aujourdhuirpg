@@ -154,7 +154,6 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
   const pnjs = player.encounteredPNJs || [];
 
   return (
-    // The parent (TabsContent in page.tsx's right panel) handles scrolling.
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
           <TabsTrigger value="main" className="text-xs p-1.5"><Landmark className="w-3 h-3 mr-1" />Principales ({mainQuests.filter(q=>q.status === 'active').length})</TabsTrigger>

@@ -34,7 +34,7 @@ import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
-import StatDisplay from '@/components/StatDisplay'; // Import StatDisplay
+import StatDisplay from '@/components/StatDisplay'; 
 
 interface AppMenubarProps {
   user: FirebaseUser | null;

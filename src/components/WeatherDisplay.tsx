@@ -13,7 +13,7 @@ interface WeatherDisplayProps {
 }
 
 const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading, error, placeName }) => {
-  const containerHeight = "h-[160px] md:h-[180px] lg:h-[200px]";
+  const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
 
   if (isLoading) {
     return (

@@ -41,7 +41,6 @@ import { useToast } from "@/hooks/use-toast";
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
 import GameScreen from '@/components/GameScreen';
-// LeftSidebar import removed
 
 
 function HomePageContent() {
@@ -288,7 +287,6 @@ function HomePageContent() {
       )}
 
       <div className="flex-1 flex flex-row overflow-hidden"> 
-        {/* LeftSidebar removed from here */}
         <GameScreen
             user={user}
             loadingAuth={loadingAuth}

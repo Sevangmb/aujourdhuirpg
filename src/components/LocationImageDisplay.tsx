@@ -18,7 +18,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
   isLoading,
   error,
 }) => {
-  const containerHeight = "h-[160px] md:h-[180px] lg:h-[200px]";
+  const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
   const placeholderImage = `https://placehold.co/600x400.png`;
   const placeNameParts = placeName ? placeName.split(/,|\s+/).filter(part => part.length > 2) : [];
   const hintKeywords = placeNameParts.length > 1
@@ -27,7 +27,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
     ? placeNameParts[0]
     : "location view";
 
-  const isParis = placeName && placeName.toLowerCase().includes('paris');
+  const isParis = placeName && (placeName.toLowerCase().includes('paris') && !placeName.toLowerCase().includes('parisian'));
   const parisImageUrl = 'https://placehold.co/600x400.png'; 
 
   return (

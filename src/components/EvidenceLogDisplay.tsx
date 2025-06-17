@@ -64,7 +64,6 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
   const investigationNotes = player.investigationNotes || "Aucune note d'enquête pour le moment.";
 
   return (
-    // The parent (TabsContent in page.tsx's right panel) handles scrolling.
     <Tabs defaultValue="clues" className="w-full flex flex-col h-full"> 
         <TabsList className="grid w-full grid-cols-3 shrink-0 mb-2">
           <TabsTrigger value="clues" className="text-xs sm:text-sm"><Lightbulb className="w-3 h-3 mr-1 sm:mr-2" />Indices ({clues.length})</TabsTrigger>
