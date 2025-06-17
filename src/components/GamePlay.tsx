@@ -273,7 +273,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
   const displayLocation = player.currentLocation || initialPlayerLocation;
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-6 space-y-4"> {/* Removed max-h-screen and overflow-hidden */}
+    // Removed h-full from here to allow GameScreen to scroll this component if it's too tall
+    <div className="flex flex-col p-4 md:p-6 space-y-4"> 
       <Card className="shadow-lg shrink-0 border-border bg-card/80 backdrop-blur-sm">
         <CardContent className="p-3 md:p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -289,8 +290,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
         </CardContent>
       </Card>
 
-      <div className="flex-grow flex flex-col min-h-0">
-        <ScrollArea className="flex-grow">
+      {/* This div is the flex-growing middle section */}
+      <div className="flex-grow flex flex-col min-h-0 relative">
+        {/* ScrollArea is absolutely positioned to fill its parent (the div above) */}
+        <ScrollArea className="absolute inset-0">
             <ScenarioDisplay
             scenarioHTML={currentScenario.scenarioText}
             isLoading={isLoading}
@@ -311,4 +314,3 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
 };
 
 export default GamePlay;
-
