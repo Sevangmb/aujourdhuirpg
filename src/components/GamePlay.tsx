@@ -273,7 +273,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
   const displayLocation = player.currentLocation || initialPlayerLocation;
 
   return (
-    <div className="flex flex-col h-full max-h-screen p-4 md:p-6 space-y-4 overflow-hidden">
+    <div className="flex flex-col h-full p-4 md:p-6 space-y-4"> {/* Removed max-h-screen and overflow-hidden */}
       <Card className="shadow-lg shrink-0 border-border bg-card/80 backdrop-blur-sm">
         <CardContent className="p-3 md:p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
