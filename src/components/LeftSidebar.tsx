@@ -10,12 +10,12 @@ import { UserCircle2 } from 'lucide-react';
 
 
 interface LeftSidebarProps {
-  player: Player; 
-  isLoading: boolean; // Keep isLoading if you plan to show loading states within sidebar
+  player: Player;
+  // isLoading: boolean; // Removed as it's not used
 }
 
-const LeftSidebar: React.FC<LeftSidebarProps> = ({ player, isLoading }) => {
-  const { user } = useAuth(); 
+const LeftSidebar: React.FC<LeftSidebarProps> = ({ player }) => {
+  const { user } = useAuth();
 
   return (
     <div className="w-60 md:w-72 lg:w-80 h-full flex flex-col p-3 gap-3 bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-y-auto shrink-0"> 

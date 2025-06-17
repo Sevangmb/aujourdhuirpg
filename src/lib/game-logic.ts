@@ -18,7 +18,8 @@ import {
   initialClues,
   initialDocuments,
   initialInvestigationNotes,
-  initialToneSettings
+  initialToneSettings,
+  UNKNOWN_STARTING_PLACE_NAME // Import the new constant
 } from '@/data/initial-game-data';
 
 
@@ -26,9 +27,9 @@ export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
-  if (player.currentLocation && player.currentLocation.placeName === "Lieu de Départ Inconnu") {
+  if (player.currentLocation && player.currentLocation.placeName === UNKNOWN_STARTING_PLACE_NAME) {
     // This very first scenario text is mostly a placeholder.
-    // The AI will use playerLocation.placeName === "Lieu de Départ Inconnu" as a trigger
+    // The AI will use playerLocation.placeName === UNKNOWN_STARTING_PLACE_NAME as a trigger
     // to execute special logic to find a suitable inhabited starting location.
     return {
       scenarioText: `
@@ -48,32 +49,50 @@ export function getInitialScenario(player: Player): Scenario {
 }
 
 // --- Game State Persistence ---
-export async function saveGameState(state: GameState): Promise<void> {
+export interface SaveGameResult {
+  localSaveSuccess: boolean;
+  cloudSaveSuccess: boolean | null; // null if not attempted (e.g., anonymous user)
+}
+
+export async function saveGameState(state: GameState): Promise<SaveGameResult> {
+  const result: SaveGameResult = {
+    localSaveSuccess: false,
+    cloudSaveSuccess: null,
+  };
+
   if (!state || !state.player) {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state. Aborting save.", state);
-    return;
+    return result; // Return default (all false)
   }
 
   if (typeof window !== 'undefined' && localStorage) {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+      result.localSaveSuccess = true;
       console.log("LocalStorage Success: Game state saved to LocalStorage.");
     } catch (error) {
+      result.localSaveSuccess = false;
       console.error("LocalStorage Error: Failed to save game state to LocalStorage:", error);
     }
   } else {
+    result.localSaveSuccess = false;
     console.warn("Save Game Warning: LocalStorage is not available. Skipping local save.");
   }
 
   if (state.player && state.player.uid) {
     try {
       await saveGameStateToFirestore(state.player.uid, state);
+      result.cloudSaveSuccess = true;
     } catch (error) {
-      console.log("GameLogic Info: Cloud save attempt finished (check Firestore logs for details).");
+      result.cloudSaveSuccess = false;
+      // Log already happens in firestore-service, but good to note here too.
+      console.error("GameLogic Error: Cloud save attempt failed:", error);
     }
   } else {
+    result.cloudSaveSuccess = null; // Not attempted
     console.log("GameLogic Info: Player UID not found in game state. Skipping Firestore save. This is normal for anonymous users.");
   }
+  return result;
 }
 
 const calculateXpToNextLevelForHydration = (level: number): number => {

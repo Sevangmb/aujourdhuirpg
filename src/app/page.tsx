@@ -8,6 +8,7 @@ import type { GameState, Player, ToneSettings, LocationData } from '@/lib/types'
 import {
   loadGameStateFromLocal,
   saveGameState,
+  type SaveGameResult, // Import the new result type
   clearGameState as clearGameStateFromLocal,
   getInitialScenario,
   hydratePlayer
@@ -27,7 +28,8 @@ import {
   initialClues,
   initialDocuments,
   initialInvestigationNotes,
-  initialToneSettings
+  initialToneSettings,
+  UNKNOWN_STARTING_PLACE_NAME // Import the new constant
 } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
@@ -77,9 +79,16 @@ function HomePageContent() {
             const hydratedPlayerForCloud = hydratePlayer(playerToSave);
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
 
-            await saveGameState(stateToSave);
-            loadedState = stateToSave;
-            toast({ title: "Progression locale migrée", description: "Votre partie locale a été sauvegardée dans le cloud." });
+            const saveResult = await saveGameState(stateToSave);
+            loadedState = stateToSave; // Set loadedState regardless of save outcome, as the data is locally present
+
+            if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess) {
+              toast({ title: "Progression locale migrée", description: "Votre partie locale a été synchronisée avec le cloud." });
+            } else if (saveResult.localSaveSuccess && !saveResult.cloudSaveSuccess) {
+              toast({ variant: "warning", title: "Migration Partielle", description: "Progression locale sauvegardée, mais échec de la synchronisation cloud." });
+            } else { // Local save failed
+              toast({ variant: "destructive", title: "Erreur de Migration", description: "Impossible de sauvegarder la progression locale pour la migration." });
+            }
           }
         }
       } catch (error) {
@@ -122,7 +131,7 @@ function HomePageContent() {
     const randomLocation: LocationData = {
       latitude: parseFloat(randomLatitude.toFixed(4)),
       longitude: parseFloat(randomLongitude.toFixed(4)),
-      placeName: "Lieu de Départ Inconnu",
+      placeName: UNKNOWN_STARTING_PLACE_NAME,
     };
 
     const playerBaseDetails: Partial<Player> = {
@@ -178,17 +187,40 @@ function HomePageContent() {
   const handleSaveGame = async () => {
     if (isGameActive && gameState) {
       try {
-        await saveGameState(gameState);
-        toast({
-          title: "Partie Sauvegardée",
-          description: "Votre progression a été sauvegardée.",
-        });
+        const saveResult: SaveGameResult = await saveGameState(gameState);
+
+        if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === true) {
+          toast({
+            title: "Partie Sauvegardée",
+            description: "Votre progression a été sauvegardée localement et dans le cloud.",
+          });
+        } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === false) {
+          toast({
+            variant: "warning", // Assuming 'warning' is a supported or styled variant
+            title: "Sauvegarde Partielle",
+            description: "Votre progression a été sauvegardée localement, mais la sauvegarde cloud a échoué.",
+          });
+        } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === null) {
+          // This case implies local save worked, and cloud save was not attempted (anonymous user)
+          toast({
+            title: "Partie Sauvegardée",
+            description: "Votre progression a été sauvegardée localement.",
+          });
+        } else if (!saveResult.localSaveSuccess) {
+          toast({
+            variant: "destructive",
+            title: "Erreur de Sauvegarde Locale",
+            description: "Impossible de sauvegarder la partie localement.",
+          });
+        }
       } catch (error) {
-        console.error("Erreur lors de la sauvegarde manuelle:", error);
+        // This catch block might be redundant if saveGameState handles all its internal errors,
+        // but kept for safety for unexpected issues.
+        console.error("Erreur inattendue lors de la sauvegarde manuelle:", error);
         toast({
           variant: "destructive",
-          title: "Erreur de Sauvegarde",
-          description: "Impossible de sauvegarder la partie.",
+          title: "Erreur Inconnue de Sauvegarde",
+          description: "Une erreur inattendue est survenue lors de la tentative de sauvegarde.",
         });
       }
     } else {
@@ -256,7 +288,7 @@ function HomePageContent() {
 
       <div className="flex-1 flex flex-row overflow-hidden"> {/* Changed to flex-row */}
         {isGameActive && gameState?.player && (
-          <LeftSidebar player={gameState.player} isLoading={isLoadingState} />
+          <LeftSidebar player={gameState.player} />
         )}
         <GameScreen
             user={user}
