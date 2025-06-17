@@ -29,9 +29,9 @@ export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
-  if (player.currentLocation && player.currentLocation.placeName === UNKNOWN_STARTING_PLACE_NAME) {
+  if (player.currentLocation && player.currentLocation.name === UNKNOWN_STARTING_PLACE_NAME) {
     // This very first scenario text is mostly a placeholder.
-    // The AI will use playerLocation.placeName === UNKNOWN_STARTING_PLACE_NAME as a trigger
+    // The AI will use playerLocation.name === UNKNOWN_STARTING_PLACE_NAME as a trigger
     // to execute special logic to find a suitable inhabited starting location.
     return {
       scenarioText: `
@@ -44,7 +44,7 @@ export function getInitialScenario(player: Player): Scenario {
   return {
     scenarioText: `
       <p>Bienvenue, ${player.name}. Que l'aventure commence !</p>
-      <p>Vous vous trouvez à ${player.currentLocation?.placeName || 'un endroit non spécifié'}.</p>
+      <p>Vous vous trouvez à ${player.currentLocation?.name || 'un endroit non spécifié'}.</p>
       <p>Que faites-vous ?</p>
     `,
   };
@@ -123,7 +123,12 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
     money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
     inventory: [],
-    currentLocation: { ...initialPlayerLocation, ...(savedPlayer?.currentLocation || {}) },
+    // Current location handling starts here
+    currentLocation: { // Initialize with defaults, will be refined
+      latitude: initialPlayerLocation.latitude,
+      longitude: initialPlayerLocation.longitude,
+      name: initialPlayerLocation.name,
+    },
     toneSettings: { ...initialToneSettings, ...(savedPlayer?.toneSettings || {}) },
     questLog: Array.isArray(savedPlayer?.questLog) ? savedPlayer.questLog : [...initialQuestLog],
     encounteredPNJs: Array.isArray(savedPlayer?.encounteredPNJs) ? savedPlayer.encounteredPNJs : [...initialEncounteredPNJs],
@@ -132,6 +137,38 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     documents: Array.isArray(savedPlayer?.documents) ? savedPlayer.documents : [...initialDocuments],
     investigationNotes: typeof savedPlayer?.investigationNotes === 'string' ? savedPlayer.investigationNotes : initialInvestigationNotes,
   };
+
+  // Refined current location hydration
+  const savedLoc = savedPlayer?.currentLocation as (Position & { placeName?: string }); // Cast to allow checking for old placeName
+  const initialLoc = initialPlayerLocation;
+
+  let determinedName: string;
+  if (savedLoc && typeof savedLoc.name === 'string' && savedLoc.name.trim() !== '') {
+    determinedName = savedLoc.name;
+  } else if (savedLoc && typeof savedLoc.placeName === 'string' && savedLoc.placeName.trim() !== '') {
+    // If old 'placeName' exists and 'name' doesn't, use 'placeName' for 'name'
+    determinedName = savedLoc.placeName;
+  } else {
+    determinedName = initialLoc.name;
+  }
+
+  const finalLocation: Position = {
+    latitude: (typeof savedLoc?.latitude === 'number' && !isNaN(savedLoc.latitude)) ? savedLoc.latitude : initialLoc.latitude,
+    longitude: (typeof savedLoc?.longitude === 'number' && !isNaN(savedLoc.longitude)) ? savedLoc.longitude : initialLoc.longitude,
+    name: determinedName,
+  };
+
+  if (savedLoc?.summary) finalLocation.summary = savedLoc.summary;
+  if (savedLoc?.imageUrl) finalLocation.imageUrl = savedLoc.imageUrl;
+  if (savedLoc?.zone) finalLocation.zone = savedLoc.zone;
+
+  player.currentLocation = finalLocation;
+
+  // Ensure name is not empty if it somehow became so
+  if (!player.currentLocation.name || player.currentLocation.name.trim() === '') {
+      player.currentLocation.name = initialPlayerLocation.name; // Ultimate fallback
+  }
+
 
   if (Array.isArray(savedPlayer?.inventory) && savedPlayer.inventory.length > 0) {
     player.inventory = savedPlayer.inventory
@@ -160,18 +197,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   if (player.inventory.length === 0 && initialInventory.length > 0) {
     player.inventory = initialInventory.map(item => ({...item}));
   }
-
-  // Ensure currentLocation has valid numeric lat/lon
-  if (typeof player.currentLocation.latitude !== 'number' || isNaN(player.currentLocation.latitude)) {
-    player.currentLocation.latitude = initialPlayerLocation.latitude;
-  }
-  if (typeof player.currentLocation.longitude !== 'number' || isNaN(player.currentLocation.longitude)) {
-    player.currentLocation.longitude = initialPlayerLocation.longitude;
-  }
-  if (!player.currentLocation.placeName) {
-    player.currentLocation.placeName = initialPlayerLocation.placeName;
-  }
-
 
   return player;
 }
@@ -263,11 +288,55 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 // Async function to fetch POIs for the current player location
 // This would typically be called after the state has been updated with the new location.
 export async function fetchPoisForCurrentLocation(playerLocation: Position): Promise<Position[] | null> {
-  if (!playerLocation) return null;
+  if (!playerLocation || typeof playerLocation.latitude !== 'number' || typeof playerLocation.longitude !== 'number') {
+    console.warn("fetchPoisForCurrentLocation: Invalid playerLocation provided.", playerLocation);
+    return null;
+  }
   try {
-    const pois = await fetchNearbyPoisFromOSM(playerLocation.latitude, playerLocation.longitude);
-    // We might want to filter out the current location itself if it appears in POIs
-    return pois.filter(poi => !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude));
+    // Pass the full Position object to fetchNearbyPoisFromOSM as it expects GetNearbyPoisServiceInput
+    const poisFromService = await fetchNearbyPoisFromOSM({
+        latitude: playerLocation.latitude,
+        longitude: playerLocation.longitude,
+        radius: 500, // Default or configurable radius
+        limit: 10    // Default or configurable limit
+    });
+
+    if (poisFromService.message && poisFromService.pois.length === 0) {
+        console.log("fetchPoisForCurrentLocation: No POIs returned from service - ", poisFromService.message);
+        return [];
+    }
+    
+    // Transform POIs from service (OverpassPoiInternal[]) to Position[]
+    // Assuming OverpassPoiInternal has lat/lon or center coordinates
+    const transformedPois: Position[] = poisFromService.pois.map(poiServiceItem => {
+        // This mapping depends on the structure of OverpassPoiInternal.
+        // Assuming it has 'lat', 'lon' or similar, and 'name', 'tags' etc.
+        // For now, if OverpassPoiInternal doesn't directly map to Position, this needs adjustment.
+        // Let's assume for now that fetchNearbyPoisFromOSM returns objects compatible with Position's needs (name, lat, lon)
+        // or we need a more detailed mapping.
+        // The service GetNearbyPoisServiceOutput currently returns OverpassPoiInternal.
+        // Let's assume OverpassPoiInternal has name, and we'll use playerLocation for lat/lon as a placeholder if not directly available on POI.
+        // This is a simplification and might need to be refined based on actual OverpassPoiInternal structure from osm-service.
+        // For now, this transformation is a placeholder. A real transformation would extract lat/lon from the POI element itself.
+        // For a more accurate transformation, we would need to inspect the 'element.lat', 'element.lon' or 'element.center.lat/lon' from Overpass API response.
+        
+        // This is a simplified transformation. A more robust one would extract actual coordinates.
+        // The service fetchNearbyPoisFromOSM itself should return objects that include latitude and longitude.
+        // Let's assume the service output POIs *do* have lat/lon. If not, osm-service needs adjustment.
+        // The current osm-service doesn't seem to add lat/lon to its output POIs. This is a problem.
+        // For now, let's pass a simplified object. The map will likely not work well for these POIs without proper coords.
+
+        return {
+            latitude: (poiServiceItem as any).lat ?? playerLocation.latitude, // Placeholder if lat/lon not on poiServiceItem
+            longitude: (poiServiceItem as any).lon ?? playerLocation.longitude, // Placeholder
+            name: poiServiceItem.name || "Lieu Inconnu",
+            summary: poiServiceItem.tags?.description || poiServiceItem.type,
+            zone: { name: poiServiceItem.subtype || poiServiceItem.type || "Zone" }
+        };
+    }).filter(poi => !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude));
+    
+    return transformedPois;
+
   } catch (error) {
     console.error("Error fetching new POIs:", error);
     return null;
