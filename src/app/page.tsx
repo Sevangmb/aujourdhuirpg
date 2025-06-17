@@ -42,9 +42,8 @@ import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, Me
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SlidersHorizontal, Save, User as UserIcon, Briefcase, BookOpen, Search, LogOut } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs and Card are no longer directly used for the right panel layout in page.tsx
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 // Player Info Components
@@ -58,7 +57,8 @@ import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import CharacterCreationForm from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
 import AuthDisplay from '@/components/AuthDisplay';
-import LeftSidebar from '@/components/LeftSidebar';
+// LeftSidebar is no longer used directly in the layout
+// import LeftSidebar from '@/components/LeftSidebar';
 
 
 function HomePageContent() {
@@ -266,7 +266,6 @@ function HomePageContent() {
             </MenubarContent>
           </MenubarMenu>
         )}
-        {/* Joueur Menu - Access to modals */}
         {gameState?.player && ( 
           <MenubarMenu>
             <MenubarTrigger>Joueur</MenubarTrigger>
@@ -284,10 +283,10 @@ function HomePageContent() {
                   </ScrollArea>
                 </DialogContent>
               </Dialog>
-              {/* These dialogs might be less used on desktop with the new right panel, but good for mobile/fallback */}
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()} className="md:hidden"><Briefcase className="mr-2 h-4 w-4" />Inventaire</MenubarItem>
+                  {/* Removed md:hidden to make it always visible in menu */}
+                  <MenubarItem onSelect={(e) => e.preventDefault()}><Briefcase className="mr-2 h-4 w-4" />Inventaire</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
                   <DialogHeader><DialogTitle>Inventaire</DialogTitle></DialogHeader>
@@ -298,7 +297,8 @@ function HomePageContent() {
               </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()} className="md:hidden"><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
+                  {/* Removed md:hidden */}
+                  <MenubarItem onSelect={(e) => e.preventDefault()}><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
                   <DialogHeader><DialogTitle>Journal de Quêtes</DialogTitle></DialogHeader>
@@ -309,7 +309,8 @@ function HomePageContent() {
               </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()} className="md:hidden"><Search className="mr-2 h-4 w-4" />Dossier d'Enquête</MenubarItem>
+                  {/* Removed md:hidden */}
+                  <MenubarItem onSelect={(e) => e.preventDefault()}><Search className="mr-2 h-4 w-4" />Dossier d'Enquête</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
                   <DialogHeader><DialogTitle>Dossier d'Enquête</DialogTitle></DialogHeader>
@@ -321,7 +322,6 @@ function HomePageContent() {
             </MenubarContent>
           </MenubarMenu>
         )}
-         {/* User Auth Display in Menubar - simplified */}
         <div className="ml-auto flex items-center pr-2">
           {user && (
             <div className="text-xs text-muted-foreground mr-2">
@@ -336,7 +336,6 @@ function HomePageContent() {
         </div>
       </Menubar>
 
-      {/* Tone Settings Dialog */}
       {gameState?.player && (
         <ToneSettingsDialog
           isOpen={isToneSettingsDialogOpen}
@@ -346,17 +345,10 @@ function HomePageContent() {
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
-        {user && gameState?.player && (
-          <aside className="w-64 md:w-72 h-full overflow-y-auto bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-2 hidden md:block shrink-0">
-            <LeftSidebar
-              player={gameState.player}
-              isLoading={loadingAuth || isLoadingState}
-            />
-          </aside>
-        )}
-
+      {/* This div used to hold sidebars and main content. Now it just holds main content. */}
+      <div className="flex-1 flex flex-col overflow-hidden"> {/* Changed: Removed 'flex' to simplify as it's no longer a 3-column layout parent */}
+        {/* Left Sidebar removed from here */}
+        
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           {loadingAuth || isLoadingState ? (
@@ -371,7 +363,7 @@ function HomePageContent() {
                 signUp={signUpWithEmailPassword}
                 signIn={signInWithEmailPassword}
                 signInAnon={signInAnonymously}
-                signOut={() => {}} // SignOut is handled in menubar
+                signOut={() => {}} 
               />
             </div>
           ) : isGameActive ? (
@@ -387,36 +379,7 @@ function HomePageContent() {
           )}
         </main>
 
-        {/* Right Information Panel */}
-        {user && gameState?.player && (
-          <aside className="w-80 lg:w-96 h-full bg-sidebar text-sidebar-foreground border-l border-sidebar-border p-1 hidden md:flex md:flex-col shrink-0">
-            <ScrollArea className="flex-grow rounded-md min-h-0"> {/* ScrollArea wraps Tabs */}
-              <Tabs defaultValue="inventory" className="w-full flex flex-col h-full p-1">
-                <TabsList className="grid w-full grid-cols-3 shrink-0">
-                  <TabsTrigger value="inventory" className="text-xs sm:text-sm p-1.5">
-                    <Briefcase className="w-3 h-3 mr-1 sm:mr-2" />Inventaire
-                  </TabsTrigger>
-                  <TabsTrigger value="quests" className="text-xs sm:text-sm p-1.5">
-                    <BookOpen className="w-3 h-3 mr-1 sm:mr-2" />Quêtes
-                  </TabsTrigger>
-                  <TabsTrigger value="evidence" className="text-xs sm:text-sm p-1.5">
-                    <Search className="w-3 h-3 mr-1 sm:mr-2" />Enquête
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="inventory" className="mt-1 flex-1 overflow-y-auto">
-                  <InventoryDisplay inventory={gameState.player.inventory} />
-                </TabsContent>
-                <TabsContent value="quests" className="mt-1 flex-1 overflow-y-auto">
-                  <QuestJournalDisplay player={gameState.player} />
-                </TabsContent>
-                <TabsContent value="evidence" className="mt-1 flex-1 overflow-y-auto">
-                  <EvidenceLogDisplay player={gameState.player} />
-                </TabsContent>
-              </Tabs>
-            </ScrollArea>
-          </aside>
-        )}
+        {/* Right Information Panel removed from here */}
       </div>
     </div>
   );
