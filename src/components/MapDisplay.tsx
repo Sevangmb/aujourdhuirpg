@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -51,13 +52,15 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   }, []);
 
   useEffect(() => {
-    if (mapRef.current) {
+    if (mapRef.current && google.maps) { // Ensure google.maps is available
       const bounds = new google.maps.LatLngBounds();
       if (currentLocation) {
         bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude });
       }
       [...nearbyPois, ...visitedLocations, ...lockedLocations].forEach(pos => {
-        bounds.extend({ lat: pos.latitude, lng: pos.longitude });
+        if (pos && typeof pos.latitude === 'number' && typeof pos.longitude === 'number') {
+           bounds.extend({ lat: pos.latitude, lng: pos.longitude });
+        }
       });
 
       if (bounds.isEmpty() && currentLocation) {
@@ -68,7 +71,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         mapRef.current.fitBounds(bounds);
       }
     }
-  }, [currentLocation, nearbyPois, visitedLocations, lockedLocations, zoom]);
+  }, [currentLocation, nearbyPois, visitedLocations, lockedLocations, zoom, mapRef.current]);
 
 
   if (!API_KEY) {
@@ -88,7 +91,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
      return (
       <div className="p-3 bg-background/50 rounded-lg h-[300px] md:h-[400px] flex flex-col items-center justify-center">
         <MapPin className="w-8 h-8 text-primary/90 mb-2" />
-        <p className="text-sm text-muted-foreground">Chargement de la carte...</p>
+        <p className="text-sm text-muted-foreground">Chargement de Google Maps...</p>
         <p className="text-xs text-muted-foreground mt-1">
           {currentLocation?.name || "Localisation actuelle"}
         </p>
@@ -127,36 +130,42 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
             {/* Nearby POIs Markers */}
             {nearbyPois.map((poi) => (
-              <MarkerF
-                key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
-                position={{ lat: poi.latitude, lng: poi.longitude }}
-                onClick={() => handleMarkerClick(poi)}
-                icon={MARKER_COLORS.nearby}
-                title={poi.name}
-              />
+               poi && typeof poi.latitude === 'number' && typeof poi.longitude === 'number' && (
+                <MarkerF
+                  key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
+                  position={{ lat: poi.latitude, lng: poi.longitude }}
+                  onClick={() => handleMarkerClick(poi)}
+                  icon={MARKER_COLORS.nearby}
+                  title={poi.name}
+                />
+              )
             ))}
 
             {/* Visited Locations Markers */}
             {visitedLocations.map((loc) => (
-              <MarkerF
-                key={`visited-${loc.latitude}-${loc.longitude}-${loc.name}`}
-                position={{ lat: loc.latitude, lng: loc.longitude }}
-                onClick={() => handleMarkerClick(loc)}
-                icon={MARKER_COLORS.visited}
-                title={loc.name}
-              />
+              loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number' && (
+                <MarkerF
+                  key={`visited-${loc.latitude}-${loc.longitude}-${loc.name}`}
+                  position={{ lat: loc.latitude, lng: loc.longitude }}
+                  onClick={() => handleMarkerClick(loc)}
+                  icon={MARKER_COLORS.visited}
+                  title={loc.name}
+                />
+              )
             ))}
 
             {/* Locked Locations Markers */}
             {lockedLocations.map((loc) => (
-              <MarkerF
-                key={`locked-${loc.latitude}-${loc.longitude}-${loc.name}`}
-                position={{ lat: loc.latitude, lng: loc.longitude }}
-                onClick={() => handleMarkerClick(loc)}
-                icon={MARKER_COLORS.locked}
-                title={loc.name}
-                opacity={0.7}
-              />
+              loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number' && (
+                <MarkerF
+                  key={`locked-${loc.latitude}-${loc.longitude}-${loc.name}`}
+                  position={{ lat: loc.latitude, lng: loc.longitude }}
+                  onClick={() => handleMarkerClick(loc)}
+                  icon={MARKER_COLORS.locked}
+                  title={loc.name}
+                  opacity={0.7}
+                />
+              )
             ))}
 
             {activeMarker && (

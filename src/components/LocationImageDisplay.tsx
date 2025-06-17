@@ -19,27 +19,30 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
   error,
 }) => {
   const placeholderImage = `https://placehold.co/600x400.png`;
-  const placeNameParts = placeName.split(/,|\s+/).filter(part => part.length > 2);
-  const hintKeywords = placeNameParts.length > 1 
-    ? `${placeNameParts[0]} ${placeNameParts[1]}` 
-    : placeNameParts.length === 1 
-    ? placeNameParts[0] 
+  const placeNameParts = placeName ? placeName.split(/,|\s+/).filter(part => part.length > 2) : [];
+  const hintKeywords = placeNameParts.length > 1
+    ? `${placeNameParts[0]} ${placeNameParts[1]}`
+    : placeNameParts.length === 1
+    ? placeNameParts[0]
     : "location view";
+
+  const isParis = placeName && placeName.toLowerCase().includes('paris');
+  const parisImageUrl = 'https://placehold.co/600x400.png'; // Specific placeholder for Paris
 
   return (
     <div className="p-3 bg-background/50 rounded-lg h-[200px] flex flex-col">
       <div className="text-sm font-headline flex items-center text-primary/90 mb-1.5">
         <ImageIcon className="w-4 h-4 mr-1.5 shrink-0" />
-        <span className="truncate">Vue de {placeName}</span>
+        <span className="truncate">Vue de {placeName || "lieu inconnu"}</span>
       </div>
       <div className="flex-grow relative bg-muted rounded-md overflow-hidden border border-border">
-        {isLoading && (
+        {isLoading && !isParis && ( // Don't show loading for Paris if we have a fixed image
           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-background/70">
             <Loader2 className="w-6 h-6 animate-spin mb-1.5" />
             <p className="text-xs">Génération image...</p>
           </div>
         )}
-        {!isLoading && error && (
+        {!isLoading && error && !isParis && ( // Show error only if not Paris or image wasn't forced
           <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-2 text-center bg-background/70">
             <AlertTriangle className="w-6 h-6 mb-1.5" />
             <p className="text-xs">Erreur image:</p>
@@ -50,11 +53,21 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
               fill={true}
               className="object-cover opacity-20 -z-10"
               data-ai-hint={hintKeywords}
-              priority 
+              priority
             />
           </div>
         )}
-        {!isLoading && !error && imageUrl && (
+        {isParis ? (
+          <Image
+            src={parisImageUrl}
+            alt={`Image de Paris`}
+            fill={true}
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            data-ai-hint="Paris landmark eiffel tower" // Specific hint for Paris
+            priority
+          />
+        ) : !isLoading && !error && imageUrl ? (
           <Image
             src={imageUrl}
             alt={`Image de ${placeName}`}
@@ -62,8 +75,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-        )}
-        {!isLoading && !error && !imageUrl && (
+        ) : !isLoading && !error && !imageUrl && ( // Default placeholder if not Paris, no AI image, no error
            <Image
               src={placeholderImage}
               alt={`Image placeholder pour ${placeName}`}
