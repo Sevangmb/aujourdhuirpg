@@ -3,12 +3,16 @@
  * @fileOverview Functions for processing and applying the effects of an AI-generated scenario to the player state.
  */
 
-import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType } from './types';
+import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType, Skills } from './types'; // Added Skills
 import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario';
-import { getMasterItemById } from '@/data/items';
+import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem
 import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
+import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser'; // New import
+import { performSkillCheck, type SkillCheckResult } from './skill-check'; // New import
+import { addItemToPlayerInventory as addItemToPlayerInventoryLogic } from './game-logic'; // Renamed to avoid conflict
 
-
+// Keep existing helper functions like calculateXpToNextLevel, applyStatChanges etc. if they are used by client-side logic later.
+// For now, they might be unused if AI doesn't dictate these changes directly.
 function calculateXpToNextLevel(level: number): number {
   if (level <= 0) level = 1;
   return level * 100 + 50 * (level -1) * level;
@@ -225,113 +229,25 @@ export function updateInvestigationNotes(currentNotes: string | null | undefined
 }
 
 
-export function processAndApplyAIScenarioOutput(
-  currentPlayer: Player,
+export async function processAndApplyAIScenarioOutput(
+  player: Player,
+  playerChoice: string,
   aiOutput: GenerateScenarioOutput
-): { updatedPlayer: Player; notifications: GameNotification[] } {
-  let processedPlayer = { ...currentPlayer };
+): Promise<{ updatedPlayer: Player; notifications: GameNotification[] }> {
+  let updatedPlayer = { ...player }; // Start with a shallow copy
   const notifications: GameNotification[] = [];
 
-  // Initialize potentially undefined fields
-  processedPlayer.questLog = processedPlayer.questLog || [];
-  processedPlayer.encounteredPNJs = processedPlayer.encounteredPNJs || [];
-  processedPlayer.decisionLog = processedPlayer.decisionLog || [];
-  processedPlayer.clues = processedPlayer.clues || [];
-  processedPlayer.documents = processedPlayer.documents || [];
-  processedPlayer.investigationNotes = typeof processedPlayer.investigationNotes === 'string' ? processedPlayer.investigationNotes : initialInvestigationNotes;
-  processedPlayer.money = typeof processedPlayer.money === 'number' ? processedPlayer.money : initialPlayerMoney;
-  processedPlayer.inventory = Array.isArray(processedPlayer.inventory) ? processedPlayer.inventory : [];
+  // Initialize potentially undefined fields on the player object if they weren't already
+  updatedPlayer.questLog = updatedPlayer.questLog || [];
+  updatedPlayer.encounteredPNJs = updatedPlayer.encounteredPNJs || [];
+  updatedPlayer.decisionLog = updatedPlayer.decisionLog || [];
+  updatedPlayer.clues = updatedPlayer.clues || [];
+  updatedPlayer.documents = updatedPlayer.documents || [];
+  updatedPlayer.investigationNotes = typeof updatedPlayer.investigationNotes === 'string' ? updatedPlayer.investigationNotes : initialInvestigationNotes;
+  updatedPlayer.money = typeof updatedPlayer.money === 'number' ? updatedPlayer.money : initialPlayerMoney;
+  updatedPlayer.inventory = Array.isArray(updatedPlayer.inventory) ? [...updatedPlayer.inventory] : []; // Ensure inventory is a new array
 
-  let combinedStatChanges: Partial<PlayerStats> = { ...(aiOutput.scenarioStatsUpdate || {}) };
-
-  // Process item removals and apply their effects first
-  if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
-    let currentInv = processedPlayer.inventory;
-    aiOutput.itemsRemoved.forEach(itemToRemove => {
-      const { updatedInventory, removedItemEffects, removedItemName } = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
-      currentInv = updatedInventory;
-
-      if (removedItemEffects && removedItemName) {
-        notifications.push({
-          type: 'item_removed',
-          title: "Objet utilisé/perdu",
-          description: `${removedItemName} (x${itemToRemove.quantity}) retiré. Ses effets sont appliqués.`,
-          details: { itemName: removedItemName, quantity: itemToRemove.quantity, effects: removedItemEffects }
-        });
-        // Apply consumable effects to combinedStatChanges
-        for (const statKey in removedItemEffects) {
-          if (Object.prototype.hasOwnProperty.call(removedItemEffects, statKey)) {
-            const effectValue = removedItemEffects[statKey as keyof PlayerStats] || 0;
-            combinedStatChanges[statKey as keyof PlayerStats] = (combinedStatChanges[statKey as keyof PlayerStats] || 0) + effectValue;
-          }
-        }
-      } else if (removedItemName) { // Item removed but no specific effects
-         notifications.push({
-          type: 'item_removed',
-          title: "Objet utilisé/perdu",
-          description: `${removedItemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
-          details: { itemName: removedItemName, quantity: itemToRemove.quantity }
-        });
-      }
-    });
-    processedPlayer.inventory = currentInv;
-  }
-  
-  // Apply combined stat changes (from AI + consumables)
-  if (Object.keys(combinedStatChanges).length > 0) {
-    processedPlayer.stats = applyStatChanges(processedPlayer.stats, combinedStatChanges);
-    // Could add a generic stat_changed notification here if needed, or rely on consumable notification
-  }
-
-
-  if (typeof aiOutput.xpGained === 'number' && aiOutput.xpGained > 0) {
-    const { newProgression, leveledUp } = addXP(processedPlayer.progression, aiOutput.xpGained);
-    processedPlayer.progression = newProgression;
-    notifications.push({
-      type: 'xp_gained',
-      title: "Expérience gagnée !",
-      description: `Vous avez gagné ${aiOutput.xpGained} XP.`,
-      details: { amount: aiOutput.xpGained }
-    });
-    if (leveledUp) {
-      notifications.push({
-        type: 'leveled_up',
-        title: "Niveau Supérieur !",
-        description: `Félicitations, vous êtes maintenant niveau ${newProgression.level} !`,
-        details: { newLevel: newProgression.level }
-      });
-    }
-  }
-
-  if (typeof aiOutput.moneyChange === 'number' && aiOutput.moneyChange !== 0) {
-    const oldMoney = processedPlayer.money;
-    processedPlayer.money = addMoney(processedPlayer.money, aiOutput.moneyChange);
-    notifications.push({
-      type: 'money_changed',
-      title: aiOutput.moneyChange > 0 ? "Argent gagné !" : "Argent dépensé/perdu.",
-      description: `Vous ${aiOutput.moneyChange > 0 ? 'recevez' : 'perdez'} ${Math.abs(aiOutput.moneyChange)}€. Votre solde : ${processedPlayer.money}€.`,
-      details: { amount: aiOutput.moneyChange, oldBalance: oldMoney, newBalance: processedPlayer.money }
-    });
-  }
-
-  if (aiOutput.itemsAdded && aiOutput.itemsAdded.length > 0) {
-    let currentInv = processedPlayer.inventory;
-    aiOutput.itemsAdded.forEach(itemToAdd => {
-      const masterItem = getMasterItemById(itemToAdd.itemId);
-      const itemName = masterItem ? masterItem.name : itemToAdd.itemId;
-      currentInv = addItemToInventory(currentInv, itemToAdd.itemId, itemToAdd.quantity);
-      notifications.push({
-        type: 'item_added',
-        title: "Objet obtenu !",
-        description: `Vous avez obtenu : ${itemName} (x${itemToAdd.quantity})`,
-        details: { itemName: itemName, quantity: itemToAdd.quantity, itemId: itemToAdd.itemId }
-      });
-    });
-    processedPlayer.inventory = currentInv;
-  }
-
-  // itemRemoved is now handled above to integrate effects with stat changes
-
+  // 1. Handle direct outputs from AI (narrative focused)
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
@@ -341,8 +257,8 @@ export function processAndApplyAIScenarioOutput(
       longitude: aiOutput.newLocationDetails.longitude,
       placeName: aiOutput.newLocationDetails.placeName,
     };
-    processedPlayer.currentLocation = newLoc;
-     notifications.push({
+    updatedPlayer.currentLocation = newLoc;
+    notifications.push({
       type: 'location_changed',
       title: "Déplacement !",
       description: `Vous êtes maintenant à ${newLoc.placeName}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
@@ -350,53 +266,13 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  if (aiOutput.newQuests && Array.isArray(aiOutput.newQuests)) {
-    aiOutput.newQuests.forEach(questData => {
-      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog, questData);
-      const addedQuest = processedPlayer.questLog.find(q => q.id === questData.id);
-      if (addedQuest) {
-        notifications.push({
-          type: 'quest_added',
-          title: `Nouvelle Quête : ${addedQuest.title}`,
-          description: addedQuest.description.substring(0, 100) + (addedQuest.description.length > 100 ? "..." : ""),
-          details: { questId: addedQuest.id, questType: addedQuest.type, moneyReward: addedQuest.moneyReward }
-        });
-      }
-    });
-  }
-
-  if (aiOutput.questUpdates && Array.isArray(aiOutput.questUpdates)) {
-    aiOutput.questUpdates.forEach(update => {
-      const oldQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
-      const questUpdatesPayload: Partial<Omit<Quest, 'id'>> & { updatedObjectives?: { objectiveId: string; isCompleted: boolean; }[], newObjectiveDescription?: string } = {};
-
-      if (update.newStatus) questUpdatesPayload.status = update.newStatus;
-      if (update.updatedObjectives) questUpdatesPayload.updatedObjectives = update.updatedObjectives;
-      if (update.newObjectiveDescription) questUpdatesPayload.newObjectiveDescription = update.newObjectiveDescription;
-
-      const { updatedLog, completedQuestWithMoneyReward } = updateQuestInLog(processedPlayer.questLog, update.questId, questUpdatesPayload);
-      processedPlayer.questLog = updatedLog;
-
-      if (completedQuestWithMoneyReward && completedQuestWithMoneyReward.moneyReward && completedQuestWithMoneyReward.moneyReward > 0) {
-        const oldMoney = processedPlayer.money;
-        processedPlayer.money = addMoney(processedPlayer.money, completedQuestWithMoneyReward.moneyReward);
-        notifications.push({
-            type: 'money_changed',
-            title: "Récompense de quête !",
-            description: `Quête "${completedQuestWithMoneyReward.title}" terminée. Vous recevez ${completedQuestWithMoneyReward.moneyReward}€. Votre solde : ${processedPlayer.money}€.`,
-            details: { amount: completedQuestWithMoneyReward.moneyReward, oldBalance: oldMoney, newBalance: processedPlayer.money, questId: completedQuestWithMoneyReward.id }
-        });
-      }
-
-      const updatedQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
-      if (updatedQuest && (!oldQuest || oldQuest.status !== updatedQuest.status || JSON.stringify(oldQuest.objectives) !== JSON.stringify(updatedQuest.objectives) ) ) {
-        notifications.push({
-          type: 'quest_updated',
-          title: `Quête Mise à Jour : ${updatedQuest.title}`,
-          description: `Statut : ${updatedQuest.status}. Objectifs mis à jour.`,
-          details: { questId: updatedQuest.id, newStatus: updatedQuest.status }
-        });
-      }
+  if (aiOutput.investigationNotesUpdate) {
+    updatedPlayer.investigationNotes = updateInvestigationNotes(updatedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
+    notifications.push({
+      type: 'investigation_notes_updated',
+      title: "Notes d'enquête mises à jour",
+      description: "Vos notes et hypothèses ont été actualisées.",
+      details: { updateLength: aiOutput.investigationNotesUpdate.length }
     });
   }
 
@@ -441,40 +317,117 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  if (aiOutput.newClues && Array.isArray(aiOutput.newClues)) {
-    aiOutput.newClues.forEach(clueData => {
-      processedPlayer.clues = addClue(processedPlayer.clues, clueData);
-      notifications.push({
-        type: 'clue_added',
-        title: `Nouvel Indice : ${clueData.title}`,
-        description: clueData.description.substring(0,100) + "...",
-        details: { clueId: clueData.id, clueType: clueData.type }
-      });
-    });
-  }
+  // TODO: Client-side logic will need to interpret aiOutput.scenarioText to create new clues or documents.
 
-  if (aiOutput.newDocuments && Array.isArray(aiOutput.newDocuments)) {
-    aiOutput.newDocuments.forEach(docData => {
-      processedPlayer.documents = addDocument(processedPlayer.documents, docData);
-      notifications.push({
-        type: 'document_added',
-        title: `Nouveau Document : ${docData.title}`,
-        description: `Un document de type "${docData.type}" a été ajouté.`,
-        details: { documentId: docData.id, documentType: docData.type }
-      });
-    });
-  }
+  // 2. Parse Player Action
+  const parsedAction: ParsedAction = await parsePlayerAction(playerChoice);
 
-  if (aiOutput.investigationNotesUpdate) {
-    processedPlayer.investigationNotes = updateInvestigationNotes(processedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
+  // 3. Handle Parsed Actions (Client-Side Mechanics)
+  // TODO: This section will grow significantly as more actions and mechanics are implemented.
+
+  if (parsedAction.actionType === 'TAKE_ITEM' && parsedAction.primaryTarget) {
+    const itemNameOrId = parsedAction.primaryTarget;
+    // TODO: Future - Need a robust way to map itemNameOrId from narrative to a valid itemId.
+    // This might involve checking `aiOutput.scenarioText` for mentions of the item,
+    // or having the AI provide structured entity recognition in the future.
+    // For now, we assume itemNameOrId could be an ID or a name the AI clearly indicated is takeable.
+    const masterItem = getMasterItemById(itemNameOrId); // Try as ID first
+
+    // Attempt to find item by name if ID fails and AI might use names (less reliable)
+    // const masterItemByName = ALL_ITEMS.find(i => i.name.toLowerCase() === itemNameOrId.toLowerCase());
+    // const itemToTake = masterItem || masterItemByName;
+
+    if (masterItem) { // For now, only proceed if primaryTarget was a valid ID
+      const playerBeforeAdding = { ...updatedPlayer, inventory: [...updatedPlayer.inventory] };
+      updatedPlayer = addItemToPlayerInventoryLogic(updatedPlayer, masterItem.id, 1);
+
+      // Check if inventory actually changed
+      // This simple check works if addItemToPlayerInventoryLogic always returns a new inventory array on change.
+      if (updatedPlayer.inventory !== playerBeforeAdding.inventory) {
+        notifications.push({
+          type: 'item_added',
+          title: 'Objet Acquis',
+          description: `Vous avez obtenu : ${masterItem.name}` ,
+          details: { itemId: masterItem.id, itemName: masterItem.name, quantity: 1 }
+        });
+      } else {
+        // Optional: Notify if item couldn't be taken (e.g., non-stackable already possessed and addItemToPlayerInventoryLogic handles this by not changing inv)
+        const existingItem = playerBeforeAdding.inventory.find(i => i.id === masterItem.id);
+        if (existingItem && !masterItem.stackable) {
+            notifications.push({type: 'warning', title: "Inventaire", description: `Vous possédez déjà ${masterItem.name} et ce n'est pas empilable.`});
+        } else {
+            // Generic unable to take, or rely on addItemToPlayerInventoryLogic console warnings
+        }
+      }
+    } else {
+      // TODO: Could have a notification if the AI mentioned an item but it's not recognized by game system
+      // For now, this means the text parsedAction.primaryTarget was not a known item ID.
+      console.warn(`Player tried to TAKE_ITEM "${itemNameOrId}", but it's not a known master item ID.`);
+       notifications.push({ type: 'warning', title: 'Action', description: `Vous essayez de prendre "${itemNameOrId}", mais vous ne parvenez pas à le saisir ou ce n'est pas un objet prenable.` });
+    }
+  }
+  else if (parsedAction.actionType === 'APPLY_SKILL' && parsedAction.skillUsed && parsedAction.primaryTarget) {
+    const skillName = parsedAction.skillUsed;
+    // const targetDescription = parsedAction.primaryTarget; // For future use in determining DT
+
+    // TODO: Determine difficultyTarget based on skillName, targetDescription, and possibly context from aiOutput.scenarioText
+    const difficultyTarget = 70; // Placeholder difficulty
+
+    const skillCheckResult = performSkillCheck(updatedPlayer.skills, updatedPlayer.stats, skillName, difficultyTarget);
     notifications.push({
-      type: 'investigation_notes_updated',
-      title: "Notes d'enquête mises à jour",
-      description: "Vos notes et hypothèses ont été actualisées.",
-      details: { updateLength: aiOutput.investigationNotesUpdate.length }
+      type: 'skill_check',
+      title: `Test de ${skillName}`,
+      description: `Résultat : ${skillCheckResult.degreeOfSuccess} (${skillCheckResult.totalAchieved} vs ${difficultyTarget})`,
+      details: { ...skillCheckResult }
     });
+
+    if (skillCheckResult.success) {
+      // TODO: Implement specific consequences of successful skill check.
+      // E.g., if skillName === 'Informatique' and target was 'computer', maybe add a clue to player.clues or update investigationNotes.
+      // This would involve more specific logic here or dispatching to other game logic functions.
+      // For now, just a generic success notification.
+      notifications.push({ type: 'info', title: `Réussite : ${skillName}`, description: `Votre tentative avec ${skillName} sur ${parsedAction.primaryTarget} semble avoir fonctionné.`});
+    } else {
+      // TODO: Handle failure consequences if any, beyond notification.
+      notifications.push({ type: 'info', title: `Échec : ${skillName}`, description: `Votre tentative avec ${skillName} sur ${parsedAction.primaryTarget} n'a pas abouti.`});
+    }
+  }
+  else if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed?.toLowerCase().includes('lockpick') && parsedAction.primaryTarget) {
+    // Example for a specific item type implying a skill check
+    const skillToUse = "Discretion"; // Or "Bricolage" depending on game design for lockpicking
+
+    // TODO: Determine difficulty based on parsedAction.primaryTarget (e.g. 'simple_door', 'complex_safe') from narrative context
+    const lockDifficulty = 80; // Placeholder
+
+    const lockpickResult = performSkillCheck(updatedPlayer.skills, updatedPlayer.stats, skillToUse, lockDifficulty);
+    notifications.push({
+      type: 'skill_check',
+      title: 'Tentative de crochetage',
+      description: `Résultat : ${lockpickResult.degreeOfSuccess} (${lockpickResult.totalAchieved} vs ${lockDifficulty})`,
+      details: { ...lockpickResult, itemUsed: parsedAction.itemUsed }
+    });
+
+    if (lockpickResult.success) {
+      // TODO: Implement unlocking the target. This might involve:
+      // - Setting a flag in the game state for that location/object.
+      // - The AI, in a subsequent turn, might narrate the door opening if player tries to "open door".
+      // - Or, this could directly lead to a new part of scenarioText if the game design allows immediate feedback.
+      notifications.push({ type: 'info', title: 'Succès!', description: `Vous avez crocheté ${parsedAction.primaryTarget}!` });
+    } else {
+      notifications.push({ type: 'info', title: 'Échec du crochetage', description: `Impossible de crocheter ${parsedAction.primaryTarget}.` });
+    }
+  }
+  // TODO: Add more handlers for other parsedAction.actionType values (USE_ITEM generic, TALK_TO_PNJ, etc.)
+
+  else if (parsedAction.actionType === 'UNKNOWN') {
+    // Optional: Fallback notification for actions the parser didn't understand.
+    // Could also be handled by AI just narrating confusion, or no specific notification.
+    notifications.push({ type: 'warning', title: 'Action non comprise', description: 'Je ne suis pas sûr de comprendre ce que vous voulez faire. Essayez une autre formulation.' });
   }
 
-  return { updatedPlayer: processedPlayer, notifications };
+  // TODO: Save player state after all updates (moved to GamePlay.tsx or higher level)
+  // saveGameState({ player: updatedPlayer, currentScenario: { scenarioText: aiOutput.scenarioText }});
+
+  return { updatedPlayer, notifications };
 }
 

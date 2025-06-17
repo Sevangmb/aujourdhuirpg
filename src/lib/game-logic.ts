@@ -1,6 +1,6 @@
 
 import type { GameState, Scenario, Player, InventoryItem, ToneSettings } from './types';
-import { getMasterItemById } from '@/data/items';
+import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem import
 import { saveGameStateToFirestore } from '@/services/firestore-service';
 import {
   initialPlayerStats,
