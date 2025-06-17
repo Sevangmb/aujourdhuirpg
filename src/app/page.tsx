@@ -4,11 +4,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Types and Game Logic
-import type { GameState, Player, ToneSettings, LocationData } from '@/lib/types';
+import type { GameState, Player, ToneSettings, Position } from '@/lib/types'; // Changed LocationData to Position
 import {
   loadGameStateFromLocal,
   saveGameState,
-  type SaveGameResult, // Import the new result type
+  type SaveGameResult, 
   clearGameState as clearGameStateFromLocal,
   getInitialScenario,
   hydratePlayer
@@ -29,7 +29,7 @@ import {
   initialDocuments,
   initialInvestigationNotes,
   initialToneSettings,
-  UNKNOWN_STARTING_PLACE_NAME // Import the new constant
+  UNKNOWN_STARTING_PLACE_NAME 
 } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
@@ -80,13 +80,13 @@ function HomePageContent() {
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
 
             const saveResult = await saveGameState(stateToSave);
-            loadedState = stateToSave; // Set loadedState regardless of save outcome, as the data is locally present
+            loadedState = stateToSave; 
 
             if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess) {
               toast({ title: "Progression locale migrée", description: "Votre partie locale a été synchronisée avec le cloud." });
             } else if (saveResult.localSaveSuccess && !saveResult.cloudSaveSuccess) {
               toast({ variant: "warning", title: "Migration Partielle", description: "Progression locale sauvegardée, mais échec de la synchronisation cloud." });
-            } else { // Local save failed
+            } else { 
               toast({ variant: "destructive", title: "Erreur de Migration", description: "Impossible de sauvegarder la progression locale pour la migration." });
             }
           }
@@ -112,7 +112,7 @@ function HomePageContent() {
       }
       setGameState(finalLoadedState);
     } else {
-      setGameState({ player: null, currentScenario: null });
+      setGameState({ player: null, currentScenario: null, nearbyPois: null, gameTimeInMinutes: 0, journal: [] });
     }
     setIsLoadingState(false);
   }, [user, toast]);
@@ -125,13 +125,12 @@ function HomePageContent() {
 
   const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => {
     
-    // Generate random starting location
-    const randomLatitude = Math.random() * 180 - 90; // -90 to 90
-    const randomLongitude = Math.random() * 360 - 180; // -180 to 180
-    const randomLocation: LocationData = {
+    const randomLatitude = Math.random() * 180 - 90; 
+    const randomLongitude = Math.random() * 360 - 180; 
+    const randomLocation: Position = { // Changed from LocationData to Position
       latitude: parseFloat(randomLatitude.toFixed(4)),
       longitude: parseFloat(randomLongitude.toFixed(4)),
-      placeName: UNKNOWN_STARTING_PLACE_NAME,
+      name: UNKNOWN_STARTING_PLACE_NAME, // Changed from placeName to name
     };
 
     const playerBaseDetails: Partial<Player> = {
@@ -161,6 +160,9 @@ function HomePageContent() {
     const newGameState: GameState = {
       player: hydratedPlayer,
       currentScenario: firstScenario,
+      nearbyPois: null,
+      gameTimeInMinutes: 0,
+      journal: [],
     };
     setGameState(newGameState);
     await saveGameState(newGameState);
@@ -178,7 +180,7 @@ function HomePageContent() {
       }
     }
     clearGameStateFromLocal();
-    setGameState({ player: null, currentScenario: null });
+    setGameState({ player: null, currentScenario: null, nearbyPois: null, gameTimeInMinutes: 0, journal: [] });
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
 
@@ -196,12 +198,12 @@ function HomePageContent() {
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === false) {
           toast({
-            variant: "warning", // Assuming 'warning' is a supported or styled variant
+            variant: "warning", 
             title: "Sauvegarde Partielle",
             description: "Votre progression a été sauvegardée localement, mais la sauvegarde cloud a échoué.",
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === null) {
-          // This case implies local save worked, and cloud save was not attempted (anonymous user)
+          
           toast({
             title: "Partie Sauvegardée",
             description: "Votre progression a été sauvegardée localement.",
@@ -214,8 +216,7 @@ function HomePageContent() {
           });
         }
       } catch (error) {
-        // This catch block might be redundant if saveGameState handles all its internal errors,
-        // but kept for safety for unexpected issues.
+        
         console.error("Erreur inattendue lors de la sauvegarde manuelle:", error);
         toast({
           variant: "destructive",
@@ -286,7 +287,7 @@ function HomePageContent() {
         />
       )}
 
-      <div className="flex-1 flex flex-row overflow-hidden"> {/* Changed to flex-row */}
+      <div className="flex-1 flex flex-row overflow-hidden"> 
         {isGameActive && gameState?.player && (
           <LeftSidebar player={gameState.player} />
         )}

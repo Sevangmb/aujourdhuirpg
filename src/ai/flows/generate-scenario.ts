@@ -95,7 +95,7 @@ Player Information (Context):
   Alignment: Chaos/Loyal: {{{playerAlignment.chaosLawful}}}, Bien/Mal: {{{playerAlignment.goodEvil}}}
   Money: {{{playerMoney}}} €
   Inventory: {{#if playerInventory}}{{#each playerInventory}}{{{name}}} ({{quantity}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Vide{{/if}}
-  Current Location: {{{playerLocation.placeName}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}}) - Consider day/night, specific district if known.
+  Current Location: {{{playerLocation.name}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}}) - Consider day/night, specific district if known.
   Tone Preferences (0-100, 50=neutral):
   {{#if toneSettings}}
     {{#each toneSettings}}
@@ -132,7 +132,7 @@ Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
     *   **Prioritize finding a location in France if the coordinates are reasonably close to or within France. Otherwise, choose any interesting and plausible inhabited location globally.**
 2.  **Handle Uninhabitable Areas:** If the initial coordinates are in a clearly uninhabitable area (e.g., open ocean, vast desert, ice cap), you MUST select a suitable *inhabited* place on the nearest relevant landmass or an accessible point (e.g., a port city if in the ocean, an oasis town if in a desert, a research station if in Antarctica). The goal is a *playable* start.
 3.  **Update Location Details:** Once a suitable inhabited place is identified or decided:
-    *   You **MUST** provide its specific name in \\\`newLocationDetails.placeName\\\`.
+    *   You **MUST** provide its specific name in \\\`newLocationDetails.name\\\`.
     *   You **MUST** provide its geographical coordinates in \\\`newLocationDetails.latitude\\\` and \\\`newLocationDetails.longitude\\\`. (These can be the original random coordinates if you determine they fall within the named place, or slightly adjusted coordinates if your tool use provides a more precise center for the named place).
     *   Include a \\\`newLocationDetails.reasonForMove\\\` like "Starting the game in [NomDeLaVille]".
 4.  **Scenario Text:** The \\\`scenarioText\\\` for this first turn **MUST** describe the player character waking up or arriving in this *specific, named location* that you have determined. **DO NOT** describe them as being in "Lieu de Départ Inconnu" or an undefined place. Make it engaging.
@@ -190,7 +190,7 @@ const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
 
        **Item Interactions**: If the player uses or examines an item, describe the act of using or examining it and any immediate sensory feedback or observable changes. Do not determine the item's mechanical effects (e.g., health restored, door opened, information revealed).
        {{/if}}
-   2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
+   2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'name'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'name' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
    3.  **Quest-Related Narrative**: If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story. For example, the player might find an item mentioned in a quest objective, or encounter a character who seems to offer a new task. Describe these narrative events. The game system will handle the mechanical aspects of quest updates or creation.
    4.  **PNJ Interactions ("Les Visages du Savoir" continued)**: When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Describe the PNJ's initial demeanor and response to the player's words/actions based on the ongoing narrative and their established personality. The game system will handle any underlying mechanics like persuasion checks, which may influence the PNJ's future disposition or available dialogue.
    5.  **Major Decisions**: Log in majorDecisionsLogged if the narrative describes a significant choice made by the player that should be recorded for long-term consequence.
@@ -255,7 +255,8 @@ const generateScenarioFlow = ai.defineFlow(
     }
 
     const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
-    const isInitialUnknownLocation = input.playerLocation.placeName === "Lieu de Départ Inconnu";
+    const isInitialUnknownLocation = input.playerLocation.name === UNKNOWN_STARTING_PLACE_NAME;
+
 
     const promptPayload: SimplifiedGenerateScenarioInput & { isReflectAction: boolean; isInitialUnknownLocation: boolean; } = {
       ...input,
@@ -277,4 +278,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-    
