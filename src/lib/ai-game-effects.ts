@@ -250,7 +250,8 @@ export async function processAndApplyAIScenarioOutput(
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
-      aiOutput.newLocationDetails.placeName) {
+      typeof aiOutput.newLocationDetails.placeName === 'string' && // Added type check for placeName
+      aiOutput.newLocationDetails.placeName.trim() !== '') { // Added check for non-empty placeName
     const newLoc: LocationData = {
       latitude: aiOutput.newLocationDetails.latitude,
       longitude: aiOutput.newLocationDetails.longitude,
@@ -263,7 +264,17 @@ export async function processAndApplyAIScenarioOutput(
       description: `Vous êtes maintenant à ${newLoc.placeName}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
+  } else if (aiOutput.newLocationDetails) {
+    // Log a warning if newLocationDetails is present but malformed
+    console.warn('AI output included newLocationDetails, but it was malformed:', aiOutput.newLocationDetails);
+    notifications.push({
+      type: 'warning',
+      title: 'Erreur de Déplacement',
+      description: "L'IA a tenté de vous déplacer, mais les détails du lieu étaient incomplets ou incorrects. Vous restez à votre position actuelle.",
+      details: { receivedDetails: aiOutput.newLocationDetails }
+    });
   }
+  // If aiOutput.newLocationDetails is null or undefined, nothing happens, and no error is thrown.
 
   if (aiOutput.investigationNotesUpdate) {
     updatedPlayer.investigationNotes = updateInvestigationNotes(updatedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
