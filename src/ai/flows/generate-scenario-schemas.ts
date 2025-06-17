@@ -1,112 +1,29 @@
 
 /**
- * @fileOverview Zod schema definitions for the generateScenario flow.
+ * @fileOverview Zod schema definitions for the generateScenario flow input and output.
+ * Imports sub-schemas from the './schemas/' directory.
  */
 import {z} from 'genkit';
-import { AVAILABLE_TONES } from '@/lib/types';
 
-export const LocationSchema = z.object({
-  latitude: z.number().describe('The latitude of the location.'),
-  longitude: z.number().describe('The longitude of the location.'),
-  placeName: z.string().describe('The human-readable name of the location (e.g., "Paris, France").'),
-});
+// Import schemas from sub-files
+import {
+  LocationSchema,
+  SkillsSchema,
+  TraitsMentalStatesSchema,
+  ProgressionInputSchema,
+  AlignmentSchema,
+  InventoryItemInputSchema,
+  ToneSettingsSchema
+} from './schemas/player-common-schemas';
+import {
+  QuestInputSchema,
+  QuestUpdateSchema
+} from './schemas/quest-schemas';
+import { PNJInteractionSchema } from './schemas/pnj-schemas';
+import { MajorDecisionSchema } from './schemas/decision-schemas';
+import { ClueInputSchema, DocumentInputSchema } from './schemas/evidence-schemas';
 
-export const SkillsSchema = z.record(z.number()).describe("Player's skills (e.g., {\"Informatique\": 10, \"Discretion\": 5}).");
-export const TraitsMentalStatesSchema = z.array(z.string()).describe("Player's current mental states or traits (e.g., [\"Stressé\", \"Observateur\"]).");
-
-export const ProgressionInputSchema = z.object({
-  level: z.number().describe("Player's current level."),
-  xp: z.number().describe("Player's current experience points."),
-  xpToNextLevel: z.number().describe("XP needed for the player to reach the next level."),
-  perks: z.array(z.string()).describe("Player's unlocked perks or passive abilities."),
-});
-
-export const AlignmentSchema = z.object({
-  chaosLawful: z.number().describe("Player's alignment on the Chaos/Lawful axis (-100 to 100)."),
-  goodEvil: z.number().describe("Player's alignment on the Good/Evil axis (-100 to 100)."),
-});
-
-export const InventoryItemInputSchema = z.object({
-    name: z.string().describe("The name of the item."),
-    quantity: z.number().describe("The quantity of the item."),
-});
-
-export const QuestObjectiveInputSchema = z.object({
-  id: z.string().describe("Identifiant unique de l'objectif (ex: 'trouver_document_x')."),
-  description: z.string().describe("Description de ce que le joueur doit faire."),
-  isCompleted: z.boolean().default(false).describe("Si l'objectif est complété (généralement false à la création).")
-}).describe("Un objectif spécifique d'une quête.");
-
-export const QuestInputSchema = z.object({
-  id: z.string().describe("Identifiant unique de la quête (ex: 'quete_principale_01', 'secondaire_cafe_mystere'). Doit être unique et mémorable."),
-  title: z.string().describe("Titre de la quête."),
-  description: z.string().describe("Description générale de la quête."),
-  type: z.enum(['main', 'secondary']).describe("Type de quête (principale ou secondaire)."),
-  status: z.enum(['active', 'inactive', 'completed', 'failed']).default('active').describe("Statut de la quête."),
-  objectives: z.array(QuestObjectiveInputSchema).describe("Liste des objectifs de la quête."),
-  giver: z.string().optional().describe("Nom du PNJ qui a donné la quête."),
-  reward: z.string().optional().describe("Description textuelle de la récompense potentielle (objets, XP)."),
-  moneyReward: z.number().optional().describe("Montant d'argent (euros) offert en récompense pour la quête."),
-  relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
-}).describe("Structure pour une nouvelle quête à ajouter au journal du joueur.");
-
-export const QuestUpdateSchema = z.object({
-  questId: z.string().describe("ID de la quête existante à mettre à jour."),
-  newStatus: z.enum(['active', 'completed', 'failed']).optional().describe("Nouveau statut de la quête si changé."),
-  updatedObjectives: z.array(z.object({
-    objectiveId: z.string().describe("ID de l'objectif à mettre à jour."),
-    isCompleted: z.boolean().describe("Si l'objectif est maintenant complété.")
-  })).optional().describe("Liste des objectifs dont le statut a changé."),
-  newObjectiveDescription: z.string().optional().describe("Description d'un nouvel objectif ajouté à cette quête (rare). L'IA devrait préférer créer des sous-quêtes ou des quêtes séquentielles.")
-}).describe("Structure pour mettre à jour une quête existante.");
-
-export const PNJInteractionSchema = z.object({
-  id: z.string().describe("Identifiant unique du PNJ (ex: 'pnj_marie_cafe', 'pnj_detective_dupont'). Doit être unique et mémorable."),
-  name: z.string().describe("Nom du PNJ."),
-  description: z.string().describe("Brève description du PNJ ou de son rôle actuel."),
-  relationStatus: z.enum(['friendly', 'neutral', 'hostile', 'allied', 'rival', 'unknown']).default('neutral').describe("Relation actuelle du joueur avec ce PNJ."),
-  importance: z.enum(['major', 'minor', 'recurring']).default('minor').describe("Importance du PNJ dans l'histoire."),
-  trustLevel: z.number().min(0).max(100).optional().describe("Niveau de confiance du PNJ envers le joueur (0-100)."),
-  firstEncountered: z.string().optional().describe("Contexte de la première rencontre (si c'est la première fois)."),
-  notes: z.array(z.string()).optional().describe("Notes à ajouter sur ce PNJ (actions mémorables, informations clés données).")
-}).describe("Structure pour enregistrer ou mettre à jour une interaction avec un PNJ.");
-
-export const MajorDecisionSchema = z.object({
-  id: z.string().describe("Identifiant unique pour cette décision (ex: 'choix_trahir_contact_paris')."),
-  summary: z.string().describe("Résumé concis de la décision prise par le joueur."),
-  outcome: z.string().describe("Conséquence immédiate ou prévue de cette décision."),
-  scenarioContext: z.string().describe("Brève description du contexte du scénario au moment de la décision.")
-}).describe("Structure pour enregistrer une décision majeure du joueur.");
-
-// --- Schémas pour Indices & Documents ---
-export const ClueInputSchema = z.object({
-  id: z.string().describe("Identifiant unique pour l'indice (ex: 'indice_photo_scene_01', 'temoignage_voisin_02'). Doit être unique et mémorable."),
-  title: z.string().describe("Titre concis de l'indice."),
-  description: z.string().describe("Description détaillée de l'indice. Ce que le joueur apprend ou observe."),
-  type: z.enum(['photo', 'testimony', 'text_extract', 'object_observation', 'digital_trace', 'audio_recording', 'misc_clue']).describe("Type d'indice."),
-  source: z.string().optional().describe("Source de l'indice (ex: 'Trouvé sur le bureau de la victime', 'Entretien avec Mr. X')."),
-  imageUrl: z.string().url().optional().describe("URL de l'image si le type est 'photo'. Utiliser https://placehold.co pour les placeholders."),
-  keywords: z.array(z.string()).optional().describe("Mots-clés pertinents pour cet indice (1-3 mots).")
-}).describe("Structure pour un nouvel indice découvert par le joueur.");
-
-export const DocumentInputSchema = z.object({
-  id: z.string().describe("Identifiant unique pour le document (ex: 'doc_lettre_victime_01', 'article_journal_affaire_x'). Doit être unique et mémorable."),
-  title: z.string().describe("Titre du document."),
-  content: z.string().describe("Contenu textuel du document (peut être du HTML simple pour la mise en forme)."),
-  type: z.enum(['article', 'letter', 'note', 'journal_entry', 'computer_log', 'report', 'misc_document']).describe("Type de document."),
-  source: z.string().optional().describe("Source du document (ex: 'Récupéré dans les emails de Y', 'Archive de la bibliothèque')."),
-  keywords: z.array(z.string()).optional().describe("Mots-clés pertinents pour ce document (1-3 mots).")
-}).describe("Structure pour un nouveau document obtenu par le joueur.");
-// --- Fin Schémas pour Indices & Documents ---
-
-const ToneSettingsSchema = z.object(
-  AVAILABLE_TONES.reduce((acc, tone) => {
-    acc[tone] = z.number().min(0).max(100);
-    return acc;
-  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
-).partial().describe('Player-defined tone preferences (e.g., {"Horreur": 75, "Humour": 30}). Values 0-100. Neutral is 50.');
-
-
+// --- Main Input Schema ---
 export const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
   playerGender: z.string().describe("The player character's gender."),
@@ -123,7 +40,7 @@ export const GenerateScenarioInputSchema = z.object({
   playerChoice: z.string().describe('The free-form text action the player typed.'),
   currentScenario: z.string().describe('The current scenario context (the HTML text of the previous scenario).'),
   playerLocation: LocationSchema.describe("The player's current location."),
-  toneSettings: ToneSettingsSchema.optional(), // Added tone settings
+  toneSettings: ToneSettingsSchema.optional(),
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
   encounteredPNJsSummary: z.array(z.object({name: z.string(), relationStatus: z.string()})).optional().describe("Résumé des PNJ importants déjà rencontrés et leur relation actuelle."),
   currentCluesSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
@@ -131,6 +48,8 @@ export const GenerateScenarioInputSchema = z.object({
   currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")
 });
 
+// --- Main Output Schema ---
+// NewLocationDetailsSchema depends on LocationSchema, defined here for clarity.
 export const NewLocationDetailsSchema = LocationSchema.extend({
     reasonForMove: z.string().optional().describe("A brief explanation if the AI decided the player moved, e.g., 'Took a train to Marseille'.")
 }).describe("Details of the new location if the player's action caused them to move significantly. Omit if no significant location change.");
@@ -157,4 +76,3 @@ export const GenerateScenarioOutputSchema = z.object({
   newDocuments: z.array(DocumentInputSchema).optional().describe("Liste des nouveaux documents obtenus par le joueur dans ce scénario."),
   investigationNotesUpdate: z.string().nullable().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision.")
 });
-
