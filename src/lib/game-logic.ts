@@ -1,7 +1,9 @@
 
-import type { GameState, Scenario, Player, InventoryItem, ToneSettings } from './types';
-import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem import
+import type { GameState, Scenario, Player, InventoryItem, ToneSettings, Position, JournalEntry } from './types'; // Added JournalEntry
+import { getMasterItemById, type MasterInventoryItem } from '@/data/items';
 import { saveGameStateToFirestore } from '@/services/firestore-service';
+import { fetchNearbyPoisFromOSM } from '@/services/osm-service'; // For fetching new POIs
+// import { getPositionData } from '@/services/position-service'; // Could be used to update current location details too
 import {
   initialPlayerStats,
   initialSkills,
@@ -174,6 +176,104 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   return player;
 }
 
+// --- Game Actions & Reducer ---
+
+export type GameAction =
+  | { type: 'MOVE_TO_LOCATION'; payload: Position }
+  | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
+  | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
+  | { type: 'UPDATE_PLAYER_DATA'; payload: Partial<Player> }
+  | { type: 'ADD_GAME_TIME'; payload: number }
+  | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }; // For adding entries from various sources
+
+export function gameReducer(state: GameState, action: GameAction): GameState {
+  if (!state.player) {
+    console.error("Reducer Error: Player object is null. Cannot process action.", action);
+    return state;
+  }
+  const now = state.gameTimeInMinutes || 0;
+
+  switch (action.type) {
+    case 'MOVE_TO_LOCATION': {
+      const newLocation = action.payload;
+      const newJournalEntry: JournalEntry = {
+        id: `${now}-${Math.random().toString(36).substr(2, 9)}`, // Simple unique enough ID
+        timestamp: now, // Timestamp will be based on time *before* this move's time addition
+        type: 'location_change',
+        text: `Déplacé vers ${newLocation.name}.`,
+        location: newLocation,
+      };
+      console.log(`Action: MOVE_TO_LOCATION to ${newLocation.name}`);
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          currentLocation: newLocation,
+        },
+        currentScenario: { scenarioText: `<p>Vous arrivez à ${newLocation.name}.</p>` },
+        nearbyPois: null,
+        journal: [...(state.journal || []), newJournalEntry],
+        // TODO: Implement event triggering based on new location (e.g., check newLocation.name or newLocation.zone)
+      };
+    }
+    case 'ADD_JOURNAL_ENTRY': {
+      const newEntry: JournalEntry = {
+        ...action.payload,
+        id: `${now}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: now,
+      };
+      return {
+        ...state,
+        journal: [...(state.journal || []), newEntry],
+      };
+    }
+    case 'SET_NEARBY_POIS':
+      console.log(`Action: SET_NEARBY_POIS`, action.payload);
+      return {
+        ...state,
+        nearbyPois: action.payload,
+      };
+
+    case 'SET_CURRENT_SCENARIO':
+      return {
+        ...state,
+        currentScenario: action.payload,
+      };
+
+    case 'UPDATE_PLAYER_DATA':
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          ...action.payload,
+        }
+      };
+
+    case 'ADD_GAME_TIME':
+      return {
+        ...state,
+        gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload,
+      };
+
+    default:
+      return state;
+  }
+}
+
+// Async function to fetch POIs for the current player location
+// This would typically be called after the state has been updated with the new location.
+export async function fetchPoisForCurrentLocation(playerLocation: Position): Promise<Position[] | null> {
+  if (!playerLocation) return null;
+  try {
+    const pois = await fetchNearbyPoisFromOSM(playerLocation.latitude, playerLocation.longitude);
+    // We might want to filter out the current location itself if it appears in POIs
+    return pois.filter(poi => !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude));
+  } catch (error) {
+    console.error("Error fetching new POIs:", error);
+    return null;
+  }
+}
+
 
 export function loadGameStateFromLocal(): GameState | null {
   if (typeof window !== 'undefined' && localStorage) {
@@ -182,20 +282,33 @@ export function loadGameStateFromLocal(): GameState | null {
       try {
         const parsedSavedState = JSON.parse(savedStateString) as Partial<GameState>;
 
-        if (!parsedSavedState || typeof parsedSavedState !== 'object') {
-          console.warn("LocalStorage Warning: Loaded game state is not a valid object. Clearing corrupted state.");
+        if (!parsedSavedState || typeof parsedSavedState !== 'object' || !parsedSavedState.player) {
+          console.warn("LocalStorage Warning: Loaded game state is not a valid object or player is missing. Clearing corrupted state.");
           localStorage.removeItem(LOCAL_STORAGE_KEY);
           return null;
         }
 
         const hydratedPlayer = hydratePlayer(parsedSavedState.player);
 
+        // Initialize gameTimeInMinutes if not present in saved state
+        const gameTimeInMinutes = typeof parsedSavedState.gameTimeInMinutes === 'number' ? parsedSavedState.gameTimeInMinutes : 0;
+        const nearbyPois = Array.isArray(parsedSavedState.nearbyPois) ? parsedSavedState.nearbyPois : null;
+        const journal = Array.isArray(parsedSavedState.journal) ? parsedSavedState.journal : []; // Initialize journal
+
+
         const currentScenario = parsedSavedState.currentScenario && parsedSavedState.currentScenario.scenarioText
           ? parsedSavedState.currentScenario
           : getInitialScenario(hydratedPlayer);
 
         console.log("LocalStorage Success: Game state loaded and hydrated from LocalStorage.");
-        return { player: hydratedPlayer, currentScenario };
+        // Ensure all GameState fields are present
+        return {
+          player: hydratedPlayer,
+          currentScenario,
+          nearbyPois,
+          gameTimeInMinutes,
+          journal, // Added journal to returned state
+        };
 
       } catch (error) {
         console.error("LocalStorage Error: Error parsing game state from LocalStorage:", error);
