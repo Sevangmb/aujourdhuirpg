@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
-import type { GameState, Player, PlayerStats, LocationData, Scenario, ToneSettings, Position, JournalEntry } from '@/lib/types';
+import type { GameState, Player, PlayerStats, LocationData, Scenario, ToneSettings, Position, JournalEntry, GameNotification } from '@/lib/types';
 import { gameReducer, GameAction, fetchPoisForCurrentLocation } from '@/lib/game-logic'; // Import reducer and actions
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
@@ -97,16 +97,19 @@ const prepareAIInput = (
  *
  * @param aiInput The input object prepared for the `generateScenario` AI flow.
  * @param currentPlayer The current player state before the AI effects are applied.
+ * @param playerChoice The original text input from the player.
  * @returns A promise that resolves to an object containing the `updatedPlayer` state,
  *          an array of `notifications` for UI feedback, and the new `scenarioText`.
  */
 async function executeScenarioGenerationAndProcessOutput(
   aiInput: GenerateScenarioInput,
-  currentPlayer: Player
+  currentPlayer: Player,
+  playerChoice: string, // Added playerChoice here
 ): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; scenarioText: string }> {
   try {
     const aiOutput: GenerateScenarioOutput = await generateScenario(aiInput);
-    const { updatedPlayer, notifications } = processAndApplyAIScenarioOutput(currentPlayer, aiOutput);
+    // Pass playerChoice to processAndApplyAIScenarioOutput
+    const { updatedPlayer, notifications } = await processAndApplyAIScenarioOutput(currentPlayer, playerChoice, aiOutput);
     return {
       updatedPlayer,
       notifications,
@@ -199,53 +202,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     fetchWeatherForLocation(currentLocationForUI);
   }, [currentLocationForUI]);
 
+  // Location Image fetching
   useEffect(() => {
     const fetchLocationImage = async () => {
-      if (player?.currentLocation?.placeName) {
+      // Use initialGameState.player directly here to avoid ReferenceError
+      if (initialGameState.player?.currentLocation?.placeName) {
         setLocationImageLoading(true);
         setLocationImageUrl(null); 
         setLocationImageError(null);
         try {
-          const result = await generateLocationImage({ placeName: player.currentLocation.placeName });
-          if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
-            setLocationImageUrl(result.imageUrl);
-          } else {
-            const errorMsg = result.error || "L'IA n'a pas pu générer une image pour ce lieu.";
-            setLocationImageError(errorMsg);
-          }
-        } catch (e: any) {
-          const errorMsg = e.message || "Erreur inconnue lors de la génération de l'image du lieu.";
-          setLocationImageError(errorMsg);
-        } finally {
-          setLocationImageLoading(false);
-        }
-      }
-    };
-
-    fetchLocationImage();
-  }, [player?.currentLocation?.placeName]);
-
-
-  /**
-   * Asynchronously handles the submission of a player's action.
-   * This function orchestrates the process:
-   * 1. Validates the current game state and player input.
-   * 2. Prepares the input for the AI using `prepareAIInput`.
-   * 3. Calls `executeScenarioGenerationAndProcessOutput` to get the AI-generated scenario and its effects.
-   * 4. Updates the local and global game state with the new player data and scenario.
-   * 5. Displays notifications (toasts) to the player based on the outcomes.
-   * 6. Handles any errors during the process and provides UI feedback.
-   *
-   * @param actionText The text string of the action submitted by the player.
-   */
-  // Location Image fetching (remains largely the same, uses initialGameState.player.currentLocation.placeName)
-  useEffect(() => {
-    const fetchLocationImage = async () => {
-      if (initialGameState.player?.currentLocation?.placeName) {
-        setLocationImageLoading(true);
-        setLocationImageUrl(null);
-        setLocationImageError(null);
-        try {
+          // Use initialGameState.player directly here
           const result = await generateLocationImage({ placeName: initialGameState.player.currentLocation.placeName });
           if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
             setLocationImageUrl(result.imageUrl);
@@ -261,8 +227,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
         }
       }
     };
+
     fetchLocationImage();
-  }, [initialGameState.player?.currentLocation?.placeName]);
+  }, [initialGameState.player?.currentLocation?.placeName]); // Dependency uses initialGameState.player
 
 
   // Custom dispatch function to handle game actions
@@ -313,25 +280,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     const inputForAI = prepareAIInput(player, currentScenario.scenarioText, actionText);
 
     try {
-      const { updatedPlayer: playerAfterAI, notifications, scenarioText: newScenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player);
+      const { updatedPlayer: playerAfterAI, notifications, scenarioText: newScenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player, actionText); // Pass actionText
       
-      // Create a new game state based on AI output
-      // We need to ensure the new state incorporates changes from playerAfterAI and newScenarioText
-      // while preserving other parts of the state like journal, gameTimeInMinutes etc. from initialGameState.
       let updatedFullGameState: GameState = {
-        ...initialGameState, // Start with the current global state
+        ...initialGameState, 
         player: playerAfterAI,
         currentScenario: { scenarioText: newScenarioText },
-        // Potentially update other fields if AI can modify them, e.g. nearbyPois if AI leads to discovery
       };
 
-      // Here, we might want to use gameReducer for some updates if applicable,
-      // for example, if AI output implies adding a journal entry directly.
-      // For now, assuming processAndApplyAIScenarioOutput handles direct player changes.
-      // And notifications are handled via toasts.
-
-      onStateUpdate(updatedFullGameState); // Update the global state
-      await saveGameState(updatedFullGameState); // Persist the new state
+      onStateUpdate(updatedFullGameState); 
+      await saveGameState(updatedFullGameState); 
 
       notifications.forEach(notification => {
         let toastAction;
@@ -374,7 +332,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     );
   }
 
-  // Ensure displayLocation has a default if player.currentLocation is somehow null
   const displayLocation = player.currentLocation || initialPlayerLocation;
 
   return (
@@ -384,8 +341,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
         <MapDisplay
           currentLocation={displayLocation}
           nearbyPois={nearbyPois || []}
-          // visitedLocations={player.visitedLocations || []} // Assuming player model might have this
-          // lockedLocations={player.lockedLocations || []} // Assuming player model might have this
         />
         <LocationImageDisplay
             imageUrl={locationImageUrl}
@@ -397,15 +352,19 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
 
       {/* Middle section with Scenario and Journal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-grow min-h-0">
-        <ScrollArea className="lg:col-span-2 h-[300px] lg:h-auto lg:min-h-0">
-          <ScenarioDisplay
-            scenarioHTML={currentScenario.scenarioText}
-            isLoading={isLoading} // This isLoading is for AI response
-          />
-        </ScrollArea>
-        <ScrollArea className="h-[300px] lg:h-auto lg:min-h-0">
-          <JournalDisplay journal={journal || []} />
-        </ScrollArea>
+        <div className="lg:col-span-2 flex-grow min-h-0 flex flex-col"> {/* Ensure this container also grows */}
+          <ScrollArea className="flex-grow min-h-0"> {/* ScrollArea will now fill its flex parent */}
+            <ScenarioDisplay
+              scenarioHTML={currentScenario.scenarioText}
+              isLoading={isLoading}
+            />
+          </ScrollArea>
+        </div>
+        <div className="flex-grow min-h-0 flex flex-col"> {/* Ensure this container also grows */}
+          <ScrollArea className="flex-grow min-h-0"> {/* ScrollArea will now fill its flex parent */}
+            <JournalDisplay journal={journal || []} />
+          </ScrollArea>
+        </div>
       </div>
       
       {/* Bottom section for Player Input */}
@@ -413,10 +372,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
         <PlayerInputForm
           playerInput={playerInput}
           onPlayerInputChange={setPlayerInput}
-          onSubmit={handlePlayerActionSubmit} // For text input
-          isLoading={isLoading} // Shared loading state
-          gameState={initialGameState} // Pass the whole state for nearbyPois etc.
-          dispatch={handleGameAction} // Pass the new action handler
+          onSubmit={handlePlayerActionSubmit} 
+          isLoading={isLoading} 
+          gameState={initialGameState} 
+          dispatch={handleGameAction} 
         />
       </div>
     </div>
@@ -424,3 +383,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
 };
 
 export default GamePlay;
+
+
+    
