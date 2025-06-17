@@ -28,9 +28,7 @@ export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 export function getInitialScenario(player: Player): Scenario {
  return {
     scenarioText: `
-      <h1 class="font-headline">Un nouveau jour, ${player.name}</h1>
-      <p>Le jour se lève sur ${player.currentLocation.placeName}. Vous vous réveillez avec le souvenir diffus de votre passé (${player.background}) et la sensation que cette journée ne sera pas comme les autres. Avec ${player.money}€ en poche, la ville et ses secrets vous attendent.</p>
-      <p>Une légère brise matinale balaie les rues encore calmes. Quelle sera votre première action ?</p>
+      <p>Où vous trouvez-vous, ${player.name} ?</p>
     `,
   };
 }
