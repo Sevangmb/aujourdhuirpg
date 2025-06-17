@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow to generate an image for a given location name.
@@ -32,12 +33,20 @@ const generateLocationImageFlow = ai.defineFlow(
     outputSchema: GenerateLocationImageOutputSchema,
   },
   async (input) => {
+    if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
+      console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set. AI image generation is disabled.");
+      return {
+        imageUrl: "",
+        error: "Génération d'image par l'IA indisponible. Clé API (GOOGLE_API_KEY ou GEMINI_API_KEY) manquante.",
+      };
+    }
+
     try {
       const {media, text} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Model for image generation
+        model: 'googleai/gemini-2.0-flash-exp', 
         prompt: `Generate a vibrant and picturesque, photorealistic image suitable for an immersive text-based RPG, representing the following location: ${input.placeName}. Capture an iconic or characteristic view of this place. If it's a city, show a street scene or landmark. If it's a natural place, show a landscape. Avoid text overlays on the image. The image should be suitable for a general audience.`,
         config: {
-          responseModalities: ['TEXT', 'IMAGE'], // IMPORTANT: Must request IMAGE
+          responseModalities: ['TEXT', 'IMAGE'], 
           safetySettings: [
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -57,7 +66,11 @@ const generateLocationImageFlow = ai.defineFlow(
       return { imageUrl: '', error: "Aucune image n'a été générée par l'IA." };
     } catch (e: any) {
       console.error(`Error in generateLocationImageFlow for "${input.placeName}":`, e);
+      if (e.message && (e.message.includes('API key not valid') || e.message.includes('API_KEY_INVALID') || e.message.includes('permission to access'))) {
+          return { imageUrl: '', error: "Clé API invalide ou permissions manquantes pour la génération d'image." };
+      }
       return { imageUrl: '', error: e.message || "Erreur inconnue lors de la génération de l'image." };
     }
   }
 );
+    
