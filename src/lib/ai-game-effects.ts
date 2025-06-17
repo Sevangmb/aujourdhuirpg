@@ -242,96 +242,30 @@ export function processAndApplyAIScenarioOutput(
   processedPlayer.money = typeof processedPlayer.money === 'number' ? processedPlayer.money : initialPlayerMoney;
   processedPlayer.inventory = Array.isArray(processedPlayer.inventory) ? processedPlayer.inventory : [];
 
-  let combinedStatChanges: Partial<PlayerStats> = { ...(aiOutput.scenarioStatsUpdate || {}) };
+  // TODO: Call skill check logic based on player action (not yet passed here) and AI narrative (aiOutput.scenarioText)
+  // This will determine success/failure of actions and generate mechanical outcomes.
+  // Example: const skillCheckResult = performSkillCheck(currentPlayer.skills, currentPlayer.stats, playerAction, aiOutput.scenarioText);
 
-  // Process item removals and apply their effects first
-  if (aiOutput.itemsRemoved && aiOutput.itemsRemoved.length > 0) {
-    let currentInv = processedPlayer.inventory;
-    aiOutput.itemsRemoved.forEach(itemToRemove => {
-      const { updatedInventory, removedItemEffects, removedItemName } = removeItemFromInventory(currentInv, itemToRemove.itemName, itemToRemove.quantity);
-      currentInv = updatedInventory;
+  // TODO: Process narrative for potential item discoveries, stat changes from events, XP awards, money changes.
+  // This logic will parse aiOutput.scenarioText or use events triggered by skill checks.
+  // Example: if (skillCheckResult.foundItem) { processedPlayer.inventory = addItemToInventory(...) }
+  // Example: if (skillCheckResult.earnedXP) { processedPlayer.progression = addXP(...) }
 
-      if (removedItemEffects && removedItemName) {
-        notifications.push({
-          type: 'item_removed',
-          title: "Objet utilisé/perdu",
-          description: `${removedItemName} (x${itemToRemove.quantity}) retiré. Ses effets sont appliqués.`,
-          details: { itemName: removedItemName, quantity: itemToRemove.quantity, effects: removedItemEffects }
-        });
-        // Apply consumable effects to combinedStatChanges
-        for (const statKey in removedItemEffects) {
-          if (Object.prototype.hasOwnProperty.call(removedItemEffects, statKey)) {
-            const effectValue = removedItemEffects[statKey as keyof PlayerStats] || 0;
-            combinedStatChanges[statKey as keyof PlayerStats] = (combinedStatChanges[statKey as keyof PlayerStats] || 0) + effectValue;
-          }
-        }
-      } else if (removedItemName) { // Item removed but no specific effects
-         notifications.push({
-          type: 'item_removed',
-          title: "Objet utilisé/perdu",
-          description: `${removedItemName} (x${itemToRemove.quantity}) retiré de l'inventaire.`,
-          details: { itemName: removedItemName, quantity: itemToRemove.quantity }
-        });
-      }
-    });
-    processedPlayer.inventory = currentInv;
-  }
-  
-  // Apply combined stat changes (from AI + consumables)
-  if (Object.keys(combinedStatChanges).length > 0) {
-    processedPlayer.stats = applyStatChanges(processedPlayer.stats, combinedStatChanges);
-    // Could add a generic stat_changed notification here if needed, or rely on consumable notification
-  }
+  // TODO: Evaluate quest progression based on narrative events and skill check outcomes.
+  // Example: if (narrativeIndicatesQuestObjectiveMet(aiOutput.scenarioText, currentPlayer.questLog)) { processedPlayer.questLog = updateQuest(...) }
 
+  // TODO: The following direct manipulations from AI output are removed as AI is now a narrator.
+  // - scenarioStatsUpdate
+  // - xpGained
+  // - moneyChange
+  // - itemsAdded
+  // - itemsRemoved
+  // - newQuests
+  // - questUpdates
+  // - newClues
+  // - newDocuments
 
-  if (typeof aiOutput.xpGained === 'number' && aiOutput.xpGained > 0) {
-    const { newProgression, leveledUp } = addXP(processedPlayer.progression, aiOutput.xpGained);
-    processedPlayer.progression = newProgression;
-    notifications.push({
-      type: 'xp_gained',
-      title: "Expérience gagnée !",
-      description: `Vous avez gagné ${aiOutput.xpGained} XP.`,
-      details: { amount: aiOutput.xpGained }
-    });
-    if (leveledUp) {
-      notifications.push({
-        type: 'leveled_up',
-        title: "Niveau Supérieur !",
-        description: `Félicitations, vous êtes maintenant niveau ${newProgression.level} !`,
-        details: { newLevel: newProgression.level }
-      });
-    }
-  }
-
-  if (typeof aiOutput.moneyChange === 'number' && aiOutput.moneyChange !== 0) {
-    const oldMoney = processedPlayer.money;
-    processedPlayer.money = addMoney(processedPlayer.money, aiOutput.moneyChange);
-    notifications.push({
-      type: 'money_changed',
-      title: aiOutput.moneyChange > 0 ? "Argent gagné !" : "Argent dépensé/perdu.",
-      description: `Vous ${aiOutput.moneyChange > 0 ? 'recevez' : 'perdez'} ${Math.abs(aiOutput.moneyChange)}€. Votre solde : ${processedPlayer.money}€.`,
-      details: { amount: aiOutput.moneyChange, oldBalance: oldMoney, newBalance: processedPlayer.money }
-    });
-  }
-
-  if (aiOutput.itemsAdded && aiOutput.itemsAdded.length > 0) {
-    let currentInv = processedPlayer.inventory;
-    aiOutput.itemsAdded.forEach(itemToAdd => {
-      const masterItem = getMasterItemById(itemToAdd.itemId);
-      const itemName = masterItem ? masterItem.name : itemToAdd.itemId;
-      currentInv = addItemToInventory(currentInv, itemToAdd.itemId, itemToAdd.quantity);
-      notifications.push({
-        type: 'item_added',
-        title: "Objet obtenu !",
-        description: `Vous avez obtenu : ${itemName} (x${itemToAdd.quantity})`,
-        details: { itemName: itemName, quantity: itemToAdd.quantity, itemId: itemToAdd.itemId }
-      });
-    });
-    processedPlayer.inventory = currentInv;
-  }
-
-  // itemRemoved is now handled above to integrate effects with stat changes
-
+  // Process remaining AI output fields that are still its responsibility (narrative/descriptive changes)
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
@@ -350,55 +284,8 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  if (aiOutput.newQuests && Array.isArray(aiOutput.newQuests)) {
-    aiOutput.newQuests.forEach(questData => {
-      processedPlayer.questLog = addQuestToLog(processedPlayer.questLog, questData);
-      const addedQuest = processedPlayer.questLog.find(q => q.id === questData.id);
-      if (addedQuest) {
-        notifications.push({
-          type: 'quest_added',
-          title: `Nouvelle Quête : ${addedQuest.title}`,
-          description: addedQuest.description.substring(0, 100) + (addedQuest.description.length > 100 ? "..." : ""),
-          details: { questId: addedQuest.id, questType: addedQuest.type, moneyReward: addedQuest.moneyReward }
-        });
-      }
-    });
-  }
-
-  if (aiOutput.questUpdates && Array.isArray(aiOutput.questUpdates)) {
-    aiOutput.questUpdates.forEach(update => {
-      const oldQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
-      const questUpdatesPayload: Partial<Omit<Quest, 'id'>> & { updatedObjectives?: { objectiveId: string; isCompleted: boolean; }[], newObjectiveDescription?: string } = {};
-
-      if (update.newStatus) questUpdatesPayload.status = update.newStatus;
-      if (update.updatedObjectives) questUpdatesPayload.updatedObjectives = update.updatedObjectives;
-      if (update.newObjectiveDescription) questUpdatesPayload.newObjectiveDescription = update.newObjectiveDescription;
-
-      const { updatedLog, completedQuestWithMoneyReward } = updateQuestInLog(processedPlayer.questLog, update.questId, questUpdatesPayload);
-      processedPlayer.questLog = updatedLog;
-
-      if (completedQuestWithMoneyReward && completedQuestWithMoneyReward.moneyReward && completedQuestWithMoneyReward.moneyReward > 0) {
-        const oldMoney = processedPlayer.money;
-        processedPlayer.money = addMoney(processedPlayer.money, completedQuestWithMoneyReward.moneyReward);
-        notifications.push({
-            type: 'money_changed',
-            title: "Récompense de quête !",
-            description: `Quête "${completedQuestWithMoneyReward.title}" terminée. Vous recevez ${completedQuestWithMoneyReward.moneyReward}€. Votre solde : ${processedPlayer.money}€.`,
-            details: { amount: completedQuestWithMoneyReward.moneyReward, oldBalance: oldMoney, newBalance: processedPlayer.money, questId: completedQuestWithMoneyReward.id }
-        });
-      }
-
-      const updatedQuest = (processedPlayer.questLog || []).find(q => q.id === update.questId);
-      if (updatedQuest && (!oldQuest || oldQuest.status !== updatedQuest.status || JSON.stringify(oldQuest.objectives) !== JSON.stringify(updatedQuest.objectives) ) ) {
-        notifications.push({
-          type: 'quest_updated',
-          title: `Quête Mise à Jour : ${updatedQuest.title}`,
-          description: `Statut : ${updatedQuest.status}. Objectifs mis à jour.`,
-          details: { questId: updatedQuest.id, newStatus: updatedQuest.status }
-        });
-      }
-    });
-  }
+  // TODO: Client-side logic will need to interpret aiOutput.scenarioText to create new quests or update existing ones.
+  // For now, we only process PNJ interactions and major decisions if the AI provides them directly.
 
   if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
     aiOutput.pnjInteractions.forEach(pnjData => {
@@ -441,29 +328,7 @@ export function processAndApplyAIScenarioOutput(
     });
   }
 
-  if (aiOutput.newClues && Array.isArray(aiOutput.newClues)) {
-    aiOutput.newClues.forEach(clueData => {
-      processedPlayer.clues = addClue(processedPlayer.clues, clueData);
-      notifications.push({
-        type: 'clue_added',
-        title: `Nouvel Indice : ${clueData.title}`,
-        description: clueData.description.substring(0,100) + "...",
-        details: { clueId: clueData.id, clueType: clueData.type }
-      });
-    });
-  }
-
-  if (aiOutput.newDocuments && Array.isArray(aiOutput.newDocuments)) {
-    aiOutput.newDocuments.forEach(docData => {
-      processedPlayer.documents = addDocument(processedPlayer.documents, docData);
-      notifications.push({
-        type: 'document_added',
-        title: `Nouveau Document : ${docData.title}`,
-        description: `Un document de type "${docData.type}" a été ajouté.`,
-        details: { documentId: docData.id, documentType: docData.type }
-      });
-    });
-  }
+  // TODO: Client-side logic will need to interpret aiOutput.scenarioText to create new clues or documents.
 
   if (aiOutput.investigationNotesUpdate) {
     processedPlayer.investigationNotes = updateInvestigationNotes(processedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);

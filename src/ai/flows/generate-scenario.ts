@@ -148,57 +148,15 @@ Player's Typed Action (Last Choice): {{{playerChoice}}}
 `;
 
 // 4. Core Mechanics & Systems:
-// 4.a. Explains how the AI should internally handle skill checks.
+// 4.a. Instructions for how the AI should handle player actions that imply skill use or challenges.
 const PROMPT_INTERNAL_SKILL_CHECK_SYSTEM = `
-**Internal Skill Check System (Invisible to Player):**
-When the player attempts a complex action (e.g., hacking a computer, persuading a PNJ, picking a lock, stealthy maneuver), you will *internally* simulate a skill check to determine the outcome.
-This check is **NOT** to be mentioned to the player in the 'scenarioText'. The 'scenarioText' should only describe the *narrative result* of this internal check.
-
-Factors to consider for your internal skill check:
-1.  **Player's Relevant Skill(s):** Refer to 'playerSkills' (e.g., "Informatique", "Discretion", "Dialogue", "Bricolage"). A higher skill value makes success more likely.
-2.  **Inherent Difficulty of the Action:** Judge this based on the context. Examples:
-    *   Très facile (approx. threshold 30): Opening an unlocked drawer quietly, finding a very common public record.
-    *   Facile (approx. threshold 50): Convincing a friendly PNJ of something minor, picking a very simple lock.
-    *   Normal (approx. threshold 70): Picking a standard apartment door lock, basic computer hacking, persuading a neutral PNJ with a good argument.
-    *   Difficile (approx. threshold 85): Hacking a moderately secured server, intimidating a tough PNJ, complex repairs under pressure.
-    *   Extrême (approx. threshold 100+): Disabling military-grade security, performing surgery with no training, persuading a deeply hostile and powerful PNJ.
-3.  **Modifiers:**
-    *   **Player's Current Stats:** Low 'Energie' (fatigue), high 'Stress', or low 'Sante' (injury) should act as negative modifiers (increase effective difficulty). High 'Volonte' or other relevant stats (like 'Intelligence' for hacking, 'Charisme' for persuasion) can act as positive modifiers.
-    *   **Relevant Items from Inventory:** Specific tools (e.g., "Crochets de Serrurier" for lockpicking, "Outil Multifonction" for repairs) provide a bonus. Lack of proper tools imposes a penalty. Consumables might temporarily boost stats.
-    *   **Narrative Context:** Environmental factors (e.g., darkness, noise, being observed) or situational advantages/disadvantages you've established.
-
-Outcome Determination & Narration:
-Based on your internal assessment of these factors, determine if the action succeeds or fails. Then, narrate this outcome vividly and naturally in 'scenarioText'.
-
-Types of Success/Failure (for your internal guidance):
-*   **Succès Simple:** The action succeeds as intended.
-*   **Succès Critique:** The action succeeds exceptionally well, perhaps with an unexpected bonus (e.g., finding extra information, gaining a PNJ's deep respect, performing the action much faster than expected).
-*   **Échec Simple:** The action fails, and nothing significant changes immediately. The player can often try again, or try a different approach.
-*   **Échec Narratif:** The action fails, but this failure itself pushes the story forward or introduces a new complication (e.g., "Your attempt to pick the lock is clumsy, the pick breaks, and you hear a dog bark nearby. Footsteps approach!").
-*   **Échec Critique:** The action fails with significant negative consequences. This should be reflected in the output schema (e.g., 'scenarioStatsUpdate' for Sante loss, 'itemsRemoved' if a tool breaks, or even new PNJ hostility in 'pnjInteractions').
-
-Example of Internal "Skill Check" leading to Narration:
-Player Action: "Je force la serrure du local technique"
-Your Internal Thought Process:
-  - Skill: Player's "Bricolage" (e.g., 45).
-  - Modifier (Item): "Tournevis rouillé" (+5 for forcing, but not good for picking).
-  - Modifier (State): Player is "Stressé" (-10 to effective skill).
-  - Difficulty: Lock is "Normal" (target 60-70).
-  - Calculation (mental): 45 (skill) + 5 (tool) - 10 (stress) = 40. This is below "Normal" difficulty.
-  - Result: Échec. Potential for Échec Narratif or Critique.
-Resulting 'scenarioText' (example): "<p>Tu tentes de forcer le verrou avec le tournevis rouillé, mais tes mains tremblent à cause du stress. Le métal grince bruyamment et la tête du tournevis se tord brusquement, devenant inutilisable. La porte reste close, et tu crois entendre un léger bruit de l'autre côté...</p>"
-Resulting 'itemsRemoved' (example): [{ itemName: "Tournevis rouillé", quantity: 1 }]
-Resulting 'scenarioStatsUpdate' (example): { "Stress": 5 } (Stress increases from failure)
+**Narrating Player Actions and Challenges (Invisible to Player):**
+When the player attempts an action that would reasonably require a skill or challenge (e.g., hacking a computer, persuading a PNJ, picking a lock, a stealthy maneuver), describe the attempt and the immediate, observable situation in the 'scenarioText'.
+Do not determine or narrate the final success or failure of the skill-based aspects of the action, nor its ultimate consequences on game mechanics like stats, inventory, or quests.
+Focus on the narrative leading up to such a resolution, which will be handled by the game system.
+Your description should provide enough context for the game system to then adjudicate the outcome based on the player's skills and the situation you've described.
+For example, if a player tries to pick a lock, you might describe them approaching the door, examining the lock, and starting to work on it, noting any immediate environmental factors like poor lighting or nearby sounds. Avoid saying "You successfully picked the lock" or "Your attempt fails."
 `;
-
-// 4.b. Reference for item types when generating new items.
-const PROMPT_ITEM_CATEGORIES_REFERENCE = `
-**Conceptual Item Categories (for your reference when generating itemsAdded):**
-  - Utilitaires (Utilities): e.g., briquet, lampe torche, carte SIM, téléphone. Map to 'tool', 'electronic', or 'misc'.
-  - Nourriture & Soins (Food & Care): e.g., médicaments, boissons énergétiques, rations. Map to 'consumable'.
-  - Équipements (Equipment): e.g., vêtements, accessoires, protections, outils. Map to 'wearable', 'tool', or 'misc'.
-  - Objets Narratifs (Narrative Items): If these are physical items, they might be 'quest' type or 'misc' with a special description. Often, "narrative items" like documents or photos are better created as newClues or newDocuments directly.
-  - Marchandises (Goods): Items with a 'value', fitting existing types.`;
 
 // 5. Special Game Scenarios / Turn Types:
 // 5.a. Specific instructions for the very first turn of the game if the location is unknown.
@@ -247,7 +205,7 @@ const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
 {{#unless (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
-For complex actions implied by '{{{playerChoice}}}', internally perform a skill check based on the principles outlined in the 'Internal Skill Check System' section to determine the outcome. The 'scenarioText' must narrate this outcome.
+For complex actions implied by '{{{playerChoice}}}', describe the player's attempt and the observable situation in the narrative. The game system will determine the mechanical outcome.
 {{/unless}}`;
 
 // 7. Phased Approach to Scenario Generation (Information Gathering, Synthesis, Narrative Output):
@@ -282,32 +240,22 @@ const PROMPT_PHASE_2_INFO_SYNTHESIS = `
 // This section also handles the case for "Lieu de Départ Inconnu" within its logic.
 const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
 **Phase 3: Narrative Generation & Game State Updates**
-   1.  {{#if (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
+   1.  **Scenario Text Generation**:
+       {{#if (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
        Follow the "Initial Location Setup" instructions above to determine the actual starting location and generate the \`scenarioText\` and \`newLocationDetails\`.
        {{else}}
-       Based on the *synthesized information* from Phase 2 (considering TONES and player stats like Energie, Stress, Volonte, Reputation), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" (which should reflect the result of any internal skill check performed) and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
-       **Item Interactions**: If the player uses or examines an item, describe the outcome.
-       - For 'consumable' items, the primary effect (like health gain, energie gain) will be handled by game logic based on your 'itemsRemoved' output. You can narrate the act of consumption.
-       - For 'wearable' items (like clothing or armor), if the player's action is to 'put on' or 'equip' it, narrate this. Do not invent stat changes for wearables unless specifically instructed by future game mechanics for equipping items.
-       - For items of type 'quest', 'tool', or those with a strong narrative description, their use might trigger specific events, dialogues, or reveal clues, often as a result of an internal skill check (e.g., using a 'tool' successfully).
-   2.  Core Stat Updates: Provide 'scenarioStatsUpdate'. **IMPORTANT**: For items marked as 'consumable' in the item database (e.g., 'energy_bar_01' which restores Sante), which have predefined effects, the game code will automatically apply their standard effects when you list them in 'itemsRemoved'. Therefore, for these standard consumable effects, *do not* include them again in 'scenarioStatsUpdate'. You can still use 'scenarioStatsUpdate' for other contextual stat changes (e.g. Sante loss from an attack or critical failure of a skill check, Energie loss from exertion, Stress increase from a scary event or failed check, Volonte change from a moral choice, Reputation change from an action) or for effects of non-standard items that don't have predefined effects.
-   3.  XP Awards: Provide 'xpGained'. Award XP for successful complex actions (based on internal skill checks), overcoming challenges, or significant quest progression.
-   4.  Money Changes:
-       *   Respect current money ({{{playerMoney}}} €). Actions requiring money are only possible if affordable.
-       *   Use 'moneyChange' for direct gains/losses (finding cash, small purchases). Determine reasonable prices.
-       *   Quest completion rewards go in 'moneyReward' within 'newQuests' or 'questUpdates' (game logic handles this).
-   5.  Inventory Changes: Use 'itemsAdded' (with valid 'itemId' from master item list - e.g. 'energy_bar_01', 'medkit_basic_01', 'flashlight_01') and 'itemsRemoved' (with 'itemName' from inventory). Item removal can be a consequence of use (consumable) or a critical failure (tool breaks).
-   6.  Location Changes: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
-   7.  Quest Management:
-       *   New Quests: Define in newQuests. **Be proactive in creating new quests that are relevant to the current scenario, the player's recent actions, or discoveries. These quests should guide the player and provide clear goals.** Each new quest MUST have at least one clear objective in its objectives array. Try to give new quests memorable and unique id values (e.g., 'mystere_du_cafe_01', 'retrouver_le_document_perdu_A7'). Set giver for PNJ-given quests; **if no specific PNJ gives the quest, OMIT the 'giver' field entirely (do not set it to null).**
-       *   Quest Updates: Define in questUpdates. **Carefully analyze the playerChoice against the currentObjectivesDescriptions of activeQuests. If the player's action (and its success determined by an internal skill check) clearly fulfills one or more objectives, mark them as completed (isCompleted: true) in updatedObjectives for the relevant questId.** If *all* objectives of a quest are completed as a result of the player's action, update the quest's newStatus to 'completed'. If a quest is completed and has a moneyReward, the game logic will handle adding this to the player's money automatically when it processes your output, so you don't need to create a separate moneyChange for this specific reward. The AI *can* also add new objectives to an existing quest via newObjectiveDescription if it makes narrative sense (e.g., a quest develops further), but prefer creating follow-up quests for more complex steps.
-   8.  PNJ Interactions ("Les Visages du Savoir" continued):
-       *   When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Consider player's Reputation and the outcome of persuasive skill checks when determining PNJ reactions.
-   9.  Major Decisions: Log in majorDecisionsLogged.
-   10. Investigation Elements:
-       *   Populate newClues or newDocuments if relevant. **Crucially, these clues and documents should often directly support active quests (refer to activeQuests in input) by helping complete an objective, or they should lay the groundwork for newQuests you are introducing.** For 'photo' clues, you MUST provide an imageUrl using 'https://placehold.co/WIDTHxHEIGHT.png' and include keywords. For clues that are NOT of type 'photo', the imageUrl field MUST be OMITTED. For document content, use simple HTML. Discovery of clues/documents can be the result of a successful perception or investigation-related skill check.
-       *   Investigation Notes Update: If the events of this scenario or new information (from tools, observations, or quest progression) lead to new insights, hypotheses, or connections, provide text for 'investigationNotesUpdate'. To structure this, you can use prefixes like "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", or "MISE À JOUR:". The game logic will append this to existing notes. If you believe existing notes need substantial rewriting for clarity or to resolve contradictions due to new information, preface the entire new note content with "RÉVISION COMPLÈTE DES NOTES:". If no update is needed, omit 'investigationNotesUpdate' or set it to null.
-   {{/if}}`; // Note: {{/if}} from the (eq playerLocation.placeName "Lieu de Départ Inconnu") block
+       Based on the *synthesized information* from Phase 2 (considering TONES and player stats like Energie, Stress, Volonte, Reputation), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the player's attempted action related to "{{{playerChoice}}}" and the immediate, observable state of the environment or characters involved. The narrative should lead up to a point where a game mechanic (handled by the game system) would determine the detailed success, failure, or consequences. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
+
+       **Item Interactions**: If the player uses or examines an item, describe the act of using or examining it and any immediate sensory feedback or observable changes. Do not determine the item's mechanical effects (e.g., health restored, door opened, information revealed).
+       {{/if}}
+   2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
+   3.  **Quest-Related Narrative**: If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story. For example, the player might find an item mentioned in a quest objective, or encounter a character who seems to offer a new task. Describe these narrative events. The game system will handle the mechanical aspects of quest updates or creation.
+   4.  **PNJ Interactions ("Les Visages du Savoir" continued)**: When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Describe the PNJ's initial demeanor and response to the player's words/actions based on the ongoing narrative and their established personality. The game system will handle any underlying mechanics like persuasion checks, which may influence the PNJ's future disposition or available dialogue.
+   5.  **Major Decisions**: Log in majorDecisionsLogged if the narrative describes a significant choice made by the player that should be recorded for long-term consequence.
+   6.  **Investigation Elements**:
+       *   **Narrative Clues/Documents**: If the narrative leads to the player potentially discovering a clue or document, describe it in the \`scenarioText\` (e.g., 'You see a crumpled note on the floor,' or 'The ledger lies open on the desk.'). The game system will handle the mechanics of the player actually acquiring it as a formal clue or document.
+       *   **Investigation Notes Update**: If the events of this scenario or new information (from tools, observations, or quest progression) lead to new insights, hypotheses, or connections from the player's perspective, provide text for 'investigationNotesUpdate'. To structure this, you can use prefixes like "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", or "MISE À JOUR:". The game logic will append this to existing notes. If you believe existing notes need substantial rewriting for clarity or to resolve contradictions due to new information, preface the entire new note content with "RÉVISION COMPLÈTE DES NOTES:". If no update is needed, omit 'investigationNotesUpdate' or set it to null.
+`;
 
 // 8. Conclusion & Final Reminders: Final reminders about realism, PNJ basing, and output schema.
 const PROMPT_CONCLUSION = `
@@ -326,7 +274,7 @@ ${PROMPT_INITIAL_LOCATION_SETUP}
 ${PROMPT_TASK_HEADER}
 ${PROMPT_TASK_REFLECT_ACTION}
 ${PROMPT_TASK_GAMEPLAY_ACTION_INTRO}
-${PROMPT_ITEM_CATEGORIES_REFERENCE}
+// PROMPT_ITEM_CATEGORIES_REFERENCE is removed as itemsAdded/Removed are no longer AI responsibilities.
 ${PROMPT_PHASE_1_INFO_GATHERING}
 ${PROMPT_PHASE_2_INFO_SYNTHESIS}
 ${PROMPT_PHASE_3_NARRATIVE_GENERATION}
