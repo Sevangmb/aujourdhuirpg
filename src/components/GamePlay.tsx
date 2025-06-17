@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
@@ -86,7 +85,7 @@ const prepareAIInput = (
     encounteredPNJsSummary: encounteredPNJsSummary,
     currentCluesSummary: currentCluesSummary,
     currentDocumentsSummary: currentDocumentsSummary,
-    currentInvestigationNotes: player.investigationNotes,
+    investigationNotes: player.investigationNotes,
   };
 };
 
@@ -205,14 +204,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
   // Location Image fetching
   useEffect(() => {
     const fetchLocationImage = async () => {
-      // Use initialGameState.player directly here to avoid ReferenceError
-      if (initialGameState.player?.currentLocation?.placeName) {
+      if (initialGameState.player?.currentLocation?.name) { // Changed from placeName to name
         setLocationImageLoading(true);
         setLocationImageUrl(null); 
         setLocationImageError(null);
         try {
-          // Use initialGameState.player directly here
-          const result = await generateLocationImage({ placeName: initialGameState.player.currentLocation.placeName });
+          const result = await generateLocationImage({ placeName: initialGameState.player.currentLocation.name }); // Changed from placeName to name
           if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
             setLocationImageUrl(result.imageUrl);
           } else {
@@ -229,7 +226,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     };
 
     fetchLocationImage();
-  }, [initialGameState.player?.currentLocation?.placeName]); // Dependency uses initialGameState.player
+  }, [initialGameState.player?.currentLocation?.name]); // Changed from placeName to name
 
 
   // Custom dispatch function to handle game actions
@@ -383,6 +380,3 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
 };
 
 export default GamePlay;
-
-
-    

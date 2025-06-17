@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow to generate an image for a given location name.
@@ -34,10 +33,10 @@ const generateLocationImageFlow = ai.defineFlow(
   },
   async (input) => {
     if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
-      console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set. AI image generation is disabled.");
+      console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set in environment variables. AI image generation is disabled.");
       return {
         imageUrl: "",
-        error: "Génération d'image par l'IA indisponible. Clé API (GOOGLE_API_KEY ou GEMINI_API_KEY) manquante.",
+        error: "Génération d'image par l'IA indisponible. La clé API (GOOGLE_API_KEY ou GEMINI_API_KEY) est manquante dans la configuration du serveur.",
       };
     }
 
@@ -66,11 +65,16 @@ const generateLocationImageFlow = ai.defineFlow(
       return { imageUrl: '', error: "Aucune image n'a été générée par l'IA." };
     } catch (e: any) {
       console.error(`Error in generateLocationImageFlow for "${input.placeName}":`, e);
-      if (e.message && (e.message.includes('API key not valid') || e.message.includes('API_KEY_INVALID') || e.message.includes('permission to access'))) {
-          return { imageUrl: '', error: "Clé API invalide ou permissions manquantes pour la génération d'image." };
+      let errorMessage = e.message || "Erreur inconnue lors de la génération de l'image.";
+
+      if (e.message) {
+        if (e.message.includes('FAILED_PRECONDITION')) {
+          errorMessage = "Génération d'image par l'IA indisponible. Problème de configuration de la clé API (vérifiez la clé et les permissions, ou la variable d'environnement GOOGLE_API_KEY/GEMINI_API_KEY).";
+        } else if (e.message.includes('API key not valid') || e.message.includes('API_KEY_INVALID') || e.message.includes('permission to access')) {
+          errorMessage = "Clé API invalide ou permissions manquantes pour la génération d'image.";
+        }
       }
-      return { imageUrl: '', error: e.message || "Erreur inconnue lors de la génération de l'image." };
+      return { imageUrl: '', error: errorMessage };
     }
   }
 );
-    
