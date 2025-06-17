@@ -5,7 +5,7 @@ import type { Player } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { User, Shield, Brain, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as ReputationIcon } from 'lucide-react';
+import { User, Shield, Brain as BrainIcon, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as ReputationIcon, Heart, Smile, Dumbbell } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 
@@ -24,11 +24,11 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   return (
     // Removed fixed height, parent ScrollArea will handle it
     <Tabs defaultValue="identity" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 mb-2 text-xs">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-2 text-xs">
           <TabsTrigger value="identity" className="text-xs p-1.5"><User className="w-3 h-3 mr-1 inline-block" />Identité</TabsTrigger>
           <TabsTrigger value="stats" className="text-xs p-1.5"><Shield className="w-3 h-3 mr-1 inline-block" />Stats</TabsTrigger>
           <TabsTrigger value="skills" className="text-xs p-1.5"><Sparkles className="w-3 h-3 mr-1 inline-block" />Compétences</TabsTrigger>
-          <TabsTrigger value="traits" className="text-xs p-1.5"><Brain className="w-3 h-3 mr-1 inline-block" />Traits</TabsTrigger>
+          <TabsTrigger value="traits" className="text-xs p-1.5"><BrainIcon className="w-3 h-3 mr-1 inline-block" />Traits</TabsTrigger>
           <TabsTrigger value="progression" className="text-xs p-1.5"><TrendingUp className="w-3 h-3 mr-1 inline-block" />Progrès</TabsTrigger>
           <TabsTrigger value="alignment" className="text-xs p-1.5"><Palette className="w-3 h-3 mr-1 inline-block" />Align.</TabsTrigger>
           <TabsTrigger value="money" className="text-xs p-1.5"><Euro className="w-3 h-3 mr-1 inline-block" />Argent</TabsTrigger>
@@ -77,7 +77,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                 let Icon = Zap; // Default icon
                 if (stat === "Sante") Icon = Heart;
                 else if (stat === "Charisme") Icon = Smile;
-                else if (stat === "Intelligence") Icon = Brain;
+                else if (stat === "Intelligence") Icon = BrainIcon;
                 else if (stat === "Force") Icon = Dumbbell;
                 else if (stat === "Energie") Icon = Zap;
                 else if (stat === "Stress") Icon = CloudFog;
@@ -203,4 +203,3 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
 };
 
 export default PlayerSheet;
-
