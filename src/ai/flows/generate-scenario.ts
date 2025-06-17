@@ -17,9 +17,6 @@ import { getNewsTool } from '@/ai/tools/get-news-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
-  ClueInputSchema, 
-  DocumentInputSchema, 
-  QuestInputSchema as AIQuestInputSchema 
 } from './generate-scenario-schemas';
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
@@ -33,16 +30,16 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     simplifiedInput.activeQuests = input.activeQuests.map(q => ({
       id: q.id,
       title: q.title,
-      description: q.description,
+      description: q.description.substring(0,150) + "...",
       type: q.type,
       moneyReward: q.moneyReward,
-      currentObjectivesDescriptions: q.currentObjectivesDescriptions || []
+      currentObjectivesDescriptions: (q.currentObjectivesDescriptions || [])
     }));
   }
   if (input.encounteredPNJsSummary) {
     simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => ({
       name: p.name,
-      relationStatus: p.relationStatus 
+      relationStatus: p.relationStatus
     }));
   }
   if (input.currentCluesSummary) {
@@ -53,26 +50,13 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
   }
   simplifiedInput.toneSettings = input.toneSettings;
 
-
   return generateScenarioFlow(simplifiedInput);
 }
 
-const scenarioPrompt = ai.definePrompt({
-  name: 'generateScenarioPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
-  input: {schema: GenerateScenarioInputSchema}, 
-  output: {schema: GenerateScenarioOutputSchema},
-  config: {
-    safetySettings: [
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-    ],
-  },
-  prompt: `You are a creative RPG game master, "Le Maître de l'Information Contextuelle," adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element. The game is titled "Aujourd'hui RPG".
+// --- Prompt Sections ---
+const PROMPT_INTRO = `You are a creative RPG game master, "Le Maître de l'Information Contextuelle," adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element. The game is titled "Aujourd'hui RPG".`;
 
+const PROMPT_GUIDING_PRINCIPLES = `
 **Guiding Principles for Output (VERY IMPORTANT - STRICTLY ENFORCE):**
 - **ABSOLUTE RULE:** The 'scenarioText' field MUST contain ONLY narrative and descriptive text intended for the player. It must read like a story or a game master's description.
 - **STRICTLY PROHIBITED in 'scenarioText':**
@@ -86,8 +70,9 @@ const scenarioPrompt = ai.definePrompt({
     - **INCORRECT Example (DO NOT DO THIS):** "print(getNearbyPoisTool(location='Paris')) found 'Le Petit Bistro'."
     - **INCORRECT Example (DO NOT DO THIS):** "default_api.getNearbyPoisTool(...) indicates several restaurants are nearby."
     - **INCORRECT Example (DO NOT DO THIS):** "After calling getWeatherTool, the weather is fine." // Do not mention calling the tool.
-- Failure to adhere to these rules for 'scenarioText' will result in an invalid output.
+- Failure to adhere to these rules for 'scenarioText' will result in an invalid output.`;
 
+const PROMPT_PLAYER_INFO_CONTEXT = `
 Player Information (Context):
   Name: {{{playerName}}}
   Gender: {{{playerGender}}}
@@ -125,8 +110,11 @@ Player Information (Context):
   Current Investigation Notes: {{{currentInvestigationNotes}}}
   Current Scenario Context (Previous Scene): {{{currentScenario}}}
 Player's Typed Action (Last Choice): {{{playerChoice}}}
+`;
 
-Task:
+const PROMPT_TASK_HEADER = `Task:`;
+
+const PROMPT_TASK_REFLECT_ACTION = `
 {{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
   This action should primarily provide narrative flavor and insight, reflecting current tone settings if specified. Use the tone settings to subtly influence the mood and focus of the reflection, but DO NOT mention the tone settings themselves in the scenarioText.
@@ -134,25 +122,30 @@ Task:
   **CRITICAL FOR 'scenarioText': This text MUST adhere to the "Guiding Principles for Output" detailed above, especially ensuring NO tool invocation syntax, API calls, print statements, or other technical details are included. It must be PURELY NARRATIVE.**
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
-{{else}}
-Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
-Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
+{{else}}`; // Note: {{else}} is part of this string
 
+const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
+Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
+Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).`;
+
+const PROMPT_ITEM_CATEGORIES_REFERENCE = `
 **Conceptual Item Categories (for your reference when generating itemsAdded):**
   - Utilitaires (Utilities): e.g., briquet, lampe torche, carte SIM, téléphone. Map to 'tool', 'electronic', or 'misc'.
   - Nourriture & Soins (Food & Care): e.g., médicaments, boissons énergétiques, rations. Map to 'consumable'.
   - Équipements (Equipment): e.g., vêtements, accessoires, protections, outils. Map to 'wearable', 'tool', or 'misc'.
   - Objets Narratifs (Narrative Items): If these are physical items, they might be 'quest' type or 'misc' with a special description. Often, "narrative items" like documents or photos are better created as newClues or newDocuments directly.
-  - Marchandises (Goods): Items with a 'value', fitting existing types.
+  - Marchandises (Goods): Items with a 'value', fitting existing types.`;
 
+const PROMPT_PHASE_1_INFO_GATHERING = `
 **Phase 1: Strategic Information Gathering & API Management**
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if a quest objective points to a type of location, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
    C. **News Context:** Especially at the start of a new in-game day or if the player interacts with news sources (TV, radio, newspaper, internet), use 'getNewsTool' for France ('fr'). Fetch 3-5 *pertinent* headlines. Filter for news (global or local if in a major city) that could thematically (even distantly) relate to the game's mystery/thriller ambiance (technology, crime, politics, major cultural events) and selected TONE.
    D. **Wikipédia pour PNJ et Lieux ("Les Visages du Savoir") :**
       i. **PNJ ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones, or those relevant to a quest), **STRONGLY PREFER basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE. Actively seek opportunities to do this.
-      ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place (especially if relevant to a quest or clue), use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.
+      ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place (especially if relevant to a quest or clue), use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.`;
 
+const PROMPT_PHASE_2_INFO_SYNTHESIS = `
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
    A. **Narrative Relevance & Tone:** For *all* information gathered (weather, POIs, news, Wikipedia facts), assess its direct relevance to the current plot, player's immediate goals, the action "{{{playerChoice}}}", AND the player's 'toneSettings'. Pay special attention to how this information can support or advance activeQuests and currentObjectivesDescriptions. Consider player stats (e.g., low Energie might make the player less perceptive of POIs, high Stress might make them misinterpret news).
    B. **Ambiance:** Prioritize details that reinforce the "Thriller Urbain & Mystère Psychologique" mood OR the specific TONES requested by the player (e.g., high Horreur = unsettling weather; high Humour = an odd news headline).
@@ -161,8 +154,9 @@ Factor in new player stats: Energie (low means tired, high means active), Stress
    E. **Mental Draft:** *Internally* combine the filtered weather, POI details, news snippets, and Wikipedia facts into a cohesive understanding of the current scene *before* writing, considering the chosen TONES and player stats (Energie, Stress, Volonte, Reputation).
    F. **Personalization:** Consider how the player's stats/mental state (especially Energie, Stress, Volonte) might color their perception of this synthesized information, influenced by TONES.
    G. **Identify Potential Clues:** Determine if any API-sourced information could serve as a subtle clue to advance an active quest or trigger a new one.
-   H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline be the missing piece for an objective? Could a POI be the next step in an investigation? Could a Wikipedia PNJ be a quest giver (consider player Reputation)?
+   H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline be the missing piece for an objective? Could a POI be the next step in an investigation? Could a Wikipedia PNJ be a quest giver (consider player Reputation)?`;
 
+const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
 **Phase 3: Narrative Generation & Game State Updates**
    1.  Based on the *synthesized information* from Phase 2 (considering TONES and player stats like Energie, Stress, Volonte, Reputation), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
        **Item Interactions**: If the player uses or examines an item, describe the outcome.
@@ -186,11 +180,42 @@ Factor in new player stats: Energie (low means tired, high means active), Stress
    10. Investigation Elements:
        *   Populate newClues or newDocuments if relevant. **Crucially, these clues and documents should often directly support active quests (refer to activeQuests in input) by helping complete an objective, or they should lay the groundwork for newQuests you are introducing.** For 'photo' clues, you MUST provide an imageUrl using 'https://placehold.co/WIDTHxHEIGHT.png' and include keywords. For clues that are NOT of type 'photo', the imageUrl field MUST be OMITTED. For document content, use simple HTML.
        *   Investigation Notes Update: If the events of this scenario or new information (from tools, observations, or quest progression) lead to new insights, hypotheses, or connections, provide text for 'investigationNotesUpdate'. To structure this, you can use prefixes like "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", or "MISE À JOUR:". The game logic will append this to existing notes. If you believe existing notes need substantial rewriting for clarity or to resolve contradictions due to new information, preface the entire new note content with "RÉVISION COMPLÈTE DES NOTES:". If no update is needed, omit 'investigationNotesUpdate' or set it to null.
-{{/if}}
+{{/if}}`; // Note: {{/if}} is part of this string
 
+const PROMPT_CONCLUSION = `
 Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals using 'getWikipediaInfoTool' and use gathered information (Wikipedia, News) to add depth to their portrayal, adapting to selected TONES.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
-`,
+`;
+
+const FULL_PROMPT = `
+${PROMPT_INTRO}
+${PROMPT_GUIDING_PRINCIPLES}
+${PROMPT_PLAYER_INFO_CONTEXT}
+${PROMPT_TASK_HEADER}
+${PROMPT_TASK_REFLECT_ACTION}
+${PROMPT_TASK_GAMEPLAY_ACTION_INTRO}
+${PROMPT_ITEM_CATEGORIES_REFERENCE}
+${PROMPT_PHASE_1_INFO_GATHERING}
+${PROMPT_PHASE_2_INFO_SYNTHESIS}
+${PROMPT_PHASE_3_NARRATIVE_GENERATION}
+${PROMPT_CONCLUSION}
+`;
+
+const scenarioPrompt = ai.definePrompt({
+  name: 'generateScenarioPrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
+  input: {schema: GenerateScenarioInputSchema},
+  output: {schema: GenerateScenarioOutputSchema},
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    ],
+  },
+  prompt: FULL_PROMPT,
 });
 
 const generateScenarioFlow = ai.defineFlow(
@@ -201,7 +226,7 @@ const generateScenarioFlow = ai.defineFlow(
   },
   async (input: GenerateScenarioInput) => {
     const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
-    
+
     const promptPayload: GenerateScenarioInput & { isReflectAction: boolean } = { ...input, isReflectAction };
 
     const {output} = await scenarioPrompt(promptPayload);
