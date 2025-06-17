@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
 import GameScreen from '@/components/GameScreen';
+import LeftSidebar from '@/components/LeftSidebar';
 
 
 function HomePageContent() {
@@ -253,7 +254,10 @@ function HomePageContent() {
         />
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-row overflow-hidden"> {/* Changed to flex-row */}
+        {isGameActive && gameState?.player && (
+          <LeftSidebar player={gameState.player} isLoading={isLoadingState} />
+        )}
         <GameScreen
             user={user}
             loadingAuth={loadingAuth}

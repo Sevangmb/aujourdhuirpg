@@ -42,8 +42,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
   onRestartGame,
   setGameState,
 }) => {
+  // GameScreen will now grow to fill the space next to the LeftSidebar
   return (
-    <main className="flex-1 flex flex-col overflow-y-auto">
+    <main className="flex-1 flex flex-col overflow-y-auto bg-background"> {/* Ensure it grows and handles its own scroll */}
       {loadingAuth || isLoadingState ? (
         <div className="flex-grow flex items-center justify-center">
           <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />
@@ -60,6 +61,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
           />
         </div>
       ) : isGameActive && gameState ? (
+        // GamePlay component is now the direct child, it should handle its own layout within this GameScreen area
         <GamePlay
           initialGameState={gameState}
           onRestart={onRestartGame}
