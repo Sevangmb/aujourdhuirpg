@@ -156,7 +156,10 @@ Remember to consider the player's activeQuests and currentObjectivesDescriptions
 
 **Phase 3: Narrative Generation & Game State Updates**
    1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
-       **Item Interactions**: If the player uses or examines an item, especially one of type 'quest' or 'tool', or an item with a strong narrative description, describe the outcome. Some items might trigger specific events, dialogues, or reveal clues.
+       **Item Interactions**: If the player uses or examines an item, describe the outcome.
+       - For 'consumable' items, the primary effect (like health gain) will be handled by game logic based on your 'itemsRemoved' output. You can narrate the act of consumption.
+       - For 'wearable' items (like clothing or armor), if the player's action is to 'put on' or 'equip' it, narrate this. Do not invent stat changes for wearables unless specifically instructed by future game mechanics for equipping items.
+       - For items of type 'quest', 'tool', or those with a strong narrative description, their use might trigger specific events, dialogues, or reveal clues.
    2.  Core Stat Updates: Provide 'scenarioStatsUpdate'. **IMPORTANT**: For items marked as 'consumable' in the item database (e.g., 'energy_bar_01' which restores Sante), which have predefined effects, the game code will automatically apply their standard effects when you list them in 'itemsRemoved'. Therefore, for these standard consumable effects, *do not* include them again in 'scenarioStatsUpdate'. You can still use 'scenarioStatsUpdate' for other contextual stat changes or for effects of non-standard items that don't have predefined effects.
    3.  XP Awards: Provide 'xpGained'.
    4.  Money Changes:
