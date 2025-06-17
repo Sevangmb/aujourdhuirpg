@@ -84,3 +84,5 @@ export const initialDocuments: GameDocument[] = [];
 export const initialInvestigationNotes: string = "Aucune note d'enquête pour le moment.";
 // --- End Initial Player Data ---
 
+// --- Other Game Constants ---
+export const UNKNOWN_STARTING_PLACE_NAME = "Lieu de Départ Inconnu";
