@@ -27,16 +27,22 @@ export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
   if (player.currentLocation && player.currentLocation.placeName === "Lieu de Départ Inconnu") {
+    // This very first scenario text is mostly a placeholder.
+    // The AI will use playerLocation.placeName === "Lieu de Départ Inconnu" as a trigger
+    // to execute special logic to find a suitable inhabited starting location.
     return {
       scenarioText: `
-        <p>${player.name}, vous vous réveillez dans un lieu inconnu. Vos sens s'éveillent lentement...</p>
-        <p>Que faites-vous ?</p>
+        <p>Initialisation du point de départ aléatoire...</p>
+        <p>L'IA détermine votre environnement initial.</p>
       `,
     };
   }
+  // Fallback for any other case, though typically the above should be hit for new characters.
   return {
     scenarioText: `
-      <p>Où vous trouvez-vous, ${player.name} ?</p>
+      <p>Bienvenue, ${player.name}. Que l'aventure commence !</p>
+      <p>Vous vous trouvez à ${player.currentLocation?.placeName || 'un endroit non spécifié'}.</p>
+      <p>Que faites-vous ?</p>
     `,
   };
 }
@@ -190,3 +196,4 @@ export function clearGameState(): void {
     console.log("LocalStorage Info: Game state cleared from LocalStorage.");
   }
 }
+
