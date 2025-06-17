@@ -190,10 +190,11 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
               <CardTitle className="font-headline text-primary text-lg flex items-center">
                 <Euro className="w-4 h-4 mr-1" /> Argent
               </CardTitle>
+              <CardDescription className="text-xs pt-1">Votre situation financière actuelle.</CardDescription>
             </CardHeader>
             <CardContent className="p-3 text-sm">
-              <p className="text-2xl font-bold text-accent text-center">{player.money} €</p>
-              <p className="text-xs text-muted-foreground text-center mt-0.5">Votre solde actuel.</p>
+              <p className="text-3xl font-bold text-accent text-center">{player.money} €</p>
+              <p className="text-xs text-muted-foreground text-center mt-1">Gérez vos dépenses et cherchez des opportunités pour augmenter vos fonds.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -202,3 +203,6 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
 };
 
 export default PlayerSheet;
+
+
+    
