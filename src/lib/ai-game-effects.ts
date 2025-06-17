@@ -213,11 +213,15 @@ export function addDocument(currentDocuments: GameDocument[], documentData: AIDo
   return [...(currentDocuments || []), newDocument];
 }
 
-export function updateInvestigationNotes(currentNotes: string, notesUpdate: string): string {
-  if (notesUpdate.toLowerCase().startsWith("révision:") || notesUpdate.toLowerCase().startsWith("revision:")) {
-    return notesUpdate.substring(notesUpdate.indexOf(":") + 1).trim();
+export function updateInvestigationNotes(currentNotes: string | null | undefined, notesUpdateText: string): string {
+  const safeCurrentNotes = currentNotes || initialInvestigationNotes;
+  const notesUpdateTextLower = notesUpdateText.toLowerCase();
+
+  if (notesUpdateTextLower.startsWith("révision complète des notes:")) {
+    return notesUpdateText.substring(notesUpdateTextLower.indexOf(":") + 1).trim();
   }
-  return (currentNotes || initialInvestigationNotes) + "\n\n---\n\n" + notesUpdate;
+  // For "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", "MISE À JOUR:", or general additions:
+  return safeCurrentNotes + "\n\n---\n\n" + notesUpdateText;
 }
 
 
@@ -473,3 +477,4 @@ export function processAndApplyAIScenarioOutput(
 
   return { updatedPlayer: processedPlayer, notifications };
 }
+
