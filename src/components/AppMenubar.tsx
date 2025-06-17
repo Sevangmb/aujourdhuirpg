@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import type { User as FirebaseUser } from 'firebase/auth'; // Renamed to avoid conflict with Lucide's User icon
+import type { User as FirebaseUser } from 'firebase/auth'; 
 import type { Player } from '@/lib/types';
 
 import { 
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/menubar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-// Removed Button import as it's no longer used directly in the Menubar itself for sign-out
 import { 
     SlidersHorizontal, 
     Save, 
@@ -27,13 +26,15 @@ import {
     LogOut, 
     FileText,
     Maximize,
-    Settings // Using Settings icon for "Paramètres" menu
+    Settings,
+    Activity // Icon for Stats
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
+import StatDisplay from '@/components/StatDisplay'; // Import StatDisplay
 
 interface AppMenubarProps {
   user: FirebaseUser | null;
@@ -106,6 +107,28 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
 
           <MenubarMenu>
             <MenubarTrigger className="px-2 sm:px-3">
+                <Activity className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:ml-1">Stats</span>
+            </MenubarTrigger>
+            <MenubarContent>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><Activity className="mr-2 h-4 w-4" />Voir les Statistiques</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
+                        <DialogHeader>
+                        <DialogTitle>Statistiques du Personnage</DialogTitle>
+                        </DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">
+                          {player ? <StatDisplay stats={player.stats} /> : <p>Statistiques non disponibles.</p>}
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 sm:px-3">
                 <UserIcon className="h-4 w-4" />
                 <span className="sr-only sm:not-sr-only sm:ml-1">Joueur</span>
             </MenubarTrigger>
@@ -160,8 +183,6 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
           </MenubarMenu>
         </>
       )}
-
-      {/* The div for user email and sign-out button is removed from here as they are now in the "Fichier" menu */}
     </Menubar>
   );
 };

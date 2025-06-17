@@ -38,6 +38,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   const [activeMarker, setActiveMarker] = useState<Position | null>(null);
   const [scriptLoadError, setScriptLoadError] = useState<Error | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const containerHeight = "h-[160px] md:h-[180px] lg:h-[200px]";
 
   const handleMarkerClick = (markerPos: Position) => {
     setActiveMarker(markerPos);
@@ -57,11 +58,13 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   }, []);
 
   useEffect(() => {
-    if (mapRef.current && google.maps && currentLocation) {
+    if (mapRef.current && typeof google !== 'undefined' && google.maps && currentLocation) { // Added typeof google check
       const bounds = new google.maps.LatLngBounds();
-      bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude });
+      if (currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
+        bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude });
+      }
       
-      [...nearbyPois, ...visitedLocations, ...lockedLocations].forEach(pos => {
+      [...(nearbyPois || []), ...(visitedLocations || []), ...(lockedLocations || [])].forEach(pos => {
         if (pos && typeof pos.latitude === 'number' && typeof pos.longitude === 'number') {
            bounds.extend({ lat: pos.latitude, lng: pos.longitude });
         }
@@ -69,14 +72,13 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
       if (!bounds.isEmpty()) {
         mapRef.current.fitBounds(bounds);
-        // Ensure zoom is not too high after fitBounds if only one point
         const currentZoom = mapRef.current.getZoom();
         if (currentZoom && currentZoom > 15 && nearbyPois.length === 0 && visitedLocations.length === 0 && lockedLocations.length === 0) {
             mapRef.current.setZoom(15);
-        } else if (currentZoom && currentZoom > 18) { // General max zoom cap
+        } else if (currentZoom && currentZoom > 18) { 
             mapRef.current.setZoom(18);
         }
-      } else {
+      } else if (currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
         mapRef.current.setCenter({ lat: currentLocation.latitude, lng: currentLocation.longitude });
         mapRef.current.setZoom(zoom);
       }
@@ -86,11 +88,11 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   if (!API_KEY) {
     return (
-      <div className="p-3 bg-destructive/10 rounded-lg h-[200px] flex flex-col items-center justify-center border border-destructive">
-        <MapPin className="w-8 h-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive font-semibold">Google Maps API Key manquant.</p>
+      <div className={`p-2 md:p-3 bg-destructive/10 rounded-lg ${containerHeight} flex flex-col items-center justify-center border border-destructive`}>
+        <MapPin className="w-6 h-6 md:w-8 md:h-8 text-destructive mb-1 md:mb-2" />
+        <p className="text-xs md:text-sm text-destructive font-semibold">Google Maps API Key manquant.</p>
         <p className="text-xs text-destructive/80 mt-1 text-center">
-          Veuillez configurer NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.
+          Configurez NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.
         </p>
       </div>
     );
@@ -98,19 +100,19 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   const loadingElement = (
     <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-      <MapPin className="w-8 h-8 text-primary/90 mb-2" />
-      <p className="text-sm">Chargement de Google Maps...</p>
+      <MapPin className="w-6 h-6 md:w-8 md:h-8 text-primary/90 mb-1 md:mb-2" />
+      <p className="text-xs md:text-sm">Chargement de Google Maps...</p>
       {currentLocation?.name && <p className="text-xs mt-1">pour {currentLocation.name}</p>}
     </div>
   );
 
   if (scriptLoadError) {
     return (
-      <div className="p-3 bg-destructive/10 rounded-lg h-[200px] flex flex-col items-center justify-center border border-destructive text-center">
-        <AlertTriangle className="w-8 h-8 text-destructive mb-2" />
-        <p className="text-sm text-destructive font-semibold">Erreur de chargement de la carte</p>
+      <div className={`p-2 md:p-3 bg-destructive/10 rounded-lg ${containerHeight} flex flex-col items-center justify-center border border-destructive text-center`}>
+        <AlertTriangle className="w-6 h-6 md:w-8 md:h-8 text-destructive mb-1 md:mb-2" />
+        <p className="text-xs md:text-sm text-destructive font-semibold">Erreur de chargement de la carte</p>
         <p className="text-xs text-destructive/80 mt-1">
-          Impossible de charger Google Maps. Vérifiez la clé API et la console du navigateur pour plus de détails.
+          Impossible de charger Google Maps.
         </p>
         <p className="text-xs text-destructive/90 mt-0.5 truncate">({scriptLoadError.message})</p>
       </div>
@@ -118,9 +120,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   }
 
   return (
-    <div className="p-3 bg-background/50 rounded-lg h-[200px] flex flex-col">
-      <div className="text-sm font-headline flex items-center text-primary/90 mb-1.5">
-        <MapPin className="w-4 h-4 mr-1.5 shrink-0" />
+    <div className={`p-2 md:p-3 bg-background/50 rounded-lg ${containerHeight} flex flex-col`}>
+      <div className="text-xs md:text-sm font-headline flex items-center text-primary/90 mb-1 md:mb-1.5">
+        <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-1.5 shrink-0" />
         <span className="truncate">{currentLocation?.name || "Localisation actuelle"}</span>
       </div>
       <div className="flex-grow rounded-md overflow-hidden border border-border">
@@ -131,17 +133,17 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         >
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
-            center={currentLocation ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
+            center={currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number' ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
             zoom={zoom}
             onLoad={onLoadMap}
             options={{
               streetViewControl: false,
               mapTypeControl: false,
               fullscreenControl: false,
-              clickableIcons: false, // Disables clicking on Google's default POIs
+              clickableIcons: false, 
             }}
           >
-            {currentLocation && (
+            {currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number' && (
               <MarkerF
                 position={{ lat: currentLocation.latitude, lng: currentLocation.longitude }}
                 onClick={() => handleMarkerClick(currentLocation)}
@@ -149,7 +151,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                 title={currentLocation.name}
               />
             )}
-            {nearbyPois.map((poi) => (
+            {(nearbyPois || []).map((poi) => (
                poi && typeof poi.latitude === 'number' && typeof poi.longitude === 'number' && (
                 <MarkerF
                   key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
@@ -160,7 +162,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                 />
               )
             ))}
-            {visitedLocations.map((loc) => (
+            {(visitedLocations || []).map((loc) => (
               loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number' && (
                 <MarkerF
                   key={`visited-${loc.latitude}-${loc.longitude}-${loc.name}`}
@@ -171,7 +173,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                 />
               )
             ))}
-            {lockedLocations.map((loc) => (
+            {(lockedLocations || []).map((loc) => (
               loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number' && (
                 <MarkerF
                   key={`locked-${loc.latitude}-${loc.longitude}-${loc.name}`}
@@ -183,11 +185,11 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                 />
               )
             ))}
-            {activeMarker && (
+            {activeMarker && typeof activeMarker.latitude === 'number' && typeof activeMarker.longitude === 'number' && (
               <InfoWindowF
                 position={{ lat: activeMarker.latitude, lng: activeMarker.longitude }}
                 onCloseClick={handleInfoWindowClose}
-                options={{ pixelOffset: new window.google.maps.Size(0, -30) }}
+                options={{ pixelOffset: typeof window !== 'undefined' && window.google ? new window.google.maps.Size(0, -30) : undefined }}
               >
                 <div>
                   <h4 className="font-semibold text-sm">{activeMarker.name}</h4>

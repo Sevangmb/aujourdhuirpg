@@ -18,6 +18,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
   isLoading,
   error,
 }) => {
+  const containerHeight = "h-[160px] md:h-[180px] lg:h-[200px]";
   const placeholderImage = `https://placehold.co/600x400.png`;
   const placeNameParts = placeName ? placeName.split(/,|\s+/).filter(part => part.length > 2) : [];
   const hintKeywords = placeNameParts.length > 1
@@ -27,24 +28,24 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
     : "location view";
 
   const isParis = placeName && placeName.toLowerCase().includes('paris');
-  const parisImageUrl = 'https://placehold.co/600x400.png'; // Specific placeholder for Paris
+  const parisImageUrl = 'https://placehold.co/600x400.png'; 
 
   return (
-    <div className="p-3 bg-background/50 rounded-lg h-[200px] flex flex-col">
-      <div className="text-sm font-headline flex items-center text-primary/90 mb-1.5">
-        <ImageIcon className="w-4 h-4 mr-1.5 shrink-0" />
+    <div className={`p-2 md:p-3 bg-background/50 rounded-lg ${containerHeight} flex flex-col`}>
+      <div className="text-xs md:text-sm font-headline flex items-center text-primary/90 mb-1 md:mb-1.5">
+        <ImageIcon className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-1.5 shrink-0" />
         <span className="truncate">Vue de {placeName || "lieu inconnu"}</span>
       </div>
       <div className="flex-grow relative bg-muted rounded-md overflow-hidden border border-border">
-        {isLoading && !isParis && ( // Don't show loading for Paris if we have a fixed image
+        {isLoading && !isParis && ( 
           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-background/70">
-            <Loader2 className="w-6 h-6 animate-spin mb-1.5" />
+            <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin mb-1 md:mb-1.5" />
             <p className="text-xs">Génération image...</p>
           </div>
         )}
-        {!isLoading && error && !isParis && ( // Show error only if not Paris or image wasn't forced
+        {!isLoading && error && !isParis && ( 
           <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-2 text-center bg-background/70">
-            <AlertTriangle className="w-6 h-6 mb-1.5" />
+            <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 mb-1 md:mb-1.5" />
             <p className="text-xs">Erreur image:</p>
             <p className="text-xs">{error.substring(0,100)}</p>
             <Image
@@ -64,7 +65,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
             fill={true}
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            data-ai-hint="Paris landmark eiffel tower" // Specific hint for Paris
+            data-ai-hint="Paris landmark eiffel tower" 
             priority
           />
         ) : !isLoading && !error && imageUrl ? (
@@ -75,7 +76,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-        ) : !isLoading && !error && !imageUrl && ( // Default placeholder if not Paris, no AI image, no error
+        ) : !isLoading && !error && !imageUrl && ( 
            <Image
               src={placeholderImage}
               alt={`Image placeholder pour ${placeName}`}

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Types and Game Logic
-import type { GameState, Player, ToneSettings, Position } from '@/lib/types'; // Changed LocationData to Position
+import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
 import {
   loadGameStateFromLocal,
   saveGameState,
@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
 import GameScreen from '@/components/GameScreen';
-import LeftSidebar from '@/components/LeftSidebar';
+// LeftSidebar import removed
 
 
 function HomePageContent() {
@@ -127,10 +127,10 @@ function HomePageContent() {
     
     const randomLatitude = Math.random() * 180 - 90; 
     const randomLongitude = Math.random() * 360 - 180; 
-    const randomLocation: Position = { // Changed from LocationData to Position
+    const randomLocation: Position = { 
       latitude: parseFloat(randomLatitude.toFixed(4)),
       longitude: parseFloat(randomLongitude.toFixed(4)),
-      name: UNKNOWN_STARTING_PLACE_NAME, // Changed from placeName to name
+      name: UNKNOWN_STARTING_PLACE_NAME, 
     };
 
     const playerBaseDetails: Partial<Player> = {
@@ -288,9 +288,7 @@ function HomePageContent() {
       )}
 
       <div className="flex-1 flex flex-row overflow-hidden"> 
-        {isGameActive && gameState?.player && (
-          <LeftSidebar player={gameState.player} />
-        )}
+        {/* LeftSidebar removed from here */}
         <GameScreen
             user={user}
             loadingAuth={loadingAuth}
