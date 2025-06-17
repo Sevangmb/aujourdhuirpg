@@ -187,7 +187,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
 
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90">Attributs de Départ</h3>
+                <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90">Caractéristiques de Départ</h3>
                 <StatDisplay stats={initialPlayerStats} />
               </div>
               <div>
@@ -253,3 +253,4 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
 };
 
 export default CharacterCreationForm;
+

@@ -11,6 +11,10 @@ export type PlayerStats = {
   Charisme: number;
   Intelligence: number;
   Force: number;
+  Energie: number; // Nouvelle stat: Endurance du joueur
+  Stress: number; // Nouvelle stat: Niveau de tension psychologique
+  Volonte: number; // Nouvelle stat: Résistance mentale
+  Reputation: number; // Nouvelle stat: Opinion générale des PNJ
   [key: string]: number; // Allows for dynamic stats if needed
 };
 
@@ -61,3 +65,4 @@ export type Player = {
   documents: GameDocument[];
   investigationNotes: string; // Un texte libre pour les hypothèses, suspects, lieux
 };
+

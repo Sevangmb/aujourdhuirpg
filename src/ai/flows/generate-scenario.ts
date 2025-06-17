@@ -95,7 +95,14 @@ Player Information (Context):
   Origin: {{{playerOrigin}}}
   Background: {{{playerBackground}}}
   Current Stats: {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
-  Skills: {{#each playerSkills}}{{{@key}}}: {{{this}}} {{/each}}
+    (Key Stats to consider:
+      - Sante: Vitality. Low Sante can lead to weakness, injury.
+      - Energie: Endurance. Low Energie leads to fatigue, penalties on actions, need for rest.
+      - Stress: Mental tension. High Stress can cause errors, affect choices, trigger negative mental states. Low is good.
+      - Volonte: Mental fortitude. Influences ability to resist pressure, make hard choices.
+      - Reputation: How others perceive the player. Affects PNJ interactions, opportunities.
+      - Charisme, Intelligence, Force: Standard RPG stats influencing relevant actions.)
+  Skills: {{#each playerSkills}}{{{@key}}}: {{{this}}} {{/each}} (Core stats can influence skill checks implicitly.)
   Traits/Mental States: {{#if playerTraitsMentalStates}}{{#each playerTraitsMentalStates}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Aucun{{/if}}
   Progression: Level {{{playerProgression.level}}}, XP: {{{playerProgression.xp}}} / {{{playerProgression.xpToNextLevel}}}
   Alignment: Chaos/Loyal: {{{playerAlignment.chaosLawful}}}, Bien/Mal: {{{playerAlignment.goodEvil}}}
@@ -123,11 +130,13 @@ Task:
 {{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
   This action should primarily provide narrative flavor and insight, reflecting current tone settings if specified. Use the tone settings to subtly influence the mood and focus of the reflection, but DO NOT mention the tone settings themselves in the scenarioText.
+  Consider current player stats like Energie (low Energie might lead to tired thoughts) and Stress (high Stress might lead to anxious or paranoid reflections).
   **CRITICAL FOR 'scenarioText': This text MUST adhere to the "Guiding Principles for Output" detailed above, especially ensuring NO tool invocation syntax, API calls, print statements, or other technical details are included. It must be PURELY NARRATIVE.**
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
 {{else}}
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
+Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
 
 **Conceptual Item Categories (for your reference when generating itemsAdded):**
   - Utilitaires (Utilities): e.g., briquet, lampe torche, carte SIM, téléphone. Map to 'tool', 'electronic', or 'misc'.
@@ -145,22 +154,22 @@ Remember to consider the player's activeQuests and currentObjectivesDescriptions
       ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place (especially if relevant to a quest or clue), use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.
 
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
-   A. **Narrative Relevance & Tone:** For *all* information gathered (weather, POIs, news, Wikipedia facts), assess its direct relevance to the current plot, player's immediate goals, the action "{{{playerChoice}}}", AND the player's 'toneSettings'. Pay special attention to how this information can support or advance activeQuests and currentObjectivesDescriptions.
+   A. **Narrative Relevance & Tone:** For *all* information gathered (weather, POIs, news, Wikipedia facts), assess its direct relevance to the current plot, player's immediate goals, the action "{{{playerChoice}}}", AND the player's 'toneSettings'. Pay special attention to how this information can support or advance activeQuests and currentObjectivesDescriptions. Consider player stats (e.g., low Energie might make the player less perceptive of POIs, high Stress might make them misinterpret news).
    B. **Ambiance:** Prioritize details that reinforce the "Thriller Urbain & Mystère Psychologique" mood OR the specific TONES requested by the player (e.g., high Horreur = unsettling weather; high Humour = an odd news headline).
    C. **Avoid Overload:** Select only the *most impactful* details. Do not dump raw API data.
    D. **Consistency vs. Freshness:** Favor recent API data, but if a strong narrative element was just established (e.g., heavy rain), ensure a smooth transition or explain rapid changes.
-   E. **Mental Draft:** *Internally* combine the filtered weather, POI details, news snippets, and Wikipedia facts into a cohesive understanding of the current scene *before* writing, considering the chosen TONES.
-   F. **Personalization:** Consider how the player's stats/mental state might color their perception of this synthesized information, influenced by TONES.
+   E. **Mental Draft:** *Internally* combine the filtered weather, POI details, news snippets, and Wikipedia facts into a cohesive understanding of the current scene *before* writing, considering the chosen TONES and player stats (Energie, Stress, Volonte, Reputation).
+   F. **Personalization:** Consider how the player's stats/mental state (especially Energie, Stress, Volonte) might color their perception of this synthesized information, influenced by TONES.
    G. **Identify Potential Clues:** Determine if any API-sourced information could serve as a subtle clue to advance an active quest or trigger a new one.
-   H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline be the missing piece for an objective? Could a POI be the next step in an investigation? Could a Wikipedia PNJ be a quest giver?
+   H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline be the missing piece for an objective? Could a POI be the next step in an investigation? Could a Wikipedia PNJ be a quest giver (consider player Reputation)?
 
 **Phase 3: Narrative Generation & Game State Updates**
-   1.  Based on the *synthesized information* from Phase 2 (considering TONES), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
+   1.  Based on the *synthesized information* from Phase 2 (considering TONES and player stats like Energie, Stress, Volonte, Reputation), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the outcome of "{{{playerChoice}}}" and sets the scene. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
        **Item Interactions**: If the player uses or examines an item, describe the outcome.
-       - For 'consumable' items, the primary effect (like health gain) will be handled by game logic based on your 'itemsRemoved' output. You can narrate the act of consumption.
+       - For 'consumable' items, the primary effect (like health gain, energie gain) will be handled by game logic based on your 'itemsRemoved' output. You can narrate the act of consumption.
        - For 'wearable' items (like clothing or armor), if the player's action is to 'put on' or 'equip' it, narrate this. Do not invent stat changes for wearables unless specifically instructed by future game mechanics for equipping items.
        - For items of type 'quest', 'tool', or those with a strong narrative description, their use might trigger specific events, dialogues, or reveal clues.
-   2.  Core Stat Updates: Provide 'scenarioStatsUpdate'. **IMPORTANT**: For items marked as 'consumable' in the item database (e.g., 'energy_bar_01' which restores Sante), which have predefined effects, the game code will automatically apply their standard effects when you list them in 'itemsRemoved'. Therefore, for these standard consumable effects, *do not* include them again in 'scenarioStatsUpdate'. You can still use 'scenarioStatsUpdate' for other contextual stat changes or for effects of non-standard items that don't have predefined effects.
+   2.  Core Stat Updates: Provide 'scenarioStatsUpdate'. **IMPORTANT**: For items marked as 'consumable' in the item database (e.g., 'energy_bar_01' which restores Sante), which have predefined effects, the game code will automatically apply their standard effects when you list them in 'itemsRemoved'. Therefore, for these standard consumable effects, *do not* include them again in 'scenarioStatsUpdate'. You can still use 'scenarioStatsUpdate' for other contextual stat changes (e.g. Sante loss from an attack, Energie loss from exertion, Stress increase from a scary event, Volonte change from a moral choice, Reputation change from an action) or for effects of non-standard items that don't have predefined effects.
    3.  XP Awards: Provide 'xpGained'.
    4.  Money Changes:
        *   Respect current money ({{{playerMoney}}} €). Actions requiring money are only possible if affordable.
@@ -172,7 +181,7 @@ Remember to consider the player's activeQuests and currentObjectivesDescriptions
        *   New Quests: Define in newQuests. **Be proactive in creating new quests that are relevant to the current scenario, the player's recent actions, or discoveries. These quests should guide the player and provide clear goals.** Each new quest MUST have at least one clear objective in its objectives array. Try to give new quests memorable and unique id values (e.g., 'mystere_du_cafe_01', 'retrouver_le_document_perdu_A7'). Set giver for PNJ-given quests; **if no specific PNJ gives the quest, OMIT the 'giver' field entirely (do not set it to null).**
        *   Quest Updates: Define in questUpdates. **Carefully analyze the playerChoice against the currentObjectivesDescriptions of activeQuests. If the player's action clearly fulfills one or more objectives, mark them as completed (isCompleted: true) in updatedObjectives for the relevant questId.** If *all* objectives of a quest are completed as a result of the player's action, update the quest's newStatus to 'completed'. If a quest is completed and has a moneyReward, the game logic will handle adding this to the player's money automatically when it processes your output, so you don't need to create a separate moneyChange for this specific reward. The AI *can* also add new objectives to an existing quest via newObjectiveDescription if it makes narrative sense (e.g., a quest develops further), but prefer creating follow-up quests for more complex steps.
    8.  PNJ Interactions ("Les Visages du Savoir" continued):
-       *   When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions.
+       *   When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Consider player's Reputation when determining PNJ reactions.
    9.  Major Decisions: Log in majorDecisionsLogged.
    10. Investigation Elements:
        *   Populate newClues or newDocuments if relevant. **Crucially, these clues and documents should often directly support active quests (refer to activeQuests in input) by helping complete an objective, or they should lay the groundwork for newQuests you are introducing.** For 'photo' clues, you MUST provide an imageUrl using 'https://placehold.co/WIDTHxHEIGHT.png' and include keywords. For clues that are NOT of type 'photo', the imageUrl field MUST be OMITTED. For document content, use simple HTML.
@@ -203,3 +212,4 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+

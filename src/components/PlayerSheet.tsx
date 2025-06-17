@@ -5,7 +5,7 @@ import type { Player } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { User, Shield, Brain, Sparkles, TrendingUp, Palette, Euro } from 'lucide-react';
+import { User, Shield, Brain, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as ReputationIcon } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 
@@ -73,12 +73,27 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
               <CardTitle className="font-headline text-primary text-lg">Caractéristiques</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 p-3 text-sm">
-              {Object.entries(player.stats).map(([stat, value]) => (
-                <div key={stat} className="flex justify-between p-1.5 bg-muted/30 rounded-md text-xs">
-                  <span className="font-medium">{stat}</span>
-                  <span className="font-bold text-primary">{value}</span>
-                </div>
-              ))}
+              {Object.entries(player.stats).map(([stat, value]) => {
+                let Icon = Zap; // Default icon
+                if (stat === "Sante") Icon = Heart;
+                else if (stat === "Charisme") Icon = Smile;
+                else if (stat === "Intelligence") Icon = Brain;
+                else if (stat === "Force") Icon = Dumbbell;
+                else if (stat === "Energie") Icon = Zap;
+                else if (stat === "Stress") Icon = CloudFog;
+                else if (stat === "Volonte") Icon = Anchor;
+                else if (stat === "Reputation") Icon = ReputationIcon;
+
+                return (
+                  <div key={stat} className="flex justify-between items-center p-1.5 bg-muted/30 rounded-md text-xs">
+                    <div className="flex items-center">
+                      <Icon className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                      <span className="font-medium">{stat}</span>
+                    </div>
+                    <span className="font-bold text-primary">{value}</span>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
@@ -188,3 +203,4 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
 };
 
 export default PlayerSheet;
+

@@ -12,6 +12,10 @@ export const initialPlayerStats: PlayerStats = {
   Charisme: 50,
   Intelligence: 50,
   Force: 50,
+  Energie: 100, // Max 100,
+  Stress: 10, // Max 100 (bas = bien)
+  Volonte: 50, // Max 100
+  Reputation: 0, // Peut être négatif ou positif
 };
 
 export const initialSkills: Skills = {
