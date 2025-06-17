@@ -8,7 +8,7 @@ import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
 import {
   loadGameStateFromLocal,
   saveGameState,
-  type SaveGameResult, 
+  type SaveGameResult,
   clearGameState as clearGameStateFromLocal,
   getInitialScenario,
   hydratePlayer
@@ -29,7 +29,8 @@ import {
   initialDocuments,
   initialInvestigationNotes,
   initialToneSettings,
-  UNKNOWN_STARTING_PLACE_NAME 
+  UNKNOWN_STARTING_PLACE_NAME,
+  initialPlayerLocation
 } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
@@ -41,6 +42,9 @@ import { useToast } from "@/hooks/use-toast";
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
 import GameScreen from '@/components/GameScreen';
+import type { WeatherData } from '@/app/actions/get-current-weather';
+import { getCurrentWeather } from '@/app/actions/get-current-weather';
+import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
 
 
 function HomePageContent() {
@@ -56,6 +60,86 @@ function HomePageContent() {
     signOutUser,
   } = useAuth();
   const { toast } = useToast();
+
+  // Lifted state for weather and location image
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const [locationImageUrl, setLocationImageUrl] = useState<string | null>(null);
+  const [locationImageLoading, setLocationImageLoading] = useState(false);
+  const [locationImageError, setLocationImageError] = useState<string | null>(null);
+
+  const currentMapLocation = gameState?.player?.currentLocation || initialPlayerLocation;
+  const nearbyPoisForMap = gameState?.nearbyPois || null;
+
+
+  // Effect for fetching weather data
+  useEffect(() => {
+    const fetchWeatherForLocation = async (loc: Position) => {
+      if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') {
+        setWeatherLoading(false);
+        setWeatherError("Localisation invalide pour la météo.");
+        setWeatherData(null);
+        return;
+      }
+      setWeatherLoading(true);
+      setWeatherError(null);
+      try {
+        const result = await getCurrentWeather(loc.latitude, loc.longitude);
+        if ('error' in result) {
+          setWeatherError(result.error);
+          setWeatherData(null);
+        } else {
+          setWeatherData(result);
+        }
+      } catch (e: any) {
+        const errorMessage = e.message || "Une erreur inconnue est survenue lors de la récupération de la météo.";
+        setWeatherError(errorMessage);
+        setWeatherData(null);
+      } finally {
+        setWeatherLoading(false);
+      }
+    };
+    if (gameState?.player?.currentLocation) {
+      fetchWeatherForLocation(gameState.player.currentLocation);
+    }
+  }, [gameState?.player?.currentLocation?.latitude, gameState?.player?.currentLocation?.longitude]); // Depend on lat/lon for reactivity
+
+  // Effect for fetching location image
+  useEffect(() => {
+    const fetchLocationImage = async () => {
+      const placeNameForImage = gameState?.player?.currentLocation?.name;
+      if (placeNameForImage && placeNameForImage !== UNKNOWN_STARTING_PLACE_NAME) {
+        setLocationImageLoading(true);
+        setLocationImageUrl(null);
+        setLocationImageError(null);
+        try {
+          const result = await generateLocationImage({ placeName: placeNameForImage });
+          if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
+            setLocationImageUrl(result.imageUrl);
+          } else {
+            const errorMsg = result.error || "L'IA n'a pas pu générer une image pour ce lieu.";
+            setLocationImageError(errorMsg);
+            console.warn("Location Image Generation Warning:", errorMsg, "Input placeName:", placeNameForImage);
+          }
+        } catch (e: any) {
+          const errorMsg = e.message || "Erreur inconnue lors de la génération de l'image du lieu.";
+          setLocationImageError(errorMsg);
+          console.error("Location Image Generation Error:", e, "Input placeName:", placeNameForImage);
+        } finally {
+          setLocationImageLoading(false);
+        }
+      } else {
+        setLocationImageUrl(null);
+        setLocationImageLoading(false);
+        setLocationImageError(null); // Clear error if no image should be shown
+      }
+    };
+
+    fetchLocationImage();
+  }, [gameState?.player?.currentLocation?.name]);
+
 
   const performInitialLoad = useCallback(async () => {
     setIsLoadingState(true);
@@ -79,13 +163,13 @@ function HomePageContent() {
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
 
             const saveResult = await saveGameState(stateToSave);
-            loadedState = stateToSave; 
+            loadedState = stateToSave;
 
             if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess) {
               toast({ title: "Progression locale migrée", description: "Votre partie locale a été synchronisée avec le cloud." });
             } else if (saveResult.localSaveSuccess && !saveResult.cloudSaveSuccess) {
               toast({ variant: "warning", title: "Migration Partielle", description: "Progression locale sauvegardée, mais échec de la synchronisation cloud." });
-            } else { 
+            } else {
               toast({ variant: "destructive", title: "Erreur de Migration", description: "Impossible de sauvegarder la progression locale pour la migration." });
             }
           }
@@ -123,13 +207,13 @@ function HomePageContent() {
   }, [loadingAuth, performInitialLoad]);
 
   const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => {
-    
-    const randomLatitude = Math.random() * 180 - 90; 
-    const randomLongitude = Math.random() * 360 - 180; 
-    const randomLocation: Position = { 
+
+    const randomLatitude = Math.random() * 180 - 90;
+    const randomLongitude = Math.random() * 360 - 180;
+    const randomLocation: Position = {
       latitude: parseFloat(randomLatitude.toFixed(4)),
       longitude: parseFloat(randomLongitude.toFixed(4)),
-      name: UNKNOWN_STARTING_PLACE_NAME, 
+      name: UNKNOWN_STARTING_PLACE_NAME,
     };
 
     const playerBaseDetails: Partial<Player> = {
@@ -197,12 +281,12 @@ function HomePageContent() {
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === false) {
           toast({
-            variant: "warning", 
+            variant: "warning",
             title: "Sauvegarde Partielle",
             description: "Votre progression a été sauvegardée localement, mais la sauvegarde cloud a échoué.",
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === null) {
-          
+
           toast({
             title: "Partie Sauvegardée",
             description: "Votre progression a été sauvegardée localement.",
@@ -215,7 +299,7 @@ function HomePageContent() {
           });
         }
       } catch (error) {
-        
+
         console.error("Erreur inattendue lors de la sauvegarde manuelle:", error);
         toast({
           variant: "destructive",
@@ -255,12 +339,12 @@ function HomePageContent() {
   };
 
   const authScreenProps = {
-    user: user, 
+    user: user,
     loadingAuth: loadingAuth,
     signUp: signUpWithEmailPassword,
     signIn: signInWithEmailPassword,
     signInAnon: signInAnonymously,
-    signOut: signOutUser, 
+    signOut: signOutUser,
   };
 
 
@@ -275,6 +359,15 @@ function HomePageContent() {
         onToggleFullScreen={handleToggleFullScreen}
         onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
         onSignOut={signOutUser}
+        // Pass context data for mobile widgets
+        currentLocation={currentMapLocation}
+        nearbyPois={nearbyPoisForMap}
+        weatherData={weatherData}
+        weatherLoading={weatherLoading}
+        weatherError={weatherError}
+        locationImageUrl={locationImageUrl}
+        locationImageLoading={locationImageLoading}
+        locationImageError={locationImageError}
       />
 
       {gameState?.player && (
@@ -286,17 +379,24 @@ function HomePageContent() {
         />
       )}
 
-      <div className="flex-1 flex flex-row overflow-hidden"> 
+      <div className="flex-1 flex flex-row overflow-hidden">
         <GameScreen
             user={user}
             loadingAuth={loadingAuth}
             isLoadingState={isLoadingState}
             gameState={gameState}
             isGameActive={isGameActive}
-            authFunctions={authScreenProps} 
+            authFunctions={authScreenProps}
             onCharacterCreate={handleCharacterCreate}
-            onRestartGame={handleRestartGame} 
-            setGameState={setGameState} 
+            onRestartGame={handleRestartGame}
+            setGameState={setGameState}
+            // Pass context data for desktop widgets
+            weatherData={weatherData}
+            weatherLoading={weatherLoading}
+            weatherError={weatherError}
+            locationImageUrl={locationImageUrl}
+            locationImageLoading={locationImageLoading}
+            locationImageError={locationImageError}
         />
       </div>
     </div>

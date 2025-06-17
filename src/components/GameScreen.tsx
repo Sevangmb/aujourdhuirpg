@@ -4,6 +4,7 @@
 import React from 'react';
 import type { User } from 'firebase/auth';
 import type { GameState, Player } from '@/lib/types';
+import type { WeatherData } from '@/app/actions/get-current-weather';
 
 import LoadingState from '@/components/LoadingState';
 import AuthDisplay from '@/components/AuthDisplay';
@@ -29,6 +30,13 @@ interface GameScreenProps {
   onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => void;
   onRestartGame: () => void;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
+  // Props for context widgets on desktop
+  weatherData: WeatherData | null;
+  weatherLoading: boolean;
+  weatherError: string | null;
+  locationImageUrl: string | null;
+  locationImageLoading: boolean;
+  locationImageError: string | null;
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
@@ -41,10 +49,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
   onCharacterCreate,
   onRestartGame,
   setGameState,
+  weatherData,
+  weatherLoading,
+  weatherError,
+  locationImageUrl,
+  locationImageLoading,
+  locationImageError,
 }) => {
-  // GameScreen will now grow to fill the space next to the LeftSidebar
   return (
-    <main className="flex-1 flex flex-col overflow-y-auto bg-background"> {/* Ensure it grows and handles its own scroll */}
+    <main className="flex-1 flex flex-col overflow-y-auto bg-background">
       {loadingAuth || isLoadingState ? (
         <div className="flex-grow flex items-center justify-center">
           <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />
@@ -61,11 +74,17 @@ const GameScreen: React.FC<GameScreenProps> = ({
           />
         </div>
       ) : isGameActive && gameState ? (
-        // GamePlay component is now the direct child, it should handle its own layout within this GameScreen area
         <GamePlay
           initialGameState={gameState}
           onRestart={onRestartGame}
-          onStateUpdate={setGameState} // Changed prop name from setGameState to onStateUpdate
+          onStateUpdate={setGameState}
+          // Pass context data for desktop widgets
+          weatherData={weatherData}
+          weatherLoading={weatherLoading}
+          weatherError={weatherError}
+          locationImageUrl={locationImageUrl}
+          locationImageLoading={locationImageLoading}
+          locationImageError={locationImageError}
         />
       ) : (
         <div className="flex-grow flex items-center justify-center p-4">
