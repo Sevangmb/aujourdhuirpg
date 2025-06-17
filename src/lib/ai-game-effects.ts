@@ -9,7 +9,6 @@ import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // A
 import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
 import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser'; // New import
 import { performSkillCheck, type SkillCheckResult } from './skill-check'; // New import
-import { addItemToPlayerInventory as addItemToPlayerInventoryLogic } from './game-logic'; // Renamed to avoid conflict
 
 // Keep existing helper functions like calculateXpToNextLevel, applyStatChanges etc. if they are used by client-side logic later.
 // For now, they might be unused if AI doesn't dictate these changes directly.
@@ -339,7 +338,7 @@ export async function processAndApplyAIScenarioOutput(
 
     if (masterItem) { // For now, only proceed if primaryTarget was a valid ID
       const playerBeforeAdding = { ...updatedPlayer, inventory: [...updatedPlayer.inventory] };
-      updatedPlayer = addItemToPlayerInventoryLogic(updatedPlayer, masterItem.id, 1);
+      updatedPlayer.inventory = addItemToInventory(playerBeforeAdding.inventory, masterItem.id, 1);
 
       // Check if inventory actually changed
       // This simple check works if addItemToPlayerInventoryLogic always returns a new inventory array on change.
