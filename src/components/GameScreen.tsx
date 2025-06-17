@@ -65,7 +65,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <GamePlay
           initialGameState={gameState}
           onRestart={onRestartGame}
-          setGameState={setGameState}
+          onStateUpdate={setGameState} // Changed prop name from setGameState to onStateUpdate
         />
       ) : (
         <div className="flex-grow flex items-center justify-center p-4">
