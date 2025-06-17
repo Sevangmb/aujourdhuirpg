@@ -42,14 +42,14 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
         disabled={isLoading}
         aria-label="Action du joueur"
       />
-      <Button 
-        type="button" 
-        variant="outline" 
-        onClick={handleReflectClick} 
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleReflectClick}
         disabled={isLoading}
         aria-label="Réfléchir"
       >
-        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-0 sm:mr-2 h-4 w-4" />}
+        {isLoading ? <Loader2 className="mr-0 sm:mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-0 sm:mr-2 h-4 w-4" />}
         <span className="hidden sm:inline">Réfléchir</span>
       </Button>
       <Button type="submit" disabled={isLoading || playerInput.trim() === ""} className="bg-primary hover:bg-primary/90">
