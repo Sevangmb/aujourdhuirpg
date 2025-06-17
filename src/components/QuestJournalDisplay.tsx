@@ -154,7 +154,8 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
   const pnjs = player.encounteredPNJs || [];
 
   return (
-    <Tabs defaultValue="main" className="w-full flex flex-col h-full"> {/* Removed flex-grow */}
+    // The parent (TabsContent in page.tsx's right panel) handles scrolling.
+    <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
           <TabsTrigger value="main" className="text-xs p-1.5"><Landmark className="w-3 h-3 mr-1" />Principales ({mainQuests.filter(q=>q.status === 'active').length})</TabsTrigger>
           <TabsTrigger value="secondary" className="text-xs p-1.5"><Swords className="w-3 h-3 mr-1" />Secondaires ({secondaryQuests.filter(q=>q.status === 'active').length})</TabsTrigger>
@@ -162,7 +163,7 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
           <TabsTrigger value="pnj" className="text-xs p-1.5"><Users className="w-3 h-3 mr-1" />PNJ ({pnjs.length})</TabsTrigger>
         </TabsList>
         
-          <TabsContent value="main" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="main" className="mt-0 pt-1 flex-1 min-h-0"> 
             {mainQuests.length > 0 ? (
                 mainQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
@@ -170,7 +171,7 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
             )}
           </TabsContent>
 
-          <TabsContent value="secondary" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="secondary" className="mt-0 pt-1 flex-1 min-h-0"> 
             {secondaryQuests.length > 0 ? (
                 secondaryQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
@@ -178,7 +179,7 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
             )}
           </TabsContent>
 
-          <TabsContent value="decisions" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="decisions" className="mt-0 pt-1 flex-1 min-h-0"> 
             {decisions.length > 0 ? (
               decisions.map(decision => <DecisionCard key={decision.id} decision={decision} />)
             ) : (
@@ -186,7 +187,7 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
             )}
           </TabsContent>
 
-          <TabsContent value="pnj" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="pnj" className="mt-0 pt-1 flex-1 min-h-0"> 
             {pnjs.length > 0 ? (
               pnjs.map(pnj => <PNJCard key={pnj.id} pnj={pnj} />)
             ) : (
@@ -198,4 +199,3 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
 };
 
 export default QuestJournalDisplay;
-

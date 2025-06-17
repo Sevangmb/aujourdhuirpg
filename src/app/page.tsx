@@ -41,10 +41,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SlidersHorizontal, Save } from 'lucide-react';
+import { SlidersHorizontal, Save, User as UserIcon, Briefcase, BookOpen, Search, LogOut } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 
-// Player Info Components for Dialogs
+// Player Info Components
 import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
@@ -182,7 +185,7 @@ function HomePageContent() {
   const isGameActive = gameState && gameState.player && gameState.currentScenario;
 
   const handleSaveGame = async () => {
-    if (isGameActive && gameState) { // gameState is guaranteed by isGameActive
+    if (isGameActive && gameState) { 
       try {
         await saveGameState(gameState);
         toast({
@@ -263,13 +266,14 @@ function HomePageContent() {
             </MenubarContent>
           </MenubarMenu>
         )}
+        {/* Joueur Menu - Access to modals */}
         {gameState?.player && ( 
           <MenubarMenu>
             <MenubarTrigger>Joueur</MenubarTrigger>
             <MenubarContent>
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()}>Fiche Personnage</MenubarItem>
+                  <MenubarItem onSelect={(e) => e.preventDefault()}><UserIcon className="mr-2 h-4 w-4" />Fiche Personnage</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
                   <DialogHeader>
@@ -280,14 +284,13 @@ function HomePageContent() {
                   </ScrollArea>
                 </DialogContent>
               </Dialog>
+              {/* These dialogs might be less used on desktop with the new right panel, but good for mobile/fallback */}
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()}>Inventaire</MenubarItem>
+                  <MenubarItem onSelect={(e) => e.preventDefault()} className="md:hidden"><Briefcase className="mr-2 h-4 w-4" />Inventaire</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>Inventaire</DialogTitle>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle>Inventaire</DialogTitle></DialogHeader>
                   <ScrollArea className="max-h-[70vh] p-1">
                     {gameState?.player ? <InventoryDisplay inventory={gameState.player.inventory} /> : <p>Inventaire non disponible.</p>}
                   </ScrollArea>
@@ -295,12 +298,10 @@ function HomePageContent() {
               </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()}>Journal de Quêtes</MenubarItem>
+                  <MenubarItem onSelect={(e) => e.preventDefault()} className="md:hidden"><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>Journal de Quêtes</DialogTitle>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle>Journal de Quêtes</DialogTitle></DialogHeader>
                   <ScrollArea className="max-h-[70vh] p-1">
                     {gameState?.player ? <QuestJournalDisplay player={gameState.player} /> : <p>Journal de quêtes non disponible.</p>}
                   </ScrollArea>
@@ -308,12 +309,10 @@ function HomePageContent() {
               </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()}>Dossier d'Enquête</MenubarItem>
+                  <MenubarItem onSelect={(e) => e.preventDefault()} className="md:hidden"><Search className="mr-2 h-4 w-4" />Dossier d'Enquête</MenubarItem>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>Dossier d'Enquête</DialogTitle>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle>Dossier d'Enquête</DialogTitle></DialogHeader>
                   <ScrollArea className="max-h-[70vh] p-1">
                     {gameState?.player ? <EvidenceLogDisplay player={gameState.player} /> : <p>Dossier d'enquête non disponible.</p>}
                   </ScrollArea>
@@ -322,6 +321,19 @@ function HomePageContent() {
             </MenubarContent>
           </MenubarMenu>
         )}
+         {/* User Auth Display in Menubar - simplified */}
+        <div className="ml-auto flex items-center pr-2">
+          {user && (
+            <div className="text-xs text-muted-foreground mr-2">
+              {user.isAnonymous ? "Anonyme" : user.email}
+            </div>
+          )}
+          {user && (
+            <Button variant="ghost" size="sm" onClick={signOutUser} className="text-xs h-8">
+              <LogOut className="mr-1 h-3 w-3" /> Déconnexion
+            </Button>
+          )}
+        </div>
       </Menubar>
 
       {/* Tone Settings Dialog */}
@@ -335,8 +347,9 @@ function HomePageContent() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar */}
         {user && gameState?.player && (
-          <aside className="w-72 md:w-80 h-full overflow-y-auto bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-2 hidden md:block shrink-0">
+          <aside className="w-64 md:w-72 h-full overflow-y-auto bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-2 hidden md:block shrink-0">
             <LeftSidebar
               player={gameState.player}
               isLoading={loadingAuth || isLoadingState}
@@ -344,6 +357,7 @@ function HomePageContent() {
           </aside>
         )}
 
+        {/* Main Content Area */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           {loadingAuth || isLoadingState ? (
             <div className="flex-grow flex items-center justify-center">
@@ -357,7 +371,7 @@ function HomePageContent() {
                 signUp={signUpWithEmailPassword}
                 signIn={signInWithEmailPassword}
                 signInAnon={signInAnonymously}
-                signOut={signOutUser}
+                signOut={() => {}} // SignOut is handled in menubar
               />
             </div>
           ) : isGameActive ? (
@@ -372,6 +386,37 @@ function HomePageContent() {
             </div>
           )}
         </main>
+
+        {/* Right Information Panel */}
+        {user && gameState?.player && (
+          <aside className="w-80 lg:w-96 h-full bg-sidebar text-sidebar-foreground border-l border-sidebar-border p-1 hidden md:flex md:flex-col shrink-0">
+            <ScrollArea className="flex-grow rounded-md min-h-0"> {/* ScrollArea wraps Tabs */}
+              <Tabs defaultValue="inventory" className="w-full flex flex-col h-full p-1">
+                <TabsList className="grid w-full grid-cols-3 shrink-0">
+                  <TabsTrigger value="inventory" className="text-xs sm:text-sm p-1.5">
+                    <Briefcase className="w-3 h-3 mr-1 sm:mr-2" />Inventaire
+                  </TabsTrigger>
+                  <TabsTrigger value="quests" className="text-xs sm:text-sm p-1.5">
+                    <BookOpen className="w-3 h-3 mr-1 sm:mr-2" />Quêtes
+                  </TabsTrigger>
+                  <TabsTrigger value="evidence" className="text-xs sm:text-sm p-1.5">
+                    <Search className="w-3 h-3 mr-1 sm:mr-2" />Enquête
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="inventory" className="mt-1 flex-1 overflow-y-auto">
+                  <InventoryDisplay inventory={gameState.player.inventory} />
+                </TabsContent>
+                <TabsContent value="quests" className="mt-1 flex-1 overflow-y-auto">
+                  <QuestJournalDisplay player={gameState.player} />
+                </TabsContent>
+                <TabsContent value="evidence" className="mt-1 flex-1 overflow-y-auto">
+                  <EvidenceLogDisplay player={gameState.player} />
+                </TabsContent>
+              </Tabs>
+            </ScrollArea>
+          </aside>
+        )}
       </div>
     </div>
   );
@@ -380,4 +425,3 @@ function HomePageContent() {
 export default function HomePage() {
   return <HomePageContent />;
 }
-

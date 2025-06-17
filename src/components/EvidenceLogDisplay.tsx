@@ -4,7 +4,6 @@
 import type { Player, Clue, GameDocument } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// ScrollArea is now managed by RightSidebar
 import { Search, FileText as DocumentIcon, Lightbulb, MessageSquare } from 'lucide-react'; 
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -65,15 +64,15 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
   const investigationNotes = player.investigationNotes || "Aucune note d'enquête pour le moment.";
 
   return (
-    <Tabs defaultValue="clues" className="w-full flex flex-col h-full"> {/* Removed flex-grow */}
+    // The parent (TabsContent in page.tsx's right panel) handles scrolling.
+    <Tabs defaultValue="clues" className="w-full flex flex-col h-full"> 
         <TabsList className="grid w-full grid-cols-3 shrink-0 mb-2">
           <TabsTrigger value="clues" className="text-xs sm:text-sm"><Lightbulb className="w-3 h-3 mr-1 sm:mr-2" />Indices ({clues.length})</TabsTrigger>
           <TabsTrigger value="documents" className="text-xs sm:text-sm"><DocumentIcon className="w-3 h-3 mr-1 sm:mr-2" />Documents ({documents.length})</TabsTrigger>
           <TabsTrigger value="summary" className="text-xs sm:text-sm"><MessageSquare className="w-3 h-3 mr-1 sm:mr-2" />Résumé</TabsTrigger>
         </TabsList>
 
-        {/* The direct child of ScrollArea (which is TabsContent in RightSidebar) will scroll. */}
-          <TabsContent value="clues" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="clues" className="mt-0 pt-1 flex-1 min-h-0"> 
             {clues.length > 0 ? (
               clues.map(clue => <ClueCard key={clue.id} clue={clue} />)
             ) : (
@@ -81,7 +80,7 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
             )}
           </TabsContent>
 
-          <TabsContent value="documents" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="documents" className="mt-0 pt-1 flex-1 min-h-0"> 
             {documents.length > 0 ? (
               documents.map(doc => <DocumentCard key={doc.id} documentItem={doc} />)
             ) : (
@@ -89,7 +88,7 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
             )}
           </TabsContent>
 
-          <TabsContent value="summary" className="mt-0 pt-1 flex-1"> {/* Use flex-1 */}
+          <TabsContent value="summary" className="mt-0 pt-1 flex-1 min-h-0"> 
             <Card>
               <CardHeader>
                 <CardTitle className="font-headline text-primary/90 flex items-center"><Search className="w-5 h-5 mr-2"/>Résumé de l'Enquête</CardTitle>
@@ -106,4 +105,3 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
 };
 
 export default EvidenceLogDisplay;
-
