@@ -27,7 +27,9 @@ export type GameNotificationType =
   | 'clue_added' // New
   | 'document_added' // New
   | 'investigation_notes_updated' // New
-  | 'tone_settings_updated'; // New
+  | 'tone_settings_updated' // New
+  | 'skill_check' // For results of skill checks
+  | 'warning'; // For generic warnings or unclear actions
 
 export interface GameNotification {
   type: GameNotificationType;

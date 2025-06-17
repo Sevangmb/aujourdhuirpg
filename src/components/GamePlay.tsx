@@ -19,6 +19,103 @@ import PlayerInputForm from './PlayerInputForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 
+/**
+ * Prepares the input object for the `generateScenario` AI flow.
+ * It gathers all necessary player and game state information into the required format.
+ * This function is defined outside the component to avoid being recreated on every render.
+ *
+ * @param player The current player object.
+ * @param currentScenarioText The text of the current scenario the player is in.
+ * @param actionText The action text input by the player.
+ * @returns An object of type `GenerateScenarioInput` for the AI flow.
+ */
+const prepareAIInput = (
+  player: Player,
+  currentScenarioText: string,
+  actionText: string
+): GenerateScenarioInput => {
+  const simplifiedInventory = player.inventory?.map(item => ({ name: item.name, quantity: item.quantity })) || [];
+
+  const playerProgressionForAI = player.progression ? {
+    level: player.progression.level,
+    xp: player.progression.xp,
+    xpToNextLevel: player.progression.xpToNextLevel,
+    perks: player.progression.perks || [],
+  } : { level: 1, xp: 0, xpToNextLevel: 100, perks: [] }; // Provide default if undefined
+
+  const activeQuestsSummary = (player.questLog || [])
+    .filter(q => q.status === 'active')
+    .map(q => ({
+      id: q.id,
+      title: q.title,
+      description: q.description.substring(0, 150) + "...", // Ensure description is a string
+      type: q.type,
+      moneyReward: q.moneyReward,
+      currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
+    }));
+
+  const encounteredPNJsSummary = (player.encounteredPNJs || []).map(p => ({
+    name: p.name,
+    relationStatus: p.relationStatus,
+  }));
+
+  const currentCluesSummary = (player.clues || []).map(c => ({ title: c.title, type: c.type }));
+  const currentDocumentsSummary = (player.documents || []).map(d => ({ title: d.title, type: d.type }));
+
+  return {
+    playerName: player.name,
+    playerGender: player.gender,
+    playerAge: player.age,
+    playerOrigin: player.origin,
+    playerBackground: player.background,
+    playerStats: player.stats,
+    playerSkills: player.skills,
+    playerTraitsMentalStates: player.traitsMentalStates || [],
+    playerProgression: playerProgressionForAI,
+    playerAlignment: player.alignment,
+    playerInventory: simplifiedInventory,
+    playerMoney: player.money,
+    playerChoice: actionText.trim(),
+    currentScenario: currentScenarioText,
+    playerLocation: player.currentLocation,
+    toneSettings: player.toneSettings || initialToneSettings,
+    activeQuests: activeQuestsSummary,
+    encounteredPNJsSummary: encounteredPNJsSummary,
+    currentCluesSummary: currentCluesSummary,
+    currentDocumentsSummary: currentDocumentsSummary,
+    currentInvestigationNotes: player.investigationNotes,
+  };
+};
+
+/**
+ * Calls the AI scenario generation service and processes its output.
+ * This asynchronous function handles the direct interaction with the AI flow (`generateScenario`)
+ * and then applies the results to the player's state using `processAndApplyAIScenarioOutput`.
+ *
+ * @param aiInput The input object prepared for the `generateScenario` AI flow.
+ * @param currentPlayer The current player state before the AI effects are applied.
+ * @returns A promise that resolves to an object containing the `updatedPlayer` state,
+ *          an array of `notifications` for UI feedback, and the new `scenarioText`.
+ */
+async function executeScenarioGenerationAndProcessOutput(
+  aiInput: GenerateScenarioInput,
+  currentPlayer: Player
+): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; scenarioText: string }> {
+  try {
+    const aiOutput: GenerateScenarioOutput = await generateScenario(aiInput);
+    const { updatedPlayer, notifications } = processAndApplyAIScenarioOutput(currentPlayer, aiOutput);
+    return {
+      updatedPlayer,
+      notifications,
+      scenarioText: aiOutput.scenarioText,
+    };
+  } catch (error) {
+    // Re-throw the error to be caught by the calling function's try-catch block
+    console.error("Error in executeScenarioGenerationAndProcessOutput:", error);
+    throw error;
+  }
+}
+
 interface GamePlayProps {
   initialGameState: GameState;
   onRestart: () => void; 
@@ -57,21 +154,59 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
   }, [initialGameState.player, initialGameState.currentScenario, player, currentScenario]);
 
 
+  /**
+   * useEffect hook responsible for initializing the `currentScenario` when the game starts
+   * or when the player data is loaded. It also handles a data consistency check:
+   * if the `player` object is loaded but `player.currentLocation` is missing,
+   * it initializes the location to a default, updates the player state, and saves it.
+   */
   useEffect(() => {
+    // This effect handles the initial setup of the currentScenario or corrects missing player location.
+
+    // Condition 1: Player and their location are loaded, but there's no current scenario yet.
+    // This typically happens at the very start of the game.
     if (player && player.currentLocation && !currentScenario) {
       const firstScenario = getInitialScenario(player);
       setCurrentScenario(firstScenario);
-    } else if (player && !player.currentLocation) {
-        console.warn("Player object missing currentLocation, re-initializing scenario with default location.");
+      // Note: No saveGameState here as this is usually the initial, non-interactive scenario.
+      // If saving is needed, it should be considered carefully based on game flow.
+    }
+    // Condition 2: Player data is loaded, but their currentLocation is missing.
+    // This indicates an inconsistent state that needs correction.
+    else if (player && !player.currentLocation) {
+        console.warn("Player object missing currentLocation. Initializing with default location and saving state.");
+
+        // Create a new player object with the default location.
         const playerWithDefaultLocation = { ...player, currentLocation: initialPlayerLocation };
+
+        // Update local component state for player and UI.
         setPlayerInternal(playerWithDefaultLocation); 
-        setGameState(prevState => prevState ? {...prevState, player: playerWithDefaultLocation} : {player: playerWithDefaultLocation, currentScenario: null}); 
-        setCurrentLocationForUI(initialPlayerLocation);
+        setCurrentLocationForUI(initialPlayerLocation); // Ensure UI elements like map/weather also update.
+
+        // Generate the initial scenario with the corrected player data.
         const firstScenario = getInitialScenario(playerWithDefaultLocation);
         setCurrentScenario(firstScenario);
+
+        // Update the global game state (passed via props).
+        // This also ensures the parent component has the corrected player state.
+        setGameState(prevState => prevState ?
+          {...prevState, player: playerWithDefaultLocation, currentScenario: firstScenario } :
+          {player: playerWithDefaultLocation, currentScenario: firstScenario });
+
+        // Persist the corrected game state.
         saveGameState({ player: playerWithDefaultLocation, currentScenario: firstScenario });
+        // This useEffect will re-run after setPlayerInternal/setGameState.
+        // On the next run:
+        // - `player.currentLocation` will exist.
+        // - `!currentScenario` might still be true if setCurrentScenario hasn't flushed.
+        // - Or, if setCurrentScenario has flushed, `currentScenario` will exist.
+        // - If `!currentScenario` is true, it will fall into the first `if` block, which is fine.
+        // - If `currentScenario` is set, neither block will execute, preventing further loops.
     }
-  }, [player, currentScenario, setGameState]);
+  }, [player, currentScenario, setGameState]); // Dependencies:
+                                               // - player: to react to player data loading or changes.
+                                               // - currentScenario: to check if the initial scenario is set.
+                                               // - setGameState: to update the global state if player location is corrected.
 
   useEffect(() => {
     const fetchWeatherForLocation = async (loc: LocationData) => {
@@ -135,6 +270,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
   }, [player?.currentLocation?.placeName]);
 
 
+  /**
+   * Asynchronously handles the submission of a player's action.
+   * This function orchestrates the process:
+   * 1. Validates the current game state and player input.
+   * 2. Prepares the input for the AI using `prepareAIInput`.
+   * 3. Calls `executeScenarioGenerationAndProcessOutput` to get the AI-generated scenario and its effects.
+   * 4. Updates the local and global game state with the new player data and scenario.
+   * 5. Displays notifications (toasts) to the player based on the outcomes.
+   * 6. Handles any errors during the process and provides UI feedback.
+   *
+   * @param actionText The text string of the action submitted by the player.
+   */
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     if (!player || !currentScenario || !actionText.trim()) {
       if (!actionText.trim()){
@@ -161,63 +308,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
     setIsLoading(true);
     if(player.stats) setPreviousStats(player.stats);
 
-    const simplifiedInventory = player.inventory?.map(item => ({ name: item.name, quantity: item.quantity })) || [];
-    const playerProgressionForAI = player.progression ? {
-      level: player.progression.level,
-      xp: player.progression.xp,
-      xpToNextLevel: player.progression.xpToNextLevel,
-      perks: player.progression.perks || [],
-    } : undefined;
-
-    const activeQuestsSummary = (player.questLog || [])
-        .filter(q => q.status === 'active')
-        .map(q => ({
-            id: q.id,
-            title: q.title,
-            description: q.description.substring(0,150) + "...",
-            type: q.type,
-            moneyReward: q.moneyReward,
-            currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
-        }));
-
-    const encounteredPNJsSummary = (player.encounteredPNJs || []).map(p => ({
-        name: p.name,
-        relationStatus: p.relationStatus,
-    }));
-    
-    const currentCluesSummary = (player.clues || []).map(c => ({ title: c.title, type: c.type }));
-    const currentDocumentsSummary = (player.documents || []).map(d => ({ title: d.title, type: d.type }));
-
-    const inputForAI: GenerateScenarioInput = {
-      playerName: player.name,
-      playerGender: player.gender,
-      playerAge: player.age,
-      playerOrigin: player.origin,
-      playerBackground: player.background,
-      playerStats: player.stats,
-      playerSkills: player.skills,
-      playerTraitsMentalStates: player.traitsMentalStates || [],
-      playerProgression: playerProgressionForAI!,
-      playerAlignment: player.alignment,
-      playerInventory: simplifiedInventory,
-      playerMoney: player.money,
-      playerChoice: actionText.trim(),
-      currentScenario: currentScenario.scenarioText,
-      playerLocation: player.currentLocation,
-      toneSettings: player.toneSettings || initialToneSettings, // Pass tone settings
-      activeQuests: activeQuestsSummary,
-      encounteredPNJsSummary: encounteredPNJsSummary,
-      currentCluesSummary: currentCluesSummary,
-      currentDocumentsSummary: currentDocumentsSummary,
-      currentInvestigationNotes: player.investigationNotes,
-    };
+    const inputForAI = prepareAIInput(player, currentScenario.scenarioText, actionText);
 
     try {
-      const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
-      const { updatedPlayer, notifications } = processAndApplyAIScenarioOutput(player, aiOutput);
+      const { updatedPlayer, notifications, scenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player);
       
       setPlayerInternal(updatedPlayer);
-      setGameState(prevState => prevState ? {...prevState, player: updatedPlayer, currentScenario: { scenarioText: aiOutput.scenarioText }} : { player: updatedPlayer, currentScenario: { scenarioText: aiOutput.scenarioText }});
+      setGameState(prevState => prevState ? {...prevState, player: updatedPlayer, currentScenario: { scenarioText }} : { player: updatedPlayer, currentScenario: { scenarioText }});
 
       notifications.forEach(notification => {
         let toastAction;
@@ -238,15 +335,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
         });
       });
 
-      const nextScenario: Scenario = {
-        scenarioText: aiOutput.scenarioText,
-      };
+      const nextScenario: Scenario = { scenarioText };
       setCurrentScenario(nextScenario); 
       setPlayerInput('');
 
     } catch (error) {
-      console.error("Erreur lors de la génération du scénario:", error);
-      let errorMessage = "Impossible de générer le prochain scénario.";
+      // Error is already logged by executeScenarioGenerationAndProcessOutput
+      let errorMessage = "Impossible de générer le prochain scénario ou d'appliquer ses effets.";
       if (error instanceof Error) {
         errorMessage += ` Détail: ${error.message}`;
       }
