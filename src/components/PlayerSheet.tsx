@@ -24,14 +24,14 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   return (
     // Removed fixed height, parent ScrollArea will handle it
     <Tabs defaultValue="identity" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-2 text-xs">
-          <TabsTrigger value="identity" className="text-xs p-1.5"><User className="w-3 h-3 mr-1 inline-block" />Identité</TabsTrigger>
-          <TabsTrigger value="stats" className="text-xs p-1.5"><Shield className="w-3 h-3 mr-1 inline-block" />Stats</TabsTrigger>
-          <TabsTrigger value="skills" className="text-xs p-1.5"><Sparkles className="w-3 h-3 mr-1 inline-block" />Compétences</TabsTrigger>
-          <TabsTrigger value="traits" className="text-xs p-1.5"><BrainIcon className="w-3 h-3 mr-1 inline-block" />Traits</TabsTrigger>
-          <TabsTrigger value="progression" className="text-xs p-1.5"><TrendingUp className="w-3 h-3 mr-1 inline-block" />Progrès</TabsTrigger>
-          <TabsTrigger value="alignment" className="text-xs p-1.5"><Palette className="w-3 h-3 mr-1 inline-block" />Align.</TabsTrigger>
-          <TabsTrigger value="money" className="text-xs p-1.5"><Euro className="w-3 h-3 mr-1 inline-block" />Argent</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-2">
+          <TabsTrigger value="identity" className="p-2" aria-label="Identité"><User className="w-4 h-4" /></TabsTrigger>
+          <TabsTrigger value="stats" className="p-2" aria-label="Stats"><Shield className="w-4 h-4" /></TabsTrigger>
+          <TabsTrigger value="skills" className="p-2" aria-label="Compétences"><Sparkles className="w-4 h-4" /></TabsTrigger>
+          <TabsTrigger value="traits" className="p-2" aria-label="Traits & États"><BrainIcon className="w-4 h-4" /></TabsTrigger>
+          <TabsTrigger value="progression" className="p-2" aria-label="Progression"><TrendingUp className="w-4 h-4" /></TabsTrigger>
+          <TabsTrigger value="alignment" className="p-2" aria-label="Alignement"><Palette className="w-4 h-4" /></TabsTrigger>
+          <TabsTrigger value="money" className="p-2" aria-label="Argent"><Euro className="w-4 h-4" /></TabsTrigger>
         </TabsList>
 
         <TabsContent value="identity" className="mt-0">
