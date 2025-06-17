@@ -161,7 +161,7 @@ For example, if a player tries to pick a lock, you might describe them approachi
 // 5. Special Game Scenarios / Turn Types:
 // 5.a. Specific instructions for the very first turn of the game if the location is unknown.
 const PROMPT_INITIAL_LOCATION_SETUP = `
-{{#if (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
+{{#if isInitialUnknownLocation}}
 **Special First Turn: Initial Location Setup**
 The player is starting a new game. Their initial coordinates are (lat: {{{playerLocation.latitude}}}, lon: {{{playerLocation.longitude}}}).
 Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
@@ -202,7 +202,7 @@ const PROMPT_TASK_REFLECT_ACTION = `
 // 6.c. Instructions for a standard gameplay action, part of the {{else}} block from PROMPT_TASK_REFLECT_ACTION.
 // This section is active if 'isReflectAction' is false.
 const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
-{{#unless (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
+{{#unless isInitialUnknownLocation}}
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
 For complex actions implied by '{{{playerChoice}}}', describe the player's attempt and the observable situation in the narrative. The game system will determine the mechanical outcome.
@@ -213,7 +213,7 @@ For complex actions implied by '{{{playerChoice}}}', describe the player's attem
 // 7.a. Instructions for tool use to gather external information (weather, POIs, news, Wikipedia).
 const PROMPT_PHASE_1_INFO_GATHERING = `
 **Phase 1: Strategic Information Gathering & API Management**
-{{#unless (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
+{{#unless isInitialUnknownLocation}}
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
    B. **Local Environment (POIs):** If the player's action involves exploring, looking for a specific place, or if a quest objective points to a type of location, use 'getNearbyPoisTool'. Focus on the immediate vicinity. Identify types of streets, nearby businesses, parks, landmarks, urban density.
    C. **News Context:** Especially at the start of a new in-game day or if the player interacts with news sources (TV, radio, newspaper, internet), use 'getNewsTool' for France ('fr'). Fetch 3-5 *pertinent* headlines. Filter for news (global or local if in a major city) that could thematically (even distantly) relate to the game's mystery/thriller ambiance (technology, crime, politics, major cultural events) and selected TONE.
@@ -225,7 +225,7 @@ const PROMPT_PHASE_1_INFO_GATHERING = `
 // 7.b. How to process and filter the gathered information.
 const PROMPT_PHASE_2_INFO_SYNTHESIS = `
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
-{{#unless (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
+{{#unless isInitialUnknownLocation}}
    A. **Narrative Relevance & Tone:** For *all* information gathered (weather, POIs, news, Wikipedia facts), assess its direct relevance to the current plot, player's immediate goals, the action "{{{playerChoice}}}", AND the player's 'toneSettings'. Pay special attention to how this information can support or advance activeQuests and currentObjectivesDescriptions. Consider player stats (e.g., low Energie might make the player less perceptive of POIs, high Stress might make them misinterpret news).
    B. **Ambiance:** Prioritize details that reinforce the "Thriller Urbain & Mystère Psychologique" mood OR the specific TONES requested by the player (e.g., high Horreur = unsettling weather; high Humour = an odd news headline).
    C. **Avoid Overload:** Select only the *most impactful* details. Do not dump raw API data.
@@ -241,7 +241,7 @@ const PROMPT_PHASE_2_INFO_SYNTHESIS = `
 const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
 **Phase 3: Narrative Generation & Game State Updates**
    1.  **Scenario Text Generation**:
-       {{#if (eq playerLocation.placeName "Lieu de Départ Inconnu")}}
+       {{#if isInitialUnknownLocation}}
        Follow the "Initial Location Setup" instructions above to determine the actual starting location and generate the \`scenarioText\` and \`newLocationDetails\`.
        {{else}}
        Based on the *synthesized information* from Phase 2 (considering TONES and player stats like Energie, Stress, Volonte, Reputation), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the player's attempted action related to "{{{playerChoice}}}" and the immediate, observable state of the environment or characters involved. The narrative should lead up to a point where a game mechanic (handled by the game system) would determine the detailed success, failure, or consequences. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
@@ -323,9 +323,14 @@ const generateScenarioFlow = ai.defineFlow(
   },
   async (input: SimplifiedGenerateScenarioInput) => {
     const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
+    const isInitialUnknownLocation = input.playerLocation.placeName === "Lieu de Départ Inconnu";
 
-    // The promptPayload now correctly reflects the structure of SimplifiedGenerateScenarioInput
-    const promptPayload: SimplifiedGenerateScenarioInput & { isReflectAction: boolean } = { ...input, isReflectAction };
+    // The promptPayload now correctly reflects the structure of SimplifiedGenerateScenarioInput and includes the new flag
+    const promptPayload: SimplifiedGenerateScenarioInput & { isReflectAction: boolean; isInitialUnknownLocation: boolean; } = {
+      ...input,
+      isReflectAction,
+      isInitialUnknownLocation
+    };
 
     const {output} = await scenarioPrompt(promptPayload);
     if (!output) {
