@@ -19,6 +19,7 @@ import {
   GenerateScenarioOutputSchema,
   SimplifiedGenerateScenarioInputSchema,
 } from './generate-scenario-schemas';
+import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
@@ -124,7 +125,7 @@ For example, if a player tries to pick a lock, you might describe them approachi
 const PROMPT_INITIAL_LOCATION_SETUP = `
 {{#if isInitialUnknownLocation}}
 **Special First Turn: Initial Location Setup**
-The player is starting a new game. Their initial coordinates are (lat: {{{playerLocation.latitude}}}, lon: {{{playerLocation.longitude}}}).
+The player is starting a new game. Their current location name is "{{{playerLocation.name}}}" which signals it's unknown. Their initial coordinates are (lat: {{{playerLocation.latitude}}}, lon: {{{playerLocation.longitude}}}).
 Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
 1.  **Identify a specific, plausible inhabited location (city, town, large village) at or very near these coordinates.**
     *   Use \\\`getNearbyPoisTool\\\` with the given coordinates. Look for POIs like 'town', 'village', 'city', or clusters of 'amenity', 'shop', 'tourism' that indicate a settlement. You might need to make several calls with different radii or POI types.
@@ -135,7 +136,7 @@ Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
     *   You **MUST** provide its specific name in \\\`newLocationDetails.name\\\`.
     *   You **MUST** provide its geographical coordinates in \\\`newLocationDetails.latitude\\\` and \\\`newLocationDetails.longitude\\\`. (These can be the original random coordinates if you determine they fall within the named place, or slightly adjusted coordinates if your tool use provides a more precise center for the named place).
     *   Include a \\\`newLocationDetails.reasonForMove\\\` like "Starting the game in [NomDeLaVille]".
-4.  **Scenario Text:** The \\\`scenarioText\\\` for this first turn **MUST** describe the player character waking up or arriving in this *specific, named location* that you have determined. **DO NOT** describe them as being in "Lieu de Départ Inconnu" or an undefined place. Make it engaging.
+4.  **Scenario Text:** The \\\`scenarioText\\\` for this first turn **MUST** describe the player character waking up or arriving in this *specific, named location* that you have determined. **DO NOT** describe them as being in "{{{playerLocation.name}}}" or an undefined place. Make it engaging.
 5.  **Minimal Other Effects:** For this very first setup turn, keep other game state changes (stats, items, quests, etc.) minimal or non-existent, unless the narrative of their arrival strongly dictates a specific minor change (e.g., slight stress from waking up confused). The focus is location establishment.
 6.  All other guiding principles (no tool calls in scenarioText etc.) still apply.
 
@@ -278,3 +279,4 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
