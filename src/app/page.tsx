@@ -36,29 +36,10 @@ import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/se
 import { useAuth } from '@/contexts/AuthContext';
 
 // UI Components
-import LoadingState from '@/components/LoadingState';
 import { useToast } from "@/hooks/use-toast";
-import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from "@/components/ui/menubar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { SlidersHorizontal, Save, User as UserIcon, Briefcase, BookOpen, Search, LogOut } from 'lucide-react';
-// Tabs and Card are no longer directly used for the right panel layout in page.tsx
-import { Button } from '@/components/ui/button';
-
-
-// Player Info Components
-import PlayerSheet from '@/components/PlayerSheet';
-import InventoryDisplay from '@/components/InventoryDisplay';
-import QuestJournalDisplay from '@/components/QuestJournalDisplay';
-import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
-
-// Custom Components
-import CharacterCreationForm from '@/components/CharacterCreationForm';
-import GamePlay from '@/components/GamePlay';
-import AuthDisplay from '@/components/AuthDisplay';
-// LeftSidebar is no longer used directly in the layout
-// import LeftSidebar from '@/components/LeftSidebar';
+import AppMenubar from '@/components/AppMenubar';
+import GameScreen from '@/components/GameScreen';
 
 
 function HomePageContent() {
@@ -146,8 +127,8 @@ function HomePageContent() {
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
       currentLocation: {
-        ...initialPlayerLocation, // Keep default lat/lon
-        placeName: playerDataFromForm.startingCity || initialPlayerLocation.placeName, // Use user's city name
+        ...initialPlayerLocation, 
+        placeName: playerDataFromForm.startingCity || initialPlayerLocation.placeName, 
        },
       toneSettings: { ...initialToneSettings },
       questLog: [...initialQuestLog],
@@ -170,7 +151,7 @@ function HomePageContent() {
     toast({ title: "Personnage créé !", description: `Votre aventure commence à ${hydratedPlayer.currentLocation.placeName}.`});
   };
 
-  const handleRestart = async () => {
+  const handleRestartGame = async () => {
     if (user && !user.isAnonymous && user.uid) {
       try {
         await deletePlayerStateFromFirestore(user.uid);
@@ -185,7 +166,7 @@ function HomePageContent() {
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
 
-  const isGameActive = gameState && gameState.player && gameState.currentScenario;
+  const isGameActive = !!(gameState && gameState.player && gameState.currentScenario);
 
   const handleSaveGame = async () => {
     if (isGameActive && gameState) {
@@ -194,7 +175,6 @@ function HomePageContent() {
         toast({
           title: "Partie Sauvegardée",
           description: "Votre progression a été sauvegardée.",
-          action: <Save className="text-green-500" />
         });
       } catch (error) {
         console.error("Erreur lors de la sauvegarde manuelle:", error);
@@ -213,7 +193,7 @@ function HomePageContent() {
     }
   };
 
-  const toggleFullScreen = () => {
+  const handleToggleFullScreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(err => {
         alert(`Erreur lors du passage en plein écran: ${err.message} (${err.name})`);
@@ -235,109 +215,28 @@ function HomePageContent() {
     }
   };
 
+  const authScreenProps = {
+    user: user, // Pass null explicitly if user is null
+    loadingAuth: loadingAuth,
+    signUp: signUpWithEmailPassword,
+    signIn: signInWithEmailPassword,
+    signInAnon: signInAnonymously,
+    signOut: signOutUser, // This signOut is for the AuthDisplay context, might differ from Menubar's
+  };
+
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background text-foreground">
-      <Menubar className="w-full rounded-none border-b shrink-0">
-        <MenubarMenu>
-          <MenubarTrigger>Fichier</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem onClick={handleRestart}>
-              Nouvelle Partie
-            </MenubarItem>
-            <MenubarItem onClick={handleSaveGame} disabled={!isGameActive}>
-              <Save className="mr-2 h-4 w-4" /> Sauvegarder la Partie
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem onClick={() => window.close()}>Quitter</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
-        <MenubarMenu>
-          <MenubarTrigger>Affichage</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem onClick={toggleFullScreen}>Plein écran</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
-        {gameState?.player && (
-          <MenubarMenu>
-            <MenubarTrigger>Paramètres</MenubarTrigger>
-            <MenubarContent>
-              <MenubarItem onSelect={(e) => { e.preventDefault(); setIsToneSettingsDialogOpen(true); }}>
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Tonalité Narrative
-              </MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
-        )}
-        {gameState?.player && (
-          <MenubarMenu>
-            <MenubarTrigger>Joueur</MenubarTrigger>
-            <MenubarContent>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <MenubarItem onSelect={(e) => e.preventDefault()}><UserIcon className="mr-2 h-4 w-4" />Fiche Personnage</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>Fiche Personnage</DialogTitle>
-                  </DialogHeader>
-                  <ScrollArea className="max-h-[70vh] p-2">
-                    {gameState?.player ? <PlayerSheet player={gameState.player} /> : <p>Aucune donnée de personnage.</p>}
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  {/* Removed md:hidden to make it always visible in menu */}
-                  <MenubarItem onSelect={(e) => e.preventDefault()}><Briefcase className="mr-2 h-4 w-4" />Inventaire</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
-                  <DialogHeader><DialogTitle>Inventaire</DialogTitle></DialogHeader>
-                  <ScrollArea className="max-h-[70vh] p-1">
-                    {gameState?.player ? <InventoryDisplay inventory={gameState.player.inventory} /> : <p>Inventaire non disponible.</p>}
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  {/* Removed md:hidden */}
-                  <MenubarItem onSelect={(e) => e.preventDefault()}><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                  <DialogHeader><DialogTitle>Journal de Quêtes</DialogTitle></DialogHeader>
-                  <ScrollArea className="max-h-[70vh] p-1">
-                    {gameState?.player ? <QuestJournalDisplay player={gameState.player} /> : <p>Journal de quêtes non disponible.</p>}
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  {/* Removed md:hidden */}
-                  <MenubarItem onSelect={(e) => e.preventDefault()}><Search className="mr-2 h-4 w-4" />Dossier d'Enquête</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                  <DialogHeader><DialogTitle>Dossier d'Enquête</DialogTitle></DialogHeader>
-                  <ScrollArea className="max-h-[70vh] p-1">
-                    {gameState?.player ? <EvidenceLogDisplay player={gameState.player} /> : <p>Dossier d'enquête non disponible.</p>}
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
-            </MenubarContent>
-          </MenubarMenu>
-        )}
-        <div className="ml-auto flex items-center pr-2">
-          {user && (
-            <div className="text-xs text-muted-foreground mr-2">
-              {user.isAnonymous ? "Anonyme" : user.email}
-            </div>
-          )}
-          {user && (
-            <Button variant="ghost" size="sm" onClick={signOutUser} className="text-xs h-8">
-              <LogOut className="mr-1 h-3 w-3" /> Déconnexion
-            </Button>
-          )}
-        </div>
-      </Menubar>
+      <AppMenubar
+        user={user}
+        isGameActive={isGameActive}
+        player={gameState?.player || null}
+        onRestartGame={handleRestartGame}
+        onSaveGame={handleSaveGame}
+        onToggleFullScreen={handleToggleFullScreen}
+        onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
+        onSignOut={signOutUser}
+      />
 
       {gameState?.player && (
         <ToneSettingsDialog
@@ -348,41 +247,18 @@ function HomePageContent() {
         />
       )}
 
-      {/* This div used to hold sidebars and main content. Now it just holds main content. */}
-      <div className="flex-1 flex flex-col overflow-hidden"> {/* Changed: Removed 'flex' to simplify as it's no longer a 3-column layout parent */}
-        {/* Left Sidebar removed from here */}
-
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col overflow-y-auto">
-          {loadingAuth || isLoadingState ? (
-            <div className="flex-grow flex items-center justify-center">
-              <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />
-            </div>
-          ) : !user ? (
-            <div className="flex-grow flex items-center justify-center p-4">
-              <AuthDisplay
-                user={null}
-                loadingAuth={loadingAuth}
-                signUp={signUpWithEmailPassword}
-                signIn={signInWithEmailPassword}
-                signInAnon={signInAnonymously}
-                signOut={() => {}}
-              />
-            </div>
-          ) : isGameActive ? (
-            <GamePlay
-              initialGameState={gameState!}
-              onRestart={handleRestart}
-              setGameState={setGameState}
-            />
-          ) : (
-            <div className="flex-grow flex items-center justify-center p-4">
-              <CharacterCreationForm onCharacterCreate={handleCharacterCreate} />
-            </div>
-          )}
-        </main>
-
-        {/* Right Information Panel removed from here */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <GameScreen
+            user={user}
+            loadingAuth={loadingAuth}
+            isLoadingState={isLoadingState}
+            gameState={gameState}
+            isGameActive={isGameActive}
+            authFunctions={authScreenProps} // Pass the grouped auth functions
+            onCharacterCreate={handleCharacterCreate}
+            onRestartGame={handleRestartGame} // For GamePlay's onRestart
+            setGameState={setGameState} // For GamePlay
+        />
       </div>
     </div>
   );
