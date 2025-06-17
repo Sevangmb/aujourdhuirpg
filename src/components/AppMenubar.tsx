@@ -12,12 +12,24 @@ import {
     MenubarMenu, 
     MenubarSeparator, 
     MenubarTrigger,
-    MenubarLabel // Added MenubarLabel
+    MenubarLabel
 } from "@/components/ui/menubar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { SlidersHorizontal, Save, User as UserIcon, Briefcase, BookOpen, Search, LogOut, MoreHorizontal } from 'lucide-react';
+import { 
+    SlidersHorizontal, 
+    Save, 
+    User as UserIcon, 
+    Briefcase, 
+    BookOpen, 
+    Search, 
+    LogOut, 
+    MoreHorizontal,
+    FileText, // Added for "Fichier"
+    Laptop,   // Added for "Affichage"
+    Maximize // Added for "Plein écran" (though 'Laptop' is used for View menu trigger)
+} from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
@@ -46,9 +58,12 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
   onSignOut,
 }) => {
   return (
-    <Menubar className="w-full rounded-none border-b shrink-0">
+    <Menubar className="w-full rounded-none border-b shrink-0 px-1 sm:px-2">
       <MenubarMenu>
-        <MenubarTrigger>Fichier</MenubarTrigger>
+        <MenubarTrigger className="px-2 sm:px-3">
+            <FileText className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:ml-1">Fichier</span>
+        </MenubarTrigger>
         <MenubarContent>
           <MenubarItem onClick={onRestartGame}>
             Nouvelle Partie
@@ -61,17 +76,22 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
         </MenubarContent>
       </MenubarMenu>
       <MenubarMenu>
-        <MenubarTrigger>Affichage</MenubarTrigger>
+        <MenubarTrigger className="px-2 sm:px-3">
+            <Laptop className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:ml-1">Affichage</span>
+        </MenubarTrigger>
         <MenubarContent>
-          <MenubarItem onClick={onToggleFullScreen}>Plein écran</MenubarItem>
+          <MenubarItem onClick={onToggleFullScreen}>
+            <Maximize className="mr-2 h-4 w-4" /> Plein écran
+          </MenubarItem>
         </MenubarContent>
       </MenubarMenu>
       
       {player && (
         <MenubarMenu>
-          <MenubarTrigger>
-            <MoreHorizontal className="h-4 w-4 sm:mr-1" /> {/* Icon for "Plus" */}
-            <span className="hidden sm:inline">Plus</span> {/* Text for "Plus", hidden on very small screens */}
+          <MenubarTrigger className="px-2 sm:px-3">
+            <MoreHorizontal className="h-4 w-4" /> 
+            <span className="sr-only sm:not-sr-only sm:ml-1">Plus</span>
           </MenubarTrigger>
           <MenubarContent>
             <MenubarLabel>Paramètres du Jeu</MenubarLabel>
@@ -133,15 +153,16 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
         </MenubarMenu>
       )}
 
-      <div className="ml-auto flex items-center pr-2">
+      <div className="ml-auto flex items-center pr-1 sm:pr-2">
         {user && (
-          <div className="text-xs text-muted-foreground mr-2 truncate max-w-[100px] sm:max-w-[150px]">
+          <div className="text-xs text-muted-foreground mr-1 sm:mr-2 truncate max-w-[70px] xs:max-w-[100px] sm:max-w-[150px]">
             {user.isAnonymous ? "Anonyme" : user.email}
           </div>
         )}
         {user && (
-          <Button variant="ghost" size="sm" onClick={onSignOut} className="text-xs h-8">
-            <LogOut className="mr-1 h-3 w-3" /> Déconnexion
+          <Button variant="ghost" size="sm" onClick={onSignOut} className="text-xs h-8 px-1.5 sm:px-2">
+            <LogOut className="h-3 w-3 sm:mr-1" />
+            <span className="sr-only sm:not-sr-only">Déconnexion</span>
           </Button>
         )}
       </div>
