@@ -48,6 +48,35 @@ export const GenerateScenarioInputSchema = z.object({
   currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")
 });
 
+// --- Simplified Input Schema (for the flow/prompt) ---
+export const SimplifiedGenerateScenarioInputSchema = GenerateScenarioInputSchema.omit({
+  activeQuests: true,
+  encounteredPNJsSummary: true,
+  currentCluesSummary: true,
+  currentDocumentsSummary: true,
+}).extend({
+  activeQuests: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().describe("Simplified description, potentially truncated."),
+    type: z.string(),
+    moneyReward: z.number().optional(),
+    currentObjectivesDescriptions: z.array(z.string())
+  })).optional().describe("Simplified list of active quests."),
+  encounteredPNJsSummary: z.array(z.object({
+    name: z.string(),
+    relationStatus: z.string()
+  })).optional().describe("Simplified list of encountered PNJ summaries."),
+  currentCluesSummary: z.array(z.object({
+    title: z.string(),
+    type: z.string()
+  })).optional().describe("Simplified list of current clue summaries."),
+  currentDocumentsSummary: z.array(z.object({
+    title: z.string(),
+    type: z.string()
+  })).optional().describe("Simplified list of current document summaries.")
+});
+
 // --- Main Output Schema ---
 // NewLocationDetailsSchema depends on LocationSchema, defined here for clarity.
 export const NewLocationDetailsSchema = LocationSchema.extend({
