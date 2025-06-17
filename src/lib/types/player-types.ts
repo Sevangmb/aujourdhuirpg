@@ -5,6 +5,7 @@ import type { PNJ } from './pnj-types';
 import type { MajorDecision } from './decision-types';
 import type { Clue, GameDocument } from './evidence-types';
 import type { ToneSettings } from './tone-types';
+import type { Position } from './game-types'; // Corrected path
 
 export type PlayerStats = {
   Sante: number;
@@ -18,11 +19,7 @@ export type PlayerStats = {
   [key: string]: number; // Allows for dynamic stats if needed
 };
 
-export interface LocationData {
-  latitude: number;
-  longitude: number;
-  placeName: string;
-}
+// Removed LocationData interface
 
 export type Skills = Record<string, number>; // e.g., {"Informatique": 10, "Discretion": 5}
 export type TraitsMentalStates = string[]; // e.g., ["Stressé", "Fatigué"]
@@ -54,7 +51,7 @@ export type Player = {
   alignment: Alignment;
   inventory: InventoryItem[];
   money: number; // Player's current money (euros)
-  currentLocation: LocationData;
+  currentLocation: Position; // Changed from LocationData to Position
   toneSettings: ToneSettings;
   // Nouveaux champs pour le journal de quêtes, etc.
   questLog: Quest[];

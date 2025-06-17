@@ -1,8 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, Player, PlayerStats, LocationData, Scenario, ToneSettings } from '@/lib/types';
+import React, { useState, useEffect, useCallback, useReducer } from 'react';
+import type { GameState, Player, PlayerStats, LocationData, Scenario, ToneSettings, Position, JournalEntry } from '@/lib/types';
+import { gameReducer, GameAction, fetchPoisForCurrentLocation } from '@/lib/game-logic'; // Import reducer and actions
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
@@ -16,8 +17,10 @@ import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
+import JournalDisplay from './JournalDisplay'; // Import JournalDisplay
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
+// import { v4 as uuidv4 } from 'uuid'; // For unique journal IDs if needed, using simple one for now
 
 /**
  * Prepares the input object for the `generateScenario` AI flow.
@@ -117,20 +120,23 @@ async function executeScenarioGenerationAndProcessOutput(
 }
 
 interface GamePlayProps {
-  initialGameState: GameState;
-  onRestart: () => void; 
-  setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
+  initialGameState: GameState; // This will be the single source of truth for the current game state
+  onRestart: () => void;
+  // setGameState will now be called by our internal dispatching logic after reducer updates state
+  // The prop 'setGameState' from the parent now represents the function to persist the new state
+  // and cause a re-render of the whole game from App.tsx or similar.
+  onStateUpdate: (newState: GameState) => void;
 }
 
-const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGameState }) => {
-  const [player, setPlayerInternal] = useState<Player | null>(initialGameState.player);
-  const [currentScenario, setCurrentScenario] = useState<Scenario | null>(initialGameState.currentScenario);
-  const [previousStats, setPreviousStats] = useState<PlayerStats | undefined>(initialGameState.player?.stats);
-  const [isLoading, setIsLoading] = useState(false);
+const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStateUpdate }) => {
+  // Use a local state for playerInput, isLoading, etc.
+  // The main GameState is now managed by the prop initialGameState and updated via onStateUpdate
   const [playerInput, setPlayerInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // For AI actions primarily
   const { toast } = useToast();
 
-  const [currentLocationForUI, setCurrentLocationForUI] = useState<LocationData>(
+  // Local state for UI elements that depend on player location but don't need to be in global GameState immediately
+  const [currentLocationForUI, setCurrentLocationForUI] = useState<Position>(
     initialGameState.player?.currentLocation || initialPlayerLocation
   );
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -141,75 +147,37 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
   const [locationImageLoading, setLocationImageLoading] = useState(false);
   const [locationImageError, setLocationImageError] = useState<string | null>(null);
 
-
+  // This effect ensures that if the initialGameState prop changes from parent,
+  // the UI-specific states are updated.
   useEffect(() => {
-    if (initialGameState.player !== player) {
-      setPlayerInternal(initialGameState.player);
-      if(initialGameState.player?.stats) setPreviousStats(initialGameState.player.stats);
-      if(initialGameState.player?.currentLocation) setCurrentLocationForUI(initialGameState.player.currentLocation);
+    if (initialGameState.player?.currentLocation) {
+      setCurrentLocationForUI(initialGameState.player.currentLocation);
     }
-    if (initialGameState.currentScenario !== currentScenario) {
-      setCurrentScenario(initialGameState.currentScenario);
-    }
-  }, [initialGameState.player, initialGameState.currentScenario, player, currentScenario]);
+  }, [initialGameState.player?.currentLocation]);
 
 
   /**
-   * useEffect hook responsible for initializing the `currentScenario` when the game starts
-   * or when the player data is loaded. It also handles a data consistency check:
-   * if the `player` object is loaded but `player.currentLocation` is missing,
-   * it initializes the location to a default, updates the player state, and saves it.
+   * useEffect hook responsible for initializing the `currentScenario` if it's missing,
+   * assuming player data is available.
    */
   useEffect(() => {
-    // This effect handles the initial setup of the currentScenario or corrects missing player location.
-
-    // Condition 1: Player and their location are loaded, but there's no current scenario yet.
-    // This typically happens at the very start of the game.
-    if (player && player.currentLocation && !currentScenario) {
-      const firstScenario = getInitialScenario(player);
-      setCurrentScenario(firstScenario);
-      // Note: No saveGameState here as this is usually the initial, non-interactive scenario.
-      // If saving is needed, it should be considered carefully based on game flow.
+    if (initialGameState.player && initialGameState.player.currentLocation && !initialGameState.currentScenario) {
+      const firstScenario = getInitialScenario(initialGameState.player);
+      // Dispatch an action to update the currentScenario in the GameState
+      // This pattern assumes that such an action would update the state via onStateUpdate
+      const updatedState = gameReducer(initialGameState, { type: 'SET_CURRENT_SCENARIO', payload: firstScenario });
+      onStateUpdate(updatedState);
     }
-    // Condition 2: Player data is loaded, but their currentLocation is missing.
-    // This indicates an inconsistent state that needs correction.
-    else if (player && !player.currentLocation) {
-        console.warn("Player object missing currentLocation. Initializing with default location and saving state.");
+    // If player location itself is missing, it's a more critical issue,
+    // potentially handled by a loading screen or an error state before GamePlay is rendered.
+    // Or, a specific action could be dispatched to initialize the player fully.
+  }, [initialGameState, onStateUpdate]);
 
-        // Create a new player object with the default location.
-        const playerWithDefaultLocation = { ...player, currentLocation: initialPlayerLocation };
 
-        // Update local component state for player and UI.
-        setPlayerInternal(playerWithDefaultLocation); 
-        setCurrentLocationForUI(initialPlayerLocation); // Ensure UI elements like map/weather also update.
-
-        // Generate the initial scenario with the corrected player data.
-        const firstScenario = getInitialScenario(playerWithDefaultLocation);
-        setCurrentScenario(firstScenario);
-
-        // Update the global game state (passed via props).
-        // This also ensures the parent component has the corrected player state.
-        setGameState(prevState => prevState ?
-          {...prevState, player: playerWithDefaultLocation, currentScenario: firstScenario } :
-          {player: playerWithDefaultLocation, currentScenario: firstScenario });
-
-        // Persist the corrected game state.
-        saveGameState({ player: playerWithDefaultLocation, currentScenario: firstScenario });
-        // This useEffect will re-run after setPlayerInternal/setGameState.
-        // On the next run:
-        // - `player.currentLocation` will exist.
-        // - `!currentScenario` might still be true if setCurrentScenario hasn't flushed.
-        // - Or, if setCurrentScenario has flushed, `currentScenario` will exist.
-        // - If `!currentScenario` is true, it will fall into the first `if` block, which is fine.
-        // - If `currentScenario` is set, neither block will execute, preventing further loops.
-    }
-  }, [player, currentScenario, setGameState]); // Dependencies:
-                                               // - player: to react to player data loading or changes.
-                                               // - currentScenario: to check if the initial scenario is set.
-                                               // - setGameState: to update the global state if player location is corrected.
-
+  // Weather fetching logic (remains largely the same, uses currentLocationForUI)
   useEffect(() => {
-    const fetchWeatherForLocation = async (loc: LocationData) => {
+    const fetchWeatherForLocation = async (loc: Position) => {
+      if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') return;
       setWeatherLoading(true);
       setWeatherError(null);
       try {
@@ -228,20 +196,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
         setWeatherLoading(false);
       }
     };
-
-    const locationToFetch = player?.currentLocation;
-    if (locationToFetch && typeof locationToFetch.latitude === 'number' && typeof locationToFetch.longitude === 'number') {
-       fetchWeatherForLocation(locationToFetch);
-       if (currentLocationForUI.placeName !== locationToFetch.placeName ||
-           currentLocationForUI.latitude !== locationToFetch.latitude ||
-           currentLocationForUI.longitude !== locationToFetch.longitude) {
-         setCurrentLocationForUI(locationToFetch);
-       }
-    } else if (typeof currentLocationForUI.latitude === 'number' && typeof currentLocationForUI.longitude === 'number') {
-      fetchWeatherForLocation(currentLocationForUI);
-    }
-
-  }, [player?.currentLocation, currentLocationForUI]); 
+    fetchWeatherForLocation(currentLocationForUI);
+  }, [currentLocationForUI]);
 
   useEffect(() => {
     const fetchLocationImage = async () => {
@@ -282,39 +238,100 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
    *
    * @param actionText The text string of the action submitted by the player.
    */
+  // Location Image fetching (remains largely the same, uses initialGameState.player.currentLocation.placeName)
+  useEffect(() => {
+    const fetchLocationImage = async () => {
+      if (initialGameState.player?.currentLocation?.placeName) {
+        setLocationImageLoading(true);
+        setLocationImageUrl(null);
+        setLocationImageError(null);
+        try {
+          const result = await generateLocationImage({ placeName: initialGameState.player.currentLocation.placeName });
+          if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
+            setLocationImageUrl(result.imageUrl);
+          } else {
+            const errorMsg = result.error || "L'IA n'a pas pu générer une image pour ce lieu.";
+            setLocationImageError(errorMsg);
+          }
+        } catch (e: any) {
+          const errorMsg = e.message || "Erreur inconnue lors de la génération de l'image du lieu.";
+          setLocationImageError(errorMsg);
+        } finally {
+          setLocationImageLoading(false);
+        }
+      }
+    };
+    fetchLocationImage();
+  }, [initialGameState.player?.currentLocation?.placeName]);
+
+
+  // Custom dispatch function to handle game actions
+  const handleGameAction = useCallback(async (action: GameAction) => {
+    if (!initialGameState.player) return; // Should not happen if GamePlay is rendered
+
+    let newState = gameReducer(initialGameState, action);
+
+    // Handle async operations based on action type
+    if (action.type === 'MOVE_TO_LOCATION') {
+      // Add time for movement
+      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 }); // Example: 30 mins
+
+      // Fetch new POIs for the new location
+      try {
+        setIsLoading(true); // Indicate loading for POI fetch
+        const newNearbyPois = await fetchPoisForCurrentLocation(action.payload); // action.payload is the new location
+        newState = gameReducer(newState, { type: 'SET_NEARBY_POIS', payload: newNearbyPois });
+      } catch (error) {
+        console.error("GamePlay: Error fetching new POIs after move:", error);
+        newState = gameReducer(newState, { type: 'SET_NEARBY_POIS', payload: null });
+        toast({ title: "Erreur réseau", description: "Impossible de charger les lieux proches.", variant: "destructive"});
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    onStateUpdate(newState); // Update the global state via the prop
+    await saveGameState(newState); // Persist the new state
+  }, [initialGameState, onStateUpdate, toast]);
+
+
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
+    const { player, currentScenario } = initialGameState;
     if (!player || !currentScenario || !actionText.trim()) {
       if (!actionText.trim()){
-        toast({
-          variant: "destructive",
-          title: "Action vide",
-          description: "Veuillez entrer une action.",
-        });
+        toast({ variant: "destructive", title: "Action vide", description: "Veuillez entrer une action." });
       }
       return;
     }
-
     if (!player.currentLocation || typeof player.currentLocation.latitude !== 'number' || typeof player.currentLocation.longitude !== 'number') {
       console.error("Critical Error: player.currentLocation is invalid before AI call.", player);
-      toast({
-          variant: "destructive",
-          title: "Erreur Critique du Jeu",
-          description: "La localisation du joueur est manquante ou invalide. Essayez de redémarrer le jeu.",
-      });
-      setIsLoading(false);
+      toast({ variant: "destructive", title: "Erreur Critique du Jeu", description: "La localisation du joueur est manquante ou invalide." });
       return;
     }
 
     setIsLoading(true);
-    if(player.stats) setPreviousStats(player.stats);
-
     const inputForAI = prepareAIInput(player, currentScenario.scenarioText, actionText);
 
     try {
-      const { updatedPlayer, notifications, scenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player);
+      const { updatedPlayer: playerAfterAI, notifications, scenarioText: newScenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player);
       
-      setPlayerInternal(updatedPlayer);
-      setGameState(prevState => prevState ? {...prevState, player: updatedPlayer, currentScenario: { scenarioText }} : { player: updatedPlayer, currentScenario: { scenarioText }});
+      // Create a new game state based on AI output
+      // We need to ensure the new state incorporates changes from playerAfterAI and newScenarioText
+      // while preserving other parts of the state like journal, gameTimeInMinutes etc. from initialGameState.
+      let updatedFullGameState: GameState = {
+        ...initialGameState, // Start with the current global state
+        player: playerAfterAI,
+        currentScenario: { scenarioText: newScenarioText },
+        // Potentially update other fields if AI can modify them, e.g. nearbyPois if AI leads to discovery
+      };
+
+      // Here, we might want to use gameReducer for some updates if applicable,
+      // for example, if AI output implies adding a journal entry directly.
+      // For now, assuming processAndApplyAIScenarioOutput handles direct player changes.
+      // And notifications are handled via toasts.
+
+      onStateUpdate(updatedFullGameState); // Update the global state
+      await saveGameState(updatedFullGameState); // Persist the new state
 
       notifications.forEach(notification => {
         let toastAction;
@@ -334,27 +351,19 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
           duration: ['leveled_up', 'quest_added', 'money_changed', 'clue_added', 'document_added', 'investigation_notes_updated', 'tone_settings_updated'].includes(notification.type) ? 5000: 3000,
         });
       });
-
-      const nextScenario: Scenario = { scenarioText };
-      setCurrentScenario(nextScenario); 
       setPlayerInput('');
 
     } catch (error) {
-      // Error is already logged by executeScenarioGenerationAndProcessOutput
       let errorMessage = "Impossible de générer le prochain scénario ou d'appliquer ses effets.";
-      if (error instanceof Error) {
-        errorMessage += ` Détail: ${error.message}`;
-      }
-      toast({
-        variant: "destructive",
-        title: "Erreur de Connexion avec l'IA",
-        description: errorMessage,
-      });
+      if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
+      toast({ variant: "destructive", title: "Erreur de Connexion avec l'IA", description: errorMessage });
     } finally {
       setIsLoading(false);
     }
-  }, [player, currentScenario, toast, setGameState]);
+  }, [initialGameState, onStateUpdate, toast]);
 
+
+  const { player, currentScenario, journal, nearbyPois, gameTimeInMinutes } = initialGameState;
 
   if (!player || !currentScenario) {
     return (
@@ -365,41 +374,49 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, setGam
     );
   }
 
+  // Ensure displayLocation has a default if player.currentLocation is somehow null
   const displayLocation = player.currentLocation || initialPlayerLocation;
 
   return (
-    <div className="flex flex-col p-4 md:p-6 space-y-4"> 
-      <Card className="shadow-lg shrink-0 border-border bg-card/80 backdrop-blur-sm">
-        <CardContent className="p-3 md:p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.placeName} />
-            <MapDisplay latitude={displayLocation.latitude} longitude={displayLocation.longitude} placeName={displayLocation.placeName} />
-            <LocationImageDisplay 
-                imageUrl={locationImageUrl} 
-                placeName={displayLocation.placeName} 
-                isLoading={locationImageLoading} 
-                error={locationImageError} 
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col p-4 md:p-6 space-y-4 h-full"> {/* Make GamePlay take full height */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0"> {/* Top section for map, weather, image */}
+        <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} />
+        <MapDisplay
+          currentLocation={displayLocation}
+          nearbyPois={nearbyPois || []}
+          // visitedLocations={player.visitedLocations || []} // Assuming player model might have this
+          // lockedLocations={player.lockedLocations || []} // Assuming player model might have this
+        />
+        <LocationImageDisplay
+            imageUrl={locationImageUrl}
+            placeName={displayLocation.name}
+            isLoading={locationImageLoading}
+            error={locationImageError}
+        />
+      </div>
 
-      {/* This div is the flex-growing middle section */}
-      <div className="flex-grow flex flex-col min-h-0"> {/* Removed relative */}
-        <ScrollArea className="flex-grow min-h-0"> {/* ScrollArea itself will grow and handle its scroll */}
-            <ScenarioDisplay
+      {/* Middle section with Scenario and Journal */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-grow min-h-0">
+        <ScrollArea className="lg:col-span-2 h-[300px] lg:h-auto lg:min-h-0">
+          <ScenarioDisplay
             scenarioHTML={currentScenario.scenarioText}
-            isLoading={isLoading}
-            />
+            isLoading={isLoading} // This isLoading is for AI response
+          />
+        </ScrollArea>
+        <ScrollArea className="h-[300px] lg:h-auto lg:min-h-0">
+          <JournalDisplay journal={journal || []} />
         </ScrollArea>
       </div>
       
+      {/* Bottom section for Player Input */}
       <div className="shrink-0">
         <PlayerInputForm
-            playerInput={playerInput}
-            onPlayerInputChange={setPlayerInput}
-            onSubmit={handlePlayerActionSubmit}
-            isLoading={isLoading}
+          playerInput={playerInput}
+          onPlayerInputChange={setPlayerInput}
+          onSubmit={handlePlayerActionSubmit} // For text input
+          isLoading={isLoading} // Shared loading state
+          gameState={initialGameState} // Pass the whole state for nearbyPois etc.
+          dispatch={handleGameAction} // Pass the new action handler
         />
       </div>
     </div>
