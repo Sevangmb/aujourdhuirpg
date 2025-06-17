@@ -19,7 +19,7 @@ import {
   GenerateScenarioOutputSchema,
   SimplifiedGenerateScenarioInputSchema,
 } from './generate-scenario-schemas';
-import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
+import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data'; // Import the constant
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
@@ -55,6 +55,18 @@ function simplifyGenerateScenarioInput(input: GenerateScenarioInput): Simplified
 }
 
 export async function generateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
+  if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
+    console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set. AI scenario generation is disabled.");
+    return {
+      scenarioText: `<p><strong>Fonctionnalité IA Indisponible</strong></p><p>La génération de scénario par l'IA est désactivée car la clé API nécessaire (GOOGLE_API_KEY ou GEMINI_API_KEY) n'est pas configurée dans l'environnement du serveur.</p><p>Veuillez configurer cette clé pour pouvoir jouer. Sans cela, le jeu ne peut pas progresser avec l'IA.</p>`,
+      newLocationDetails: null,
+      pnjInteractions: [],
+      majorDecisionsLogged: [],
+      investigationNotesUpdate: null,
+      newQuestsProposed: [],
+      questUpdatesProposed: [],
+    };
+  }
   const simplifiedInput = simplifyGenerateScenarioInput(input);
   return generateScenarioFlow(simplifiedInput);
 }
@@ -68,6 +80,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
     - ANY mention of "tool", "API", "function call", "print", "default_api", or similar technical terms referring to the underlying system.
     - Raw JSON data, error messages from tools, or technical logs from tool executions.
     - Any text resembling programming code, function calls (e.g., print(...), toolName(...)), or any internal system messages.
+    - Explicit statements about game mechanics like "Quest added:", "Objective complete:", "You gain 10 XP." These should be handled via dedicated output fields.
 - Information obtained from tools (weather, POIs, news, Wikipedia) should be woven *seamlessly* and *naturally* into the narrative.
     - **CORRECT Example of using tool info:** "The sun shines brightly in the clear Parisian sky, and a nearby café called 'Le Petit Bistro' seems inviting."
     - **INCORRECT Example (DO NOT DO THIS):** "Tool output: weather: sunny. POIs: [{name: 'Le Petit Bistro'}]. The sun is sunny. I see Le Petit Bistro."
@@ -151,7 +164,7 @@ const PROMPT_TASK_REFLECT_ACTION = `
   Consider current player stats like Energie (low Energie might lead to tired thoughts) and Stress (high Stress might lead to anxious or paranoid reflections).
   **CRITICAL FOR 'scenarioText': This text MUST adhere to the "Guiding Principles for Output" detailed above, especially ensuring NO tool invocation syntax, API calls, print statements, or other technical details are included. It must be PURELY NARRATIVE.**
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
-  The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
+  The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like newQuestsProposed, questUpdatesProposed etc.) will likely be omitted or empty.
 {{else}}`;
 const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
 {{#unless isInitialUnknownLocation}}
@@ -192,7 +205,13 @@ const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
        **Item Interactions**: If the player uses or examines an item, describe the act of using or examining it and any immediate sensory feedback or observable changes. Do not determine the item's mechanical effects (e.g., health restored, door opened, information revealed).
        {{/if}}
    2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'name'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'name' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
-   3.  **Quest-Related Narrative**: If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story. For example, the player might find an item mentioned in a quest objective, or encounter a character who seems to offer a new task. Describe these narrative events. The game system will handle the mechanical aspects of quest updates or creation.
+   3.  **Quest-Related Narrative & Mechanics**:
+       If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story.
+       -   **Narrative**: Describe these events (e.g., finding an item for a quest, encountering a key PNJ that might offer a quest).
+       -   **Mechanics**:
+           *   **New Quests**: To add a new quest to the player's journal, provide its full definition in the \`newQuestsProposed\` array. Each quest object in this array MUST follow the \`QuestInputSchema\`. Ensure you provide a unique \`id\`, \`title\`, \`description\`, \`type\` ('main' or 'secondary'), and at least one initial \`objective\` (with its own \`id\`, \`description\`, and \`isCompleted: false\`). Optionally, include \`giver\`, \`reward\`, \`moneyReward\`, and \`relatedLocation\`.
+           *   **Quest Updates**: To modify an existing quest, use the \`questUpdatesProposed\` array. Each update object in this array MUST follow the \`QuestUpdateSchema\`. Specify the \`questId\` of the quest to update. You can change its \`newStatus\` (e.g., to 'completed' or 'failed') or update its \`updatedObjectives\` by providing an array of objects, each containing an \`objectiveId\` and its new \`isCompleted\` status (true/false). You can also provide a \`newObjectiveDescription\` if a new sub-task naturally arises for that quest.
+       **IMPORTANT**: Do NOT describe mechanical quest changes (like "Quest added:" or "Objective completed:") directly in the \`scenarioText\`. Use the \`newQuestsProposed\` and \`questUpdatesProposed\` fields for these mechanical changes. The game system will handle the actual updates to the player's journal and notify the player accordingly.
    4.  **PNJ Interactions ("Les Visages du Savoir" continued)**: When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Describe the PNJ's initial demeanor and response to the player's words/actions based on the ongoing narrative and their established personality. The game system will handle any underlying mechanics like persuasion checks, which may influence the PNJ's future disposition or available dialogue.
    5.  **Major Decisions**: Log in majorDecisionsLogged if the narrative describes a significant choice made by the player that should be recorded for long-term consequence.
    6.  **Investigation Elements**:
@@ -244,20 +263,8 @@ const generateScenarioFlow = ai.defineFlow(
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: SimplifiedGenerateScenarioInput) => {
-    if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
-      console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set. AI scenario generation is disabled.");
-      return {
-        scenarioText: `<p><strong>Fonctionnalité IA Indisponible</strong></p><p>La génération de scénario par l'IA est désactivée car la clé API nécessaire (GOOGLE_API_KEY ou GEMINI_API_KEY) n'est pas configurée dans l'environnement du serveur.</p><p>Veuillez configurer cette clé pour pouvoir jouer. Sans cela, le jeu ne peut pas progresser avec l'IA.</p>`,
-        newLocationDetails: null,
-        pnjInteractions: [],
-        majorDecisionsLogged: [],
-        investigationNotesUpdate: null,
-      };
-    }
-
     const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
     const isInitialUnknownLocation = input.playerLocation.name === UNKNOWN_STARTING_PLACE_NAME;
-
 
     const promptPayload: SimplifiedGenerateScenarioInput & { isReflectAction: boolean; isInitialUnknownLocation: boolean; } = {
       ...input,
@@ -274,9 +281,10 @@ const generateScenarioFlow = ai.defineFlow(
         pnjInteractions: [],
         majorDecisionsLogged: [],
         investigationNotesUpdate: null,
+        newQuestsProposed: [],
+        questUpdatesProposed: [],
       };
     }
     return output;
   }
 );
-

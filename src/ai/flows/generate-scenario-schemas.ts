@@ -16,8 +16,8 @@ import {
   ToneSettingsSchema
 } from './schemas/player-common-schemas';
 import {
-  QuestInputSchema,
-  QuestUpdateSchema
+  QuestInputSchema, // This is the schema for new quests
+  QuestUpdateSchema // This is the schema for updating quests
 } from './schemas/quest-schemas';
 import { PNJInteractionSchema } from './schemas/pnj-schemas';
 import { MajorDecisionSchema } from './schemas/decision-schemas';
@@ -88,5 +88,7 @@ export const GenerateScenarioOutputSchema = z.object({
   newLocationDetails: NewLocationDetailsSchema.nullable().optional(),
   pnjInteractions: z.array(PNJInteractionSchema).optional().describe("PNJ rencontrés ou dont la relation/information a changé de manière significative."),
   majorDecisionsLogged: z.array(MajorDecisionSchema).optional().describe("Décisions importantes prises par le joueur qui méritent d'être enregistrées."),
-  investigationNotesUpdate: z.string().nullable().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision.")
+  investigationNotesUpdate: z.string().nullable().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision."),
+  newQuestsProposed: z.array(QuestInputSchema).optional().describe("Liste des nouvelles quêtes proposées par l'IA au format QuestInputSchema. Ces quêtes seront ajoutées au journal du joueur."),
+  questUpdatesProposed: z.array(QuestUpdateSchema).optional().describe("Liste des mises à jour de quêtes existantes proposées par l'IA au format QuestUpdateSchema (ex: objectif complété, statut changé).")
 });

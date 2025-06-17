@@ -3,12 +3,12 @@
  * @fileOverview Functions for processing and applying the effects of an AI-generated scenario to the player state.
  */
 
-import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType, Skills } from './types'; // Added Skills
-import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario';
+import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, Clue, GameDocument, ClueType, DocumentType, Skills, Position as PlayerPositionType } from './types'; // Added Skills, changed LocationData to PlayerPositionType
+import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema, QuestUpdateSchema as AIQuestUpdateSchema } from '@/ai/flows/generate-scenario';
 import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem
 import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
-import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser'; // New import
-import { performSkillCheck, type SkillCheckResult } from './skill-check'; // New import
+import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser';
+import { performSkillCheck, type SkillCheckResult } from './skill-check';
 
 // Keep existing helper functions like calculateXpToNextLevel, applyStatChanges etc. if they are used by client-side logic later.
 // For now, they might be unused if AI doesn't dictate these changes directly.
@@ -130,15 +130,23 @@ export function addQuestToLog(currentQuestLog: Quest[], newQuestData: AIQuestInp
 }
 
 
-export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: Partial<Omit<Quest, 'id' | 'objectives'>> & { updatedObjectives?: { objectiveId: string; isCompleted: boolean; }[], newObjectiveDescription?: string }): { updatedLog: Quest[], completedQuestWithMoneyReward?: Quest } {
+export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: AIQuestUpdateSchema): { updatedLog: Quest[], completedQuestWithMoneyReward?: Quest } {
   let completedQuestWithMoneyReward: Quest | undefined = undefined;
   const logToUpdate = currentQuestLog || [];
 
   const updatedLog = logToUpdate.map(quest => {
     if (quest.id === questId) {
-      const updatedQuest = { ...quest, ...updates };
-      delete updatedQuest.updatedObjectives;
-      delete updatedQuest.newObjectiveDescription;
+      const updatedQuest = { ...quest };
+
+      if (updates.newStatus) {
+        updatedQuest.status = updates.newStatus;
+        if (updates.newStatus === 'completed') {
+          updatedQuest.dateCompleted = new Date().toISOString();
+          if (updatedQuest.moneyReward && updatedQuest.moneyReward > 0) {
+            completedQuestWithMoneyReward = updatedQuest;
+          }
+        }
+      }
 
       if (updates.updatedObjectives) {
         updatedQuest.objectives = (quest.objectives || []).map(obj => {
@@ -147,18 +155,11 @@ export function updateQuestInLog(currentQuestLog: Quest[], questId: string, upda
         });
       }
       if (updates.newObjectiveDescription) {
-         const newObjectiveId = `${quest.id}_obj_${(updatedQuest.objectives?.length || 0) + 1}`;
+         const newObjectiveId = `${quest.id}_obj_${(updatedQuest.objectives?.length || 0) + 1}_${Date.now()}`;
          updatedQuest.objectives = [
             ...(updatedQuest.objectives || []),
             {id: newObjectiveId, description: updates.newObjectiveDescription, isCompleted: false}
          ];
-      }
-
-      if (updates.status === 'completed') {
-        updatedQuest.dateCompleted = new Date().toISOString();
-        if (updatedQuest.moneyReward && updatedQuest.moneyReward > 0) {
-          completedQuestWithMoneyReward = updatedQuest;
-        }
       }
       return updatedQuest;
     }
@@ -223,7 +224,6 @@ export function updateInvestigationNotes(currentNotes: string | null | undefined
   if (notesUpdateTextLower.startsWith("révision complète des notes:")) {
     return notesUpdateText.substring(notesUpdateTextLower.indexOf(":") + 1).trim();
   }
-  // For "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", "MISE À JOUR:", or general additions:
   return safeCurrentNotes + "\n\n---\n\n" + notesUpdateText;
 }
 
@@ -233,10 +233,9 @@ export async function processAndApplyAIScenarioOutput(
   playerChoice: string,
   aiOutput: GenerateScenarioOutput
 ): Promise<{ updatedPlayer: Player; notifications: GameNotification[] }> {
-  let updatedPlayer = { ...player }; // Start with a shallow copy
+  let updatedPlayer = { ...player };
   const notifications: GameNotification[] = [];
 
-  // Initialize potentially undefined fields on the player object if they weren't already
   updatedPlayer.questLog = updatedPlayer.questLog || [];
   updatedPlayer.encounteredPNJs = updatedPlayer.encounteredPNJs || [];
   updatedPlayer.decisionLog = updatedPlayer.decisionLog || [];
@@ -244,28 +243,23 @@ export async function processAndApplyAIScenarioOutput(
   updatedPlayer.documents = updatedPlayer.documents || [];
   updatedPlayer.investigationNotes = typeof updatedPlayer.investigationNotes === 'string' ? updatedPlayer.investigationNotes : initialInvestigationNotes;
   updatedPlayer.money = typeof updatedPlayer.money === 'number' ? updatedPlayer.money : initialPlayerMoney;
-  updatedPlayer.inventory = Array.isArray(updatedPlayer.inventory) ? [...updatedPlayer.inventory] : []; // Ensure inventory is a new array
+  updatedPlayer.inventory = Array.isArray(updatedPlayer.inventory) ? [...updatedPlayer.inventory] : [];
 
-  // 1. Handle direct outputs from AI (narrative focused)
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
-      typeof aiOutput.newLocationDetails.name === 'string' && 
+      typeof aiOutput.newLocationDetails.name === 'string' &&
       aiOutput.newLocationDetails.name.trim() !== '') {
-    const newLoc: LocationData = { 
+    const newLoc: PlayerPositionType = { // Changed from LocationData to PlayerPositionType
       latitude: aiOutput.newLocationDetails.latitude,
       longitude: aiOutput.newLocationDetails.longitude,
-      placeName: aiOutput.newLocationDetails.name, 
+      name: aiOutput.newLocationDetails.name,
     };
-    updatedPlayer.currentLocation = { 
-        latitude: newLoc.latitude,
-        longitude: newLoc.longitude,
-        name: newLoc.placeName 
-    };
+    updatedPlayer.currentLocation = newLoc;
     notifications.push({
       type: 'location_changed',
       title: "Déplacement !",
-      description: `Vous êtes maintenant à ${newLoc.placeName}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
+      description: `Vous êtes maintenant à ${newLoc.name}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
   } else if (aiOutput.newLocationDetails) {
@@ -277,7 +271,6 @@ export async function processAndApplyAIScenarioOutput(
       details: { receivedDetails: aiOutput.newLocationDetails }
     });
   }
-
 
   if (aiOutput.investigationNotesUpdate) {
     updatedPlayer.investigationNotes = updateInvestigationNotes(updatedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
@@ -303,7 +296,7 @@ export async function processAndApplyAIScenarioOutput(
         lastSeen: new Date().toISOString()
       };
       const oldPNJ = (updatedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
-      updatedPlayer.encounteredPNJs = addOrUpdatePNJ(updatedPlayer.encounteredPNJs, pnj);
+      updatedPlayer.encounteredPNJs = addOrUpdatePNJ(updatedPlayer.encounteredPNJs || [], pnj);
       if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
         notifications.push({
           type: 'pnj_encountered',
@@ -317,7 +310,7 @@ export async function processAndApplyAIScenarioOutput(
 
   if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
     aiOutput.majorDecisionsLogged.forEach(decisionData => {
-      updatedPlayer.decisionLog = logMajorDecision(updatedPlayer.decisionLog, decisionData);
+      updatedPlayer.decisionLog = logMajorDecision(updatedPlayer.decisionLog || [], decisionData);
       const loggedDecision = (updatedPlayer.decisionLog || []).find(d=>d.id === decisionData.id);
       if (loggedDecision) {
         notifications.push({
@@ -330,19 +323,95 @@ export async function processAndApplyAIScenarioOutput(
     });
   }
 
-  // 2. Parse Player Action
+  // --- Process AI Quest Suggestions ---
+  if (aiOutput.newQuestsProposed && Array.isArray(aiOutput.newQuestsProposed)) {
+    aiOutput.newQuestsProposed.forEach(questData => {
+      const oldQuestLogLength = (updatedPlayer.questLog || []).length;
+      updatedPlayer.questLog = addQuestToLog(updatedPlayer.questLog || [], questData);
+      const newQuest = (updatedPlayer.questLog || []).find(q => q.id === questData.id); // Ensure questData has an ID or one is generated by addQuestToLog
+      if (newQuest && (updatedPlayer.questLog || []).length > oldQuestLogLength) {
+        notifications.push({
+          type: 'quest_added',
+          title: "Nouvelle Quête Acceptée",
+          description: `"${newQuest.title}" ajouté à votre journal.`,
+          details: { questId: newQuest.id, questTitle: newQuest.title }
+        });
+      }
+    });
+  }
+
+  if (aiOutput.questUpdatesProposed && Array.isArray(aiOutput.questUpdatesProposed)) {
+    aiOutput.questUpdatesProposed.forEach(updateData => {
+      const questBeforeUpdate = (updatedPlayer.questLog || []).find(q => q.id === updateData.questId);
+      if (questBeforeUpdate) {
+        const { updatedLog, completedQuestWithMoneyReward } = updateQuestInLog(updatedPlayer.questLog || [], updateData.questId, updateData);
+        updatedPlayer.questLog = updatedLog;
+
+        if (completedQuestWithMoneyReward && completedQuestWithMoneyReward.moneyReward && completedQuestWithMoneyReward.moneyReward > 0) {
+          updatedPlayer.money = addMoney(updatedPlayer.money, completedQuestWithMoneyReward.moneyReward);
+          notifications.push({
+            type: 'money_changed',
+            title: "Récompense Obtenue!",
+            description: `Vous avez reçu ${completedQuestWithMoneyReward.moneyReward}€ pour la quête "${completedQuestWithMoneyReward.title}".`,
+            details: { amount: completedQuestWithMoneyReward.moneyReward, reason: `Quest: ${completedQuestWithMoneyReward.title}` }
+          });
+        }
+
+        const questAfterUpdate = (updatedPlayer.questLog || []).find(q => q.id === updateData.questId);
+        if (questAfterUpdate) {
+          if (updateData.newStatus && questBeforeUpdate.status !== questAfterUpdate.status) {
+            notifications.push({
+              type: 'quest_updated',
+              title: `Statut de Quête Modifié: "${questAfterUpdate.title}"`,
+              description: `Nouveau statut: ${questAfterUpdate.status}.`,
+              details: { questId: questAfterUpdate.id, newStatus: questAfterUpdate.status }
+            });
+          }
+          if (updateData.updatedObjectives) {
+            updateData.updatedObjectives.forEach(objUpdate => {
+              const oldObjective = questBeforeUpdate.objectives.find(o => o.id === objUpdate.objectiveId);
+              const newObjective = questAfterUpdate.objectives.find(o => o.id === objUpdate.objectiveId);
+              if (oldObjective && newObjective && oldObjective.isCompleted !== newObjective.isCompleted && newObjective.isCompleted) {
+                notifications.push({
+                  type: 'quest_updated',
+                  title: `Objectif Terminé: "${questAfterUpdate.title}"`,
+                  description: `"${newObjective.description}" complété.`,
+                  details: { questId: questAfterUpdate.id, objectiveId: newObjective.id }
+                });
+              }
+            });
+          }
+          if (updateData.newObjectiveDescription) {
+             const addedObjective = questAfterUpdate.objectives.find(o => o.description === updateData.newObjectiveDescription && !o.isCompleted);
+             if (addedObjective) {
+                  notifications.push({
+                     type: 'quest_updated',
+                     title: `Nouvel Objectif: "${questAfterUpdate.title}"`,
+                     description: `Objectif ajouté: "${addedObjective.description}".`,
+                     details: { questId: questAfterUpdate.id, objectiveId: addedObjective.id }
+                 });
+             }
+          }
+        }
+      } else {
+         console.warn(`QuestUpdate Warning: Attempted to update non-existent quest ID: ${updateData.questId}`);
+      }
+    });
+  }
+  // --- End Process AI Quest Suggestions ---
+
+
   const parsedAction: ParsedAction = await parsePlayerAction(playerChoice);
 
-  // 3. Handle Parsed Actions (Client-Side Mechanics)
   if (parsedAction.actionType === 'TAKE_ITEM' && parsedAction.primaryTarget) {
     const itemNameOrId = parsedAction.primaryTarget;
-    const masterItem = getMasterItemById(itemNameOrId); 
+    const masterItem = getMasterItemById(itemNameOrId);
 
-    if (masterItem) { 
+    if (masterItem) {
       const playerBeforeAdding = { ...updatedPlayer, inventory: [...updatedPlayer.inventory] };
       updatedPlayer.inventory = addItemToInventory(playerBeforeAdding.inventory, masterItem.id, 1);
 
-      if (updatedPlayer.inventory !== playerBeforeAdding.inventory) {
+      if (updatedPlayer.inventory !== playerBeforeAdding.inventory && updatedPlayer.inventory.find(i=> i.id === masterItem.id)) { // Check if item was actually added
         notifications.push({
           type: 'item_added',
           title: 'Objet Acquis',
@@ -356,13 +425,13 @@ export async function processAndApplyAIScenarioOutput(
         }
       }
     } else {
-      console.warn(`Player tried to TAKE_ITEM "${itemNameOrId}", but it's not a known master item ID.`);
+      console.warn(`Player tried to TAKE_ITEM "${itemNameOrId}", but it's not a known master item ID or name.`);
        notifications.push({ type: 'warning', title: 'Action', description: `Vous essayez de prendre "${itemNameOrId}", mais vous ne parvenez pas à le saisir ou ce n'est pas un objet prenable.` });
     }
   }
   else if (parsedAction.actionType === 'APPLY_SKILL' && parsedAction.skillUsed && parsedAction.primaryTarget) {
     const skillName = parsedAction.skillUsed;
-    const difficultyTarget = 70; 
+    const difficultyTarget = 70;
 
     const skillCheckResult = performSkillCheck(updatedPlayer.skills, updatedPlayer.stats, skillName, difficultyTarget);
     notifications.push({
@@ -379,8 +448,8 @@ export async function processAndApplyAIScenarioOutput(
     }
   }
   else if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed?.toLowerCase().includes('lockpick') && parsedAction.primaryTarget) {
-    const skillToUse = "Discretion"; 
-    const lockDifficulty = 80; 
+    const skillToUse = "Discretion";
+    const lockDifficulty = 80;
 
     const lockpickResult = performSkillCheck(updatedPlayer.skills, updatedPlayer.stats, skillToUse, lockDifficulty);
     notifications.push({
@@ -396,8 +465,6 @@ export async function processAndApplyAIScenarioOutput(
       notifications.push({ type: 'info', title: 'Échec du crochetage', description: `Impossible de crocheter ${parsedAction.primaryTarget}.` });
     }
   }
-  // Removed the 'UNKNOWN' action type notification block.
-  // The AI's narrative response will handle unparsed actions.
 
   return { updatedPlayer, notifications };
 }
