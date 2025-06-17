@@ -13,19 +13,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Player } from '@/lib/types';
 import StatDisplay from './StatDisplay';
-import { 
-  initialPlayerStats, 
-  initialPlayerLocation, 
-  initialSkills, 
-  initialTraitsMentalStates, 
-  initialProgression, 
+import {
+  initialPlayerStats,
+  initialPlayerLocation,
+  initialSkills,
+  initialTraitsMentalStates,
+  initialProgression,
   initialAlignment,
   initialInventory,
   initialPlayerMoney,
   defaultAvatarUrl,
   initialToneSettings
-} from '@/data/initial-game-data'; 
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react';
+} from '@/data/initial-game-data';
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 
@@ -35,12 +35,13 @@ const characterSchema = z.object({
   age: z.coerce.number().min(15, { message: "L'âge doit être d'au moins 15 ans." }).max(99, { message: "L'âge ne peut pas dépasser 99 ans." }),
   origin: z.string().min(5, { message: "L'origine doit contenir au moins 5 caractères." }).max(200, {message: "L'origine ne peut pas dépasser 200 caractères."}),
   background: z.string().min(10, { message: "L'historique doit contenir au moins 10 caractères." }).max(500, { message: "L'historique ne peut pas dépasser 500 caractères." }),
+  startingCity: z.string().min(2, { message: "La ville de départ doit contenir au moins 2 caractères." }).max(100, { message: "La ville de départ ne peut pas dépasser 100 caractères." }),
 });
 
 type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'>) => void;
+  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'> & { startingCity: string }) => void;
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate }) => {
@@ -52,16 +53,16 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       age: 25,
       origin: '',
       background: '',
+      startingCity: initialPlayerLocation.placeName, // Default starting city
     },
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    // Note: The 'toneSettings' will be added by the caller (HomePageContent) using initialToneSettings
-    const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'> = {
+    const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings'> & { startingCity: string } = {
       name: data.name,
       gender: data.gender,
       age: data.age,
-      avatarUrl: defaultAvatarUrl, 
+      avatarUrl: defaultAvatarUrl,
       origin: data.origin,
       background: data.background,
       stats: { ...initialPlayerStats },
@@ -70,7 +71,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       progression: { ...initialProgression },
       alignment: { ...initialAlignment },
       inventory: [ ...initialInventory ],
-      // questLog, encounteredPNJs, etc., will be initialized by hydratePlayer or default to empty arrays
+      startingCity: data.startingCity, // Pass the starting city
     };
     onCharacterCreate(newPlayerData);
   };
@@ -100,7 +101,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -142,12 +143,27 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
 
             <FormField
               control={form.control}
+              name="startingCity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center"><MapPin className="w-4 h-4 mr-2" />Ville de Départ</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Marseille, France" {...field} />
+                  </FormControl>
+                  <FormDescription>La ville où votre aventure commencera.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="origin"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center"><OriginIcon className="w-4 h-4 mr-2" />Origine</FormLabel>
+                  <FormLabel className="flex items-center"><OriginIcon className="w-4 h-4 mr-2" />Origine (Sociale, Géographique)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Décrivez brièvement les origines de votre personnage (sociales, géographiques...)" {...field} rows={3} />
+                    <Textarea placeholder="Décrivez brièvement les origines de votre personnage..." {...field} rows={3} />
                   </FormControl>
                   <FormDescription>Ex: Vient d'une petite ville de Bretagne, passionné(e) de technologie.</FormDescription>
                   <FormMessage />
@@ -168,7 +184,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 </FormItem>
               )}
             />
-            
+
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90">Attributs de Départ</h3>
@@ -222,7 +238,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             </div>
 
             <p className="text-sm text-center text-muted-foreground">
-              Votre aventure commencera à {initialPlayerLocation.placeName}.
+              Les coordonnées initiales de la carte et de la météo seront celles de Paris, mais votre aventure commencera narrativement dans la ville que vous avez choisie.
             </p>
           </CardContent>
           <CardFooter>
@@ -237,4 +253,3 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
 };
 
 export default CharacterCreationForm;
-

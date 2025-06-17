@@ -5,14 +5,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 // Types and Game Logic
 import type { GameState, Player, ToneSettings } from '@/lib/types';
-import { 
-  loadGameStateFromLocal, 
-  saveGameState, 
-  clearGameState as clearGameStateFromLocal, 
+import {
+  loadGameStateFromLocal,
+  saveGameState,
+  clearGameState as clearGameStateFromLocal,
   getInitialScenario,
   hydratePlayer
 } from '@/lib/game-logic';
-import { 
+import {
   defaultAvatarUrl,
   initialPlayerStats,
   initialSkills,
@@ -33,7 +33,7 @@ import {
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service';
 
 // Authentication
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
 
 // UI Components
 import LoadingState from '@/components/LoadingState';
@@ -72,7 +72,7 @@ function HomePageContent() {
     signInWithEmailPassword,
     signInAnonymously,
     signOutUser,
-  } = useAuth(); 
+  } = useAuth();
   const { toast } = useToast();
 
   const performInitialLoad = useCallback(async () => {
@@ -92,11 +92,11 @@ function HomePageContent() {
         } else {
           const localState = loadGameStateFromLocal();
           if (localState && localState.player) {
-            const playerToSave = { ...localState.player, uid: user.uid }; 
+            const playerToSave = { ...localState.player, uid: user.uid };
             const hydratedPlayerForCloud = hydratePlayer(playerToSave);
             const stateToSave: GameState = { ...localState, player: hydratedPlayerForCloud };
-            
-            await saveGameState(stateToSave); 
+
+            await saveGameState(stateToSave);
             loadedState = stateToSave;
             toast({ title: "Progression locale migrée", description: "Votre partie locale a été sauvegardée dans le cloud." });
           }
@@ -106,11 +106,11 @@ function HomePageContent() {
         toast({ variant: "destructive", title: "Erreur de chargement Cloud", description: "Impossible de charger depuis le cloud. Tentative de chargement local." });
       }
     }
-    
+
     if (!loadedState) {
-      loadedState = loadGameStateFromLocal(); 
+      loadedState = loadGameStateFromLocal();
     }
-    
+
     if (loadedState && loadedState.player) {
       const hydratedPlayer = hydratePlayer(loadedState.player);
       let finalLoadedState = { ...loadedState, player: hydratedPlayer };
@@ -125,18 +125,18 @@ function HomePageContent() {
       setGameState({ player: null, currentScenario: null });
     }
     setIsLoadingState(false);
-  }, [user, toast]); 
+  }, [user, toast]);
 
   useEffect(() => {
-    if (!loadingAuth) { 
+    if (!loadingAuth) {
       performInitialLoad();
     }
   }, [loadingAuth, performInitialLoad]);
 
-  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings' >) => {
+  const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'> & { startingCity: string }) => {
     const playerBaseDetails: Partial<Player> = {
-      ...playerDataFromForm, 
-      avatarUrl: defaultAvatarUrl, 
+      ...playerDataFromForm,
+      avatarUrl: defaultAvatarUrl,
       stats: { ...initialPlayerStats },
       skills: { ...initialSkills },
       traitsMentalStates: [...initialTraitsMentalStates],
@@ -145,7 +145,10 @@ function HomePageContent() {
       inventory: [ ...initialInventory ],
       money: initialPlayerMoney,
       uid: user && !user.isAnonymous ? user.uid : undefined,
-      currentLocation: { ...initialPlayerLocation },
+      currentLocation: {
+        ...initialPlayerLocation, // Keep default lat/lon
+        placeName: playerDataFromForm.startingCity || initialPlayerLocation.placeName, // Use user's city name
+       },
       toneSettings: { ...initialToneSettings },
       questLog: [...initialQuestLog],
       encounteredPNJs: [...initialEncounteredPNJs],
@@ -163,8 +166,8 @@ function HomePageContent() {
       currentScenario: firstScenario,
     };
     setGameState(newGameState);
-    await saveGameState(newGameState); 
-    toast({ title: "Personnage créé !", description: "Votre aventure commence maintenant."});
+    await saveGameState(newGameState);
+    toast({ title: "Personnage créé !", description: `Votre aventure commence à ${hydratedPlayer.currentLocation.placeName}.`});
   };
 
   const handleRestart = async () => {
@@ -177,7 +180,7 @@ function HomePageContent() {
         toast({ variant: "destructive", title: "Erreur de suppression Cloud", description: "Impossible de supprimer la sauvegarde en ligne." });
       }
     }
-    clearGameStateFromLocal(); 
+    clearGameStateFromLocal();
     setGameState({ player: null, currentScenario: null });
     toast({ title: "Partie Redémarrée", description: "Créez un nouveau personnage pour commencer une nouvelle aventure." });
   };
@@ -185,7 +188,7 @@ function HomePageContent() {
   const isGameActive = gameState && gameState.player && gameState.currentScenario;
 
   const handleSaveGame = async () => {
-    if (isGameActive && gameState) { 
+    if (isGameActive && gameState) {
       try {
         await saveGameState(gameState);
         toast({
@@ -266,7 +269,7 @@ function HomePageContent() {
             </MenubarContent>
           </MenubarMenu>
         )}
-        {gameState?.player && ( 
+        {gameState?.player && (
           <MenubarMenu>
             <MenubarTrigger>Joueur</MenubarTrigger>
             <MenubarContent>
@@ -348,7 +351,7 @@ function HomePageContent() {
       {/* This div used to hold sidebars and main content. Now it just holds main content. */}
       <div className="flex-1 flex flex-col overflow-hidden"> {/* Changed: Removed 'flex' to simplify as it's no longer a 3-column layout parent */}
         {/* Left Sidebar removed from here */}
-        
+
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           {loadingAuth || isLoadingState ? (
@@ -363,7 +366,7 @@ function HomePageContent() {
                 signUp={signUpWithEmailPassword}
                 signIn={signInWithEmailPassword}
                 signInAnon={signInAnonymously}
-                signOut={() => {}} 
+                signOut={() => {}}
               />
             </div>
           ) : isGameActive ? (
