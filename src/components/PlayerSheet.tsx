@@ -24,7 +24,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   return (
     // Removed fixed height, parent ScrollArea will handle it
     <Tabs defaultValue="identity" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 mb-2">
+        <TabsList className="grid w-full grid-cols-4 mb-2">
           <TabsTrigger value="identity" className="p-2" aria-label="Identité"><User className="w-4 h-4" /></TabsTrigger>
           <TabsTrigger value="stats" className="p-2" aria-label="Stats"><Shield className="w-4 h-4" /></TabsTrigger>
           <TabsTrigger value="skills" className="p-2" aria-label="Compétences"><Sparkles className="w-4 h-4" /></TabsTrigger>

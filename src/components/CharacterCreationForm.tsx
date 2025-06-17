@@ -182,7 +182,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 <h3 className="text-lg font-semibold mb-2 font-headline text-center text-primary/90 flex items-center justify-center">
                     <Briefcase className="w-5 h-5 mr-2" />Inventaire de Départ
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-1 gap-2 text-sm">
                   {initialInventory.map(item => {
                     const IconComponent = (LucideIcons as any)[item.iconName] || LucideIcons.Package;
                     return (
