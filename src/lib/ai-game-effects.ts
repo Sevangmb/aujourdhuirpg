@@ -39,16 +39,16 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
   const newInventory = [...currentInventory];
   const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
 
-  if (existingItemIndex > -1) { 
+  if (existingItemIndex > -1) {
     if (masterItem.stackable) {
       newInventory[existingItemIndex].quantity += quantityToAdd;
     } else {
       console.warn(`Inventory Info: Item '${masterItem.name}' (ID: ${itemId}) is not stackable and player already possesses one. Quantity not changed.`);
     }
-  } else { 
+  } else {
     newInventory.push({
-      ...masterItem, 
-      quantity: masterItem.stackable ? quantityToAdd : 1 
+      ...masterItem,
+      quantity: masterItem.stackable ? quantityToAdd : 1
     });
   }
   return newInventory;
@@ -137,8 +137,8 @@ export function updateQuestInLog(currentQuestLog: Quest[], questId: string, upda
   const updatedLog = logToUpdate.map(quest => {
     if (quest.id === questId) {
       const updatedQuest = { ...quest, ...updates };
-      delete updatedQuest.updatedObjectives; 
-      delete updatedQuest.newObjectiveDescription; 
+      delete updatedQuest.updatedObjectives;
+      delete updatedQuest.newObjectiveDescription;
 
       if (updates.updatedObjectives) {
         updatedQuest.objectives = (quest.objectives || []).map(obj => {
@@ -250,14 +250,20 @@ export async function processAndApplyAIScenarioOutput(
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
-      typeof aiOutput.newLocationDetails.placeName === 'string' && // Added type check for placeName
-      aiOutput.newLocationDetails.placeName.trim() !== '') { // Added check for non-empty placeName
-    const newLoc: LocationData = {
+      typeof aiOutput.newLocationDetails.name === 'string' && // Check for name
+      aiOutput.newLocationDetails.name.trim() !== '') {
+    const newLoc: LocationData = { // LocationData expects placeName, but our Position type uses name.
+                                  // For consistency within aiOutput.newLocationDetails which comes from a schema, we should ensure it has 'name'.
+                                  // The schema NewLocationDetailsSchema already uses 'name'.
       latitude: aiOutput.newLocationDetails.latitude,
       longitude: aiOutput.newLocationDetails.longitude,
-      placeName: aiOutput.newLocationDetails.placeName,
+      placeName: aiOutput.newLocationDetails.name, // Map name to placeName if LocationData expects it
     };
-    updatedPlayer.currentLocation = newLoc;
+    updatedPlayer.currentLocation = { // Assuming player.currentLocation is of type Position
+        latitude: newLoc.latitude,
+        longitude: newLoc.longitude,
+        name: newLoc.placeName // And Position type expects name
+    };
     notifications.push({
       type: 'location_changed',
       title: "Déplacement !",
@@ -265,7 +271,6 @@ export async function processAndApplyAIScenarioOutput(
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
   } else if (aiOutput.newLocationDetails) {
-    // Log a warning if newLocationDetails is present but malformed
     console.warn('AI output included newLocationDetails, but it was malformed:', aiOutput.newLocationDetails);
     notifications.push({
       type: 'warning',
@@ -274,7 +279,7 @@ export async function processAndApplyAIScenarioOutput(
       details: { receivedDetails: aiOutput.newLocationDetails }
     });
   }
-  // If aiOutput.newLocationDetails is null or undefined, nothing happens, and no error is thrown.
+
 
   if (aiOutput.investigationNotesUpdate) {
     updatedPlayer.investigationNotes = updateInvestigationNotes(updatedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
@@ -299,8 +304,8 @@ export async function processAndApplyAIScenarioOutput(
         notes: pnjData.notes,
         lastSeen: new Date().toISOString()
       };
-      const oldPNJ = (processedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
-      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs, pnj);
+      const oldPNJ = (updatedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
+      updatedPlayer.encounteredPNJs = addOrUpdatePNJ(updatedPlayer.encounteredPNJs, pnj);
       if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
         notifications.push({
           type: 'pnj_encountered',
@@ -314,8 +319,8 @@ export async function processAndApplyAIScenarioOutput(
 
   if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
     aiOutput.majorDecisionsLogged.forEach(decisionData => {
-      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog, decisionData);
-      const loggedDecision = (processedPlayer.decisionLog || []).find(d=>d.id === decisionData.id);
+      updatedPlayer.decisionLog = logMajorDecision(updatedPlayer.decisionLog, decisionData);
+      const loggedDecision = (updatedPlayer.decisionLog || []).find(d=>d.id === decisionData.id);
       if (loggedDecision) {
         notifications.push({
           type: 'decision_logged',
