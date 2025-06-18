@@ -24,7 +24,7 @@ import {
   defaultAvatarUrl,
   initialToneSettings
 } from '@/data/initial-game-data';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro } from 'lucide-react';
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 
@@ -40,9 +40,10 @@ type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
   onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes'>) => void;
+  isGeneratingAvatar: boolean;
 }
 
-const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate }) => {
+const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate, isGeneratingAvatar }) => {
   const form = useForm<CharacterFormData>({
     resolver: zodResolver(characterSchema),
     defaultValues: {
@@ -55,6 +56,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
+    if (isGeneratingAvatar) return; // Prevent multiple submissions
     const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes'> = {
       name: data.name,
       gender: data.gender,
@@ -84,7 +86,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 <FormItem>
                   <FormLabel className="flex items-center"><User className="w-4 h-4 mr-2" />Nom du Personnage</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Alex Dubois" {...field} />
+                    <Input placeholder="Ex: Alex Dubois" {...field} disabled={isGeneratingAvatar} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -98,7 +100,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center"><Drama className="w-4 h-4 mr-2" />Genre</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isGeneratingAvatar}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionnez un genre" />
@@ -122,7 +124,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                   <FormItem>
                     <FormLabel className="flex items-center"><Cake className="w-4 h-4 mr-2" />Âge</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Ex: 28" {...field} />
+                      <Input type="number" placeholder="Ex: 28" {...field} disabled={isGeneratingAvatar} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -137,7 +139,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 <FormItem>
                   <FormLabel className="flex items-center"><OriginIcon className="w-4 h-4 mr-2" />Origine (Sociale, Géographique)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Décrivez brièvement les origines de votre personnage..." {...field} rows={3} />
+                    <Textarea placeholder="Décrivez brièvement les origines de votre personnage..." {...field} rows={3} disabled={isGeneratingAvatar} />
                   </FormControl>
                   <FormDescription>Ex: Vient d'une petite ville de Bretagne, passionné(e) de technologie.</FormDescription>
                   <FormMessage />
@@ -152,7 +154,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 <FormItem>
                   <FormLabel>Historique du Personnage (RP)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Décrivez plus en détail qui est votre personnage, son passé, ses aspirations..." {...field} rows={5} />
+                    <Textarea placeholder="Décrivez plus en détail qui est votre personnage, son passé, ses aspirations..." {...field} rows={5} disabled={isGeneratingAvatar} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -216,8 +218,15 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             </p>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" variant="default" size="lg">
-              Commencer l'Aventure
+            <Button type="submit" className="w-full" variant="default" size="lg" disabled={isGeneratingAvatar}>
+              {isGeneratingAvatar ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Création en cours...
+                </>
+              ) : (
+                "Commencer l'Aventure"
+              )}
             </Button>
           </CardFooter>
         </form>

@@ -45,6 +45,7 @@ import GameScreen from '@/components/GameScreen';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { getCurrentWeather } from '@/app/actions/get-current-weather';
 import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
+import { generatePlayerAvatar } from '@/ai/flows/generate-player-avatar-flow';
 
 
 function HomePageContent() {
@@ -61,7 +62,6 @@ function HomePageContent() {
   } = useAuth();
   const { toast } = useToast();
 
-  // Lifted state for weather and location image
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -69,12 +69,13 @@ function HomePageContent() {
   const [locationImageUrl, setLocationImageUrl] = useState<string | null>(null);
   const [locationImageLoading, setLocationImageLoading] = useState(false);
   const [locationImageError, setLocationImageError] = useState<string | null>(null);
+  
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+
 
   const currentMapLocation = gameState?.player?.currentLocation || initialPlayerLocation;
   const nearbyPoisForMap = gameState?.nearbyPois || null;
 
-
-  // Effect for fetching weather data
   useEffect(() => {
     const fetchWeatherForLocation = async (loc: Position) => {
       if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') {
@@ -104,9 +105,8 @@ function HomePageContent() {
     if (gameState?.player?.currentLocation) {
       fetchWeatherForLocation(gameState.player.currentLocation);
     }
-  }, [gameState?.player?.currentLocation?.latitude, gameState?.player?.currentLocation?.longitude]); // Depend on lat/lon for reactivity
+  }, [gameState?.player?.currentLocation?.latitude, gameState?.player?.currentLocation?.longitude]);
 
-  // Effect for fetching location image
   useEffect(() => {
     const fetchLocationImage = async () => {
       const placeNameForImage = gameState?.player?.currentLocation?.name;
@@ -133,7 +133,7 @@ function HomePageContent() {
       } else {
         setLocationImageUrl(null);
         setLocationImageLoading(false);
-        setLocationImageError(null); // Clear error if no image should be shown
+        setLocationImageError(null); 
       }
     };
 
@@ -168,7 +168,7 @@ function HomePageContent() {
             if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess) {
               toast({ title: "Progression locale migrée", description: "Votre partie locale a été synchronisée avec le cloud." });
             } else if (saveResult.localSaveSuccess && !saveResult.cloudSaveSuccess) {
-              toast({ variant: "warning", title: "Migration Partielle", description: "Progression locale sauvegardée, mais échec de la synchronisation cloud." });
+              toast({ variant: "destructive", title: "Migration Partielle", description: "Progression locale sauvegardée, mais échec de la synchronisation cloud." });
             } else {
               toast({ variant: "destructive", title: "Erreur de Migration", description: "Impossible de sauvegarder la progression locale pour la migration." });
             }
@@ -207,6 +207,31 @@ function HomePageContent() {
   }, [loadingAuth, performInitialLoad]);
 
   const handleCharacterCreate = async (playerDataFromForm: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => {
+    setIsGeneratingAvatar(true);
+    let avatarUrlToUse = defaultAvatarUrl;
+
+    try {
+      const avatarResult = await generatePlayerAvatar({
+        name: playerDataFromForm.name,
+        gender: playerDataFromForm.gender,
+        age: playerDataFromForm.age,
+        origin: playerDataFromForm.origin,
+        playerBackground: playerDataFromForm.background,
+      });
+
+      if (avatarResult.imageUrl && avatarResult.imageUrl.startsWith('data:image')) {
+        avatarUrlToUse = avatarResult.imageUrl;
+        toast({ title: "Avatar Généré!", description: "Votre portrait unique a été créé." });
+      } else {
+        console.warn("Avatar generation failed or returned invalid data:", avatarResult.error);
+        toast({ variant: "destructive", title: "Échec de l'Avatar", description: avatarResult.error || "Impossible de générer un avatar personnalisé. Utilisation d'un avatar par défaut." });
+      }
+    } catch (error: any) {
+      console.error("Error calling generatePlayerAvatar flow:", error);
+      toast({ variant: "destructive", title: "Erreur d'Avatar", description: "Une erreur est survenue lors de la génération de l'avatar. Utilisation d'un avatar par défaut." });
+    } finally {
+      setIsGeneratingAvatar(false);
+    }
 
     const randomLatitude = Math.random() * 180 - 90;
     const randomLongitude = Math.random() * 360 - 180;
@@ -218,7 +243,7 @@ function HomePageContent() {
 
     const playerBaseDetails: Partial<Player> = {
       ...playerDataFromForm,
-      avatarUrl: defaultAvatarUrl,
+      avatarUrl: avatarUrlToUse,
       stats: { ...initialPlayerStats },
       skills: { ...initialSkills },
       traitsMentalStates: [...initialTraitsMentalStates],
@@ -281,15 +306,15 @@ function HomePageContent() {
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === false) {
           toast({
-            variant: "warning",
+            variant: "destructive", // Changed to destructive for cloud save failure
             title: "Sauvegarde Partielle",
-            description: "Votre progression a été sauvegardée localement, mais la sauvegarde cloud a échoué.",
+            description: "Progression sauvegardée localement, mais échec de la synchronisation cloud.",
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === null) {
 
           toast({
             title: "Partie Sauvegardée",
-            description: "Votre progression a été sauvegardée localement.",
+            description: "Votre progression a été sauvegardée localement (utilisateur anonyme).",
           });
         } else if (!saveResult.localSaveSuccess) {
           toast({
@@ -359,7 +384,6 @@ function HomePageContent() {
         onToggleFullScreen={handleToggleFullScreen}
         onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
         onSignOut={signOutUser}
-        // Pass context data for mobile widgets
         currentLocation={currentMapLocation}
         nearbyPois={nearbyPoisForMap}
         weatherData={weatherData}
@@ -390,13 +414,13 @@ function HomePageContent() {
             onCharacterCreate={handleCharacterCreate}
             onRestartGame={handleRestartGame}
             setGameState={setGameState}
-            // Pass context data for desktop widgets
             weatherData={weatherData}
             weatherLoading={weatherLoading}
             weatherError={weatherError}
             locationImageUrl={locationImageUrl}
             locationImageLoading={locationImageLoading}
             locationImageError={locationImageError}
+            isGeneratingAvatar={isGeneratingAvatar}
         />
       </div>
     </div>

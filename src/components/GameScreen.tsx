@@ -30,13 +30,13 @@ interface GameScreenProps {
   onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => void;
   onRestartGame: () => void;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
-  // Props for context widgets on desktop
   weatherData: WeatherData | null;
   weatherLoading: boolean;
   weatherError: string | null;
   locationImageUrl: string | null;
   locationImageLoading: boolean;
   locationImageError: string | null;
+  isGeneratingAvatar: boolean; // Added prop
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
@@ -55,6 +55,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   locationImageUrl,
   locationImageLoading,
   locationImageError,
+  isGeneratingAvatar, // Consumed prop
 }) => {
   return (
     <main className="flex-1 flex flex-col overflow-y-auto bg-background">
@@ -78,7 +79,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
           initialGameState={gameState}
           onRestart={onRestartGame}
           onStateUpdate={setGameState}
-          // Pass context data for desktop widgets
           weatherData={weatherData}
           weatherLoading={weatherLoading}
           weatherError={weatherError}
@@ -88,7 +88,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
         />
       ) : (
         <div className="flex-grow flex items-center justify-center p-4">
-          <CharacterCreationForm onCharacterCreate={onCharacterCreate} />
+          <CharacterCreationForm 
+            onCharacterCreate={onCharacterCreate} 
+            isGeneratingAvatar={isGeneratingAvatar} // Pass prop
+          />
         </div>
       )}
     </main>
