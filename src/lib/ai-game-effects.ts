@@ -6,7 +6,7 @@
 import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, Clue, GameDocument, ClueType, DocumentType, Skills, Position as PlayerPositionType } from './types'; // Added Skills, changed LocationData to PlayerPositionType
 import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema, QuestUpdateSchema as AIQuestUpdateSchema } from '@/ai/flows/generate-scenario';
 import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem
-import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
+import { initialPlayerMoney, initialInvestigationNotes, UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data'; // Added UNKNOWN_STARTING_PLACE_NAME
 import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser';
 import { performSkillCheck, type SkillCheckResult } from './skill-check';
 
@@ -249,8 +249,9 @@ export async function processAndApplyAIScenarioOutput(
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
       typeof aiOutput.newLocationDetails.name === 'string' &&
-      aiOutput.newLocationDetails.name.trim() !== '') {
-    const newLoc: PlayerPositionType = { // Changed from LocationData to PlayerPositionType
+      aiOutput.newLocationDetails.name.trim() !== '' &&
+      aiOutput.newLocationDetails.name.trim() !== UNKNOWN_STARTING_PLACE_NAME) { // Crucial check added
+    const newLoc: PlayerPositionType = { 
       latitude: aiOutput.newLocationDetails.latitude,
       longitude: aiOutput.newLocationDetails.longitude,
       name: aiOutput.newLocationDetails.name,
@@ -263,11 +264,13 @@ export async function processAndApplyAIScenarioOutput(
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
   } else if (aiOutput.newLocationDetails) {
-    console.warn('AI output included newLocationDetails, but it was malformed:', aiOutput.newLocationDetails);
+    // This condition means newLocationDetails was provided, but it wasn't valid enough to change the location
+    // (e.g., name was still UNKNOWN_STARTING_PLACE_NAME or other fields missing)
+    console.warn('AI output included newLocationDetails, but it was malformed or did not change from UNKNOWN_STARTING_PLACE_NAME:', aiOutput.newLocationDetails);
     notifications.push({
       type: 'warning',
-      title: 'Erreur de Déplacement',
-      description: "L'IA a tenté de vous déplacer, mais les détails du lieu étaient incomplets ou incorrects. Vous restez à votre position actuelle.",
+      title: 'Erreur de Déplacement Initial',
+      description: "L'IA n'a pas pu déterminer un nouveau lieu de départ spécifique. Vous restez à votre position indéfinie. Essayez une action pour voir si cela se résout.",
       details: { receivedDetails: aiOutput.newLocationDetails }
     });
   }
@@ -468,3 +471,6 @@ export async function processAndApplyAIScenarioOutput(
 
   return { updatedPlayer, notifications };
 }
+
+
+    
