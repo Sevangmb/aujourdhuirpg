@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMap, LoadScript, MarkerF, InfoWindowF } from '@react-google-maps/api';
-import { MapPin, AlertTriangle } from 'lucide-react';
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
+import { MapPin, AlertTriangle, Loader2 } from 'lucide-react';
 import type { Position } from '@/lib/types/game-types';
 
 interface MapDisplayProps {
@@ -36,9 +36,13 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   zoom = 13,
 }) => {
   const [activeMarker, setActiveMarker] = useState<Position | null>(null);
-  const [scriptLoadError, setScriptLoadError] = useState<Error | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: API_KEY || "", // Ensure API_KEY is not undefined
+    // libraries: ['places'], // Add any libraries you might need
+  });
 
   const handleMarkerClick = (markerPos: Position) => {
     setActiveMarker(markerPos);
@@ -52,13 +56,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     mapRef.current = map;
   }, []);
 
-  const handleScriptLoadError = useCallback((error: Error) => {
-    console.error("Google Maps script load error:", error);
-    setScriptLoadError(error);
-  }, []);
-
   useEffect(() => {
-    if (mapRef.current && typeof google !== 'undefined' && google.maps && currentLocation) { 
+    if (isLoaded && mapRef.current && typeof google !== 'undefined' && google.maps && currentLocation) {
       const bounds = new google.maps.LatLngBounds();
       if (currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
         bounds.extend({ lat: currentLocation.latitude, lng: currentLocation.longitude });
@@ -72,10 +71,10 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
       if (!bounds.isEmpty()) {
         mapRef.current.fitBounds(bounds);
-        const currentZoom = mapRef.current.getZoom();
-        if (currentZoom && currentZoom > 15 && nearbyPois.length === 0 && visitedLocations.length === 0 && lockedLocations.length === 0) {
+        const currentMapZoom = mapRef.current.getZoom();
+        if (currentMapZoom && currentMapZoom > 15 && nearbyPois.length === 0 && visitedLocations.length === 0 && lockedLocations.length === 0) {
             mapRef.current.setZoom(15);
-        } else if (currentZoom && currentZoom > 18) { 
+        } else if (currentMapZoom && currentMapZoom > 18) { 
             mapRef.current.setZoom(18);
         }
       } else if (currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
@@ -83,7 +82,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         mapRef.current.setZoom(zoom);
       }
     }
-  }, [currentLocation, nearbyPois, visitedLocations, lockedLocations, zoom]);
+  }, [isLoaded, currentLocation, nearbyPois, visitedLocations, lockedLocations, zoom]);
 
 
   if (!API_KEY) {
@@ -100,21 +99,20 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   const loadingElement = (
     <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-      <MapPin className="w-6 h-6 md:w-8 md:h-8 text-primary/90 mb-1 md:mb-2" />
+      <Loader2 className="w-6 h-6 md:w-8 md:h-8 text-primary/90 animate-spin mb-1 md:mb-2" />
       <p className="text-xs md:text-sm">Chargement de Google Maps...</p>
       {currentLocation?.name && <p className="text-xs mt-1">pour {currentLocation.name}</p>}
     </div>
   );
 
-  if (scriptLoadError) {
+  if (loadError) {
     return (
       <div className={`p-2 md:p-3 bg-destructive/10 rounded-lg ${containerHeight} flex flex-col items-center justify-center border border-destructive text-center`}>
         <AlertTriangle className="w-6 h-6 md:w-8 md:h-8 text-destructive mb-1 md:mb-2" />
         <p className="text-xs md:text-sm text-destructive font-semibold">Erreur de chargement de la carte</p>
-        <p className="text-xs text-destructive/80 mt-1">
-          Impossible de charger Google Maps.
+        <p className="text-xs text-destructive/80 mt-1 truncate">
+          {loadError.message}
         </p>
-        <p className="text-xs text-destructive/90 mt-0.5 truncate">({scriptLoadError.message})</p>
       </div>
     );
   }
@@ -126,11 +124,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         <span className="truncate">{currentLocation?.name || "Localisation actuelle"}</span>
       </div>
       <div className="flex-grow rounded-md overflow-hidden border border-border">
-        <LoadScript 
-            googleMapsApiKey={API_KEY} 
-            loadingElement={loadingElement}
-            onError={handleScriptLoadError}
-        >
+        {!isLoaded ? (
+          loadingElement
+        ) : (
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number' ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
@@ -198,11 +194,11 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
               </InfoWindowF>
             )}
           </GoogleMap>
-        </LoadScript>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground mt-1 text-center truncate">
+      {isLoaded && <p className="text-xs text-muted-foreground mt-1 text-center truncate">
         Carte fournie par Google Maps.
-      </p>
+      </p>}
     </div>
   );
 };
