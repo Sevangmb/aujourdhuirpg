@@ -23,7 +23,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
 
   return (
     <Tabs defaultValue="identity" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-2">
+        <TabsList className="flex flex-wrap h-auto justify-start items-center mb-2 gap-1 p-1">
           <TabsTrigger value="identity" className="p-2" aria-label="Identité"><User className="w-4 h-4" /></TabsTrigger>
           <TabsTrigger value="stats" className="p-2" aria-label="Stats"><Shield className="w-4 h-4" /></TabsTrigger>
           <TabsTrigger value="skills" className="p-2" aria-label="Compétences"><Sparkles className="w-4 h-4" /></TabsTrigger>
