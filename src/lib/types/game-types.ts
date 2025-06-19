@@ -63,4 +63,5 @@ export type Position = {
   summary?: string; // Optional summary from Wikipedia
   imageUrl?: string; // Optional image URL
   zone?: Zone; // Optional zone information
+  poiHighlights?: string[]; // Optional list of nearby POI names
 };

@@ -3,14 +3,14 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Send, Brain, Navigation } from 'lucide-react';
-import type { GameState, Position } from '@/lib/types'; // Assuming GameState and Position are exported from index
-import type { GameAction } from '@/lib/game-logic'; // Assuming GameAction is exported
-import { fetchPoisForCurrentLocation } from '@/lib/game-logic'; // Import the async POI fetcher
+import type { GameState, Position } from '@/lib/types';
+import type { GameAction } from '@/lib/game-logic';
+import { fetchPoisForCurrentLocation, checkForLocationBasedEvents } from '@/lib/game-logic'; // Import the async POI fetcher and event checker
 
 interface PlayerInputFormProps {
   playerInput: string;
@@ -33,6 +33,34 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
   dispatch,
 }) => {
   const [selectedPoiId, setSelectedPoiId] = useState<string>("");
+  const previousLocationRef = useRef<Position | null | undefined>(null);
+
+  useEffect(() => {
+    const currentLocation = gameState.player?.currentLocation;
+    const previousLocation = previousLocationRef.current;
+
+    // Check if location is valid and has actually changed from a known different previous location
+    if (currentLocation && previousLocation &&
+        (currentLocation.latitude !== previousLocation.latitude ||
+         currentLocation.longitude !== previousLocation.longitude ||
+         currentLocation.name !== previousLocation.name)
+       ) {
+      console.log("PlayerInputForm: Location changed, checking for events.", currentLocation);
+      const eventActions = checkForLocationBasedEvents(currentLocation, gameState);
+      if (eventActions.length > 0) {
+        console.log("PlayerInputForm: Dispatching event actions:", eventActions);
+        dispatch({ type: 'TRIGGER_EVENT_ACTIONS', payload: eventActions });
+      }
+    }
+
+    // Update previous location ref *after* the check, for the next render
+    if (currentLocation !== previousLocation) { // Only update if it's actually different or new
+        previousLocationRef.current = currentLocation;
+    } else if (!previousLocation && currentLocation) { // Handle initial population of previousLocationRef
+        previousLocationRef.current = currentLocation;
+    }
+
+  }, [gameState.player?.currentLocation, gameState, dispatch]); // Effect dependencies
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -51,7 +79,8 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
     );
 
     if (selectedPosition) {
-      // Dispatch actions to update location and time
+      // Dispatch action to update location & game time
+      // Event triggering will be handled by useEffect watching player.currentLocation
       dispatch({ type: 'MOVE_TO_LOCATION', payload: selectedPosition });
       dispatch({ type: 'ADD_GAME_TIME', payload: MOVE_TIME_MINUTES });
 
