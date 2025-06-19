@@ -209,7 +209,8 @@ export type GameAction =
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'UPDATE_PLAYER_DATA'; payload: Partial<Player> }
   | { type: 'ADD_GAME_TIME'; payload: number }
-  | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }; // For adding entries from various sources
+  | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> } // For adding entries from various sources
+  | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }; // New action to dispatch multiple actions
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (!state.player) {
@@ -238,8 +239,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         currentScenario: { scenarioText: `<p>Vous arrivez à ${newLocation.name}.</p>` },
         nearbyPois: null,
         journal: [...(state.journal || []), newJournalEntry],
-        // TODO: Implement event triggering based on new location (e.g., check newLocation.name or newLocation.zone)
+        // Event triggering is handled by the calling code (e.g., in a component or thunk)
+        // which will call checkForLocationBasedEvents with the newLocation and current state,
+        // and then dispatch a 'TRIGGER_EVENT_ACTIONS' if any events are identified.
       };
+    }
+    case 'TRIGGER_EVENT_ACTIONS': {
+      // This action takes an array of actions and applies them sequentially to the state.
+      return action.payload.reduce((currentState, currentAction) => {
+        return gameReducer(currentState, currentAction); // Recursively call reducer for each action
+      }, state);
     }
     case 'ADD_JOURNAL_ENTRY': {
       const newEntry: JournalEntry = {
@@ -285,6 +294,45 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   }
 }
 
+// --- Event Triggers ---
+// This function is called *after* the main reducer has updated the location.
+// It inspects the new state (via newLocation which is part of the updated state's player.currentLocation)
+// and the overall gameState to determine if any additional actions should be triggered.
+export function checkForLocationBasedEvents(newLocation: Position, gameState: GameState): GameAction[] {
+  const triggeredActions: GameAction[] = [];
+
+  // Example: Trigger a specific journal entry if entering a known "dangerous" zone
+  if (newLocation.zone?.name === "Forbidden Sector") {
+    triggeredActions.push({
+      type: 'ADD_JOURNAL_ENTRY',
+      payload: {
+        type: 'event', // Ensure this type is compatible with your JournalEntry 'type' field
+        text: `Vous sentez un frisson vous parcourir l'échine en entrant dans le ${newLocation.zone.name}. Quelque chose ne va pas ici.`,
+        // location: newLocation, // Optional: associate with current location - already part of JournalEntry from MOVE_TO_LOCATION
+      }
+    });
+  }
+
+  // Example: Change scenario if a specific named location is reached
+  if (newLocation.name === "Old Observatory") {
+    triggeredActions.push({
+      type: 'SET_CURRENT_SCENARIO',
+      payload: {
+        scenarioText: `<p>Vous êtes arrivé à l'Ancien Observatoire. La porte est entrouverte et une faible lumière filtre de l'intérieur.</p>`
+      }
+    });
+    // Potentially also trigger a quest update or a new PNJ encounter here by pushing more actions
+  }
+
+  // Add more event checks here based on newLocation.name, newLocation.zone, gameState properties etc.
+  // For example, check if a quest objective was to reach this location:
+  // if (gameState.player.questLog.some(q => q.id === "reach_observatory" && q.status === "active" && newLocation.name === "Old Observatory")) {
+  //   triggeredActions.push({ type: 'UPDATE_QUEST_STATUS', payload: { questId: "reach_observatory", newStatus: "completed" } });
+  // }
+
+  return triggeredActions;
+}
+
 // Async function to fetch POIs for the current player location
 // This would typically be called after the state has been updated with the new location.
 export async function fetchPoisForCurrentLocation(playerLocation: Position): Promise<Position[] | null> {
@@ -307,33 +355,28 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
     }
     
     // Transform POIs from service (OverpassPoiInternal[]) to Position[]
-    // Assuming OverpassPoiInternal has lat/lon or center coordinates
+    // OverpassPoiInternal items from osm-service should now include lat and lon.
     const transformedPois: Position[] = poisFromService.pois.map(poiServiceItem => {
-        // This mapping depends on the structure of OverpassPoiInternal.
-        // Assuming it has 'lat', 'lon' or similar, and 'name', 'tags' etc.
-        // For now, if OverpassPoiInternal doesn't directly map to Position, this needs adjustment.
-        // Let's assume for now that fetchNearbyPoisFromOSM returns objects compatible with Position's needs (name, lat, lon)
-        // or we need a more detailed mapping.
-        // The service GetNearbyPoisServiceOutput currently returns OverpassPoiInternal.
-        // Let's assume OverpassPoiInternal has name, and we'll use playerLocation for lat/lon as a placeholder if not directly available on POI.
-        // This is a simplification and might need to be refined based on actual OverpassPoiInternal structure from osm-service.
-        // For now, this transformation is a placeholder. A real transformation would extract lat/lon from the POI element itself.
-        // For a more accurate transformation, we would need to inspect the 'element.lat', 'element.lon' or 'element.center.lat/lon' from Overpass API response.
-        
-        // This is a simplified transformation. A more robust one would extract actual coordinates.
-        // The service fetchNearbyPoisFromOSM itself should return objects that include latitude and longitude.
-        // Let's assume the service output POIs *do* have lat/lon. If not, osm-service needs adjustment.
-        // The current osm-service doesn't seem to add lat/lon to its output POIs. This is a problem.
-        // For now, let's pass a simplified object. The map will likely not work well for these POIs without proper coords.
+        // Use POI's own coordinates if available, otherwise fallback to playerLocation's (though less ideal)
+        // This fallback might indicate an issue upstream if POIs lack coordinates.
+        const poiLatitude = typeof poiServiceItem.lat === 'number' ? poiServiceItem.lat : playerLocation.latitude;
+        const poiLongitude = typeof poiServiceItem.lon === 'number' ? poiServiceItem.lon : playerLocation.longitude;
 
         return {
-            latitude: (poiServiceItem as any).lat ?? playerLocation.latitude, // Placeholder if lat/lon not on poiServiceItem
-            longitude: (poiServiceItem as any).lon ?? playerLocation.longitude, // Placeholder
-            name: poiServiceItem.name || "Lieu Inconnu",
-            summary: poiServiceItem.tags?.description || poiServiceItem.type,
+            latitude: poiLatitude,
+            longitude: poiLongitude,
+            name: poiServiceItem.name || "Lieu Inconnu", // POI name
+            summary: poiServiceItem.tags?.description || poiServiceItem.type, // Summary from tags
+            // Zone can be derived from POI type/subtype or other tags
             zone: { name: poiServiceItem.subtype || poiServiceItem.type || "Zone" }
         };
-    }).filter(poi => !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude));
+    }).filter(poi => {
+        // Filter out POIs that are essentially at the same exact coordinates as the playerLocation,
+        // unless it's the only POI available (edge case).
+        // This helps avoid listing the current spot as a "nearby" POI.
+        if (poisFromService.pois.length === 1) return true;
+        return !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude);
+    });
     
     return transformedPois;
 

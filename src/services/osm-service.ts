@@ -12,6 +12,8 @@ const OverpassPoiSchemaInternal = z.object({
   type: z.string().describe('The primary type/category of the POI (e.g., restaurant, museum, shop).'),
   subtype: z.string().optional().describe('A more specific subtype if available (e.g., italian_restaurant, art_museum, supermarket).'),
   tags: z.record(z.string()).optional().describe('Raw OSM tags associated with the POI.'),
+  lat: z.number().optional().describe('Latitude of the POI if available.'),
+  lon: z.number().optional().describe('Longitude of the POI if available.'),
 });
 type OverpassPoiInternal = z.infer<typeof OverpassPoiSchemaInternal>;
 
@@ -131,11 +133,29 @@ export async function fetchNearbyPoisFromOSM(
           else if (element.tags.cuisine) { subtype = element.tags.cuisine + (subtype ? ` ${subtype}` : ''); }
 
           if (name || (type !== 'unknown')) {
+            // Extract coordinates
+            let poiLat: number | undefined = undefined;
+            let poiLon: number | undefined = undefined;
+
+            if (typeof element.lat === 'number') {
+              poiLat = element.lat;
+            } else if (typeof element.center?.lat === 'number') {
+              poiLat = element.center.lat;
+            }
+
+            if (typeof element.lon === 'number') {
+              poiLon = element.lon;
+            } else if (typeof element.center?.lon === 'number') {
+              poiLon = element.center.lon;
+            }
+
             pois.push({
               name: name,
               type: type,
               subtype: subtype || undefined,
               tags: element.tags,
+              lat: poiLat,
+              lon: poiLon,
             });
           }
         }
@@ -145,7 +165,15 @@ export async function fetchNearbyPoisFromOSM(
     if (pois.length === 0) {
       return { pois: [], message: `No POIs of type "${poiType || 'any'}" found within ${radius}m.` };
     }
-    return { pois: pois.slice(0, limit) };
+    // Ensure we don't exceed the requested limit, even if Overpass returns more for one element type
+    const finalPois = pois.sort((a, b) => {
+      // Basic sort: POIs with names first, then by type. Could be refined.
+      if (a.name && !b.name) return -1;
+      if (!a.name && b.name) return 1;
+      return (a.type || '').localeCompare(b.type || '');
+    }).slice(0, limit);
+
+    return { pois: finalPois };
   } catch (error: any) {
     console.error('Error in fetchNearbyPoisFromOSM (osm-service):', error);
     return { pois: [], message: `An unexpected error occurred while fetching POIs: ${error.message}` };
