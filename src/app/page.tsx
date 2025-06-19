@@ -270,6 +270,7 @@ function HomePageContent() {
         user={user}
         isGameActive={isGameActive}
         player={gameState?.player || null}
+        journal={gameState?.journal || []} // Pass journal data
         onRestartGame={handleRestartGame}
         onSaveGame={handleSaveGame}
         onToggleFullScreen={handleToggleFullScreen}

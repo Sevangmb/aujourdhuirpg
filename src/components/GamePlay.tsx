@@ -17,7 +17,6 @@ import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
-import JournalDisplay from './JournalDisplay'; // Import JournalDisplay
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 // import { v4 as uuidv4 } from 'uuid'; // For unique journal IDs if needed, using simple one for now
@@ -403,9 +402,14 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
             isLoading={isLoading} // This isLoading is for AI response
           />
         </ScrollArea>
-        <ScrollArea className="h-[300px] lg:h-auto lg:min-h-0">
-          <JournalDisplay journal={journal || []} />
-        </ScrollArea>
+        {/* JournalDisplay removed, ScenarioDisplay now takes full width or adjust layout as needed */}
+        {/* For example, if you want ScenarioDisplay to take the full width: */}
+        {/* <ScrollArea className="lg:col-span-3 h-[300px] lg:h-auto lg:min-h-0">
+          <ScenarioDisplay
+            scenarioHTML={currentScenario.scenarioText}
+            isLoading={isLoading}
+          />
+        </ScrollArea> */}
       </div>
       
       {/* Bottom section for Player Input */}
