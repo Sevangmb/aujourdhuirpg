@@ -154,13 +154,12 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
   const pnjs = player.encounteredPNJs || [];
 
   return (
-    // The parent (TabsContent in page.tsx's right panel) handles scrolling.
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
-          <TabsTrigger value="main" className="text-xs p-1.5"><Landmark className="w-3 h-3 mr-1" />Principales ({mainQuests.filter(q=>q.status === 'active').length})</TabsTrigger>
-          <TabsTrigger value="secondary" className="text-xs p-1.5"><Swords className="w-3 h-3 mr-1" />Secondaires ({secondaryQuests.filter(q=>q.status === 'active').length})</TabsTrigger>
-          <TabsTrigger value="decisions" className="text-xs p-1.5"><Speech className="w-3 h-3 mr-1" />Décisions ({decisions.length})</TabsTrigger>
-          <TabsTrigger value="pnj" className="text-xs p-1.5"><Users className="w-3 h-3 mr-1" />PNJ ({pnjs.length})</TabsTrigger>
+ <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
+ <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4" /></TabsTrigger>
+ <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4" /></TabsTrigger>
+ <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4" /></TabsTrigger>
+ <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4" /></TabsTrigger>
         </TabsList>
         
           <TabsContent value="main" className="mt-0 pt-1 flex-1 min-h-0"> 

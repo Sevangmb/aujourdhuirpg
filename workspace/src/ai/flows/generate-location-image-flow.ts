@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow to generate an image for a given location name.
@@ -33,7 +34,7 @@ const generateLocationImageFlow = ai.defineFlow(
   },
   async (input) => {
     if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
-      console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set in environment variables. AI image generation is disabled.");
+      console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set. AI image generation is disabled.");
       return {
         imageUrl: "",
         error: "Génération d'image par l'IA indisponible. La clé API (GOOGLE_API_KEY ou GEMINI_API_KEY) est manquante dans la configuration du serveur.",
@@ -69,6 +70,7 @@ const generateLocationImageFlow = ai.defineFlow(
 
       if (e.message) {
         if (e.message.includes('FAILED_PRECONDITION')) {
+          // This specific error indicates the API key is missing or not configured for Genkit to find/use.
           errorMessage = "Génération d'image par l'IA indisponible. Problème de configuration de la clé API (vérifiez la clé et les permissions, ou la variable d'environnement GOOGLE_API_KEY/GEMINI_API_KEY).";
         } else if (e.message.includes('API key not valid') || e.message.includes('API_KEY_INVALID') || e.message.includes('permission to access')) {
           errorMessage = "Clé API invalide ou permissions manquantes pour la génération d'image.";
@@ -78,3 +80,4 @@ const generateLocationImageFlow = ai.defineFlow(
     }
   }
 );
+    

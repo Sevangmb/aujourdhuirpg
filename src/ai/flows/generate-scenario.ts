@@ -17,30 +17,16 @@ import { getNewsTool } from '@/ai/tools/get-news-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
-  SimplifiedGenerateScenarioInputSchema, // Import the new schema
+  SimplifiedGenerateScenarioInputSchema,
 } from './generate-scenario-schemas';
+import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data'; // Import the constant
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
-
-// Infer the type from the Zod schema
 export type SimplifiedGenerateScenarioInput = z.infer<typeof SimplifiedGenerateScenarioInputSchema>;
 
-/**
- * A special string constant used in the `playerChoice` field of `GenerateScenarioInput`.
- * When `playerChoice` is equal to this string, the AI is instructed to generate
- * an introspective or reflective scenario (e.g., character's thoughts, observations)
- * rather than processing a direct player action.
- */
 const PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS = "[PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS]";
 
-/**
- * Simplifies the input for the AI model, primarily by truncating lengthy text fields
- * to keep the prompt concise and focused.
- *
- * @param input The original `GenerateScenarioInput` from the client.
- * @returns A `SimplifiedGenerateScenarioInput` object tailored for the AI prompt.
- */
 function simplifyGenerateScenarioInput(input: GenerateScenarioInput): SimplifiedGenerateScenarioInput {
   const simplifiedInput: SimplifiedGenerateScenarioInput = { ...input };
   if (input.activeQuests) {
@@ -65,31 +51,27 @@ function simplifyGenerateScenarioInput(input: GenerateScenarioInput): Simplified
   if (input.currentDocumentsSummary) {
       simplifiedInput.currentDocumentsSummary = input.currentDocumentsSummary.map(d => ({ title: d.title, type: d.type}));
   }
-  // toneSettings is already part of GenerateScenarioInput and thus included in simplifiedInput by the spread operator.
-  // simplifiedInput.toneSettings = input.toneSettings; // This line is redundant
-
   return simplifiedInput;
 }
 
-/**
- * The main entry point for generating a game scenario.
- * It takes the full player and game state, simplifies it, and then calls the Genkit flow
- * to interact with the AI model and produce the next part of the story.
- *
- * @param input The complete input data (`GenerateScenarioInput`) required to generate the scenario.
- * @returns A promise that resolves to the `GenerateScenarioOutput` from the AI.
- */
 export async function generateScenario(input: GenerateScenarioInput): Promise<GenerateScenarioOutput> {
+  if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
+    console.warn("Genkit API key (GOOGLE_API_KEY or GEMINI_API_KEY) is not set. AI scenario generation is disabled.");
+    return {
+      scenarioText: `<p><strong>Fonctionnalité IA Indisponible</strong></p><p>La génération de scénario par l'IA est désactivée car la clé API nécessaire (GOOGLE_API_KEY ou GEMINI_API_KEY) n'est pas configurée dans l'environnement du serveur.</p><p>Veuillez configurer cette clé pour pouvoir jouer. Sans cela, le jeu ne peut pas progresser avec l'IA.</p>`,
+      newLocationDetails: null,
+      pnjInteractions: [],
+      majorDecisionsLogged: [],
+      investigationNotesUpdate: null,
+      newQuestsProposed: [],
+      questUpdatesProposed: [],
+    };
+  }
   const simplifiedInput = simplifyGenerateScenarioInput(input);
   return generateScenarioFlow(simplifiedInput);
 }
 
-// --- Prompt Sections ---
-
-// 1. Introduction & Role Definition: Sets the AI's persona.
 const PROMPT_INTRO = `You are a creative RPG game master, "Le Maître de l'Information Contextuelle," adept at creating engaging and dynamic scenarios for a text-based RPG set in modern-day France, often with an investigative or mystery element. The game is titled "Aujourd'hui RPG".`;
-
-// 2. Core Output & Formatting Rules: Critical rules for how the AI should format its main narrative output ('scenarioText').
 const PROMPT_GUIDING_PRINCIPLES = `
 **Guiding Principles for Output (VERY IMPORTANT - STRICTLY ENFORCE):**
 - **ABSOLUTE RULE:** The 'scenarioText' field MUST contain ONLY narrative and descriptive text intended for the player. It must read like a story or a game master's description.
@@ -98,6 +80,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
     - ANY mention of "tool", "API", "function call", "print", "default_api", or similar technical terms referring to the underlying system.
     - Raw JSON data, error messages from tools, or technical logs from tool executions.
     - Any text resembling programming code, function calls (e.g., print(...), toolName(...)), or any internal system messages.
+    - Explicit statements about game mechanics like "Quest added:", "Objective complete:", "You gain 10 XP." These should be handled via dedicated output fields.
 - Information obtained from tools (weather, POIs, news, Wikipedia) should be woven *seamlessly* and *naturally* into the narrative.
     - **CORRECT Example of using tool info:** "The sun shines brightly in the clear Parisian sky, and a nearby café called 'Le Petit Bistro' seems inviting."
     - **INCORRECT Example (DO NOT DO THIS):** "Tool output: weather: sunny. POIs: [{name: 'Le Petit Bistro'}]. The sun is sunny. I see Le Petit Bistro."
@@ -105,8 +88,6 @@ const PROMPT_GUIDING_PRINCIPLES = `
     - **INCORRECT Example (DO NOT DO THIS):** "default_api.getNearbyPoisTool(...) indicates several restaurants are nearby."
     - **INCORRECT Example (DO NOT DO THIS):** "After calling getWeatherTool, the weather is fine." // Do not mention calling the tool.
 - Failure to adhere to these rules for 'scenarioText' will result in an invalid output.`;
-
-// 3. Contextual Information - Player & Game State: Details about the player character, their stats, inventory, location, quests, etc.
 const PROMPT_PLAYER_INFO_CONTEXT = `
 Player Information (Context):
   Name: {{{playerName}}}
@@ -128,7 +109,7 @@ Player Information (Context):
   Alignment: Chaos/Loyal: {{{playerAlignment.chaosLawful}}}, Bien/Mal: {{{playerAlignment.goodEvil}}}
   Money: {{{playerMoney}}} €
   Inventory: {{#if playerInventory}}{{#each playerInventory}}{{{name}}} ({{quantity}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Vide{{/if}}
-  Current Location: {{{playerLocation.placeName}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}}) - Consider day/night, specific district if known.
+  Current Location: {{{playerLocation.name}}} (latitude {{{playerLocation.latitude}}}, longitude {{{playerLocation.longitude}}}) - Consider day/night, specific district if known.
   Tone Preferences (0-100, 50=neutral):
   {{#if toneSettings}}
     {{#each toneSettings}}
@@ -146,9 +127,6 @@ Player Information (Context):
   Current Scenario Context (Previous Scene): {{{currentScenario}}}
 Player's Typed Action (Last Choice): {{{playerChoice}}}
 `;
-
-// 4. Core Mechanics & Systems:
-// 4.a. Instructions for how the AI should handle player actions that imply skill use or challenges.
 const PROMPT_INTERNAL_SKILL_CHECK_SYSTEM = `
 **Narrating Player Actions and Challenges (Invisible to Player):**
 When the player attempts an action that would reasonably require a skill or challenge (e.g., hacking a computer, persuading a PNJ, picking a lock, a stealthy maneuver), describe the attempt and the immediate, observable situation in the 'scenarioText'.
@@ -157,13 +135,10 @@ Focus on the narrative leading up to such a resolution, which will be handled by
 Your description should provide enough context for the game system to then adjudicate the outcome based on the player's skills and the situation you've described.
 For example, if a player tries to pick a lock, you might describe them approaching the door, examining the lock, and starting to work on it, noting any immediate environmental factors like poor lighting or nearby sounds. Avoid saying "You successfully picked the lock" or "Your attempt fails."
 `;
-
-// 5. Special Game Scenarios / Turn Types:
-// 5.a. Specific instructions for the very first turn of the game if the location is unknown.
 const PROMPT_INITIAL_LOCATION_SETUP = `
 {{#if isInitialUnknownLocation}}
 **Special First Turn: Initial Location Setup**
-The player is starting a new game. Their initial coordinates are (lat: {{{playerLocation.latitude}}}, lon: {{{playerLocation.longitude}}}).
+The player is starting a new game. Their current location name is "{{{playerLocation.name}}}" which signals it's unknown. Their initial coordinates are (lat: {{{playerLocation.latitude}}}, lon: {{{playerLocation.longitude}}}).
 Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
 1.  **Identify a specific, plausible inhabited location (city, town, large village) at or very near these coordinates.**
     *   Use \\\`getNearbyPoisTool\\\` with the given coordinates. Look for POIs like 'town', 'village', 'city', or clusters of 'amenity', 'shop', 'tourism' that indicate a settlement. You might need to make several calls with different radii or POI types.
@@ -171,24 +146,17 @@ Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
     *   **Prioritize finding a location in France if the coordinates are reasonably close to or within France. Otherwise, choose any interesting and plausible inhabited location globally.**
 2.  **Handle Uninhabitable Areas:** If the initial coordinates are in a clearly uninhabitable area (e.g., open ocean, vast desert, ice cap), you MUST select a suitable *inhabited* place on the nearest relevant landmass or an accessible point (e.g., a port city if in the ocean, an oasis town if in a desert, a research station if in Antarctica). The goal is a *playable* start.
 3.  **Update Location Details:** Once a suitable inhabited place is identified or decided:
-    *   You **MUST** provide its specific name in \\\`newLocationDetails.placeName\\\`.
+    *   You **MUST** provide its specific name in \\\`newLocationDetails.name\\\`.
     *   You **MUST** provide its geographical coordinates in \\\`newLocationDetails.latitude\\\` and \\\`newLocationDetails.longitude\\\`. (These can be the original random coordinates if you determine they fall within the named place, or slightly adjusted coordinates if your tool use provides a more precise center for the named place).
     *   Include a \\\`newLocationDetails.reasonForMove\\\` like "Starting the game in [NomDeLaVille]".
-4.  **Scenario Text:** The \\\`scenarioText\\\` for this first turn **MUST** describe the player character waking up or arriving in this *specific, named location* that you have determined. **DO NOT** describe them as being in "Lieu de Départ Inconnu" or an undefined place. Make it engaging.
+4.  **Scenario Text:** The \\\`scenarioText\\\` for this first turn **MUST** describe the player character waking up or arriving in this *specific, named location* that you have determined. **DO NOT** describe them as being in "{{{playerLocation.name}}}" or an undefined place. Make it engaging.
 5.  **Minimal Other Effects:** For this very first setup turn, keep other game state changes (stats, items, quests, etc.) minimal or non-existent, unless the narrative of their arrival strongly dictates a specific minor change (e.g., slight stress from waking up confused). The focus is location establishment.
 6.  All other guiding principles (no tool calls in scenarioText etc.) still apply.
 
 (End of Special First Turn Instructions - The rest of the prompt applies if this is not the first turn, or after location is set)
 {{/if}}
 `;
-
-// 6. Main Task Definition & Processing Logic:
-// 6.a. Simple "Task:" header.
 const PROMPT_TASK_HEADER = `Task:`;
-
-// 6.b. Instructions for when the player performs an introspective/reflective action.
-// This prompt section contains a conditional block: {{#if isReflectAction}} ... {{else}} ... {{/if}}
-// The {{else}} is part of this string, and the corresponding {{/if}} is in the FULL_PROMPT concatenation.
 const PROMPT_TASK_REFLECT_ACTION = `
 {{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
@@ -196,21 +164,14 @@ const PROMPT_TASK_REFLECT_ACTION = `
   Consider current player stats like Energie (low Energie might lead to tired thoughts) and Stress (high Stress might lead to anxious or paranoid reflections).
   **CRITICAL FOR 'scenarioText': This text MUST adhere to the "Guiding Principles for Output" detailed above, especially ensuring NO tool invocation syntax, API calls, print statements, or other technical details are included. It must be PURELY NARRATIVE.**
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
-  The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like scenarioStatsUpdate, xpGained, etc.) will likely be omitted or empty.
-{{else}}`; // Note: {{else}} is part of this string, the gameplay action intro follows.
-
-// 6.c. Instructions for a standard gameplay action, part of the {{else}} block from PROMPT_TASK_REFLECT_ACTION.
-// This section is active if 'isReflectAction' is false.
+  The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like newQuestsProposed, questUpdatesProposed etc.) will likely be omitted or empty.
+{{else}}`;
 const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
 {{#unless isInitialUnknownLocation}}
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
 For complex actions implied by '{{{playerChoice}}}', describe the player's attempt and the observable situation in the narrative. The game system will determine the mechanical outcome.
 {{/unless}}`;
-
-// 7. Phased Approach to Scenario Generation (Information Gathering, Synthesis, Narrative Output):
-// These phases are generally part of the {{else}} block from PROMPT_TASK_REFLECT_ACTION.
-// 7.a. Instructions for tool use to gather external information (weather, POIs, news, Wikipedia).
 const PROMPT_PHASE_1_INFO_GATHERING = `
 **Phase 1: Strategic Information Gathering & API Management**
 {{#unless isInitialUnknownLocation}}
@@ -221,8 +182,6 @@ const PROMPT_PHASE_1_INFO_GATHERING = `
       i. **PNJ ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones, or those relevant to a quest), **STRONGLY PREFER basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE. Actively seek opportunities to do this.
       ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place (especially if relevant to a quest or clue), use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.
 {{/unless}}`;
-
-// 7.b. How to process and filter the gathered information.
 const PROMPT_PHASE_2_INFO_SYNTHESIS = `
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
 {{#unless isInitialUnknownLocation}}
@@ -235,9 +194,6 @@ const PROMPT_PHASE_2_INFO_SYNTHESIS = `
    G. **Identify Potential Clues:** Determine if any API-sourced information could serve as a subtle clue to advance an active quest or trigger a new one.
    H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline be the missing piece for an objective? Could a POI be the next step in an investigation? Could a Wikipedia PNJ be a quest giver (consider player Reputation)?
 {{/unless}}`;
-
-// 7.c. How to construct the narrative and update game state based on the synthesis.
-// This section also handles the case for "Lieu de Départ Inconnu" within its logic.
 const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
 **Phase 3: Narrative Generation & Game State Updates**
    1.  **Scenario Text Generation**:
@@ -248,23 +204,25 @@ const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
 
        **Item Interactions**: If the player uses or examines an item, describe the act of using or examining it and any immediate sensory feedback or observable changes. Do not determine the item's mechanical effects (e.g., health restored, door opened, information revealed).
        {{/if}}
-   2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'placeName'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'placeName' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
-   3.  **Quest-Related Narrative**: If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story. For example, the player might find an item mentioned in a quest objective, or encounter a character who seems to offer a new task. Describe these narrative events. The game system will handle the mechanical aspects of quest updates or creation.
+   2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'name'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'name' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
+   3.  **Quest-Related Narrative & Mechanics**:
+       If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story.
+       -   **Narrative**: Describe these events (e.g., finding an item for a quest, encountering a key PNJ that might offer a quest).
+       -   **Mechanics**:
+           *   **New Quests**: To add a new quest to the player's journal, provide its full definition in the \`newQuestsProposed\` array. Each quest object in this array MUST follow the \`QuestInputSchema\`. Ensure you provide a unique \`id\`, \`title\`, \`description\`, \`type\` ('main' or 'secondary'), and at least one initial \`objective\` (with its own \`id\`, \`description\`, and \`isCompleted: false\`). Optionally, include \`giver\`, \`reward\`, \`moneyReward\`, and \`relatedLocation\`.
+           *   **Quest Updates**: To modify an existing quest, use the \`questUpdatesProposed\` array. Each update object in this array MUST follow the \`QuestUpdateSchema\`. Specify the \`questId\` of the quest to update. You can change its \`newStatus\` (e.g., to 'completed' or 'failed') or update its \`updatedObjectives\` by providing an array of objects, each containing an \`objectiveId\` and its new \`isCompleted\` status (true/false). You can also provide a \`newObjectiveDescription\` if a new sub-task naturally arises for that quest.
+       **IMPORTANT**: Do NOT describe mechanical quest changes (like "Quest added:" or "Objective completed:") directly in the \`scenarioText\`. Use the \`newQuestsProposed\` and \`questUpdatesProposed\` fields for these mechanical changes. The game system will handle the actual updates to the player's journal and notify the player accordingly.
    4.  **PNJ Interactions ("Les Visages du Savoir" continued)**: When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Describe the PNJ's initial demeanor and response to the player's words/actions based on the ongoing narrative and their established personality. The game system will handle any underlying mechanics like persuasion checks, which may influence the PNJ's future disposition or available dialogue.
    5.  **Major Decisions**: Log in majorDecisionsLogged if the narrative describes a significant choice made by the player that should be recorded for long-term consequence.
    6.  **Investigation Elements**:
        *   **Narrative Clues/Documents**: If the narrative leads to the player potentially discovering a clue or document, describe it in the \`scenarioText\` (e.g., 'You see a crumpled note on the floor,' or 'The ledger lies open on the desk.'). The game system will handle the mechanics of the player actually acquiring it as a formal clue or document.
        *   **Investigation Notes Update**: If the events of this scenario or new information (from tools, observations, or quest progression) lead to new insights, hypotheses, or connections from the player's perspective, provide text for 'investigationNotesUpdate'. To structure this, you can use prefixes like "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", or "MISE À JOUR:". The game logic will append this to existing notes. If you believe existing notes need substantial rewriting for clarity or to resolve contradictions due to new information, preface the entire new note content with "RÉVISION COMPLÈTE DES NOTES:". If no update is needed, omit 'investigationNotesUpdate' or set it to null.
 `;
-
-// 8. Conclusion & Final Reminders: Final reminders about realism, PNJ basing, and output schema.
 const PROMPT_CONCLUSION = `
 Always make the story feel real by mentioning famous people or real places from France. Actively seek opportunities to base PNJs on real individuals using 'getWikipediaInfoTool' and use gathered information (Wikipedia, News) to add depth to their portrayal, adapting to selected TONES.
 Ensure the output conforms to the JSON schema defined for GenerateScenarioOutputSchema.
 `;
 
-// Concatenation of all prompt sections in the desired order.
-// The {{/if}} closes the {{#if isReflectAction}} block started in PROMPT_TASK_REFLECT_ACTION.
 const FULL_PROMPT = `
 ${PROMPT_INTRO}
 ${PROMPT_GUIDING_PRINCIPLES}
@@ -274,27 +232,18 @@ ${PROMPT_INITIAL_LOCATION_SETUP}
 ${PROMPT_TASK_HEADER}
 ${PROMPT_TASK_REFLECT_ACTION}
 ${PROMPT_TASK_GAMEPLAY_ACTION_INTRO}
-// PROMPT_ITEM_CATEGORIES_REFERENCE is removed as itemsAdded/Removed are no longer AI responsibilities.
 ${PROMPT_PHASE_1_INFO_GATHERING}
 ${PROMPT_PHASE_2_INFO_SYNTHESIS}
 ${PROMPT_PHASE_3_NARRATIVE_GENERATION}
-{{/if}} 
+{{/if}}
 ${PROMPT_CONCLUSION}
 `;
 
-/**
- * Defines the Genkit prompt for generating game scenarios.
- * This includes specifying the AI model, any tools (functions) the AI can call,
- * the expected input and output schemas, and the full prompt template string
- * which is constructed from various `PROMPT_` constants.
- * Input schema: `SimplifiedGenerateScenarioInputSchema`
- * Output schema: `GenerateScenarioOutputSchema`
- */
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
-  input: {schema: SimplifiedGenerateScenarioInputSchema}, // Use the new schema
+  input: {schema: SimplifiedGenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   config: {
     safetySettings: [
@@ -307,25 +256,16 @@ const scenarioPrompt = ai.definePrompt({
   prompt: FULL_PROMPT,
 });
 
-/**
- * Defines the Genkit AI flow for generating game scenarios.
- * This flow orchestrates the process of taking a simplified input,
- * passing it to the `scenarioPrompt` (which then calls the AI model),
- * and returning the AI's generated output.
- * Input schema: `SimplifiedGenerateScenarioInputSchema`
- * Output schema: `GenerateScenarioOutputSchema`
- */
 const generateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
-    inputSchema: SimplifiedGenerateScenarioInputSchema, // Use the new schema
+    inputSchema: SimplifiedGenerateScenarioInputSchema,
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: SimplifiedGenerateScenarioInput) => {
     const isReflectAction = input.playerChoice === PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS;
-    const isInitialUnknownLocation = input.playerLocation.placeName === "Lieu de Départ Inconnu";
+    const isInitialUnknownLocation = input.playerLocation.name === UNKNOWN_STARTING_PLACE_NAME;
 
-    // The promptPayload now correctly reflects the structure of SimplifiedGenerateScenarioInput and includes the new flag
     const promptPayload: SimplifiedGenerateScenarioInput & { isReflectAction: boolean; isInitialUnknownLocation: boolean; } = {
       ...input,
       isReflectAction,
@@ -335,9 +275,16 @@ const generateScenarioFlow = ai.defineFlow(
     const {output} = await scenarioPrompt(promptPayload);
     if (!output) {
       console.error('AI model did not return output for generateScenarioPrompt.');
-      throw new Error('AI model did not return output.');
+      return {
+        scenarioText: "<p>Erreur: L'IA n'a pas retourné de réponse pour ce scénario. Veuillez réessayer ou contacter le support.</p>",
+        newLocationDetails: null,
+        pnjInteractions: [],
+        majorDecisionsLogged: [],
+        investigationNotesUpdate: null,
+        newQuestsProposed: [],
+        questUpdatesProposed: [],
+      };
     }
     return output;
   }
 );
-

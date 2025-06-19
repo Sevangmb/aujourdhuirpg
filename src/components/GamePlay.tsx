@@ -1,36 +1,27 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useReducer } from 'react';
-import type { GameState, Player, PlayerStats, LocationData, Scenario, ToneSettings, Position, JournalEntry } from '@/lib/types';
-import { gameReducer, GameAction, fetchPoisForCurrentLocation } from '@/lib/game-logic'; // Import reducer and actions
+import React, { useState, useEffect, useCallback } from 'react';
+import type { GameState, Player, Position, JournalEntry, GameNotification } from '@/lib/types';
+import { gameReducer, GameAction, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
-import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
+// Removed generateLocationImage import as fetching is lifted
 import { saveGameState, getInitialScenario } from '@/lib/game-logic';
-import { initialPlayerLocation, initialToneSettings } from '@/data/initial-game-data'; 
+import { initialPlayerLocation, initialToneSettings, UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { processAndApplyAIScenarioOutput } from '@/lib/ai-game-effects';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Star, Euro, Search as SearchIcon } from 'lucide-react'; 
-import { getCurrentWeather, type WeatherData } from '@/app/actions/get-current-weather';
+import { Loader2, Star, Euro, Search as SearchIcon } from 'lucide-react';
+import type { WeatherData } from '@/app/actions/get-current-weather';
+// Removed getCurrentWeather import as fetching is lifted
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card';
-// import { v4 as uuidv4 } from 'uuid'; // For unique journal IDs if needed, using simple one for now
 
-/**
- * Prepares the input object for the `generateScenario` AI flow.
- * It gathers all necessary player and game state information into the required format.
- * This function is defined outside the component to avoid being recreated on every render.
- *
- * @param player The current player object.
- * @param currentScenarioText The text of the current scenario the player is in.
- * @param actionText The action text input by the player.
- * @returns An object of type `GenerateScenarioInput` for the AI flow.
- */
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
+
 const prepareAIInput = (
   player: Player,
   currentScenarioText: string,
@@ -43,14 +34,14 @@ const prepareAIInput = (
     xp: player.progression.xp,
     xpToNextLevel: player.progression.xpToNextLevel,
     perks: player.progression.perks || [],
-  } : { level: 1, xp: 0, xpToNextLevel: 100, perks: [] }; // Provide default if undefined
+  } : { level: 1, xp: 0, xpToNextLevel: 100, perks: [] };
 
   const activeQuestsSummary = (player.questLog || [])
     .filter(q => q.status === 'active')
     .map(q => ({
       id: q.id,
       title: q.title,
-      description: q.description.substring(0, 150) + "...", // Ensure description is a string
+      description: q.description.substring(0, 150) + "...",
       type: q.type,
       moneyReward: q.moneyReward,
       currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
@@ -85,200 +76,81 @@ const prepareAIInput = (
     encounteredPNJsSummary: encounteredPNJsSummary,
     currentCluesSummary: currentCluesSummary,
     currentDocumentsSummary: currentDocumentsSummary,
-    currentInvestigationNotes: player.investigationNotes,
+    investigationNotes: player.investigationNotes,
   };
 };
 
-/**
- * Calls the AI scenario generation service and processes its output.
- * This asynchronous function handles the direct interaction with the AI flow (`generateScenario`)
- * and then applies the results to the player's state using `processAndApplyAIScenarioOutput`.
- *
- * @param aiInput The input object prepared for the `generateScenario` AI flow.
- * @param currentPlayer The current player state before the AI effects are applied.
- * @returns A promise that resolves to an object containing the `updatedPlayer` state,
- *          an array of `notifications` for UI feedback, and the new `scenarioText`.
- */
 async function executeScenarioGenerationAndProcessOutput(
   aiInput: GenerateScenarioInput,
-  currentPlayer: Player
+  currentPlayer: Player,
+  playerChoice: string,
 ): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; scenarioText: string }> {
   try {
     const aiOutput: GenerateScenarioOutput = await generateScenario(aiInput);
-    const { updatedPlayer, notifications } = processAndApplyAIScenarioOutput(currentPlayer, aiOutput);
+
+    const { updatedPlayer, notifications } = await processAndApplyAIScenarioOutput(currentPlayer, playerChoice, aiOutput);
     return {
       updatedPlayer,
       notifications,
       scenarioText: aiOutput.scenarioText,
     };
   } catch (error) {
-    // Re-throw the error to be caught by the calling function's try-catch block
+
     console.error("Error in executeScenarioGenerationAndProcessOutput:", error);
     throw error;
   }
 }
 
 interface GamePlayProps {
-  initialGameState: GameState; // This will be the single source of truth for the current game state
+  initialGameState: GameState;
   onRestart: () => void;
-  // setGameState will now be called by our internal dispatching logic after reducer updates state
-  // The prop 'setGameState' from the parent now represents the function to persist the new state
-  // and cause a re-render of the whole game from App.tsx or similar.
   onStateUpdate: (newState: GameState) => void;
+  // Props for context widgets from HomePageContent
+  weatherData: WeatherData | null;
+  weatherLoading: boolean;
+  weatherError: string | null;
+  locationImageUrl: string | null;
+  locationImageLoading: boolean;
+  locationImageError: string | null;
 }
 
-const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStateUpdate }) => {
-  // Use a local state for playerInput, isLoading, etc.
-  // The main GameState is now managed by the prop initialGameState and updated via onStateUpdate
+const GamePlay: React.FC<GamePlayProps> = ({
+  initialGameState,
+  onStateUpdate,
+  weatherData,
+  weatherLoading,
+  weatherError,
+  locationImageUrl,
+  locationImageLoading,
+  locationImageError,
+}) => {
+
   const [playerInput, setPlayerInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // For AI actions primarily
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile(); // Use the hook
 
-  // Local state for UI elements that depend on player location but don't need to be in global GameState immediately
-  const [currentLocationForUI, setCurrentLocationForUI] = useState<Position>(
-    initialGameState.player?.currentLocation || initialPlayerLocation
-  );
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(true);
-  const [weatherError, setWeatherError] = useState<string | null>(null);
-
-  const [locationImageUrl, setLocationImageUrl] = useState<string | null>(null);
-  const [locationImageLoading, setLocationImageLoading] = useState(false);
-  const [locationImageError, setLocationImageError] = useState<string | null>(null);
-
-  // This effect ensures that if the initialGameState prop changes from parent,
-  // the UI-specific states are updated.
-  useEffect(() => {
-    if (initialGameState.player?.currentLocation) {
-      setCurrentLocationForUI(initialGameState.player.currentLocation);
-    }
-  }, [initialGameState.player?.currentLocation]);
-
-
-  /**
-   * useEffect hook responsible for initializing the `currentScenario` if it's missing,
-   * assuming player data is available.
-   */
+  // Ensure initial scenario is set if not present
   useEffect(() => {
     if (initialGameState.player && initialGameState.player.currentLocation && !initialGameState.currentScenario) {
       const firstScenario = getInitialScenario(initialGameState.player);
-      // Dispatch an action to update the currentScenario in the GameState
-      // This pattern assumes that such an action would update the state via onStateUpdate
       const updatedState = gameReducer(initialGameState, { type: 'SET_CURRENT_SCENARIO', payload: firstScenario });
       onStateUpdate(updatedState);
     }
-    // If player location itself is missing, it's a more critical issue,
-    // potentially handled by a loading screen or an error state before GamePlay is rendered.
-    // Or, a specific action could be dispatched to initialize the player fully.
   }, [initialGameState, onStateUpdate]);
 
 
-  // Weather fetching logic (remains largely the same, uses currentLocationForUI)
-  useEffect(() => {
-    const fetchWeatherForLocation = async (loc: Position) => {
-      if (!loc || typeof loc.latitude !== 'number' || typeof loc.longitude !== 'number') return;
-      setWeatherLoading(true);
-      setWeatherError(null);
-      try {
-        const result = await getCurrentWeather(loc.latitude, loc.longitude);
-        if ('error' in result) {
-          setWeatherError(result.error);
-          setWeather(null);
-        } else {
-          setWeather(result);
-        }
-      } catch (e: any) {
-        const errorMessage = e.message || "Une erreur inconnue est survenue lors de la récupération de la météo.";
-        setWeatherError(errorMessage);
-        setWeather(null);
-      } finally {
-        setWeatherLoading(false);
-      }
-    };
-    fetchWeatherForLocation(currentLocationForUI);
-  }, [currentLocationForUI]);
-
-  useEffect(() => {
-    const fetchLocationImage = async () => {
-      if (player?.currentLocation?.placeName) {
-        setLocationImageLoading(true);
-        setLocationImageUrl(null); 
-        setLocationImageError(null);
-        try {
-          const result = await generateLocationImage({ placeName: player.currentLocation.placeName });
-          if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
-            setLocationImageUrl(result.imageUrl);
-          } else {
-            const errorMsg = result.error || "L'IA n'a pas pu générer une image pour ce lieu.";
-            setLocationImageError(errorMsg);
-          }
-        } catch (e: any) {
-          const errorMsg = e.message || "Erreur inconnue lors de la génération de l'image du lieu.";
-          setLocationImageError(errorMsg);
-        } finally {
-          setLocationImageLoading(false);
-        }
-      }
-    };
-
-    fetchLocationImage();
-  }, [player?.currentLocation?.placeName]);
-
-
-  /**
-   * Asynchronously handles the submission of a player's action.
-   * This function orchestrates the process:
-   * 1. Validates the current game state and player input.
-   * 2. Prepares the input for the AI using `prepareAIInput`.
-   * 3. Calls `executeScenarioGenerationAndProcessOutput` to get the AI-generated scenario and its effects.
-   * 4. Updates the local and global game state with the new player data and scenario.
-   * 5. Displays notifications (toasts) to the player based on the outcomes.
-   * 6. Handles any errors during the process and provides UI feedback.
-   *
-   * @param actionText The text string of the action submitted by the player.
-   */
-  // Location Image fetching (remains largely the same, uses initialGameState.player.currentLocation.placeName)
-  useEffect(() => {
-    const fetchLocationImage = async () => {
-      if (initialGameState.player?.currentLocation?.placeName) {
-        setLocationImageLoading(true);
-        setLocationImageUrl(null);
-        setLocationImageError(null);
-        try {
-          const result = await generateLocationImage({ placeName: initialGameState.player.currentLocation.placeName });
-          if (result.imageUrl && result.imageUrl.startsWith('data:image')) {
-            setLocationImageUrl(result.imageUrl);
-          } else {
-            const errorMsg = result.error || "L'IA n'a pas pu générer une image pour ce lieu.";
-            setLocationImageError(errorMsg);
-          }
-        } catch (e: any) {
-          const errorMsg = e.message || "Erreur inconnue lors de la génération de l'image du lieu.";
-          setLocationImageError(errorMsg);
-        } finally {
-          setLocationImageLoading(false);
-        }
-      }
-    };
-    fetchLocationImage();
-  }, [initialGameState.player?.currentLocation?.placeName]);
-
-
-  // Custom dispatch function to handle game actions
   const handleGameAction = useCallback(async (action: GameAction) => {
-    if (!initialGameState.player) return; // Should not happen if GamePlay is rendered
+    if (!initialGameState.player) return;
 
     let newState = gameReducer(initialGameState, action);
 
-    // Handle async operations based on action type
     if (action.type === 'MOVE_TO_LOCATION') {
-      // Add time for movement
-      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 }); // Example: 30 mins
+      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 });
 
-      // Fetch new POIs for the new location
       try {
-        setIsLoading(true); // Indicate loading for POI fetch
-        const newNearbyPois = await fetchPoisForCurrentLocation(action.payload); // action.payload is the new location
+        setIsLoading(true);
+        const newNearbyPois = await fetchPoisForCurrentLocation(action.payload);
         newState = gameReducer(newState, { type: 'SET_NEARBY_POIS', payload: newNearbyPois });
       } catch (error) {
         console.error("GamePlay: Error fetching new POIs after move:", error);
@@ -289,8 +161,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
       }
     }
 
-    onStateUpdate(newState); // Update the global state via the prop
-    await saveGameState(newState); // Persist the new state
+    onStateUpdate(newState);
+    await saveGameState(newState);
   }, [initialGameState, onStateUpdate, toast]);
 
 
@@ -312,25 +184,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     const inputForAI = prepareAIInput(player, currentScenario.scenarioText, actionText);
 
     try {
-      const { updatedPlayer: playerAfterAI, notifications, scenarioText: newScenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player);
-      
-      // Create a new game state based on AI output
-      // We need to ensure the new state incorporates changes from playerAfterAI and newScenarioText
-      // while preserving other parts of the state like journal, gameTimeInMinutes etc. from initialGameState.
+      const { updatedPlayer: playerAfterAI, notifications, scenarioText: newScenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player, actionText);
+
       let updatedFullGameState: GameState = {
-        ...initialGameState, // Start with the current global state
+        ...initialGameState,
         player: playerAfterAI,
         currentScenario: { scenarioText: newScenarioText },
-        // Potentially update other fields if AI can modify them, e.g. nearbyPois if AI leads to discovery
       };
 
-      // Here, we might want to use gameReducer for some updates if applicable,
-      // for example, if AI output implies adding a journal entry directly.
-      // For now, assuming processAndApplyAIScenarioOutput handles direct player changes.
-      // And notifications are handled via toasts.
-
-      onStateUpdate(updatedFullGameState); // Update the global state
-      await saveGameState(updatedFullGameState); // Persist the new state
+      onStateUpdate(updatedFullGameState);
+      await saveGameState(updatedFullGameState);
 
       notifications.forEach(notification => {
         let toastAction;
@@ -355,6 +218,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario ou d'appliquer ses effets.";
       if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
+      console.error("GamePlay Error calling AI or processing output:", error);
       toast({ variant: "destructive", title: "Erreur de Connexion avec l'IA", description: errorMessage });
     } finally {
       setIsLoading(false);
@@ -362,7 +226,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
   }, [initialGameState, onStateUpdate, toast]);
 
 
-  const { player, currentScenario, journal, nearbyPois, gameTimeInMinutes } = initialGameState;
+  const { player, currentScenario, journal, nearbyPois } = initialGameState;
 
   if (!player || !currentScenario) {
     return (
@@ -373,54 +237,29 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialGameState, onRestart, onStat
     );
   }
 
-  // Ensure displayLocation has a default if player.currentLocation is somehow null
   const displayLocation = player.currentLocation || initialPlayerLocation;
 
   return (
-    <div className="flex flex-col p-4 md:p-6 space-y-4 h-full"> {/* Make GamePlay take full height */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0"> {/* Top section for map, weather, image */}
-        <WeatherDisplay weatherData={weather} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} />
-        <MapDisplay
-          currentLocation={displayLocation}
-          nearbyPois={nearbyPois || []}
-          // visitedLocations={player.visitedLocations || []} // Assuming player model might have this
-          // lockedLocations={player.lockedLocations || []} // Assuming player model might have this
-        />
-        <LocationImageDisplay
-            imageUrl={locationImageUrl}
-            placeName={displayLocation.name}
-            isLoading={locationImageLoading}
-            error={locationImageError}
-        />
+    <div className="flex flex-col p-2 md:p-4 space-y-2 md:space-y-4 h-full">
+      {/* Conditionally render widgets for desktop view */}
+      {!isMobile && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 shrink-0">
+          <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} />
+          <MapDisplay
+            currentLocation={displayLocation}
+            nearbyPois={nearbyPois || []}
+          />
+
       </div>
 
-      {/* Middle section with Scenario and Journal */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-grow min-h-0">
-        <ScrollArea className="lg:col-span-2 h-[300px] lg:h-auto lg:min-h-0">
-          <ScenarioDisplay
-            scenarioHTML={currentScenario.scenarioText}
-            isLoading={isLoading} // This isLoading is for AI response
-          />
-        </ScrollArea>
-        {/* JournalDisplay removed, ScenarioDisplay now takes full width or adjust layout as needed */}
-        {/* For example, if you want ScenarioDisplay to take the full width: */}
-        {/* <ScrollArea className="lg:col-span-3 h-[300px] lg:h-auto lg:min-h-0">
-          <ScenarioDisplay
-            scenarioHTML={currentScenario.scenarioText}
-            isLoading={isLoading}
-          />
-        </ScrollArea> */}
-      </div>
-      
-      {/* Bottom section for Player Input */}
       <div className="shrink-0">
         <PlayerInputForm
           playerInput={playerInput}
           onPlayerInputChange={setPlayerInput}
-          onSubmit={handlePlayerActionSubmit} // For text input
-          isLoading={isLoading} // Shared loading state
-          gameState={initialGameState} // Pass the whole state for nearbyPois etc.
-          dispatch={handleGameAction} // Pass the new action handler
+          onSubmit={handlePlayerActionSubmit}
+          isLoading={isLoading}
+          gameState={initialGameState}
+          dispatch={handleGameAction}
         />
       </div>
     </div>

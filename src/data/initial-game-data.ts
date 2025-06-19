@@ -2,7 +2,7 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, LocationData, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone } from '@/lib/types';
+import type { PlayerStats, Position, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone } from '@/lib/types';
 import { getMasterItemById } from './items'; // Assuming items.ts is in the same data directory or adjust path
 import { AVAILABLE_TONES } from '@/lib/types';
 
@@ -54,17 +54,17 @@ export const initialInventory: InventoryItem[] = [
 .filter(item => item !== undefined)
 .map(masterItem => {
   if (!masterItem) throw new Error("Unreachable: masterItem is undefined after filter");
-  return { 
-    ...masterItem, 
-    quantity: masterItem.id === 'energy_bar_01' ? 2 : 1 
+  return {
+    ...masterItem,
+    quantity: masterItem.id === 'energy_bar_01' ? 2 : 1
   };
 });
 
 
-export const initialPlayerLocation: LocationData = {
+export const initialPlayerLocation: Position = { // Changed from LocationData to Position
   latitude: 48.8566,
   longitude: 2.3522,
-  placeName: 'Paris, France',
+  name: 'Paris, France', // Changed from placeName to name
 };
 
 export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
@@ -86,3 +86,4 @@ export const initialInvestigationNotes: string = "Aucune note d'enquête pour le
 
 // --- Other Game Constants ---
 export const UNKNOWN_STARTING_PLACE_NAME = "Lieu de Départ Inconnu";
+

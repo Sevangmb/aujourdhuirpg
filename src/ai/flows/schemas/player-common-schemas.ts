@@ -8,7 +8,7 @@ import { AVAILABLE_TONES } from '@/lib/types';
 export const LocationSchema = z.object({
   latitude: z.number().describe('The latitude of the location.'),
   longitude: z.number().describe('The longitude of the location.'),
-  placeName: z.string().describe('The human-readable name of the location (e.g., "Paris, France").'),
+  name: z.string().describe('The human-readable name of the location (e.g., "Paris, France").'),
 });
 
 export const SkillsSchema = z.record(z.number()).describe("Player's skills (e.g., {\"Informatique\": 10, \"Discretion\": 5}).");

@@ -3,12 +3,12 @@
  * @fileOverview Functions for processing and applying the effects of an AI-generated scenario to the player state.
  */
 
-import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, LocationData, Clue, GameDocument, ClueType, DocumentType, Skills } from './types'; // Added Skills
-import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema } from '@/ai/flows/generate-scenario';
+import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, Clue, GameDocument, ClueType, DocumentType, Skills, Position as PlayerPositionType } from './types'; // Added Skills, changed LocationData to PlayerPositionType
+import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema, QuestUpdateSchema as AIQuestUpdateSchema } from '@/ai/flows/generate-scenario';
 import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem
-import { initialPlayerMoney, initialInvestigationNotes } from '@/data/initial-game-data';
-import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser'; // New import
-import { performSkillCheck, type SkillCheckResult } from './skill-check'; // New import
+import { initialPlayerMoney, initialInvestigationNotes, UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data'; // Added UNKNOWN_STARTING_PLACE_NAME
+import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser';
+import { performSkillCheck, type SkillCheckResult } from './skill-check';
 
 // Keep existing helper functions like calculateXpToNextLevel, applyStatChanges etc. if they are used by client-side logic later.
 // For now, they might be unused if AI doesn't dictate these changes directly.
@@ -39,16 +39,16 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
   const newInventory = [...currentInventory];
   const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
 
-  if (existingItemIndex > -1) { 
+  if (existingItemIndex > -1) {
     if (masterItem.stackable) {
       newInventory[existingItemIndex].quantity += quantityToAdd;
     } else {
       console.warn(`Inventory Info: Item '${masterItem.name}' (ID: ${itemId}) is not stackable and player already possesses one. Quantity not changed.`);
     }
-  } else { 
+  } else {
     newInventory.push({
-      ...masterItem, 
-      quantity: masterItem.stackable ? quantityToAdd : 1 
+      ...masterItem,
+      quantity: masterItem.stackable ? quantityToAdd : 1
     });
   }
   return newInventory;
@@ -130,15 +130,23 @@ export function addQuestToLog(currentQuestLog: Quest[], newQuestData: AIQuestInp
 }
 
 
-export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: Partial<Omit<Quest, 'id' | 'objectives'>> & { updatedObjectives?: { objectiveId: string; isCompleted: boolean; }[], newObjectiveDescription?: string }): { updatedLog: Quest[], completedQuestWithMoneyReward?: Quest } {
+export function updateQuestInLog(currentQuestLog: Quest[], questId: string, updates: AIQuestUpdateSchema): { updatedLog: Quest[], completedQuestWithMoneyReward?: Quest } {
   let completedQuestWithMoneyReward: Quest | undefined = undefined;
   const logToUpdate = currentQuestLog || [];
 
   const updatedLog = logToUpdate.map(quest => {
     if (quest.id === questId) {
-      const updatedQuest = { ...quest, ...updates };
-      delete updatedQuest.updatedObjectives; 
-      delete updatedQuest.newObjectiveDescription; 
+      const updatedQuest = { ...quest };
+
+      if (updates.newStatus) {
+        updatedQuest.status = updates.newStatus;
+        if (updates.newStatus === 'completed') {
+          updatedQuest.dateCompleted = new Date().toISOString();
+          if (updatedQuest.moneyReward && updatedQuest.moneyReward > 0) {
+            completedQuestWithMoneyReward = updatedQuest;
+          }
+        }
+      }
 
       if (updates.updatedObjectives) {
         updatedQuest.objectives = (quest.objectives || []).map(obj => {
@@ -147,18 +155,11 @@ export function updateQuestInLog(currentQuestLog: Quest[], questId: string, upda
         });
       }
       if (updates.newObjectiveDescription) {
-         const newObjectiveId = `${quest.id}_obj_${(updatedQuest.objectives?.length || 0) + 1}`;
+         const newObjectiveId = `${quest.id}_obj_${(updatedQuest.objectives?.length || 0) + 1}_${Date.now()}`;
          updatedQuest.objectives = [
             ...(updatedQuest.objectives || []),
             {id: newObjectiveId, description: updates.newObjectiveDescription, isCompleted: false}
          ];
-      }
-
-      if (updates.status === 'completed') {
-        updatedQuest.dateCompleted = new Date().toISOString();
-        if (updatedQuest.moneyReward && updatedQuest.moneyReward > 0) {
-          completedQuestWithMoneyReward = updatedQuest;
-        }
       }
       return updatedQuest;
     }
@@ -223,7 +224,6 @@ export function updateInvestigationNotes(currentNotes: string | null | undefined
   if (notesUpdateTextLower.startsWith("révision complète des notes:")) {
     return notesUpdateText.substring(notesUpdateTextLower.indexOf(":") + 1).trim();
   }
-  // For "NOUVELLE HYPOTHÈSE:", "CONNEXION NOTÉE:", "MISE À JOUR:", or general additions:
   return safeCurrentNotes + "\n\n---\n\n" + notesUpdateText;
 }
 
@@ -233,10 +233,9 @@ export async function processAndApplyAIScenarioOutput(
   playerChoice: string,
   aiOutput: GenerateScenarioOutput
 ): Promise<{ updatedPlayer: Player; notifications: GameNotification[] }> {
-  let updatedPlayer = { ...player }; // Start with a shallow copy
+  let updatedPlayer = { ...player };
   const notifications: GameNotification[] = [];
 
-  // Initialize potentially undefined fields on the player object if they weren't already
   updatedPlayer.questLog = updatedPlayer.questLog || [];
   updatedPlayer.encounteredPNJs = updatedPlayer.encounteredPNJs || [];
   updatedPlayer.decisionLog = updatedPlayer.decisionLog || [];
@@ -244,37 +243,37 @@ export async function processAndApplyAIScenarioOutput(
   updatedPlayer.documents = updatedPlayer.documents || [];
   updatedPlayer.investigationNotes = typeof updatedPlayer.investigationNotes === 'string' ? updatedPlayer.investigationNotes : initialInvestigationNotes;
   updatedPlayer.money = typeof updatedPlayer.money === 'number' ? updatedPlayer.money : initialPlayerMoney;
-  updatedPlayer.inventory = Array.isArray(updatedPlayer.inventory) ? [...updatedPlayer.inventory] : []; // Ensure inventory is a new array
+  updatedPlayer.inventory = Array.isArray(updatedPlayer.inventory) ? [...updatedPlayer.inventory] : [];
 
-  // 1. Handle direct outputs from AI (narrative focused)
   if (aiOutput.newLocationDetails &&
       typeof aiOutput.newLocationDetails.latitude === 'number' &&
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
-      typeof aiOutput.newLocationDetails.placeName === 'string' && // Added type check for placeName
-      aiOutput.newLocationDetails.placeName.trim() !== '') { // Added check for non-empty placeName
-    const newLoc: LocationData = {
+      typeof aiOutput.newLocationDetails.name === 'string' &&
+      aiOutput.newLocationDetails.name.trim() !== '' &&
+      aiOutput.newLocationDetails.name.trim() !== UNKNOWN_STARTING_PLACE_NAME) { // Crucial check added
+    const newLoc: PlayerPositionType = { 
       latitude: aiOutput.newLocationDetails.latitude,
       longitude: aiOutput.newLocationDetails.longitude,
-      placeName: aiOutput.newLocationDetails.placeName,
+      name: aiOutput.newLocationDetails.name,
     };
     updatedPlayer.currentLocation = newLoc;
     notifications.push({
       type: 'location_changed',
       title: "Déplacement !",
-      description: `Vous êtes maintenant à ${newLoc.placeName}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
+      description: `Vous êtes maintenant à ${newLoc.name}. ${aiOutput.newLocationDetails.reasonForMove || ''}`,
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
   } else if (aiOutput.newLocationDetails) {
-    // Log a warning if newLocationDetails is present but malformed
-    console.warn('AI output included newLocationDetails, but it was malformed:', aiOutput.newLocationDetails);
+    // This condition means newLocationDetails was provided, but it wasn't valid enough to change the location
+    // (e.g., name was still UNKNOWN_STARTING_PLACE_NAME or other fields missing)
+    console.warn('AI output included newLocationDetails, but it was malformed or did not change from UNKNOWN_STARTING_PLACE_NAME:', aiOutput.newLocationDetails);
     notifications.push({
       type: 'warning',
-      title: 'Erreur de Déplacement',
-      description: "L'IA a tenté de vous déplacer, mais les détails du lieu étaient incomplets ou incorrects. Vous restez à votre position actuelle.",
+      title: 'Erreur de Déplacement Initial',
+      description: "L'IA n'a pas pu déterminer un nouveau lieu de départ spécifique. Vous restez à votre position indéfinie. Essayez une action pour voir si cela se résout.",
       details: { receivedDetails: aiOutput.newLocationDetails }
     });
   }
-  // If aiOutput.newLocationDetails is null or undefined, nothing happens, and no error is thrown.
 
   if (aiOutput.investigationNotesUpdate) {
     updatedPlayer.investigationNotes = updateInvestigationNotes(updatedPlayer.investigationNotes, aiOutput.investigationNotesUpdate);
@@ -299,8 +298,8 @@ export async function processAndApplyAIScenarioOutput(
         notes: pnjData.notes,
         lastSeen: new Date().toISOString()
       };
-      const oldPNJ = (processedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
-      processedPlayer.encounteredPNJs = addOrUpdatePNJ(processedPlayer.encounteredPNJs, pnj);
+      const oldPNJ = (updatedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
+      updatedPlayer.encounteredPNJs = addOrUpdatePNJ(updatedPlayer.encounteredPNJs || [], pnj);
       if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
         notifications.push({
           type: 'pnj_encountered',
@@ -314,8 +313,8 @@ export async function processAndApplyAIScenarioOutput(
 
   if (aiOutput.majorDecisionsLogged && Array.isArray(aiOutput.majorDecisionsLogged)) {
     aiOutput.majorDecisionsLogged.forEach(decisionData => {
-      processedPlayer.decisionLog = logMajorDecision(processedPlayer.decisionLog, decisionData);
-      const loggedDecision = (processedPlayer.decisionLog || []).find(d=>d.id === decisionData.id);
+      updatedPlayer.decisionLog = logMajorDecision(updatedPlayer.decisionLog || [], decisionData);
+      const loggedDecision = (updatedPlayer.decisionLog || []).find(d=>d.id === decisionData.id);
       if (loggedDecision) {
         notifications.push({
           type: 'decision_logged',
@@ -327,33 +326,95 @@ export async function processAndApplyAIScenarioOutput(
     });
   }
 
-  // TODO: Client-side logic will need to interpret aiOutput.scenarioText to create new clues or documents.
+  // --- Process AI Quest Suggestions ---
+  if (aiOutput.newQuestsProposed && Array.isArray(aiOutput.newQuestsProposed)) {
+    aiOutput.newQuestsProposed.forEach(questData => {
+      const oldQuestLogLength = (updatedPlayer.questLog || []).length;
+      updatedPlayer.questLog = addQuestToLog(updatedPlayer.questLog || [], questData);
+      const newQuest = (updatedPlayer.questLog || []).find(q => q.id === questData.id); // Ensure questData has an ID or one is generated by addQuestToLog
+      if (newQuest && (updatedPlayer.questLog || []).length > oldQuestLogLength) {
+        notifications.push({
+          type: 'quest_added',
+          title: "Nouvelle Quête Acceptée",
+          description: `"${newQuest.title}" ajouté à votre journal.`,
+          details: { questId: newQuest.id, questTitle: newQuest.title }
+        });
+      }
+    });
+  }
 
-  // 2. Parse Player Action
+  if (aiOutput.questUpdatesProposed && Array.isArray(aiOutput.questUpdatesProposed)) {
+    aiOutput.questUpdatesProposed.forEach(updateData => {
+      const questBeforeUpdate = (updatedPlayer.questLog || []).find(q => q.id === updateData.questId);
+      if (questBeforeUpdate) {
+        const { updatedLog, completedQuestWithMoneyReward } = updateQuestInLog(updatedPlayer.questLog || [], updateData.questId, updateData);
+        updatedPlayer.questLog = updatedLog;
+
+        if (completedQuestWithMoneyReward && completedQuestWithMoneyReward.moneyReward && completedQuestWithMoneyReward.moneyReward > 0) {
+          updatedPlayer.money = addMoney(updatedPlayer.money, completedQuestWithMoneyReward.moneyReward);
+          notifications.push({
+            type: 'money_changed',
+            title: "Récompense Obtenue!",
+            description: `Vous avez reçu ${completedQuestWithMoneyReward.moneyReward}€ pour la quête "${completedQuestWithMoneyReward.title}".`,
+            details: { amount: completedQuestWithMoneyReward.moneyReward, reason: `Quest: ${completedQuestWithMoneyReward.title}` }
+          });
+        }
+
+        const questAfterUpdate = (updatedPlayer.questLog || []).find(q => q.id === updateData.questId);
+        if (questAfterUpdate) {
+          if (updateData.newStatus && questBeforeUpdate.status !== questAfterUpdate.status) {
+            notifications.push({
+              type: 'quest_updated',
+              title: `Statut de Quête Modifié: "${questAfterUpdate.title}"`,
+              description: `Nouveau statut: ${questAfterUpdate.status}.`,
+              details: { questId: questAfterUpdate.id, newStatus: questAfterUpdate.status }
+            });
+          }
+          if (updateData.updatedObjectives) {
+            updateData.updatedObjectives.forEach(objUpdate => {
+              const oldObjective = questBeforeUpdate.objectives.find(o => o.id === objUpdate.objectiveId);
+              const newObjective = questAfterUpdate.objectives.find(o => o.id === objUpdate.objectiveId);
+              if (oldObjective && newObjective && oldObjective.isCompleted !== newObjective.isCompleted && newObjective.isCompleted) {
+                notifications.push({
+                  type: 'quest_updated',
+                  title: `Objectif Terminé: "${questAfterUpdate.title}"`,
+                  description: `"${newObjective.description}" complété.`,
+                  details: { questId: questAfterUpdate.id, objectiveId: newObjective.id }
+                });
+              }
+            });
+          }
+          if (updateData.newObjectiveDescription) {
+             const addedObjective = questAfterUpdate.objectives.find(o => o.description === updateData.newObjectiveDescription && !o.isCompleted);
+             if (addedObjective) {
+                  notifications.push({
+                     type: 'quest_updated',
+                     title: `Nouvel Objectif: "${questAfterUpdate.title}"`,
+                     description: `Objectif ajouté: "${addedObjective.description}".`,
+                     details: { questId: questAfterUpdate.id, objectiveId: addedObjective.id }
+                 });
+             }
+          }
+        }
+      } else {
+         console.warn(`QuestUpdate Warning: Attempted to update non-existent quest ID: ${updateData.questId}`);
+      }
+    });
+  }
+  // --- End Process AI Quest Suggestions ---
+
+
   const parsedAction: ParsedAction = await parsePlayerAction(playerChoice);
-
-  // 3. Handle Parsed Actions (Client-Side Mechanics)
-  // TODO: This section will grow significantly as more actions and mechanics are implemented.
 
   if (parsedAction.actionType === 'TAKE_ITEM' && parsedAction.primaryTarget) {
     const itemNameOrId = parsedAction.primaryTarget;
-    // TODO: Future - Need a robust way to map itemNameOrId from narrative to a valid itemId.
-    // This might involve checking `aiOutput.scenarioText` for mentions of the item,
-    // or having the AI provide structured entity recognition in the future.
-    // For now, we assume itemNameOrId could be an ID or a name the AI clearly indicated is takeable.
-    const masterItem = getMasterItemById(itemNameOrId); // Try as ID first
+    const masterItem = getMasterItemById(itemNameOrId);
 
-    // Attempt to find item by name if ID fails and AI might use names (less reliable)
-    // const masterItemByName = ALL_ITEMS.find(i => i.name.toLowerCase() === itemNameOrId.toLowerCase());
-    // const itemToTake = masterItem || masterItemByName;
-
-    if (masterItem) { // For now, only proceed if primaryTarget was a valid ID
+    if (masterItem) {
       const playerBeforeAdding = { ...updatedPlayer, inventory: [...updatedPlayer.inventory] };
       updatedPlayer.inventory = addItemToInventory(playerBeforeAdding.inventory, masterItem.id, 1);
 
-      // Check if inventory actually changed
-      // This simple check works if addItemToPlayerInventoryLogic always returns a new inventory array on change.
-      if (updatedPlayer.inventory !== playerBeforeAdding.inventory) {
+      if (updatedPlayer.inventory !== playerBeforeAdding.inventory && updatedPlayer.inventory.find(i=> i.id === masterItem.id)) { // Check if item was actually added
         notifications.push({
           type: 'item_added',
           title: 'Objet Acquis',
@@ -361,27 +422,19 @@ export async function processAndApplyAIScenarioOutput(
           details: { itemId: masterItem.id, itemName: masterItem.name, quantity: 1 }
         });
       } else {
-        // Optional: Notify if item couldn't be taken (e.g., non-stackable already possessed and addItemToPlayerInventoryLogic handles this by not changing inv)
         const existingItem = playerBeforeAdding.inventory.find(i => i.id === masterItem.id);
         if (existingItem && !masterItem.stackable) {
             notifications.push({type: 'warning', title: "Inventaire", description: `Vous possédez déjà ${masterItem.name} et ce n'est pas empilable.`});
-        } else {
-            // Generic unable to take, or rely on addItemToPlayerInventoryLogic console warnings
         }
       }
     } else {
-      // TODO: Could have a notification if the AI mentioned an item but it's not recognized by game system
-      // For now, this means the text parsedAction.primaryTarget was not a known item ID.
-      console.warn(`Player tried to TAKE_ITEM "${itemNameOrId}", but it's not a known master item ID.`);
+      console.warn(`Player tried to TAKE_ITEM "${itemNameOrId}", but it's not a known master item ID or name.`);
        notifications.push({ type: 'warning', title: 'Action', description: `Vous essayez de prendre "${itemNameOrId}", mais vous ne parvenez pas à le saisir ou ce n'est pas un objet prenable.` });
     }
   }
   else if (parsedAction.actionType === 'APPLY_SKILL' && parsedAction.skillUsed && parsedAction.primaryTarget) {
     const skillName = parsedAction.skillUsed;
-    // const targetDescription = parsedAction.primaryTarget; // For future use in determining DT
-
-    // TODO: Determine difficultyTarget based on skillName, targetDescription, and possibly context from aiOutput.scenarioText
-    const difficultyTarget = 70; // Placeholder difficulty
+    const difficultyTarget = 70;
 
     const skillCheckResult = performSkillCheck(updatedPlayer.skills, updatedPlayer.stats, skillName, difficultyTarget);
     notifications.push({
@@ -392,22 +445,14 @@ export async function processAndApplyAIScenarioOutput(
     });
 
     if (skillCheckResult.success) {
-      // TODO: Implement specific consequences of successful skill check.
-      // E.g., if skillName === 'Informatique' and target was 'computer', maybe add a clue to player.clues or update investigationNotes.
-      // This would involve more specific logic here or dispatching to other game logic functions.
-      // For now, just a generic success notification.
       notifications.push({ type: 'info', title: `Réussite : ${skillName}`, description: `Votre tentative avec ${skillName} sur ${parsedAction.primaryTarget} semble avoir fonctionné.`});
     } else {
-      // TODO: Handle failure consequences if any, beyond notification.
       notifications.push({ type: 'info', title: `Échec : ${skillName}`, description: `Votre tentative avec ${skillName} sur ${parsedAction.primaryTarget} n'a pas abouti.`});
     }
   }
   else if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed?.toLowerCase().includes('lockpick') && parsedAction.primaryTarget) {
-    // Example for a specific item type implying a skill check
-    const skillToUse = "Discretion"; // Or "Bricolage" depending on game design for lockpicking
-
-    // TODO: Determine difficulty based on parsedAction.primaryTarget (e.g. 'simple_door', 'complex_safe') from narrative context
-    const lockDifficulty = 80; // Placeholder
+    const skillToUse = "Discretion";
+    const lockDifficulty = 80;
 
     const lockpickResult = performSkillCheck(updatedPlayer.skills, updatedPlayer.stats, skillToUse, lockDifficulty);
     notifications.push({
@@ -418,26 +463,14 @@ export async function processAndApplyAIScenarioOutput(
     });
 
     if (lockpickResult.success) {
-      // TODO: Implement unlocking the target. This might involve:
-      // - Setting a flag in the game state for that location/object.
-      // - The AI, in a subsequent turn, might narrate the door opening if player tries to "open door".
-      // - Or, this could directly lead to a new part of scenarioText if the game design allows immediate feedback.
       notifications.push({ type: 'info', title: 'Succès!', description: `Vous avez crocheté ${parsedAction.primaryTarget}!` });
     } else {
       notifications.push({ type: 'info', title: 'Échec du crochetage', description: `Impossible de crocheter ${parsedAction.primaryTarget}.` });
     }
   }
-  // TODO: Add more handlers for other parsedAction.actionType values (USE_ITEM generic, TALK_TO_PNJ, etc.)
-
-  else if (parsedAction.actionType === 'UNKNOWN') {
-    // Optional: Fallback notification for actions the parser didn't understand.
-    // Could also be handled by AI just narrating confusion, or no specific notification.
-    notifications.push({ type: 'warning', title: 'Action non comprise', description: 'Je ne suis pas sûr de comprendre ce que vous voulez faire. Essayez une autre formulation.' });
-  }
-
-  // TODO: Save player state after all updates (moved to GamePlay.tsx or higher level)
-  // saveGameState({ player: updatedPlayer, currentScenario: { scenarioText: aiOutput.scenarioText }});
 
   return { updatedPlayer, notifications };
 }
 
+
+    

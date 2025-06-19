@@ -2,41 +2,35 @@
 "use client";
 
 import React from 'react';
-import type { User as FirebaseUser } from 'firebase/auth'; // Renamed to avoid conflict with Lucide's User icon
-import type { Player, JournalEntry } from '@/lib/types';
 
-import { 
-    Menubar, 
-    MenubarContent, 
-    MenubarItem, 
-    MenubarMenu, 
-    MenubarSeparator, 
+
+import {
+    Menubar,
+    MenubarContent,
+    MenubarItem,
+    MenubarMenu,
+    MenubarSeparator,
     MenubarTrigger,
     MenubarLabel
 } from "@/components/ui/menubar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from '@/components/ui/scroll-area';
-// Removed Button import as it's no longer used directly in the Menubar itself for sign-out
-import { 
-    SlidersHorizontal, 
-    Save, 
-    User as UserIcon, 
-    Briefcase, 
-    BookOpen,
-    BookText, // Added BookText for Journal
-    Search, 
-    LogOut, 
+
     FileText,
     Maximize,
-    Settings // Using Settings icon for "Paramètres" menu
+    Settings,
+    Activity, // Icon for Stats
+    Sun, // Icon for Weather
+    MapPin, // Icon for Map
+    Image as ImageIcon // Icon for Location Image
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
-import JournalDisplay from '@/components/JournalDisplay'; // Added JournalDisplay import
+
 
 interface AppMenubarProps {
   user: FirebaseUser | null;
@@ -47,8 +41,7 @@ interface AppMenubarProps {
   onToggleFullScreen: () => void;
   onOpenToneSettings: () => void;
   onSignOut: () => void;
-  journal?: JournalEntry[]; // Added journal prop
-}
+
 
 const AppMenubar: React.FC<AppMenubarProps> = ({
   user,
@@ -60,7 +53,17 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
   onToggleFullScreen,
   onOpenToneSettings,
   onSignOut,
+  currentLocation,
+  nearbyPois,
+  weatherData,
+  weatherLoading,
+  weatherError,
+  locationImageUrl,
+  locationImageLoading,
+  locationImageError,
 }) => {
+  const isMobile = useIsMobile();
+
   return (
     <Menubar className="w-full rounded-none border-b shrink-0 px-1 sm:px-2">
       <MenubarMenu>
@@ -90,12 +93,12 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
           <MenubarItem onClick={() => window.close()}>Quitter</MenubarItem>
         </MenubarContent>
       </MenubarMenu>
-      
+
       {player && (
         <>
           <MenubarMenu>
             <MenubarTrigger className="px-2 sm:px-3">
-                <Settings className="h-4 w-4" /> 
+                <Settings className="h-4 w-4" />
                 <span className="sr-only sm:not-sr-only sm:ml-1">Paramètres</span>
             </MenubarTrigger>
             <MenubarContent>
@@ -106,6 +109,72 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                 <MenubarItem onClick={onToggleFullScreen}>
                     <Maximize className="mr-2 h-4 w-4" /> Plein écran
                 </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+
+          {isMobile && currentLocation && (
+            <MenubarMenu>
+              <MenubarTrigger className="px-2 sm:px-3">
+                <MapPin className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:ml-1">Contexte</span>
+              </MenubarTrigger>
+              <MenubarContent>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <MenubarItem onSelect={(e) => e.preventDefault()}><Sun className="mr-2 h-4 w-4" />Voir la Météo</MenubarItem>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
+                    <DialogHeader><DialogTitle>Météo Actuelle</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[70vh] p-1">
+                      <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={currentLocation?.name || 'Lieu Actuel'} />
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <MenubarItem onSelect={(e) => e.preventDefault()}><MapPin className="mr-2 h-4 w-4" />Voir la Carte</MenubarItem>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                    <DialogHeader><DialogTitle>Carte Locale</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[70vh] p-1">
+                      <MapDisplay currentLocation={currentLocation} nearbyPois={nearbyPois || []} zoom={14} />
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <MenubarItem onSelect={(e) => e.preventDefault()}><ImageIcon className="mr-2 h-4 w-4" />Voir le Lieu</MenubarItem>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
+                    <DialogHeader><DialogTitle>Vue du Lieu</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[70vh] p-1">
+                       <LocationImageDisplay imageUrl={locationImageUrl} placeName={currentLocation?.name || UNKNOWN_STARTING_PLACE_NAME} isLoading={locationImageLoading} error={locationImageError} />
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+              </MenubarContent>
+            </MenubarMenu>
+          )}
+
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 sm:px-3">
+                <Activity className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:ml-1">Stats</span>
+            </MenubarTrigger>
+            <MenubarContent>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><Activity className="mr-2 h-4 w-4" />Voir les Statistiques</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
+                        <DialogHeader>
+                        <DialogTitle>Statistiques du Personnage</DialogTitle>
+                        </DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">
+                          {player ? <StatDisplay stats={player.stats} /> : <p>Statistiques non disponibles.</p>}
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
             </MenubarContent>
           </MenubarMenu>
 
@@ -201,8 +270,6 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
           </MenubarMenu>
         </>
       )}
-
-      {/* The div for user email and sign-out button is removed from here as they are now in the "Fichier" menu */}
     </Menubar>
   );
 };
