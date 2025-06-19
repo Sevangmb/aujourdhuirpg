@@ -18,7 +18,7 @@ import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
-import JournalDisplay from './JournalDisplay';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
@@ -249,29 +249,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
             currentLocation={displayLocation}
             nearbyPois={nearbyPois || []}
           />
-          <LocationImageDisplay
-              imageUrl={locationImageUrl}
-              placeName={displayLocation.name || UNKNOWN_STARTING_PLACE_NAME}
-              isLoading={locationImageLoading}
-              error={locationImageError}
-          />
-        </div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 md:gap-4 flex-grow min-h-0">
-        <div className="lg:col-span-2 flex-grow min-h-0 flex flex-col">
-          <ScrollArea className="flex-grow min-h-0">
-            <ScenarioDisplay
-              scenarioHTML={currentScenario.scenarioText}
-              isLoading={isLoading}
-            />
-          </ScrollArea>
-        </div>
-        <div className="flex-grow min-h-0 flex flex-col">
-          <ScrollArea className="flex-grow min-h-0">
-            <JournalDisplay journal={journal || []} />
-          </ScrollArea>
-        </div>
       </div>
 
       <div className="shrink-0">
