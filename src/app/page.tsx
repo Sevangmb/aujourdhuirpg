@@ -42,6 +42,8 @@ import { useToast } from "@/hooks/use-toast";
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
 import GameScreen from '@/components/GameScreen';
+import AuthScreen from '@/components/AuthScreen'; // Import the new AuthScreen
+import LoadingState from '@/components/LoadingState'; // Import LoadingState
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { getCurrentWeather } from '@/app/actions/get-current-weather';
 import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
@@ -50,11 +52,11 @@ import { generatePlayerAvatar } from '@/ai/flows/generate-player-avatar-flow';
 
 function HomePageContent() {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [isLoadingState, setIsLoadingState] = useState(true);
+  const [isLoadingState, setIsLoadingState] = useState(true); // For game state loading
   const [isToneSettingsDialogOpen, setIsToneSettingsDialogOpen] = useState(false);
   const {
     user,
-    loadingAuth,
+    loadingAuth, // Firebase auth loading
     signUpWithEmailPassword,
     signInWithEmailPassword,
     signInAnonymously,
@@ -201,7 +203,7 @@ function HomePageContent() {
   }, [user, toast]);
 
   useEffect(() => {
-    if (!loadingAuth) {
+    if (!loadingAuth) { // Only perform initial load once auth state is resolved
       performInitialLoad();
     }
   }, [loadingAuth, performInitialLoad]);
@@ -306,12 +308,11 @@ function HomePageContent() {
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === false) {
           toast({
-            variant: "destructive", // Changed to destructive for cloud save failure
+            variant: "destructive", 
             title: "Sauvegarde Partielle",
             description: "Progression sauvegardée localement, mais échec de la synchronisation cloud.",
           });
         } else if (saveResult.localSaveSuccess && saveResult.cloudSaveSuccess === null) {
-
           toast({
             title: "Partie Sauvegardée",
             description: "Votre progression a été sauvegardée localement (utilisateur anonyme).",
@@ -324,7 +325,6 @@ function HomePageContent() {
           });
         }
       } catch (error) {
-
         console.error("Erreur inattendue lors de la sauvegarde manuelle:", error);
         toast({
           variant: "destructive",
@@ -363,23 +363,13 @@ function HomePageContent() {
     }
   };
 
-  const authScreenProps = {
-    user: user,
-    loadingAuth: loadingAuth,
-    signUp: signUpWithEmailPassword,
-    signIn: signInWithEmailPassword,
-    signInAnon: signInAnonymously,
-    signOut: signOutUser,
-  };
-
-
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background text-foreground">
       <AppMenubar
         user={user}
         isGameActive={isGameActive}
         player={gameState?.player || null}
-        journal={gameState?.journal || []} // Pass journal data
+        journal={gameState?.journal || []}
         onRestartGame={handleRestartGame}
         onSaveGame={handleSaveGame}
         onToggleFullScreen={handleToggleFullScreen}
@@ -405,24 +395,36 @@ function HomePageContent() {
       )}
 
       <div className="flex-1 flex flex-row overflow-hidden">
-        <GameScreen
-            user={user}
-            loadingAuth={loadingAuth}
-            isLoadingState={isLoadingState}
-            gameState={gameState}
-            isGameActive={isGameActive}
-            authFunctions={authScreenProps}
-            onCharacterCreate={handleCharacterCreate}
-            onRestartGame={handleRestartGame}
-            setGameState={setGameState}
-            weatherData={weatherData}
-            weatherLoading={weatherLoading}
-            weatherError={weatherError}
-            locationImageUrl={locationImageUrl}
-            locationImageLoading={locationImageLoading}
-            locationImageError={locationImageError}
-            isGeneratingAvatar={isGeneratingAvatar}
-        />
+        {loadingAuth || isLoadingState ? (
+          <div className="flex-grow flex items-center justify-center">
+            <LoadingState loadingAuth={loadingAuth} isLoadingState={isLoadingState} />
+          </div>
+        ) : !user ? (
+          <div className="flex-grow flex items-center justify-center p-4">
+            <AuthScreen
+              loadingAuth={false} // loadingAuth is false at this point
+              signUp={signUpWithEmailPassword}
+              signIn={signInWithEmailPassword}
+              signInAnon={signInAnonymously}
+            />
+          </div>
+        ) : (
+          <GameScreen
+              user={user} // user is guaranteed to be non-null here
+              gameState={gameState}
+              isGameActive={isGameActive}
+              onCharacterCreate={handleCharacterCreate}
+              onRestartGame={handleRestartGame} // Although GameScreen doesn't directly use this, it might pass to GamePlay if needed
+              setGameState={setGameState}
+              weatherData={weatherData}
+              weatherLoading={weatherLoading}
+              weatherError={weatherError}
+              locationImageUrl={locationImageUrl}
+              locationImageLoading={locationImageLoading}
+              locationImageError={locationImageError}
+              isGeneratingAvatar={isGeneratingAvatar}
+          />
+        )}
       </div>
     </div>
   );
