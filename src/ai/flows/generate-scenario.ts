@@ -40,10 +40,15 @@ function simplifyGenerateScenarioInput(input: GenerateScenarioInput): Simplified
     }));
   }
   if (input.encounteredPNJsSummary) {
-    simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => ({
-      name: p.name,
-      relationStatus: p.relationStatus
-    }));
+    simplifiedInput.encounteredPNJsSummary = input.encounteredPNJsSummary.map(p => {
+      const historySummary = p.interactionHistory ? p.interactionHistory.slice(-5).join(', ') : 'Aucun historique'; // Summarize last 5 entries
+      return {
+        name: p.name,
+        relationStatus: p.relationStatus,
+        dispositionScore: p.dispositionScore,
+        interactionHistory: historySummary // Pass summarized history as a string for simple display
+      };
+    });
   }
   if (input.currentCluesSummary) {
      simplifiedInput.currentCluesSummary = input.currentCluesSummary.map(c => ({ title: c.title, type: c.type}));
@@ -120,7 +125,7 @@ Player Information (Context):
     (Default balanced tone)
   {{/if}}
   Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#if currentObjectivesDescriptions}}{{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Pas d'objectifs en cours.{{/if}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{/each}}{{else}}Aucune quête active.{{/if}}
-  Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relationStatus}}}){{#unless @last}}, {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
+  Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relationStatus}}}, Disposition: {{{dispositionScore}}}, Historique: [{{{interactionHistory}}}]) {{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
   Current Clues (Summary): {{#if currentCluesSummary}}{{#each currentCluesSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun indice découvert.{{/if}}
   Current Documents (Summary): {{#if currentDocumentsSummary}}{{#each currentDocumentsSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun document obtenu.{{/if}}
   Current Investigation Notes: {{{currentInvestigationNotes}}}
@@ -171,6 +176,8 @@ const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
 For complex actions implied by '{{{playerChoice}}}', describe the player's attempt and the observable situation in the narrative. The game system will determine the mechanical outcome.
+Use the PNJ's disposition score and interaction history to influence their dialogue, actions, and how they react to the player.
+If the player's actions should change a PNJ's disposition or add a significant memory, you can suggest an `updatedDispositionScore` and a `newInteractionLogEntry` for that PNJ in your response (using the `pnjInteractions` output field).
 {{/unless}}`;
 const PROMPT_PHASE_1_INFO_GATHERING = `
 **Phase 1: Strategic Information Gathering & API Management**
@@ -212,7 +219,7 @@ const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
            *   **New Quests**: To add a new quest to the player's journal, provide its full definition in the \`newQuestsProposed\` array. Each quest object in this array MUST follow the \`QuestInputSchema\`. Ensure you provide a unique \`id\`, \`title\`, \`description\`, \`type\` ('main' or 'secondary'), and at least one initial \`objective\` (with its own \`id\`, \`description\`, and \`isCompleted: false\`). Optionally, include \`giver\`, \`reward\`, \`moneyReward\`, and \`relatedLocation\`.
            *   **Quest Updates**: To modify an existing quest, use the \`questUpdatesProposed\` array. Each update object in this array MUST follow the \`QuestUpdateSchema\`. Specify the \`questId\` of the quest to update. You can change its \`newStatus\` (e.g., to 'completed' or 'failed') or update its \`updatedObjectives\` by providing an array of objects, each containing an \`objectiveId\` and its new \`isCompleted\` status (true/false). You can also provide a \`newObjectiveDescription\` if a new sub-task naturally arises for that quest.
        **IMPORTANT**: Do NOT describe mechanical quest changes (like "Quest added:" or "Objective completed:") directly in the \`scenarioText\`. Use the \`newQuestsProposed\` and \`questUpdatesProposed\` fields for these mechanical changes. The game system will handle the actual updates to the player's journal and notify the player accordingly.
-   4.  **PNJ Interactions ("Les Visages du Savoir" continued)**: When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Describe the PNJ's initial demeanor and response to the player's words/actions based on the ongoing narrative and their established personality. The game system will handle any underlying mechanics like persuasion checks, which may influence the PNJ's future disposition or available dialogue.
+   4.  **PNJ Interactions ("Les Visages du Savoir" continued)**: When using Wikipedia info for a PNJ, weave details from their biography (expertise, personality traits influenced by TONES) into their description, dialogue, and role. Record/update these PNJs in pnjInteractions. Describe the PNJ's initial demeanor and response to the player's words/actions based on the ongoing narrative, their established personality, their dispositionScore, and interactionHistory. If their disposition or memorable interactions should change due to the current scenario, include `updatedDispositionScore` and `newInteractionLogEntry` in the corresponding `pnjInteractions` object. The game system will handle any underlying mechanics like persuasion checks, which may influence the PNJ's future disposition or available dialogue.
    5.  **Major Decisions**: Log in majorDecisionsLogged if the narrative describes a significant choice made by the player that should be recorded for long-term consequence.
    6.  **Investigation Elements**:
        *   **Narrative Clues/Documents**: If the narrative leads to the player potentially discovering a clue or document, describe it in the \`scenarioText\` (e.g., 'You see a crumpled note on the floor,' or 'The ledger lies open on the desk.'). The game system will handle the mechanics of the player actually acquiring it as a formal clue or document.

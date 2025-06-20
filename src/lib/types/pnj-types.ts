@@ -12,4 +12,6 @@ export interface PNJ {
   firstEncountered: string; // Scenario/location of first encounter
   notes?: string[]; // Player or AI notes about this PNJ
   lastSeen?: string; // ISO string date
+  dispositionScore: number;
+  interactionHistory: string[];
 }

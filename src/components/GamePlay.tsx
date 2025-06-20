@@ -50,6 +50,8 @@ const prepareAIInput = (
   const encounteredPNJsSummary = (player.encounteredPNJs || []).map(p => ({
     name: p.name,
     relationStatus: p.relationStatus,
+    dispositionScore: p.dispositionScore, // Ensure this exists on PNJ type, default to 0 if not
+    interactionHistory: p.interactionHistory || [], // Ensure this exists on PNJ type, default to [] if not
   }));
 
   const currentCluesSummary = (player.clues || []).map(c => ({ title: c.title, type: c.type }));
