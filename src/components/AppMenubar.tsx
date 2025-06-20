@@ -2,7 +2,8 @@
 "use client";
 
 import React from 'react';
-
+import type { User as FirebaseUser } from 'firebase/auth'; // Correct type for Firebase user
+import type { Player, Position, WeatherData, JournalEntry } from '@/lib/types';
 
 import {
     Menubar,
@@ -16,38 +17,62 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import {
     FileText,
     Maximize,
     Settings,
-    Activity, // Icon for Stats
-    Sun, // Icon for Weather
-    MapPin, // Icon for Map
-    Image as ImageIcon // Icon for Location Image
+    Activity,
+    Sun,
+    MapPin,
+    Image as ImageIcon,
+    User as UserIcon,
+    Save,
+    LogOut,
+    SlidersHorizontal,
+    Briefcase,
+    BookOpen,
+    Search,
+    BookText
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
 import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
+import StatDisplay from '@/components/StatDisplay';
+import WeatherDisplay from '@/components/WeatherDisplay';
+import MapDisplay from '@/components/MapDisplay';
+import LocationImageDisplay from '@/components/LocationImageDisplay';
+import JournalDisplay from '@/components/JournalDisplay';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 
 
 interface AppMenubarProps {
   user: FirebaseUser | null;
   isGameActive: boolean;
   player: Player | null;
+  journal: JournalEntry[]; // Added journal prop
   onRestartGame: () => void;
   onSaveGame: () => void;
   onToggleFullScreen: () => void;
   onOpenToneSettings: () => void;
   onSignOut: () => void;
-
+  currentLocation: Position | null; // Ensure this can be null
+  nearbyPois: Position[] | null; // Ensure this can be null
+  weatherData: WeatherData | null;
+  weatherLoading: boolean;
+  weatherError: string | null;
+  locationImageUrl: string | null;
+  locationImageLoading: boolean;
+  locationImageError: string | null;
+}
 
 const AppMenubar: React.FC<AppMenubarProps> = ({
   user,
   isGameActive,
   player,
-  journal, // Added journal to destructuring
+  journal, // Destructure journal
   onRestartGame,
   onSaveGame,
   onToggleFullScreen,
@@ -253,14 +278,18 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                             <JournalDisplay journal={journal || []} />
                         </ScrollArea>
                         <DialogFooter>
-                             {/* DialogClose could be used here too, but Button provides explicit control if needed */}
                             <Button onClick={(e) => {
-                                // Find the dialog and manually set its open state to false
-                                // This is a common pattern if DialogClose is not directly usable or if more control is needed
                                 const dialog = e.currentTarget.closest('[role="dialog"]');
                                 if (dialog) {
-                                    dialog.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-                                    dialog.dispatchEvent(new Event('pointerup', { bubbles: true }));
+                                    // Manually dismiss the dialog by simulating a close action
+                                    // This is a workaround if DialogClose isn't directly suitable here
+                                    const closeButton = dialog.querySelector('button[aria-label="Close"], button[type="button"]:not([aria-label])') as HTMLElement; // More generic selector
+                                    if (closeButton) closeButton.click();
+                                    else { // Fallback if a specific close button isn't found
+                                       dialog.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+                                       dialog.dispatchEvent(new Event('click', { bubbles: true, cancelable: true })); // try click too
+                                       dialog.dispatchEvent(new Event('pointerup', { bubbles: true, cancelable: true }));
+                                    }
                                 }
                             }}>Fermer</Button>
                         </DialogFooter>
