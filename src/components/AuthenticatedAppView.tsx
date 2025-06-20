@@ -3,15 +3,15 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 // Corrected import path for game logic types
 import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
-import { loadGameStateFromLocal, saveGameState, SaveGameResult, clearGameStateFromLocal, getInitialScenario, hydratePlayer } from '@/lib/game-logic/game-state';
-import { defaultAvatarUrl, initialPlayerStats, initialPlayerPosition, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME } from '@/lib/game-logic/initial-game-data';
-import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/lib/firestore';
-import { useToast } from '@/components/ui/use-toast';
+import { loadGameStateFromLocal, saveGameState, type SaveGameResult, clearGameState, getInitialScenario, hydratePlayer } from '@/lib/game-logic';
+import { defaultAvatarUrl, initialPlayerStats, initialPlayerPosition, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
+import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service'; // Corrected import path
+import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
 import GameScreen from '@/components/GameScreen';
 // Corrected path for getCurrentWeather based on ls output
-import { WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
+import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
 // Corrected paths for AI flows to match original page.tsx
 import { generateLocationImage } from '@/ai/flows/generate-location-image-flow';
 import { generatePlayerAvatar } from '@/ai/flows/generate-player-avatar-flow';
@@ -65,19 +65,15 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         setIsCharacterCreationMode(false);
       } else {
         console.log("AuthenticatedAppView: No saved game state found or invalid state, initializing new game shell for character creation.");
-        const initialPlayer = hydratePlayer(initialPlayerStats, defaultAvatarUrl, initialPlayerPosition, initialPlayerLocation);
-        const initialScenario = getInitialScenario(initialPlayer, initialPlayerPosition, initialPlayerLocation);
+        const initialPlayer = hydratePlayer({uid: user.uid}); // Pass UID for hydration
+        const initialScenario = getInitialScenario(initialPlayer);
         setGameState({
           currentScenario: initialScenario,
           player: initialPlayer,
-          gameTime: new Date().toISOString(),
-          toneSettings: {
-            narrationStyle: "detailed",
-            verbosity: "medium",
-            languageDensity: "medium"
-          },
-          currentPosition: initialPlayerPosition,
-          currentLocationName: initialPlayerLocation.name || UNKNOWN_STARTING_PLACE_NAME,
+          gameTimeInMinutes: 0,
+          journal: [],
+          nearbyPois: null,
+          toneSettings: initialPlayer.toneSettings,
         });
         setIsCharacterCreationMode(true);
       }
@@ -88,28 +84,36 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
   // useEffect for fetchWeatherForLocation
   useEffect(() => {
-    if (gameState?.currentLocationName && gameState.currentLocationName !== UNKNOWN_STARTING_PLACE_NAME) {
-      fetchWeatherForLocation(gameState.currentLocationName);
+    if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
+      fetchWeatherForLocation(gameState.player.currentLocation);
     } else {
-      setWeatherData(null); // Clear weather data if location is unknown
-    }
-  }, [gameState?.currentLocationName]);
-
-  const fetchWeatherForLocation = useCallback(async (locationName: string) => {
-    if (!locationName || locationName === UNKNOWN_STARTING_PLACE_NAME) {
-      setWeatherData(null);
+      setWeatherData(null); // Clear weather data if location is unknown or not set
       setWeatherError(null);
-      return;
+    }
+  }, [gameState?.player?.currentLocation]); // Dependency on the player's current location object
+
+  const fetchWeatherForLocation = useCallback(async (location: Position) => {
+    if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        setWeatherData(null);
+        setWeatherError(null);
+        return;
     }
     setWeatherLoading(true);
     setWeatherError(null);
-    console.log(`Fetching weather for ${locationName}`);
+    console.log(`Fetching weather for ${location.name} at ${location.latitude}, ${location.longitude}`);
     try {
-      const data = await getCurrentWeather(locationName);
-      setWeatherData(data);
-      console.log("Weather data received:", data);
+      // getCurrentWeather from actions now expects lat/lon, not name
+      const data = await getCurrentWeather(location.latitude, location.longitude);
+      if ('error' in data) {
+        setWeatherData(null);
+        setWeatherError(data.error);
+        console.error("Failed to fetch weather data:", data.error);
+      } else {
+        setWeatherData(data);
+        console.log("Weather data received:", data);
+      }
     } catch (error) {
-      console.error("Failed to fetch weather data:", error);
+      console.error("Failed to fetch weather data (catch block):", error);
       setWeatherError((error as Error).message || "Failed to fetch weather. Please ensure the API key is configured correctly.");
       setWeatherData(null);
     } finally {
@@ -119,27 +123,32 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
   // useEffect for fetchLocationImage
   useEffect(() => {
-    if (gameState?.currentLocationName && gameState.currentLocationName !== UNKNOWN_STARTING_PLACE_NAME) {
-      fetchLocationImage(gameState.currentLocationName, gameState.currentScenario.description);
+    if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
+      fetchLocationImage(gameState.player.currentLocation.name); // Pass only name
     } else {
       setLocationImageUrl(null); // Clear image if location is unknown
+      setLocationImageError(null);
     }
-  }, [gameState?.currentLocationName, gameState?.currentScenario.description]);
+  }, [gameState?.player?.currentLocation?.name]); // Depend on location name for image
 
-  const fetchLocationImage = useCallback(async (locationName: string, locationDescription: string) => {
-    if (!locationName || locationName === UNKNOWN_STARTING_PLACE_NAME) {
+  const fetchLocationImage = useCallback(async (placeName: string) => {
+    if (!placeName || placeName === UNKNOWN_STARTING_PLACE_NAME) {
       setLocationImageUrl(null);
       setLocationImageError(null);
       return;
     }
     setLocationImageLoading(true);
     setLocationImageError(null);
-    console.log(`Fetching image for ${locationName}`);
+    console.log(`Fetching image for ${placeName}`);
     try {
-      // TODO: Consider adding weather data to the prompt if available
-      const imageUrl = await generateLocationImage({ locationName, locationDescription });
-      setLocationImageUrl(imageUrl);
-      console.log("Location image URL:", imageUrl);
+      const result = await generateLocationImage({ placeName }); // Pass input object
+      if (result.error) {
+        setLocationImageError(result.error);
+        setLocationImageUrl(null);
+      } else {
+        setLocationImageUrl(result.imageUrl);
+      }
+      console.log("Location image result:", result);
     } catch (error) {
       console.error("Failed to generate location image:", error);
       setLocationImageError((error as Error).message || "Failed to generate location image.");
@@ -150,7 +159,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, []);
 
 
-  const handleCharacterCreate = useCallback(async (playerData: Player, startSituation?: string) => {
+  const handleCharacterCreate = useCallback(async (playerBaseDetails: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => {
     if (!user) {
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
@@ -158,11 +167,26 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     setIsGeneratingAvatar(true);
     let avatarUrl = defaultAvatarUrl;
     try {
-      if (playerData.description) { // Generate avatar only if description is provided
-        avatarUrl = await generatePlayerAvatar(playerData.description);
-      }
+        const avatarInput = {
+            name: playerBaseDetails.name,
+            gender: playerBaseDetails.gender,
+            age: playerBaseDetails.age,
+            origin: playerBaseDetails.origin,
+            playerBackground: playerBaseDetails.background
+        };
+        const avatarResult = await generatePlayerAvatar(avatarInput);
+        if (avatarResult.imageUrl) {
+            avatarUrl = avatarResult.imageUrl;
+        } else if (avatarResult.error) {
+            console.error("Avatar generation failed:", avatarResult.error);
+            toast({
+                title: "Avatar Generation Failed",
+                description: avatarResult.error || "Could not generate avatar. Using default.",
+                variant: "destructive",
+            });
+        }
     } catch (error) {
-      console.error("Avatar generation failed:", error);
+      console.error("Avatar generation failed (catch):", error);
       toast({
         title: "Avatar Generation Failed",
         description: (error as Error).message || "Could not generate avatar. Using default.",
@@ -172,26 +196,33 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setIsGeneratingAvatar(false);
     }
 
-    const hydratedPlayer = hydratePlayer(playerData, avatarUrl, initialPlayerPosition, initialPlayerLocation);
-    const initialScenario = getInitialScenario(hydratedPlayer, initialPlayerPosition, initialPlayerLocation, startSituation);
+    const hydratedPlayer = hydratePlayer({
+        ...playerBaseDetails,
+        uid: user.uid,
+        avatarUrl: avatarUrl,
+    });
+
+    hydratedPlayer.currentLocation = {
+        latitude: Math.random() * 180 - 90,
+        longitude: Math.random() * 360 - 180,
+        name: UNKNOWN_STARTING_PLACE_NAME,
+    };
+
+    const initialScenario = getInitialScenario(hydratedPlayer);
 
     setGameState({
       currentScenario: initialScenario,
       player: hydratedPlayer,
-      gameTime: new Date().toISOString(),
-      toneSettings: gameState?.toneSettings || { // Preserve existing tone settings or use default
-        narrationStyle: "detailed",
-        verbosity: "medium",
-        languageDensity: "medium"
-      },
-      currentPosition: initialPlayerPosition,
-      currentLocationName: initialPlayerLocation.name || UNKNOWN_STARTING_PLACE_NAME,
+      gameTimeInMinutes: 0,
+      journal: [],
+      nearbyPois: null,
+      toneSettings: hydratedPlayer.toneSettings,
     });
-    setIsCharacterCreationMode(false); // Exit character creation mode
-    setLocationImageUrl(null); // Reset location image for new game
-    setWeatherData(null); // Reset weather for new game
-    console.log("Character created, new game state set.");
-  }, [user, toast, gameState?.toneSettings]);
+    setIsCharacterCreationMode(false);
+    setLocationImageUrl(null);
+    setWeatherData(null);
+    console.log("Character created, new game state set. Player location:", hydratedPlayer.currentLocation);
+  }, [user, toast]);
 
 
   const handleRestartGame = useCallback(async () => {
@@ -201,22 +232,26 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
     console.log("Restarting game for user:", user.uid);
     setIsLoadingState(true);
-    await deletePlayerStateFromFirestore(user.uid); // Clear cloud save
-    clearGameStateFromLocal(); // Clear local save
-    const initialScenario = getInitialScenario(initialPlayerStats, initialPlayerPosition, initialPlayerLocation);
+    await deletePlayerStateFromFirestore(user.uid);
+    clearGameState();
+    
+    const newPlayerBase = hydratePlayer({ uid: user.uid });
+    newPlayerBase.currentLocation = {
+        latitude: Math.random() * 180 - 90,
+        longitude: Math.random() * 360 - 180,
+        name: UNKNOWN_STARTING_PLACE_NAME,
+    };
+    const initialScenario = getInitialScenario(newPlayerBase);
+
     setGameState({
       currentScenario: initialScenario,
-      player: hydratePlayer(initialPlayerStats, defaultAvatarUrl, initialPlayerPosition, initialPlayerLocation),
-      gameTime: new Date().toISOString(),
-      toneSettings: { // Reset to default tone settings on restart
-        narrationStyle: "detailed",
-        verbosity: "medium",
-        languageDensity: "medium"
-      },
-      currentPosition: initialPlayerPosition,
-      currentLocationName: initialPlayerLocation.name || UNKNOWN_STARTING_PLACE_NAME,
+      player: newPlayerBase,
+      gameTimeInMinutes: 0,
+      journal: [],
+      nearbyPois: null,
+      toneSettings: newPlayerBase.toneSettings,
     });
-    setIsCharacterCreationMode(true); // Enter character creation mode
+    setIsCharacterCreationMode(true);
     setLocationImageUrl(null);
     setWeatherData(null);
     setIsLoadingState(false);
@@ -224,16 +259,24 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, [user, toast]);
 
   const handleSaveGame = useCallback(async () => {
-    if (!gameState || !user) {
+    if (!gameState || !user || !gameState.player) {
       toast({ title: "Error", description: "No game state to save or user not authenticated.", variant: "destructive" });
       return;
     }
-    console.log("Saving game state for user:", user.uid);
-    const result = await saveGameState(gameState, user.uid);
-    if (result.success) {
-      toast({ title: "Game Saved", description: result.message });
+    const stateToSave: GameState = {
+      ...gameState,
+      player: {
+        ...gameState.player,
+        uid: user.uid,
+      },
+    };
+
+    console.log("Saving game state for user:", user.uid, stateToSave);
+    const result = await saveGameState(stateToSave);
+    if (result.localSaveSuccess || result.cloudSaveSuccess) {
+      toast({ title: "Game Saved", description: `Local: ${result.localSaveSuccess ? 'Oui' : 'Non'}. Cloud: ${result.cloudSaveSuccess === null ? 'N/A' : (result.cloudSaveSuccess ? 'Oui' : 'Non')}.` });
     } else {
-      toast({ title: "Save Failed", description: result.message, variant: "destructive" });
+      toast({ title: "Save Failed", description: "Could not save locally or to cloud.", variant: "destructive" });
     }
   }, [gameState, user, toast]);
 
@@ -248,42 +291,35 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   };
 
   const handleSaveToneSettings = (newSettings: ToneSettings) => {
-    if (gameState) {
-      const updatedGameState = { ...gameState, toneSettings: newSettings };
+    if (gameState && gameState.player) {
+      const updatedPlayer = { ...gameState.player, toneSettings: newSettings };
+      const updatedGameState = { ...gameState, player: updatedPlayer, toneSettings: newSettings }; // Also update top-level toneSettings
       setGameState(updatedGameState);
-      // Optionally, save to local storage or backend if these settings should persist independently
       toast({ title: "Tone Settings Saved", description: "The narration style has been updated." });
     }
     setIsToneSettingsDialogOpen(false);
   };
 
 
-  if (isLoadingState && !isCharacterCreationMode) { // Show adventure loading only if not heading to char creation immediately
+  if (isLoadingState && !isCharacterCreationMode) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
-        <p>Loading your adventure...</p>
-        {/* You might want to add a spinner here */}
+        <p>Chargement de votre aventure...</p>
       </div>
     );
   }
 
-  // Calculate isGameActive based on the new isCharacterCreationMode state
   const isGameActive = !isCharacterCreationMode && !!(gameState && gameState.player && gameState.currentScenario);
 
-  // Props for AppMenubar based on original page.tsx structure
-  // Ensure initialPlayerLocation and UNKNOWN_STARTING_PLACE_NAME are available if used here
-  // For simplicity, if gameState or player is null, these will be null/default.
-  const currentMapLocation = gameState?.player?.currentLocation ?
-    { name: gameState.currentLocationName || UNKNOWN_STARTING_PLACE_NAME, ...gameState.player.currentLocation } :
-    initialPlayerLocation;
+  const currentMapLocation = gameState?.player?.currentLocation || initialPlayerLocation;
   const nearbyPoisForMap = gameState?.nearbyPois || null;
-  const playerJournal = gameState?.journal || []; // Assuming journal is part of GameState
+  const playerJournal = gameState?.journal || [];
 
   return (
-    <>
+    <div className="flex flex-col h-screen">
       <AppMenubar
-        user={user} // Pass the user prop from AuthenticatedAppViewProps
-        isGameActive={isGameActive} // Pass calculated isGameActive
+        user={user}
+        isGameActive={isGameActive}
         player={gameState?.player || null}
         journal={playerJournal}
         currentLocation={currentMapLocation}
@@ -294,35 +330,24 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         locationImageUrl={locationImageUrl}
         locationImageLoading={locationImageLoading}
         locationImageError={locationImageError}
-        onNewGame={() => setIsCharacterCreationMode(true)}
         onRestartGame={handleRestartGame}
         onSaveGame={handleSaveGame}
         onSignOut={signOutUser}
         onToggleFullScreen={handleToggleFullScreen}
         onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
-        isSaveDisabled={!isGameActive || isLoadingState || !gameState}
-        isRestartDisabled={isLoadingState}
       />
       <ToneSettingsDialog
         isOpen={isToneSettingsDialogOpen}
         onOpenChange={setIsToneSettingsDialogOpen}
-        currentSettings={gameState?.toneSettings || { narrationStyle: "detailed", verbosity: "medium", languageDensity: "medium" }}
+        currentSettings={gameState?.toneSettings || initialToneSettings}
         onSave={handleSaveToneSettings}
       />
       <GameScreen
-        user={user} // Pass the user object
-        loadingAuth={false} // Auth is complete when in AuthenticatedAppView
-        authFunctions={{
-          // Dummy functions to satisfy AuthFunctions type, not used when user is present
-          user: null, loadingAuth: false,
-          signUp: async () => {}, signIn: async () => {},
-          signInAnon: async () => {}, signOut: async () => {}
-        }}
-        isLoadingState={isLoadingState} // Game data loading state
+        user={user}
         gameState={gameState}
-        isGameActive={isGameActive} // Pass the calculated isGameActive
+        isGameActive={isGameActive}
         onCharacterCreate={handleCharacterCreate}
-        onRestartGame={handleRestartGame} // Pass onRestartGame
+        onRestartGame={handleRestartGame}
         setGameState={setGameState}
         weatherData={weatherData}
         weatherLoading={weatherLoading}
@@ -331,9 +356,8 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         locationImageLoading={locationImageLoading}
         locationImageError={locationImageError}
         isGeneratingAvatar={isGeneratingAvatar}
-        // userId={user?.uid} // GameScreen itself doesn't use userId directly. Actions within GamePlay/etc. would typically get UID from user object or context.
       />
-    </>
+    </div>
   );
 };
 
