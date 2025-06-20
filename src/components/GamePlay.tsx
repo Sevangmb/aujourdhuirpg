@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, Player, Position, JournalEntry, GameNotification } from '@/lib/types';
-import { gameReducer, GameAction, fetchPoisForCurrentLocation } from '@/lib/game-logic';
+import { gameReducer, GameAction, fetchPoisForCurrentLocation, checkForLocationBasedEvents } from '@/lib/game-logic'; // Added checkForLocationBasedEvents
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 // Removed generateLocationImage import as fetching is lifted
@@ -116,6 +116,7 @@ interface GamePlayProps {
 
 const GamePlay: React.FC<GamePlayProps> = ({
   initialGameState,
+  // onRestart, // This prop is available but not currently used in GamePlay logic
   onStateUpdate,
   weatherData,
   weatherLoading,
@@ -146,7 +147,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     let newState = gameReducer(initialGameState, action);
 
     if (action.type === 'MOVE_TO_LOCATION') {
-      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 });
+      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 }); 
 
       try {
         setIsLoading(true);
@@ -237,7 +238,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     );
   }
 
-  const displayLocation = player.currentLocation || initialPlayerLocation;
+  const displayLocation = player.currentLocation || initialPlayerLocation;;
 
   return (
     <div className="flex flex-col p-2 md:p-4 space-y-2 md:space-y-4 h-full">
@@ -249,9 +250,19 @@ const GamePlay: React.FC<GamePlayProps> = ({
             currentLocation={displayLocation}
             nearbyPois={nearbyPois || []}
           />
-
-      </div>
-
+          <LocationImageDisplay
+            imageUrl={locationImageUrl}
+            placeName={displayLocation.name || UNKNOWN_STARTING_PLACE_NAME}
+            isLoading={locationImageLoading}
+            error={locationImageError}
+          />
+        </div>
+      )}
+      <ScrollArea className="flex-grow rounded-md border shadow-inner bg-muted/20">
+        <div className="p-3">
+          <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+        </div>
+      </ScrollArea>
       <div className="shrink-0">
         <PlayerInputForm
           playerInput={playerInput}
