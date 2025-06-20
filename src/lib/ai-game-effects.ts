@@ -168,14 +168,56 @@ export function updateQuestInLog(currentQuestLog: Quest[], questId: string, upda
   return { updatedLog, completedQuestWithMoneyReward };
 }
 
+const MAX_INTERACTION_HISTORY = 10;
 
-export function addOrUpdatePNJ(currentPNJs: PNJ[], pnjData: PNJ): PNJ[] {
+export function addOrUpdatePNJ(
+  currentPNJs: PNJ[],
+  pnjDataFromAI: Partial<PNJ> & Pick<PNJ, 'id' | 'name' | 'description' | 'relationStatus' | 'importance' | 'firstEncountered'>, // Ensure core fields are there
+  updatedDispositionScore?: number,
+  newInteractionLogEntry?: string
+): PNJ[] {
   const pnjsToUpdate = currentPNJs || [];
-  const existingPNJIndex = pnjsToUpdate.findIndex(p => p.id === pnjData.id);
+  const existingPNJIndex = pnjsToUpdate.findIndex(p => p.id === pnjDataFromAI.id);
+
   if (existingPNJIndex > -1) {
-    return pnjsToUpdate.map((p, index) => index === existingPNJIndex ? { ...p, ...pnjData, lastSeen: new Date().toISOString() } : p);
+    // Update existing PNJ
+    return pnjsToUpdate.map((p, index) => {
+      if (index === existingPNJIndex) {
+        const updatedPnj = { ...p, ...pnjDataFromAI, lastSeen: new Date().toISOString() };
+
+        if (typeof updatedDispositionScore === 'number') {
+          updatedPnj.dispositionScore = updatedDispositionScore;
+        }
+        if (newInteractionLogEntry) {
+          updatedPnj.interactionHistory = [...(updatedPnj.interactionHistory || []), newInteractionLogEntry];
+          if (updatedPnj.interactionHistory.length > MAX_INTERACTION_HISTORY) {
+            updatedPnj.interactionHistory = updatedPnj.interactionHistory.slice(-MAX_INTERACTION_HISTORY);
+          }
+        }
+        return updatedPnj;
+      }
+      return p;
+    });
+  } else {
+    // Add new PNJ
+    const newPnj: PNJ = {
+      // Base fields from pnjDataFromAI, which should have id, name etc.
+      id: pnjDataFromAI.id,
+      name: pnjDataFromAI.name,
+      description: pnjDataFromAI.description,
+      relationStatus: pnjDataFromAI.relationStatus,
+      importance: pnjDataFromAI.importance,
+      firstEncountered: pnjDataFromAI.firstEncountered,
+      // Optional fields from pnjDataFromAI
+      trustLevel: pnjDataFromAI.trustLevel,
+      notes: pnjDataFromAI.notes,
+      // New fields with defaults or AI provided values
+      dispositionScore: typeof updatedDispositionScore === 'number' ? updatedDispositionScore : 0,
+      interactionHistory: newInteractionLogEntry ? [newInteractionLogEntry] : [],
+      lastSeen: new Date().toISOString(),
+    };
+    return [...pnjsToUpdate, newPnj];
   }
-  return [...pnjsToUpdate, { ...pnjData, lastSeen: new Date().toISOString() }];
 }
 
 export function logMajorDecision(currentDecisionLog: MajorDecision[], decisionData: Omit<MajorDecision, 'dateMade'>): MajorDecision[] {
@@ -286,27 +328,73 @@ export async function processAndApplyAIScenarioOutput(
   }
 
   if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
-    aiOutput.pnjInteractions.forEach(pnjData => {
-      const pnj: PNJ = {
-        id: pnjData.id || `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-        name: pnjData.name,
-        description: pnjData.description,
-        relationStatus: pnjData.relationStatus || 'neutral',
-        importance: pnjData.importance || 'minor',
-        firstEncountered: pnjData.firstEncountered || "Contexte actuel",
-        trustLevel: pnjData.trustLevel,
-        notes: pnjData.notes,
-        lastSeen: new Date().toISOString()
-      };
-      const oldPNJ = (updatedPlayer.encounteredPNJs || []).find(p=>p.id === pnj.id);
-      updatedPlayer.encounteredPNJs = addOrUpdatePNJ(updatedPlayer.encounteredPNJs || [], pnj);
-      if(!oldPNJ || oldPNJ.relationStatus !== pnj.relationStatus || oldPNJ.trustLevel !== pnj.trustLevel) {
-        notifications.push({
-          type: 'pnj_encountered',
-          title: `Interaction PNJ : ${pnj.name}`,
-          description: `Relation : ${pnj.relationStatus}. ${pnj.description.substring(0, 70)}...`,
-          details: { pnjId: pnj.id, pnjName: pnj.name }
-        });
+    aiOutput.pnjInteractions.forEach(pnjDataFromAI => {
+      // Ensure pnjDataFromAI has the minimum required fields for addOrUpdatePNJ
+      // The Pick in addOrUpdatePNJ's signature helps, but id and name are crucial.
+      if (!pnjDataFromAI.id) pnjDataFromAI.id = `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      if (!pnjDataFromAI.name) pnjDataFromAI.name = "PNJ Inconnu"; // Should ideally always be provided by AI
+      if (!pnjDataFromAI.description) pnjDataFromAI.description = "Aucune description.";
+      if (!pnjDataFromAI.relationStatus) pnjDataFromAI.relationStatus = 'neutral';
+      if (!pnjDataFromAI.importance) pnjDataFromAI.importance = 'minor';
+      if (!pnjDataFromAI.firstEncountered) pnjDataFromAI.firstEncountered = "Contexte actuel";
+
+      const oldPNJ = (updatedPlayer.encounteredPNJs || []).find(p => p.id === pnjDataFromAI.id);
+      const oldDispositionScore = oldPNJ?.dispositionScore;
+
+      updatedPlayer.encounteredPNJs = addOrUpdatePNJ(
+        updatedPlayer.encounteredPNJs || [],
+        pnjDataFromAI as PNJ, // Cast as PNJ after ensuring required fields, addOrUpdatePNJ handles partials.
+        pnjDataFromAI.updatedDispositionScore,
+        pnjDataFromAI.newInteractionLogEntry
+      );
+
+      const updatedPNJ = (updatedPlayer.encounteredPNJs || []).find(p => p.id === pnjDataFromAI.id);
+
+      if (updatedPNJ) {
+        let notificationSent = false;
+        // Notification for relation status or trust level (existing logic)
+        if (!oldPNJ || oldPNJ.relationStatus !== updatedPNJ.relationStatus || oldPNJ.trustLevel !== updatedPNJ.trustLevel) {
+          notifications.push({
+            type: 'pnj_encountered', // This type might need to be more generic like 'pnj_updated'
+            title: `Interaction PNJ : ${updatedPNJ.name}`,
+            description: `Relation : ${updatedPNJ.relationStatus}, Confiance : ${updatedPNJ.trustLevel ?? 'N/A'}. ${updatedPNJ.description.substring(0, 50)}...`,
+            details: { pnjId: updatedPNJ.id, pnjName: updatedPNJ.name }
+          });
+          notificationSent = true;
+        }
+
+        // Notification for disposition score change
+        if (typeof pnjDataFromAI.updatedDispositionScore === 'number' && oldDispositionScore !== updatedPNJ.dispositionScore) {
+          notifications.push({
+            type: 'pnj_disposition_changed',
+            title: `PNJ : ${updatedPNJ.name}`,
+            description: `La disposition de ${updatedPNJ.name} envers vous a changé. (Score: ${updatedPNJ.dispositionScore})`,
+            details: { pnjId: updatedPNJ.id, pnjName: updatedPNJ.name, newDisposition: updatedPNJ.dispositionScore }
+          });
+          notificationSent = true;
+        }
+
+        // Notification for new interaction log entry
+        if (pnjDataFromAI.newInteractionLogEntry) {
+          notifications.push({
+            type: 'pnj_interaction_logged',
+            title: `PNJ : ${updatedPNJ.name}`,
+            description: `${updatedPNJ.name} se souviendra de : "${pnjDataFromAI.newInteractionLogEntry.substring(0, 50)}${pnjDataFromAI.newInteractionLogEntry.length > 50 ? '...' : ''}"`,
+            details: { pnjId: updatedPNJ.id, pnjName: updatedPNJ.name, entry: pnjDataFromAI.newInteractionLogEntry }
+          });
+          notificationSent = true;
+        }
+
+        // Fallback notification if a PNJ was processed but no specific change notification was triggered
+        // This can happen if only notes are updated, or if it's a new PNJ not covered by the above.
+        if (!notificationSent && !oldPNJ) { // Only for brand new PNJs if no other notification was sent
+             notifications.push({
+                type: 'pnj_encountered',
+                title: `Nouveau PNJ : ${updatedPNJ.name}`,
+                description: `Vous avez rencontré ${updatedPNJ.name}. Relation : ${updatedPNJ.relationStatus}.`,
+                details: { pnjId: updatedPNJ.id, pnjName: updatedPNJ.name }
+            });
+        }
       }
     });
   }

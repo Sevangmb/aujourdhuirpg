@@ -112,6 +112,36 @@ const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
         <p className="italic text-muted-foreground">"{pnj.description}"</p>
         <p><span className="font-semibold">Relation:</span> <span className={relationColor}>{pnj.relationStatus}</span></p>
         {typeof pnj.trustLevel === 'number' && <p><span className="font-semibold">Confiance:</span> {pnj.trustLevel}/100</p>}
+
+        {typeof pnj.dispositionScore === 'number' && (
+          <p>
+            <span className="font-semibold">Disposition: </span>
+            <span className={
+              pnj.dispositionScore > 50 ? "text-green-500 font-medium" :
+              pnj.dispositionScore > 0 ? "text-lime-600 font-medium" :
+              pnj.dispositionScore === 0 ? "text-yellow-600 font-medium" :
+              pnj.dispositionScore < -50 ? "text-red-600 font-medium" :
+              "text-orange-500 font-medium" // For scores between -1 and -50
+            }>
+              {
+                pnj.dispositionScore > 50 ? "Amical" :
+                pnj.dispositionScore > 0 ? "Positif" :
+                pnj.dispositionScore === 0 ? "Neutre" :
+                pnj.dispositionScore < -50 ? "Hostile" :
+                "Méfiance"
+              }
+            </span>
+            <span className="text-muted-foreground text-xs"> ({pnj.dispositionScore})</span>
+          </p>
+        )}
+
+        {pnj.interactionHistory && pnj.interactionHistory.length > 0 && (
+          <p className="mt-0.5">
+            <span className="font-semibold">Dernière interaction:</span>
+            <span className="italic text-muted-foreground"> "{pnj.interactionHistory[pnj.interactionHistory.length - 1]}"</span>
+          </p>
+        )}
+
         {pnj.notes && pnj.notes.length > 0 && (
           <Accordion type="single" collapsible className="w-full mt-1">
             <AccordionItem value="notes" className="border-b-0">
