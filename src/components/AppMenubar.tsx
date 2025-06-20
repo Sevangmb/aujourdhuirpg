@@ -90,7 +90,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
   const isMobile = useIsMobile();
 
   return (
-    <Menubar className="w-full rounded-none border-b shrink-0 px-1 sm:px-2">
+    <Menubar className="w-full rounded-none border-b shrink-0 px-1 sm:px-2" style={{ backgroundColor: 'white', zIndex: 100 }}>
       <MenubarMenu>
         <MenubarTrigger className="px-2 sm:px-3">
             <FileText className="h-4 w-4" />

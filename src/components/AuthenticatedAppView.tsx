@@ -342,21 +342,23 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         currentSettings={gameState?.toneSettings || initialToneSettings}
         onSave={handleSaveToneSettings}
       />
-      <GameScreen
-        user={user}
-        gameState={gameState}
-        isGameActive={isGameActive}
-        onCharacterCreate={handleCharacterCreate}
-        onRestartGame={handleRestartGame}
-        setGameState={setGameState}
-        weatherData={weatherData}
-        weatherLoading={weatherLoading}
-        weatherError={weatherError}
-        locationImageUrl={locationImageUrl}
-        locationImageLoading={locationImageLoading}
-        locationImageError={locationImageError}
-        isGeneratingAvatar={isGeneratingAvatar}
-      />
+      <div className="flex-grow overflow-auto">
+        <GameScreen
+          user={user}
+          gameState={gameState}
+          isGameActive={isGameActive}
+          onCharacterCreate={handleCharacterCreate}
+          onRestartGame={handleRestartGame}
+          setGameState={setGameState}
+          weatherData={weatherData}
+          weatherLoading={weatherLoading}
+          weatherError={weatherError}
+          locationImageUrl={locationImageUrl}
+          locationImageLoading={locationImageLoading}
+          locationImageError={locationImageError}
+          isGeneratingAvatar={isGeneratingAvatar}
+        />
+      </div>
     </div>
   );
 };
