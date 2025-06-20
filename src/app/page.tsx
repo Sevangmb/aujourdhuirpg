@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import AuthScreen from '@/components/AuthScreen';
+import AuthenticatedAppView from '@/components/AuthenticatedAppView';
 
 // UI Components (if any were intended here)
 
@@ -10,22 +12,27 @@ function HomePageContent() {
   const {
     user,
     loadingAuth,
-    // signUpWithEmailPassword, // Commenting out unused functions for now
-    // signInWithEmailPassword,
-    // signInAnonymously,
-    // signOutUser,
+    signUpWithEmailPassword,
+    signInWithEmailPassword,
+    signInAnonymously,
+    signOutUser,
   } = useAuth();
 
   if (loadingAuth) {
-    return <div>Loading...</div>;
+    return <div>Chargement de l'application...</div>;
   }
 
   return (
     <div>
       {user ? (
-        <p>Welcome, {user.displayName || user.email || 'User'}!</p>
+        <AuthenticatedAppView user={user} signOutUser={signOutUser} />
       ) : (
-        <p>Please sign in.</p>
+        <AuthScreen
+          loadingAuth={loadingAuth}
+          signUp={signUpWithEmailPassword}
+          signIn={signInWithEmailPassword}
+          signInAnon={signInAnonymously}
+        />
       )}
     </div>
   );
