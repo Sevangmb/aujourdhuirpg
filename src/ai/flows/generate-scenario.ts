@@ -177,8 +177,7 @@ Remember to consider the player's activeQuests and currentObjectivesDescriptions
 Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
 For complex actions implied by '{{{playerChoice}}}', describe the player's attempt and the observable situation in the narrative. The game system will determine the mechanical outcome.
 Use the PNJ's disposition score and interaction history to influence their dialogue, actions, and how they react to the player.
-If the player's actions should change a PNJ's disposition or add a significant memory, you can suggest an \`updatedDispositionScore\` and a \`newInteractionLogEntry\` for that PNJ in your response (using the \`pnjInteractions\` output field).
-{{!-- End of gameplay action intro specific instructions --}}{{/unless}}\`;
+
 const PROMPT_PHASE_1_INFO_GATHERING = `
 **Phase 1: Strategic Information Gathering & API Management**
 {{#unless isInitialUnknownLocation}}
