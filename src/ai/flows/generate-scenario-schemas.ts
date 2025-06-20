@@ -42,7 +42,12 @@ export const GenerateScenarioInputSchema = z.object({
   playerLocation: LocationSchema.describe("The player's current location."),
   toneSettings: ToneSettingsSchema.optional(),
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
-  encounteredPNJsSummary: z.array(z.object({name: z.string(), relationStatus: z.string()})).optional().describe("Résumé des PNJ importants déjà rencontrés et leur relation actuelle."),
+  encounteredPNJsSummary: z.array(z.object({
+    name: z.string(),
+    relationStatus: z.string(),
+    dispositionScore: z.number(), // Added: disposition score from PNJ type
+    interactionHistory: z.array(z.string()) // Added: full interaction history from PNJ type
+  })).optional().describe("Résumé des PNJ importants déjà rencontrés, incluant leur relation, score de disposition et historique d'interaction complet."),
   currentCluesSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
   currentDocumentsSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
   currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")
@@ -65,8 +70,10 @@ export const SimplifiedGenerateScenarioInputSchema = GenerateScenarioInputSchema
   })).optional().describe("Simplified list of active quests."),
   encounteredPNJsSummary: z.array(z.object({
     name: z.string(),
-    relationStatus: z.string()
-  })).optional().describe("Simplified list of encountered PNJ summaries."),
+    relationStatus: z.string(),
+    dispositionScore: z.number().optional(), // Added optional disposition score
+    interactionHistory: z.string().optional() // Changed to string for summarized history
+  })).optional().describe("Simplified list of encountered PNJ summaries, including disposition and recent history (summarized as a string)."),
   currentCluesSummary: z.array(z.object({
     title: z.string(),
     type: z.string()
