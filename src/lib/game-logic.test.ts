@@ -1,3 +1,4 @@
+
 import { fetchPoisForCurrentLocation, checkForLocationBasedEvents, type GameAction } from './game-logic';
 import type { Position, GameState } from './types'; // Assuming Position is in types.ts or game-types.ts via types.ts
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service'; // To be mocked
@@ -182,14 +183,14 @@ describe('checkForLocationBasedEvents', () => {
       avatarUrl: "",
       origin: "",
       background: "",
-      stats: { health: 10, maxHealth: 10, sanity: 10, maxSanity: 10, stamina: 10, maxStamina: 10 },
+      stats: { Sante: 100, Charisme: 50, Intelligence: 50, Force: 50, Energie: 100, Stress: 10, Volonte: 50, Reputation: 0 },
       skills: {},
       traitsMentalStates: [],
       progression: { level: 1, xp: 0, xpToNextLevel: 100, perks: [] },
-      alignment: { morality: 0, ethics: 0 },
+      alignment: { chaosLawful: 0, goodEvil: 0 },
       money: 0,
       inventory: [],
-      toneSettings: { narrationPace: "medium", selfMonologueFrequency: "medium" },
+      toneSettings: { Horreur: 50, Romance: 50, Humour: 50, Mystère: 50, Action: 50 },
       questLog: [],
       encounteredPNJs: [],
       decisionLog: [],
@@ -201,6 +202,7 @@ describe('checkForLocationBasedEvents', () => {
     nearbyPois: null,
     gameTimeInMinutes: 0,
     journal: [],
+    toneSettings: { Horreur: 50, Romance: 50, Humour: 50, Mystère: 50, Action: 50 },
   };
 
   test('Test Case 1: Entering "Forbidden Sector"', () => {

@@ -292,7 +292,7 @@ export async function processAndApplyAIScenarioOutput(
       typeof aiOutput.newLocationDetails.longitude === 'number' &&
       typeof aiOutput.newLocationDetails.name === 'string' &&
       aiOutput.newLocationDetails.name.trim() !== '' &&
-      aiOutput.newLocationDetails.name.trim() !== UNKNOWN_STARTING_PLACE_NAME) { // Crucial check added
+      aiOutput.newLocationDetails.name.trim() !== UNKNOWN_STARTING_PLACE_NAME) { 
     const newLoc: PlayerPositionType = { 
       latitude: aiOutput.newLocationDetails.latitude,
       longitude: aiOutput.newLocationDetails.longitude,
@@ -306,8 +306,6 @@ export async function processAndApplyAIScenarioOutput(
       details: { ...newLoc, reasonForMove: aiOutput.newLocationDetails.reasonForMove }
     });
   } else if (aiOutput.newLocationDetails) {
-    // This condition means newLocationDetails was provided, but it wasn't valid enough to change the location
-    // (e.g., name was still UNKNOWN_STARTING_PLACE_NAME or other fields missing)
     console.warn('AI output included newLocationDetails, but it was malformed or did not change from UNKNOWN_STARTING_PLACE_NAME:', aiOutput.newLocationDetails);
     notifications.push({
       type: 'warning',
@@ -329,10 +327,8 @@ export async function processAndApplyAIScenarioOutput(
 
   if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
     aiOutput.pnjInteractions.forEach(pnjDataFromAI => {
-      // Ensure pnjDataFromAI has the minimum required fields for addOrUpdatePNJ
-      // The Pick in addOrUpdatePNJ's signature helps, but id and name are crucial.
       if (!pnjDataFromAI.id) pnjDataFromAI.id = `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      if (!pnjDataFromAI.name) pnjDataFromAI.name = "PNJ Inconnu"; // Should ideally always be provided by AI
+      if (!pnjDataFromAI.name) pnjDataFromAI.name = "PNJ Inconnu";
       if (!pnjDataFromAI.description) pnjDataFromAI.description = "Aucune description.";
       if (!pnjDataFromAI.relationStatus) pnjDataFromAI.relationStatus = 'neutral';
       if (!pnjDataFromAI.importance) pnjDataFromAI.importance = 'minor';
@@ -343,7 +339,7 @@ export async function processAndApplyAIScenarioOutput(
 
       updatedPlayer.encounteredPNJs = addOrUpdatePNJ(
         updatedPlayer.encounteredPNJs || [],
-        pnjDataFromAI as PNJ, // Cast as PNJ after ensuring required fields, addOrUpdatePNJ handles partials.
+        pnjDataFromAI as PNJ,
         pnjDataFromAI.updatedDispositionScore,
         pnjDataFromAI.newInteractionLogEntry
       );
@@ -352,10 +348,9 @@ export async function processAndApplyAIScenarioOutput(
 
       if (updatedPNJ) {
         let notificationSent = false;
-        // Notification for relation status or trust level (existing logic)
         if (!oldPNJ || oldPNJ.relationStatus !== updatedPNJ.relationStatus || oldPNJ.trustLevel !== updatedPNJ.trustLevel) {
           notifications.push({
-            type: 'pnj_encountered', // This type might need to be more generic like 'pnj_updated'
+            type: 'pnj_encountered',
             title: `Interaction PNJ : ${updatedPNJ.name}`,
             description: `Relation : ${updatedPNJ.relationStatus}, Confiance : ${updatedPNJ.trustLevel ?? 'N/A'}. ${updatedPNJ.description.substring(0, 50)}...`,
             details: { pnjId: updatedPNJ.id, pnjName: updatedPNJ.name }
@@ -363,7 +358,6 @@ export async function processAndApplyAIScenarioOutput(
           notificationSent = true;
         }
 
-        // Notification for disposition score change
         if (typeof pnjDataFromAI.updatedDispositionScore === 'number' && oldDispositionScore !== updatedPNJ.dispositionScore) {
           notifications.push({
             type: 'pnj_disposition_changed',
@@ -374,7 +368,6 @@ export async function processAndApplyAIScenarioOutput(
           notificationSent = true;
         }
 
-        // Notification for new interaction log entry
         if (pnjDataFromAI.newInteractionLogEntry) {
           notifications.push({
             type: 'pnj_interaction_logged',
@@ -385,9 +378,7 @@ export async function processAndApplyAIScenarioOutput(
           notificationSent = true;
         }
 
-        // Fallback notification if a PNJ was processed but no specific change notification was triggered
-        // This can happen if only notes are updated, or if it's a new PNJ not covered by the above.
-        if (!notificationSent && !oldPNJ) { // Only for brand new PNJs if no other notification was sent
+        if (!notificationSent && !oldPNJ) {
              notifications.push({
                 type: 'pnj_encountered',
                 title: `Nouveau PNJ : ${updatedPNJ.name}`,
@@ -414,12 +405,11 @@ export async function processAndApplyAIScenarioOutput(
     });
   }
 
-  // --- Process AI Quest Suggestions ---
   if (aiOutput.newQuestsProposed && Array.isArray(aiOutput.newQuestsProposed)) {
     aiOutput.newQuestsProposed.forEach(questData => {
       const oldQuestLogLength = (updatedPlayer.questLog || []).length;
       updatedPlayer.questLog = addQuestToLog(updatedPlayer.questLog || [], questData);
-      const newQuest = (updatedPlayer.questLog || []).find(q => q.id === questData.id); // Ensure questData has an ID or one is generated by addQuestToLog
+      const newQuest = (updatedPlayer.questLog || []).find(q => q.id === questData.id);
       if (newQuest && (updatedPlayer.questLog || []).length > oldQuestLogLength) {
         notifications.push({
           type: 'quest_added',
@@ -489,8 +479,6 @@ export async function processAndApplyAIScenarioOutput(
       }
     });
   }
-  // --- End Process AI Quest Suggestions ---
-
 
   const parsedAction: ParsedAction = await parsePlayerAction(playerChoice);
 
@@ -502,7 +490,7 @@ export async function processAndApplyAIScenarioOutput(
       const playerBeforeAdding = { ...updatedPlayer, inventory: [...updatedPlayer.inventory] };
       updatedPlayer.inventory = addItemToInventory(playerBeforeAdding.inventory, masterItem.id, 1);
 
-      if (updatedPlayer.inventory !== playerBeforeAdding.inventory && updatedPlayer.inventory.find(i=> i.id === masterItem.id)) { // Check if item was actually added
+      if (updatedPlayer.inventory !== playerBeforeAdding.inventory && updatedPlayer.inventory.find(i=> i.id === masterItem.id)) {
         notifications.push({
           type: 'item_added',
           title: 'Objet Acquis',
@@ -559,6 +547,3 @@ export async function processAndApplyAIScenarioOutput(
 
   return { updatedPlayer, notifications };
 }
-
-
-    

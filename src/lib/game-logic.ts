@@ -406,6 +406,7 @@ export function loadGameStateFromLocal(): GameState | null {
         const gameTimeInMinutes = typeof parsedSavedState.gameTimeInMinutes === 'number' ? parsedSavedState.gameTimeInMinutes : 0;
         const nearbyPois = Array.isArray(parsedSavedState.nearbyPois) ? parsedSavedState.nearbyPois : null;
         const journal = Array.isArray(parsedSavedState.journal) ? parsedSavedState.journal : []; // Initialize journal
+        const toneSettings = parsedSavedState.player?.toneSettings ?? initialToneSettings;
 
 
         const currentScenario = parsedSavedState.currentScenario && parsedSavedState.currentScenario.scenarioText
@@ -420,6 +421,7 @@ export function loadGameStateFromLocal(): GameState | null {
           nearbyPois,
           gameTimeInMinutes,
           journal, // Added journal to returned state
+          toneSettings,
         };
 
       } catch (error) {
@@ -440,4 +442,3 @@ export function clearGameState(): void {
     console.log("LocalStorage Info: Game state cleared from LocalStorage.");
   }
 }
-

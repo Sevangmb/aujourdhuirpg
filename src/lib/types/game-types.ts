@@ -22,6 +22,7 @@ export type GameState = {
   nearbyPois: Position[] | null; // Added for available POIs
   gameTimeInMinutes: number; // Added for tracking in-game time
   journal: JournalEntry[]; // Added for player journal
+  toneSettings: any; // Keep any for now
 };
 
 // Notification types for UI feedback after AI processing
@@ -35,13 +36,16 @@ export type GameNotificationType =
   | 'quest_added'
   | 'quest_updated'
   | 'pnj_encountered'
+  | 'pnj_disposition_changed' // New
+  | 'pnj_interaction_logged' // New
   | 'decision_logged'
   | 'money_changed'
-  | 'clue_added' // New
-  | 'document_added' // New
-  | 'investigation_notes_updated' // New
-  | 'tone_settings_updated' // New
+  | 'clue_added'
+  | 'document_added'
+  | 'investigation_notes_updated'
+  | 'tone_settings_updated'
   | 'skill_check' // For results of skill checks
+  | 'info' // Generic informational toast
   | 'warning'; // For generic warnings or unclear actions
 
 export interface GameNotification {
