@@ -281,15 +281,8 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                             <Button onClick={(e) => {
                                 const dialog = e.currentTarget.closest('[role="dialog"]');
                                 if (dialog) {
-                                    // Manually dismiss the dialog by simulating a close action
-                                    // This is a workaround if DialogClose isn't directly suitable here
-                                    const closeButton = dialog.querySelector('button[aria-label="Close"], button[type="button"]:not([aria-label])') as HTMLElement; // More generic selector
+                                    const closeButton = dialog.querySelector('button[aria-label="Close"]') as HTMLElement;
                                     if (closeButton) closeButton.click();
-                                    else { // Fallback if a specific close button isn't found
-                                       dialog.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
-                                       dialog.dispatchEvent(new Event('click', { bubbles: true, cancelable: true })); // try click too
-                                       dialog.dispatchEvent(new Event('pointerup', { bubbles: true, cancelable: true }));
-                                    }
                                 }
                             }}>Fermer</Button>
                         </DialogFooter>
