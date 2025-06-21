@@ -16,7 +16,7 @@ export interface Quest {
   status: QuestStatus;
   objectives: QuestObjective[];
   giver?: string; // Name of the PNJ who gave the quest, if any
-  reward?: string; // Text description of the reward (items, XP)
+  rewardDescription?: string; // Text description of the reward (items, XP)
   moneyReward?: number; // Monetary reward for completing the quest
   relatedLocation?: string; // Name of a relevant location
   dateAdded: string; // ISO string date
