@@ -175,10 +175,10 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
   if (!player) return <p className="p-4 text-muted-foreground">Données du joueur non disponibles.</p>;
 
   const mainQuests = player.questLog?.filter(q => q.type === 'main') || [];
-  const sideQuests = player.questLog?.filter(q => q.type === 'side') || []; // Assuming 'side' is the type for secondary quests
+  const secondaryQuests = player.questLog?.filter(q => q.type === 'secondary') || [];
   const decisions = player.decisionLog || [];
   const pnjs = player.encounteredPNJs || [];
- const activeMainQuestsCount = mainQuests.filter(q => q.status === 'active').length;
+
   return (
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
@@ -197,8 +197,8 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
           </TabsContent>
 
           <TabsContent value="secondary" className="mt-0 pt-1 flex-1 min-h-0"> 
- {sideQuests.length > 0 ? (
-                sideQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
+ {secondaryQuests.length > 0 ? (
+                secondaryQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête secondaire.</CardContent></Card>
             )}
