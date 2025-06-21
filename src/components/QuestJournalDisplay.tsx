@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { CircleDot, CircleCheck, CircleX, BookUser, Landmark, Swords, Users, Speech, Lightbulb, ShieldAlert, History, MapPin, Info } from 'lucide-react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr } from 'date-fns/locale/fr';
 
 interface QuestJournalDisplayProps {
   player: Player;
@@ -17,9 +17,9 @@ interface QuestJournalDisplayProps {
 const QuestObjectiveDisplay: React.FC<{ objective: { id: string; description: string; isCompleted: boolean } }> = ({ objective }) => (
   <li className="flex items-center text-xs py-0.5">
     {objective.isCompleted ? <CircleCheck className="w-3 h-3 mr-1.5 text-green-500 shrink-0" /> : <CircleDot className="w-3 h-3 mr-1.5 text-yellow-500 shrink-0" />}
- <span className={objective.isCompleted ? "line-through text-muted-foreground" : ""}>
- {objective.description}
- </span>
+    <span className={objective.isCompleted ? "line-through text-muted-foreground" : ""}>
+      {objective.description}
+    </span>
   </li>
 );
 
@@ -69,12 +69,12 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
         <CardFooter className="text-xs p-2.5 pt-1">
             <p>
                 <span className="font-semibold">Récompense:</span>
- {quest.rewardDescription ? ` ${quest.rewardDescription}` : ""}
- {typeof quest.moneyReward === 'number' ? ` ${quest.moneyReward}€` : ""}
+                {quest.rewardDescription ? ` ${quest.rewardDescription}` : ""}
+                {typeof quest.moneyReward === 'number' ? ` ${quest.moneyReward}€` : ""}
             </p>
         </CardFooter>
       )}
- {quest.status === 'completed' && quest.dateCompleted && typeof quest.dateCompleted !== 'string' && (
+ {quest.status === 'completed' && quest.dateCompleted && (
         <CardFooter className="text-xs p-2.5 pt-0 text-green-600">
             Terminée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
         </CardFooter>
@@ -99,8 +99,8 @@ const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
     <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="p-2.5 pb-1.5">
         <CardTitle className="text-md font-headline text-primary/90">{pnj.name}</CardTitle>
- <CardDescription className="text-xs flex flex-wrap gap-x-2">
- {pnj.importance} {pnj.firstEncountered && `- Rencontré: ${pnj.firstEncountered}`}
+        <CardDescription className="text-xs flex flex-wrap gap-x-2">
+          {pnj.importance} {pnj.firstEncountered && `- Rencontré: ${pnj.firstEncountered}`}
           {pnj.lastSeen && ` - Vu: ${format(new Date(pnj.lastSeen), 'dd/MM/yy HH:mm', { locale: fr })}`}
         </CardDescription>
       </CardHeader>
@@ -159,7 +159,7 @@ const DecisionCard: React.FC<{ decision: MajorDecision }> = ({ decision }) => (
   <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow">
     <CardHeader className="p-2.5 pb-1.5">
       <CardTitle className="text-md font-headline text-primary/90">{decision.summary}</CardTitle>
- <CardDescription className="text-xs flex flex-wrap">
+      <CardDescription className="text-xs flex flex-wrap">
         Date: {format(new Date(decision.dateMade), 'dd/MM/yy HH:mm', { locale: fr })}
       </CardDescription>
     </CardHeader>
@@ -181,44 +181,44 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
 
   return (
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
- <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
- <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4" /></TabsTrigger>
- <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4" /></TabsTrigger>
- <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4" /></TabsTrigger>
- <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4" /></TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
+            <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4" /></TabsTrigger>
         </TabsList>
         
-          <TabsContent value="main" className="mt-0 pt-1 flex-1 min-h-0"> 
+        <TabsContent value="main" className="mt-0 pt-1 flex-1 min-h-0"> 
             {mainQuests.length > 0 ? (
                 mainQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête principale.</CardContent></Card>
             )}
-          </TabsContent>
+        </TabsContent>
 
-          <TabsContent value="secondary" className="mt-0 pt-1 flex-1 min-h-0"> 
- {secondaryQuests.length > 0 ? (
+        <TabsContent value="secondary" className="mt-0 pt-1 flex-1 min-h-0"> 
+            {secondaryQuests.length > 0 ? (
                 secondaryQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête secondaire.</CardContent></Card>
             )}
-          </TabsContent>
+        </TabsContent>
 
-          <TabsContent value="decisions" className="mt-0 pt-1 flex-1 min-h-0"> 
+        <TabsContent value="decisions" className="mt-0 pt-1 flex-1 min-h-0"> 
             {decisions.length > 0 ? (
               decisions.map(decision => <DecisionCard key={decision.id} decision={decision} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune décision majeure.</CardContent></Card>
             )}
-          </TabsContent>
+        </TabsContent>
 
-          <TabsContent value="pnj" className="mt-0 pt-1 flex-1 min-h-0"> 
+        <TabsContent value="pnj" className="mt-0 pt-1 flex-1 min-h-0"> 
             {pnjs.length > 0 ? (
               pnjs.map(pnj => <PNJCard key={pnj.id} pnj={pnj} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucun PNJ rencontré.</CardContent></Card>
             )}
-          </TabsContent>
+        </TabsContent>
     </Tabs>
   );
 };
