@@ -120,8 +120,44 @@ const scenarioPrompt = ai.definePrompt({
   prompt: FULL_PROMPT,
 });
 
+// --- PROLOGUE PROMPT ---
+// This prompt is specifically for generating the initial prologue narration based on character creation details.
+
+const PROLOGUE_PROMPT = `
+${PROMPT_INTRO}
+
+**Core Task: Write a Compelling Prologue**
+You are starting a new text-based RPG adventure. Write an engaging introductory scene (a prologue) for a character with the following details:
+
+- Name: {{{playerName}}}
+- Gender: {{{playerGender}}}
+- Age: {{{playerAge}}}
+- Era: {{{playerEra}}}
+- Starting Location: {{{playerStartingLocation}}}
+- Background: {{{playerBackground}}}
+
+Set the scene based on the chosen Era and Starting Location. Introduce the character and hint at the beginning of their adventure. The tone should be influenced by the player's tone preferences if available.
+
+**Important Constraints:**
+- The prologue must be purely narrative. Do NOT include any game mechanics, stats, inventory, or explicit references to "turns" or "actions".
+- Focus on setting the atmosphere and introducing the character in their initial environment.
+- The output MUST be valid HTML.
+- DO NOT use tool calls in the prologue.
+
+Based on the character details and starting context, generate the 'scenarioText' for the beginning of the adventure.
+`;
+
+const prologuePrompt = ai.definePrompt({
+  name: 'generateProloguePrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool], // Tools might still be useful for context in prologue?
+  input: {schema: GenerateScenarioInputSchema}, // Use the same input schema
+  output: {schema: GenerateScenarioOutputSchema},
+  prompt: PROLOGUE_PROMPT,
+});
+
 const generateScenarioFlow = ai.defineFlow(
-  {
+  { // This flow will now decide which prompt to call
     name: 'generateScenarioFlow',
     inputSchema: GenerateScenarioInputSchema,
     outputSchema: GenerateScenarioOutputSchema,
@@ -130,7 +166,14 @@ const generateScenarioFlow = ai.defineFlow(
     // The new architecture simplifies the flow. It just calls the prompt with the provided input.
     // All deterministic logic is handled before this flow is invoked.
 
-    const {output} = await scenarioPrompt(input);
+    let promptToUse = FULL_PROMPT;
+    let selectedPrompt = scenarioPrompt;
+
+    if (!input.currentScenario || input.currentScenario === "") {
+      selectedPrompt = prologuePrompt; // Use the specific prologue prompt
+    }
+
+    const {output} = await selectedPrompt(input); // Pass the standard input object
 
     if (!output) {
       console.error('AI model did not return output for generateScenarioPrompt.');

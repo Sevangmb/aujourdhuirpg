@@ -30,6 +30,8 @@ export const GenerateScenarioInputSchema = z.object({
   playerOrigin: z.string().describe("The player character's origin (social, geographical)."),
   playerBackground: z.string().describe('The background or history of the player character.'),
   playerStats: z.record(z.number()).describe('A record of the player character stats (e.g., {"Sante": 100, "Charisme": 50}).'),
+  playerEra: z.string().describe('The era the game is set in.'),
+  playerStartingLocation: z.string().describe('The initial location chosen by the player.'),
   playerSkills: SkillsSchema,
   playerTraitsMentalStates: TraitsMentalStatesSchema,
   playerProgression: ProgressionInputSchema,

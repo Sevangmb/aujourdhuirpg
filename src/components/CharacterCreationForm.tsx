@@ -24,22 +24,34 @@ import {
   defaultAvatarUrl,
   initialToneSettings
 } from '@/data/initial-game-data';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2 } from 'lucide-react';
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2, Globe as EraIcon, MapPin as LocationIcon } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 
 const characterSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }).max(50, { message: "Le nom ne peut pas dépasser 50 caractères." }),
   gender: z.string().min(1, { message: "Veuillez sélectionner un genre." }),
-  age: z.coerce.number().min(15, { message: "L'âge doit être d'au moins 15 ans." }).max(99, { message: "L'âge ne peut pas dépasser 99 ans." }),
+  age: z.coerce.number().min(15, { message: "L'âge doit être d'au moins 15 ans." }).max(99, { message: "L'âge ne peut pas dépasser 99 ans." }).int({ message: "L'âge doit être un nombre entier." }),
   origin: z.string().min(5, { message: "L'origine doit contenir au moins 5 caractères." }).max(200, {message: "L'origine ne peut pas dépasser 200 caractères."}),
   background: z.string().min(10, { message: "L'historique doit contenir au moins 10 caractères." }).max(500, { message: "L'historique ne peut pas dépasser 500 caractères." }),
+  era: z.string().min(1, { message: "Veuillez sélectionner une époque." }),
+  startingLocation: z.string().min(5, { message: "Le lieu de départ doit contenir au moins 5 caractères." }).max(200, { message: "Le lieu de départ ne peut pas dépasser 200 caractères." }),
 });
 
 type CharacterFormData = z.infer<typeof characterSchema>;
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes'>) => void;
+  onCharacterCreate: (
+    playerData: {
+      name: string;
+      gender: string;
+      age: number;
+      origin: string;
+      background: string;
+      era: string;
+      startingLocation: string;
+    }
+  ) => void;
   isGeneratingAvatar: boolean;
 }
 
@@ -52,16 +64,20 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       age: 25,
       origin: '',
       background: '',
+      era: '', // Default value for era
+      startingLocation: '', // Default value for starting location
     },
   });
 
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
     if (isGeneratingAvatar) return; // Prevent multiple submissions
-    const newPlayerData: Omit<Player, 'currentLocation' | 'money' | 'toneSettings' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes'> = {
+    const newPlayerData = {
       name: data.name,
       gender: data.gender,
       age: data.age,
       origin: data.origin,
+      era: data.era, // Include era in the new player data
+      startingLocation: data.startingLocation, // Include starting location in the new player data
       background: data.background,
     };
     onCharacterCreate(newPlayerData);
@@ -131,6 +147,46 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="era"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center"><EraIcon className="w-4 h-4 mr-2" />Époque</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isGeneratingAvatar}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez une époque" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+ <SelectItem value="Antiquité">Antiquité</SelectItem>
+ <SelectItem value="Moyen-Âge">Moyen-Âge</SelectItem>
+ <SelectItem value="Renaissance">Renaissance</SelectItem>
+ <SelectItem value="Époque Moderne">Époque Moderne</SelectItem>
+ <SelectItem value="Époque Contemporaine">Époque Contemporaine</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="startingLocation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center"><LocationIcon className="w-4 h-4 mr-2" />Lieu de Départ</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Un village isolé dans les montagnes" {...field} disabled={isGeneratingAvatar} />
+                  </FormControl>
+                  <FormDescription>Décrivez brièvement où votre aventure commence. L'IA détaillera la scène.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

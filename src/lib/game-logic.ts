@@ -1,10 +1,11 @@
 
-import type { GameState, Scenario, Player, InventoryItem, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, ItemEffect, Quest, PNJ, MajorDecision, Clue, GameDocument } from './types';
-import { getMasterItemById, type MasterInventoryItem } from '@/data/items';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression } from './types';
+import type { InventoryItem } from './types/item-types'; // Import InventoryItem if needed here
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
 import { saveGameStateToFirestore } from '@/services/firestore-service';
+import { initialPlayerStats, initialPlayerMoney } from '@/data/initial-game-data';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import {
-  initialPlayerStats,
   initialSkills,
   initialTraitsMentalStates,
   initialProgression,
@@ -12,7 +13,6 @@ import {
   initialInventory,
   initialPlayerLocation,
   defaultAvatarUrl,
-  initialPlayerMoney,
   initialQuestLog,
   initialEncounteredPNJs,
   initialDecisionLog,
@@ -23,102 +23,10 @@ import {
   UNKNOWN_STARTING_PLACE_NAME
 } from '@/data/initial-game-data';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
+import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
-
-// --- Game State Helpers ---
-
-function calculateXpToNextLevel(level: number): number {
-  if (level <= 0) level = 1;
-  return level * 100 + 50 * (level - 1) * level;
-}
-
-export function applyStatChanges(currentStats: PlayerStats, changes: Partial<PlayerStats>): PlayerStats {
-  const newStats = { ...currentStats };
-  for (const key in changes) {
-    if (Object.prototype.hasOwnProperty.call(newStats, key)) {
-      const statKey = key as keyof PlayerStats;
-      newStats[statKey] = Math.max(0, (newStats[statKey] || 0) + (changes[statKey] || 0));
-    }
-  }
-  return newStats;
-}
-
-export function addItemToInventory(currentInventory: InventoryItem[], itemId: string, quantityToAdd: number): InventoryItem[] {
-  const masterItem = getMasterItemById(itemId);
-  if (!masterItem) {
-    console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}. Item not added.`);
-    return currentInventory;
-  }
-
-  const newInventory = [...currentInventory];
-  const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
-
-  if (existingItemIndex > -1) {
-    if (masterItem.stackable) {
-      newInventory[existingItemIndex].quantity += quantityToAdd;
-    } else {
-      console.warn(`Inventory Info: Item '${masterItem.name}' (ID: ${itemId}) is not stackable and player already possesses one. Quantity not changed.`);
-    }
-  } else {
-    newInventory.push({
-      ...masterItem,
-      quantity: masterItem.stackable ? quantityToAdd : 1
-    });
-  }
-  return newInventory;
-}
-
-
-export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: InventoryItem[], removedItemEffects?: ItemEffect, removedItemName?: string } {
-  const newInventory = [...currentInventory];
-  let itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName);
-  if (itemIndex === -1) {
-    itemIndex = newInventory.findIndex(item => item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
-  }
-
-  let removedItemEffects: Partial<PlayerStats> | undefined = undefined;
-  let removedItemName: string | undefined = undefined;
-
-  if (itemIndex > -1) {
-    const itemBeingRemoved = newInventory[itemIndex];
-    removedItemEffects = itemBeingRemoved.effects;
-    removedItemName = itemBeingRemoved.name;
-
-    if (itemBeingRemoved.quantity <= quantityToRemove) {
-      newInventory.splice(itemIndex, 1);
-    } else {
-      newInventory[itemIndex].quantity -= quantityToRemove;
-    }
-  } else {
-    console.warn(`Inventory Warning: Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);
-  }
-  return { updatedInventory: newInventory, removedItemEffects, removedItemName };
-}
-
-export function addXP(currentProgression: Progression, xpGained: number): { newProgression: Progression, leveledUp: boolean } {
-  const newProgression = { ...currentProgression };
-  if (typeof newProgression.level !== 'number' || newProgression.level <= 0) newProgression.level = 1;
-  if (typeof newProgression.xp !== 'number' || newProgression.xp < 0) newProgression.xp = 0;
-  if (typeof newProgression.xpToNextLevel !== 'number' || newProgression.xpToNextLevel <= 0) {
-    newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
-  }
-
-  newProgression.xp += xpGained;
-  let leveledUp = false;
-
-  while (newProgression.xp >= newProgression.xpToNextLevel && newProgression.xpToNextLevel > 0) {
-    newProgression.level += 1;
-    newProgression.xp -= newProgression.xpToNextLevel;
-    newProgression.xpToNextLevel = calculateXpToNextLevel(newProgression.level);
-    leveledUp = true;
-  }
-  if (newProgression.xp < 0) newProgression.xp = 0;
-
-  return { newProgression, leveledUp };
-}
-
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -329,16 +237,18 @@ export async function calculateDeterministicEffects(
       eventsForAI.push(`Le joueur a utilisé '${itemInInventory.name}'.`);
       notifications.push({
         type: 'item_removed',
-        title: 'Objet Utilisé',
-        description: `Vous avez utilisé : ${itemInInventory.name}.`,
+        title: 'Objet Utilisé',description: `Vous avez utilisé : ${itemInInventory.name}.`,
       });
 
-      for (const [stat, change] of Object.entries(itemInInventory.effects)) {
-        notifications.push({
-          type: 'stat_changed',
-          title: `Statistique modifiée`,
-          description: `${stat} a changé de ${change > 0 ? '+' : ''}${change}.`,
-        });
+      for (const [stat, change] of Object.entries(itemInInventory.effects as Partial<PlayerStats>)) {
+        if (typeof change === 'number') {
+ notifications.push({
+ type: 'stat_changed',
+ title: `Statistique modifiée`,
+ description: `${stat} a changé de ${change > 0 ? '+' : ''}${change}.`,
+ });
+
+        }
         eventsForAI.push(`Effet : ${stat} a changé de ${change}.`);
       }
     } else if (itemInInventory) {

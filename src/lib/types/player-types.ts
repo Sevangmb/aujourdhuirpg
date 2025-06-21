@@ -43,6 +43,7 @@ export type Player = {
   age: number;
   avatarUrl: string;
   origin: string; // Origine géographique, sociale, etc.
+  era?: string; // New field for the character's starting era
   background: string; // Historique plus détaillé du personnage, style RP
   stats: PlayerStats;
   skills: Skills;
