@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Service for fetching weather information from Open-Meteo API.
