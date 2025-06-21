@@ -3,60 +3,27 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, Player, Position, JournalEntry, GameNotification } from '@/lib/types';
-import { gameReducer, GameAction, fetchPoisForCurrentLocation, checkForLocationBasedEvents } from '@/lib/game-logic'; // Added checkForLocationBasedEvents
+import { gameReducer, GameAction, fetchPoisForCurrentLocation, checkForLocationBasedEvents, calculateDeterministicEffects, saveGameState } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
-// Removed generateLocationImage import as fetching is lifted
-import { saveGameState, getInitialScenario } from '@/lib/game-logic';
-import { initialPlayerLocation, initialToneSettings, UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
-import { processAndApplyAIScenarioOutput } from '@/lib/ai-game-effects';
+import { getInitialScenario } from '@/lib/game-logic';
+import { initialToneSettings, UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Star, Euro, Search as SearchIcon } from 'lucide-react';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-// Removed getCurrentWeather import as fetching is lifted
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
 import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
-
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const prepareAIInput = (
   player: Player,
   currentScenarioText: string,
-  actionText: string
+  actionText: string,
+  deterministicEvents: string[]
 ): GenerateScenarioInput => {
-  const simplifiedInventory = player.inventory?.map(item => ({ name: item.name, quantity: item.quantity })) || [];
-
-  const playerProgressionForAI = player.progression ? {
-    level: player.progression.level,
-    xp: player.progression.xp,
-    xpToNextLevel: player.progression.xpToNextLevel,
-    perks: player.progression.perks || [],
-  } : { level: 1, xp: 0, xpToNextLevel: 100, perks: [] };
-
-  const activeQuestsSummary = (player.questLog || [])
-    .filter(q => q.status === 'active')
-    .map(q => ({
-      id: q.id,
-      title: q.title,
-      description: q.description.substring(0, 150) + "...",
-      type: q.type,
-      moneyReward: q.moneyReward,
-      currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
-    }));
-
-  const encounteredPNJsSummary = (player.encounteredPNJs || []).map(p => ({
-    name: p.name,
-    relationStatus: p.relationStatus,
-    dispositionScore: p.dispositionScore, // Ensure this exists on PNJ type, default to 0 if not
-    interactionHistory: p.interactionHistory || [], // Ensure this exists on PNJ type, default to [] if not
-  }));
-
-  const currentCluesSummary = (player.clues || []).map(c => ({ title: c.title, type: c.type }));
-  const currentDocumentsSummary = (player.documents || []).map(d => ({ title: d.title, type: d.type }));
-
   return {
     playerName: player.name,
     playerGender: player.gender,
@@ -66,48 +33,34 @@ const prepareAIInput = (
     playerStats: player.stats,
     playerSkills: player.skills,
     playerTraitsMentalStates: player.traitsMentalStates || [],
-    playerProgression: playerProgressionForAI,
+    playerProgression: player.progression,
     playerAlignment: player.alignment,
-    playerInventory: simplifiedInventory,
+    playerInventory: player.inventory?.map(item => ({ name: item.name, quantity: item.quantity })) || [],
     playerMoney: player.money,
     playerChoice: actionText.trim(),
     currentScenario: currentScenarioText,
     playerLocation: player.currentLocation,
     toneSettings: player.toneSettings || initialToneSettings,
-    activeQuests: activeQuestsSummary,
-    encounteredPNJsSummary: encounteredPNJsSummary,
-    currentCluesSummary: currentCluesSummary,
-    currentDocumentsSummary: currentDocumentsSummary,
+    deterministicEvents, // Pass the pre-calculated events to the AI
+    // Pass summaries for narrative context
+    activeQuests: (player.questLog || []).filter(q => q.status === 'active').map(q => ({
+      id: q.id, title: q.title, description: q.description.substring(0, 150), type: q.type, moneyReward: q.moneyReward,
+      currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
+    })),
+    encounteredPNJsSummary: (player.encounteredPNJs || []).map(p => ({
+      name: p.name, relationStatus: p.relationStatus, dispositionScore: p.dispositionScore,
+      interactionHistorySummary: (p.interactionHistory || []).slice(-3).join('; ')
+    })),
+    currentCluesSummary: (player.clues || []).map(c => ({ title: c.title, summary: c.description.substring(0,100) })),
+    currentDocumentsSummary: (player.documents || []).map(d => ({ title: d.title, summary: d.content.substring(0,100) })),
     investigationNotes: player.investigationNotes,
   };
 };
-
-async function executeScenarioGenerationAndProcessOutput(
-  aiInput: GenerateScenarioInput,
-  currentPlayer: Player,
-  playerChoice: string,
-): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; scenarioText: string }> {
-  try {
-    const aiOutput: GenerateScenarioOutput = await generateScenario(aiInput);
-
-    const { updatedPlayer, notifications } = await processAndApplyAIScenarioOutput(currentPlayer, playerChoice, aiOutput);
-    return {
-      updatedPlayer,
-      notifications,
-      scenarioText: aiOutput.scenarioText,
-    };
-  } catch (error) {
-
-    console.error("Error in executeScenarioGenerationAndProcessOutput:", error);
-    throw error;
-  }
-}
 
 interface GamePlayProps {
   initialGameState: GameState;
   onRestart: () => void;
   onStateUpdate: (newState: GameState) => void;
-  // Props for context widgets from HomePageContent
   weatherData: WeatherData | null;
   weatherLoading: boolean;
   weatherError: string | null;
@@ -118,7 +71,6 @@ interface GamePlayProps {
 
 const GamePlay: React.FC<GamePlayProps> = ({
   initialGameState,
-  // onRestart, // This prop is available but not currently used in GamePlay logic
   onStateUpdate,
   weatherData,
   weatherLoading,
@@ -131,105 +83,90 @@ const GamePlay: React.FC<GamePlayProps> = ({
   const [playerInput, setPlayerInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const isMobile = useIsMobile(); // Use the hook
+  const isMobile = useIsMobile();
 
-  // Ensure initial scenario is set if not present
   useEffect(() => {
-    if (initialGameState.player && initialGameState.player.currentLocation && !initialGameState.currentScenario) {
+    if (initialGameState.player && !initialGameState.currentScenario) {
       const firstScenario = getInitialScenario(initialGameState.player);
-      const updatedState = gameReducer(initialGameState, { type: 'SET_CURRENT_SCENARIO', payload: firstScenario });
-      onStateUpdate(updatedState);
+      onStateUpdate(gameReducer(initialGameState, { type: 'SET_CURRENT_SCENARIO', payload: firstScenario }));
     }
   }, [initialGameState, onStateUpdate]);
 
-
   const handleGameAction = useCallback(async (action: GameAction) => {
     if (!initialGameState.player) return;
-
     let newState = gameReducer(initialGameState, action);
-
     if (action.type === 'MOVE_TO_LOCATION') {
-      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 }); 
-
+      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 });
       try {
         setIsLoading(true);
         const newNearbyPois = await fetchPoisForCurrentLocation(action.payload);
         newState = gameReducer(newState, { type: 'SET_NEARBY_POIS', payload: newNearbyPois });
       } catch (error) {
-        console.error("GamePlay: Error fetching new POIs after move:", error);
-        newState = gameReducer(newState, { type: 'SET_NEARBY_POIS', payload: null });
         toast({ title: "Erreur réseau", description: "Impossible de charger les lieux proches.", variant: "destructive"});
       } finally {
         setIsLoading(false);
       }
     }
-
     onStateUpdate(newState);
     await saveGameState(newState);
   }, [initialGameState, onStateUpdate, toast]);
 
-
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     const { player, currentScenario } = initialGameState;
     if (!player || !currentScenario || !actionText.trim()) {
-      if (!actionText.trim()){
-        toast({ variant: "destructive", title: "Action vide", description: "Veuillez entrer une action." });
-      }
+      if (!actionText.trim()) toast({ variant: "destructive", title: "Action vide", description: "Veuillez entrer une action." });
       return;
     }
-    if (!player.currentLocation || typeof player.currentLocation.latitude !== 'number' || typeof player.currentLocation.longitude !== 'number') {
-      console.error("Critical Error: player.currentLocation is invalid before AI call.", player);
-      toast({ variant: "destructive", title: "Erreur Critique du Jeu", description: "La localisation du joueur est manquante ou invalide." });
-      return;
-    }
-
     setIsLoading(true);
-    const inputForAI = prepareAIInput(player, currentScenario.scenarioText, actionText);
 
     try {
-      const { updatedPlayer: playerAfterAI, notifications, scenarioText: newScenarioText } = await executeScenarioGenerationAndProcessOutput(inputForAI, player, actionText);
+      // 1. CALCULATE DETERMINISTIC EFFECTS (Code)
+      const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, actionText);
 
-      let updatedFullGameState: GameState = {
+      // 2. PREPARE AI INPUT
+      const inputForAI = prepareAIInput(updatedPlayer, currentScenario.scenarioText, actionText, eventsForAI);
+
+      // 3. GENERATE NARRATIVE (IA)
+      const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
+
+      // 4. APPLY FINAL STATE
+      let finalGameState: GameState = {
         ...initialGameState,
-        player: playerAfterAI,
-        currentScenario: { scenarioText: newScenarioText },
+        player: updatedPlayer, // Use the deterministically updated player
+        currentScenario: { scenarioText: aiOutput.scenarioText }, // Use the new narrative
       };
+      
+      // If AI suggested a location change, apply it
+      if (aiOutput.newLocationDetails) {
+         finalGameState.player.currentLocation = {
+            ...finalGameState.player.currentLocation,
+            ...aiOutput.newLocationDetails
+         }
+      }
 
-      onStateUpdate(updatedFullGameState);
-      await saveGameState(updatedFullGameState);
+      onStateUpdate(finalGameState);
+      await saveGameState(finalGameState);
 
+      // 5. SHOW NOTIFICATIONS
       notifications.forEach(notification => {
-        let toastAction;
-        if (notification.type === 'xp_gained' || notification.type === 'leveled_up') {
-          toastAction = <Star className="text-yellow-400" />;
-        } else if (['item_added', 'quest_added', 'clue_added', 'document_added'].includes(notification.type)) {
-            toastAction = <Star className="text-green-400" />
-        } else if (notification.type === 'money_changed') {
-            toastAction = <Euro className="text-accent" />;
-        } else if (notification.type === 'investigation_notes_updated') {
-            toastAction = <SearchIcon className="text-blue-400" />;
-        }
         toast({
           title: notification.title,
           description: notification.description,
-          action: toastAction,
-          duration: ['leveled_up', 'quest_added', 'money_changed', 'clue_added', 'document_added', 'investigation_notes_updated', 'tone_settings_updated'].includes(notification.type) ? 5000: 3000,
+          duration: 3000,
         });
       });
       setPlayerInput('');
 
     } catch (error) {
-      let errorMessage = "Impossible de générer le prochain scénario ou d'appliquer ses effets.";
+      let errorMessage = "Impossible de générer le prochain scénario.";
       if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
-      console.error("GamePlay Error calling AI or processing output:", error);
       toast({ variant: "destructive", title: "Erreur de Connexion avec l'IA", description: errorMessage });
     } finally {
       setIsLoading(false);
     }
   }, [initialGameState, onStateUpdate, toast]);
 
-
-  const { player, currentScenario, journal, nearbyPois } = initialGameState;
+  const { player, currentScenario, nearbyPois } = initialGameState;
 
   if (!player || !currentScenario) {
     return (
@@ -240,11 +177,10 @@ const GamePlay: React.FC<GamePlayProps> = ({
     );
   }
 
-  const displayLocation = player.currentLocation || initialPlayerLocation;;
+  const displayLocation = player.currentLocation;
 
   return (
     <div className="flex flex-col p-2 md:p-4 space-y-2 md:space-y-4 h-full">
-      {/* Conditionally render widgets for desktop view */}
       {!isMobile && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 shrink-0">
           <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} />
