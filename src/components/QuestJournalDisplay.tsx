@@ -1,8 +1,8 @@
 
 "use client";
 
-import type { Player, Quest, PNJ, MajorDecision, QuestObjective } from '@/lib/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { Player, Quest, PNJ, MajorDecision } from '@/lib/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -14,16 +14,12 @@ interface QuestJournalDisplayProps {
   player: Player;
 }
 
-const QuestObjectiveDisplay: React.FC<{ objective: QuestObjective }> = ({ objective }) => (
+const QuestObjectiveDisplay: React.FC<{ objective: { id: string; description: string; isCompleted: boolean } }> = ({ objective }) => (
   <li className="flex items-center text-xs py-0.5">
-    {objective.isCompleted ? (
-      <CircleCheck className="w-3 h-3 mr-1.5 text-green-500 shrink-0" />
-    ) : (
-      <CircleDot className="w-3 h-3 mr-1.5 text-yellow-500 shrink-0" />
-    )}
-    <span className={objective.isCompleted ? "line-through text-muted-foreground" : ""}>
-      {objective.description}
-    </span>
+    {objective.isCompleted ? <CircleCheck className="w-3 h-3 mr-1.5 text-green-500 shrink-0" /> : <CircleDot className="w-3 h-3 mr-1.5 text-yellow-500 shrink-0" />}
+ <span className={objective.isCompleted ? "line-through text-muted-foreground" : ""}>
+ {objective.description}
+ </span>
   </li>
 );
 
@@ -31,7 +27,7 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
   let statusBadgeVariant: "default" | "secondary" | "destructive" | "outline" = "secondary";
   let StatusIcon = Lightbulb;
   if (quest.status === 'completed') { statusBadgeVariant = "default"; StatusIcon = ShieldAlert; } 
-  else if (quest.status === 'failed') { statusBadgeVariant = "destructive"; StatusIcon = CircleX; }
+  else if (quest.status === 'failed') { statusBadgeVariant = "destructive"; StatusIcon = CircleX; } // Assuming 'failed' is a possible status
   else if (quest.status === 'active') { statusBadgeVariant = "outline"; StatusIcon = Lightbulb; }
 
 
@@ -69,16 +65,16 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
           </Accordion>
         )}
       </CardContent>
-      {(quest.reward || quest.moneyReward) && (
+ {(quest.rewardDescription || typeof quest.moneyReward === 'number') && (
         <CardFooter className="text-xs p-2.5 pt-1">
             <p>
                 <span className="font-semibold">Récompense:</span>
-                {quest.reward ? ` ${quest.reward}` : ""}
-                {quest.moneyReward ? ` ${quest.moneyReward}€` : ""}
+ {quest.rewardDescription ? ` ${quest.rewardDescription}` : ""}
+ {typeof quest.moneyReward === 'number' ? ` ${quest.moneyReward}€` : ""}
             </p>
         </CardFooter>
       )}
-      {quest.status === 'completed' && quest.dateCompleted && (
+ {quest.status === 'completed' && quest.dateCompleted && typeof quest.dateCompleted !== 'string' && (
         <CardFooter className="text-xs p-2.5 pt-0 text-green-600">
             Terminée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
         </CardFooter>
@@ -103,8 +99,8 @@ const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
     <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="p-2.5 pb-1.5">
         <CardTitle className="text-md font-headline text-primary/90">{pnj.name}</CardTitle>
-        <CardDescription className="text-xs">
-          {pnj.importance} - Rencontré: {pnj.firstEncountered}
+ <CardDescription className="text-xs flex flex-wrap gap-x-2">
+ {pnj.importance} {pnj.firstEncountered && `- Rencontré: ${pnj.firstEncountered}`}
           {pnj.lastSeen && ` - Vu: ${format(new Date(pnj.lastSeen), 'dd/MM/yy HH:mm', { locale: fr })}`}
         </CardDescription>
       </CardHeader>
@@ -163,7 +159,7 @@ const DecisionCard: React.FC<{ decision: MajorDecision }> = ({ decision }) => (
   <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow">
     <CardHeader className="p-2.5 pb-1.5">
       <CardTitle className="text-md font-headline text-primary/90">{decision.summary}</CardTitle>
-      <CardDescription className="text-xs">
+ <CardDescription className="text-xs flex flex-wrap">
         Date: {format(new Date(decision.dateMade), 'dd/MM/yy HH:mm', { locale: fr })}
       </CardDescription>
     </CardHeader>
@@ -179,10 +175,10 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
   if (!player) return <p className="p-4 text-muted-foreground">Données du joueur non disponibles.</p>;
 
   const mainQuests = player.questLog?.filter(q => q.type === 'main') || [];
-  const secondaryQuests = player.questLog?.filter(q => q.type === 'secondary') || [];
+  const sideQuests = player.questLog?.filter(q => q.type === 'side') || []; // Assuming 'side' is the type for secondary quests
   const decisions = player.decisionLog || [];
   const pnjs = player.encounteredPNJs || [];
-
+ const activeMainQuestsCount = mainQuests.filter(q => q.status === 'active').length;
   return (
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
@@ -201,8 +197,8 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
           </TabsContent>
 
           <TabsContent value="secondary" className="mt-0 pt-1 flex-1 min-h-0"> 
-            {secondaryQuests.length > 0 ? (
-                secondaryQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
+ {sideQuests.length > 0 ? (
+                sideQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête secondaire.</CardContent></Card>
             )}

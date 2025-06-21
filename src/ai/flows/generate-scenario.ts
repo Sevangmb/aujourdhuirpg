@@ -80,7 +80,7 @@ const PROMPT_INTRO = `You are a creative RPG game master, "Le Maître de l'Infor
 const PROMPT_GUIDING_PRINCIPLES = `
 **Guiding Principles for Output (VERY IMPORTANT - STRICTLY ENFORCE):**
 - **ABSOLUTE RULE:** The 'scenarioText' field MUST contain ONLY narrative and descriptive text intended for the player. It must read like a story or a game master's description.
-- **STRICTLY PROHIBITED in 'scenarioText':**
+- **STRICTLY PROHIBITED in 'scenarioText' (DO NOT MENTION THESE):**
     - ANY tool invocation syntax (e.g., getWeatherTool(...), print(default_api.getNearbyPoisTool(...)), default_api.getWikipediaInfoTool(...)).
     - ANY mention of "tool", "API", "function call", "print", "default_api", or similar technical terms referring to the underlying system.
     - Raw JSON data, error messages from tools, or technical logs from tool executions.
@@ -94,9 +94,12 @@ const PROMPT_GUIDING_PRINCIPLES = `
     - **INCORRECT Example (DO NOT DO THIS):** "After calling getWeatherTool, the weather is fine." // Do not mention calling the tool.
 - Failure to adhere to these rules for 'scenarioText' will result in an invalid output.`;
 const PROMPT_PLAYER_INFO_CONTEXT = `
+
+You are creating a chapter in the player's personalized interactive novel. Every scenario you generate should feel like a natural continuation of their unique story, shaped by their past actions, discoveries, and relationships. Use the context below to inform your narrative and decisions.
+
 Player Information (Context):
   Name: {{{playerName}}}
-  Gender: {{{playerGender}}}
+  Pronoun Preference: {{{playerGender}}} (Refer to the player using this pronoun where appropriate)
   Age: {{{playerAge}}}
   Origin: {{{playerOrigin}}}
   Background: {{{playerBackground}}}
@@ -124,15 +127,20 @@ Player Information (Context):
   {{else}}
     (Default balanced tone)
   {{/if}}
-  Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#if currentObjectivesDescriptions}}{{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Pas d'objectifs en cours.{{/if}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{/each}}{{else}}Aucune quête active.{{/if}}
-  Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relationStatus}}}, Disposition: {{{dispositionScore}}}, Historique: [{{{interactionHistory}}}]) {{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun PNJ notable rencontré.{{/if}}
-  Current Clues (Summary): {{#if currentCluesSummary}}{{#each currentCluesSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun indice découvert.{{/if}}
-  Current Documents (Summary): {{#if currentDocumentsSummary}}{{#each currentDocumentsSummary}}Type: {{{type}}}, Titre: {{{title}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Aucun document obtenu.{{/if}}
+
+  Narrative Memory (Based on Player's Journey):
+  - Active Quests (Summary): {{#if activeQuests}}{{#each activeQuests}}[{{type}}] {{{title}}}: {{{description}}} (Objectifs: {{#if currentObjectivesDescriptions}}{{#each currentObjectivesDescriptions}}{{{this}}}{{#unless @last}}; {{/unless}}{{/each}}{{else}}Pas d'objectifs en cours.{{/if}}) {{#if moneyReward}}Récompense: {{{moneyReward}}}€{{/if}}{{#unless @last}}. {{/unless}}{{else}}Aucune quête active.{{/if}}
+  - Encountered PNJs (Summary): {{#if encounteredPNJsSummary}}{{#each encounteredPNJsSummary}}{{{name}}} (Relation: {{{relationStatus}}}, Disposition: {{{dispositionScore}}}, Historique: [{{{interactionHistory}}}]). {{#unless @last}}; {{/unless}}{{else}}Aucun PNJ notable rencontré.{{/if}}
+  - Major Decisions Logged (Summary): {{#if majorDecisionsLoggedSummary}}{{#each majorDecisionsLoggedSummary}}Decision: {{{description}}} (Outcome: {{{outcome}}}). {{#unless @last}}; {{/unless}}{{each}}{{else}}Aucune décision majeure enregistrée.{{/if}}
+  - Current Clues (Summary): {{#if currentCluesSummary}}{{#each currentCluesSummary}}Type: {{{type}}}, Titre: {{{title}}}. {{#unless @last}}; {{/unless}}{{each}}{{else}}Aucun indice découvert.{{/if}}
+  - Current Documents (Summary): {{#if currentDocumentsSummary}}{{#each currentDocumentsSummary}}Type: {{{type}}}, Titre: {{{title}}}. {{#unless @last}}; {{/unless}}{{each}}{{else}}Aucun document obtenu.{{/if}}
   Current Investigation Notes: {{{currentInvestigationNotes}}}
+
   Current Scenario Context (Previous Scene): {{{currentScenario}}}
 Player's Typed Action (Last Choice): {{{playerChoice}}}
 `;
 const PROMPT_INTERNAL_SKILL_CHECK_SYSTEM = `
+
 **Narrating Player Actions and Challenges (Invisible to Player):**
 When the player attempts an action that would reasonably require a skill or challenge (e.g., hacking a computer, persuading a PNJ, picking a lock, a stealthy maneuver), describe the attempt and the immediate, observable situation in the 'scenarioText'.
 Do not determine or narrate the final success or failure of the skill-based aspects of the action, nor its ultimate consequences on game mechanics like stats, inventory, or quests.
@@ -141,6 +149,7 @@ Your description should provide enough context for the game system to then adjud
 For example, if a player tries to pick a lock, you might describe them approaching the door, examining the lock, and starting to work on it, noting any immediate environmental factors like poor lighting or nearby sounds. Avoid saying "You successfully picked the lock" or "Your attempt fails."
 `;
 const PROMPT_INITIAL_LOCATION_SETUP = `
+
 {{#if isInitialUnknownLocation}}
 **Special First Turn: Initial Location Setup**
 The player is starting a new game. Their current location name is "{{{playerLocation.name}}}" which signals it's unknown. Their initial coordinates are (lat: {{{playerLocation.latitude}}}, lon: {{{playerLocation.longitude}}}).
@@ -161,25 +170,31 @@ Your *ABSOLUTE PRIMARY GOAL* for this turn is to:
 (End of Special First Turn Instructions - The rest of the prompt applies if this is not the first turn, or after location is set)
 {{/if}}
 `;
+
 const PROMPT_TASK_HEADER = `Task:`;
 const PROMPT_TASK_REFLECT_ACTION = `
+
 {{#if isReflectAction}}
   Generate an introspective 'scenarioText' (100-200 words, HTML formatted) reflecting the player character's current thoughts, detailed observations about their immediate surroundings, or a brief reminder of their active quest objectives or pressing concerns.
   This action should primarily provide narrative flavor and insight, reflecting current tone settings if specified. Use the tone settings to subtly influence the mood and focus of the reflection, but DO NOT mention the tone settings themselves in the scenarioText.
+  Draw upon the player's history (quests, PNJs, decisions, clues, documents) to make the reflections personalized and relevant to their ongoing story. Reference past events or people they've encountered.
   Consider current player stats like Energie (low Energie might lead to tired thoughts) and Stress (high Stress might lead to anxious or paranoid reflections).
   **CRITICAL FOR 'scenarioText': This text MUST adhere to the "Guiding Principles for Output" detailed above, especially ensuring NO tool invocation syntax, API calls, print statements, or other technical details are included. It must be PURELY NARRATIVE.**
   Generally, avoid significant game state changes like stat updates, XP gain, money changes, item additions/removals, or location changes unless a minor, natural consequence of reflection makes sense (e.g., remembering a small detail that updates investigation notes slightly).
   The output should still conform to the GenerateScenarioOutputSchema, but many optional fields (like newQuestsProposed, questUpdatesProposed etc.) will likely be omitted or empty.
 {{else}}`;
 const PROMPT_TASK_GAMEPLAY_ACTION_INTRO = `
+
 {{#unless isInitialUnknownLocation}}
 Remember to consider the player's activeQuests and currentObjectivesDescriptions when evaluating their playerChoice and generating the scenario. The player might be trying to advance a quest.
 Factor in new player stats: Energie (low means tired, high means active), Stress (high means negative thoughts/errors, low means calm), Volonte (influences choices in tough situations), Reputation (influences PNJ reactions).
 For complex actions implied by '{{{playerChoice}}}', describe the player's attempt and the observable situation in the narrative. The game system will determine the mechanical outcome.
 Use the PNJ's disposition score and interaction history to influence their dialogue, actions, and how they react to the player.
-If the player's actions should change a PNJ's disposition or add a significant memory, you can suggest an \`updatedDispositionScore\` and a \`newInteractionLogEntry\` for that PNJ in your response (using the `pnjInteractions` output field).
+If the player's actions should change a PNJ's disposition or add a significant memory to their interaction history, you can suggest an \`updatedDispositionScore\` and a \`newInteractionLogEntry\` for that PNJ in your response (using the \`pnjInteractions\` output field).
 {{!}}{{/unless}}`;
+
 const PROMPT_PHASE_1_INFO_GATHERING = `
+
 **Phase 1: Strategic Information Gathering & API Management**
 {{#unless isInitialUnknownLocation}}
    A. **Weather:** Use 'getWeatherTool' with the player's *current* coordinates ({{{playerLocation.latitude}}}, {{{playerLocation.longitude}}}) to get current weather (temperature, conditions: clear, cloudy, rain, fog, wind).
@@ -188,6 +203,7 @@ const PROMPT_PHASE_1_INFO_GATHERING = `
    D. **Wikipédia pour PNJ et Lieux ("Les Visages du Savoir") :**
       i. **PNJ ("Les Visages du Savoir"):** When introducing new, significant PNJs (especially 'major' or 'recurring' ones, or those relevant to a quest), **STRONGLY PREFER basing them on real-world public figures (historical or contemporary, especially French) by using the 'getWikipediaInfoTool'**. Fetch their field of expertise, achievements, key biographical details. Adapt this real person to fit the current game scenario, timeline, and selected TONE. Actively seek opportunities to do this.
       ii. **Iconic Locations:** If the player is at or interacts with a known landmark or historically significant place (especially if relevant to a quest or clue), use 'getWikipediaInfoTool' to fetch 1-2 notable historical or cultural facts to enrich the description, fitting the selected TONE.
+
 {{/unless}}`;
 const PROMPT_PHASE_2_INFO_SYNTHESIS = `
 **Phase 2: Information Filtering, Prioritization, and Synthesis**
@@ -202,9 +218,11 @@ const PROMPT_PHASE_2_INFO_SYNTHESIS = `
    H. **Quest Opportunities:** Based on the synthesized information and the player's current state/location, identify opportunities for new quests or for progressing existing ones. Could a news headline be the missing piece for an objective? Could a POI be the next step in an investigation? Could a Wikipedia PNJ be a quest giver (consider player Reputation)?
 {{/unless}}`;
 const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
+
 **Phase 3: Narrative Generation & Game State Updates**
    1.  **Scenario Text Generation**:
        {{#if isInitialUnknownLocation}}
+       // This is the first turn.
        Follow the "Initial Location Setup" instructions above to determine the actual starting location and generate the \`scenarioText\` and \`newLocationDetails\`.
        {{else}}
        Based on the *synthesized information* from Phase 2 (considering TONES and player stats like Energie, Stress, Volonte, Reputation), and ALL player information, generate a new 'scenarioText' (100-250 words, HTML formatted, no interactive elements). This text describes the player's attempted action related to "{{{playerChoice}}}" and the immediate, observable state of the environment or characters involved. The narrative should lead up to a point where a game mechanic (handled by the game system) would determine the detailed success, failure, or consequences. Adhere strictly to the "Guiding Principles for Output" above. The tone settings should subtly influence the narrative style, vocabulary, and focus, but **DO NOT explicitly mention the tone settings or their values in the 'scenarioText'**.
@@ -213,8 +231,10 @@ const PROMPT_PHASE_3_NARRATIVE_GENERATION = `
        {{/if}}
    2.  **Location Changes**: If the player moves significantly, provide 'newLocationDetails'. This object **MUST** include 'latitude', 'longitude', and 'name'. If the new location is a specific place (e.g., a shop found via a POI tool) within the same general area as the input 'playerLocation', reuse the 'latitude' and 'longitude' from the input 'playerLocation' and update 'name' accordingly. If it's a new city or region, determine appropriate coordinates. If no significant location change, 'newLocationDetails' should be null or omitted. (This applies even if it's the first turn, as per "Initial Location Setup")
    3.  **Quest-Related Narrative & Mechanics**:
-       If the player's actions or discoveries in the narrative seem to relate to their active quests, or could inspire new ones, weave these elements into the story.
+       If the player's actions, discoveries, or interactions in the narrative relate to their active quests, could inspire new ones, or resolve quest objectives, weave these elements into the story.
+       **Refer explicitly to past quest details, PNJ interactions, and decisions where relevant to the current narrative.** Make the narrative feel like a direct consequence or progression of the player's history.
        -   **Narrative**: Describe these events (e.g., finding an item for a quest, encountering a key PNJ that might offer a quest).
+
        -   **Mechanics**:
            *   **New Quests**: To add a new quest to the player's journal, provide its full definition in the \`newQuestsProposed\` array. Each quest object in this array MUST follow the \`QuestInputSchema\`. Ensure you provide a unique \`id\`, \`title\`, \`description\`, \`type\` ('main' or 'secondary'), and at least one initial \`objective\` (with its own \`id\`, \`description\`, and \`isCompleted: false\`). Optionally, include \`giver\`, \`reward\`, \`moneyReward\`, and \`relatedLocation\`.
            *   **Quest Updates**: To modify an existing quest, use the \`questUpdatesProposed\` array. Each update object in this array MUST follow the \`QuestUpdateSchema\`. Specify the \`questId\` of the quest to update. You can change its \`newStatus\` (e.g., to 'completed' or 'failed') or update its \`updatedObjectives\` by providing an array of objects, each containing an \`objectiveId\` and its new \`isCompleted\` status (true/false). You can also provide a \`newObjectiveDescription\` if a new sub-task naturally arises for that quest.
@@ -295,3 +315,5 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
+    

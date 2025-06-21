@@ -2,9 +2,8 @@
 /**
  * @fileOverview Functions for processing and applying the effects of an AI-generated scenario to the player state.
  */
-
-import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, Clue, GameDocument, ClueType, DocumentType, Skills, Position as PlayerPositionType } from './types'; // Added Skills, changed LocationData to PlayerPositionType
-import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema, QuestUpdateSchema as AIQuestUpdateSchema } from '@/ai/flows/generate-scenario';
+import type { PlayerStats, Player, Progression, InventoryItem, GameNotification, Quest, PNJ, MajorDecision, Clue, GameDocument, ClueType, DocumentType, Skills, Position as PlayerPositionType, ItemEffect } from './types'; // Added ItemEffect
+import type { GenerateScenarioOutput, QuestInputSchema as AIQuestInputSchema, ClueInputSchema as AIClueInputSchema, DocumentInputSchema as AIDocumentInputSchema, QuestUpdateSchema as AIQuestUpdateSchema, PNJSchema as AIPNJSchema, MajorDecisionSchema as AIMajorDecisionSchema } from '@/ai/flows/generate-scenario'; // Added AIPNJSchema, AIMajorDecisionSchema
 import { getMasterItemById, type MasterInventoryItem } from '@/data/items'; // Added MasterInventoryItem
 import { initialPlayerMoney, initialInvestigationNotes, UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data'; // Added UNKNOWN_STARTING_PLACE_NAME
 import { parsePlayerAction, type ParsedAction, type ActionType } from './action-parser';
@@ -55,7 +54,7 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
 }
 
 
-export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: InventoryItem[], removedItemEffects?: Partial<PlayerStats>, removedItemName?: string } {
+export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: InventoryItem[], removedItemEffects?: ItemEffect, removedItemName?: string } {
   const newInventory = [...currentInventory];
   let itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName);
   if (itemIndex === -1) {
@@ -63,7 +62,7 @@ export function removeItemFromInventory(currentInventory: InventoryItem[], itemI
   }
 
   let removedItemEffects: Partial<PlayerStats> | undefined = undefined;
-  let removedItemName: string | undefined = undefined;
+ let removedItemName: string | undefined = undefined;
 
   if (itemIndex > -1) {
     const itemBeingRemoved = newInventory[itemIndex];
@@ -171,8 +170,7 @@ export function updateQuestInLog(currentQuestLog: Quest[], questId: string, upda
 const MAX_INTERACTION_HISTORY = 10;
 
 export function addOrUpdatePNJ(
-  currentPNJs: PNJ[],
-  pnjDataFromAI: Partial<PNJ> & Pick<PNJ, 'id' | 'name' | 'description' | 'relationStatus' | 'importance' | 'firstEncountered'>, // Ensure core fields are there
+ currentPNJs: PNJ[],
   updatedDispositionScore?: number,
   newInteractionLogEntry?: string
 ): PNJ[] {
@@ -202,12 +200,12 @@ export function addOrUpdatePNJ(
     // Add new PNJ
     const newPnj: PNJ = {
       // Base fields from pnjDataFromAI, which should have id, name etc.
-      id: pnjDataFromAI.id,
-      name: pnjDataFromAI.name,
-      description: pnjDataFromAI.description,
-      relationStatus: pnjDataFromAI.relationStatus,
-      importance: pnjDataFromAI.importance,
-      firstEncountered: pnjDataFromAI.firstEncountered,
+      id: pnjDataFromAI.id || `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+ name: pnjDataFromAI.name || "PNJ Inconnu",
+ description: pnjDataFromAI.description || "Aucune description.",
+ relationStatus: pnjDataFromAI.relationStatus || 'neutral',
+ importance: pnjDataFromAI.importance || 'minor',
+ firstEncountered: pnjDataFromAI.firstEncountered || new Date().toISOString(),
       // Optional fields from pnjDataFromAI
       trustLevel: pnjDataFromAI.trustLevel,
       notes: pnjDataFromAI.notes,
@@ -220,7 +218,7 @@ export function addOrUpdatePNJ(
   }
 }
 
-export function logMajorDecision(currentDecisionLog: MajorDecision[], decisionData: Omit<MajorDecision, 'dateMade'>): MajorDecision[] {
+export function logMajorDecision(currentDecisionLog: MajorDecision[], decisionData: AIMajorDecisionSchema): MajorDecision[] {
   const logToUpdate = currentDecisionLog || [];
    if (logToUpdate.find(d => d.id === decisionData.id)) {
     console.warn(`DecisionLog Warning: Attempted to log decision with duplicate ID: ${decisionData.id}`);
@@ -259,10 +257,10 @@ export function addDocument(currentDocuments: GameDocument[], documentData: AIDo
   return [...(currentDocuments || []), newDocument];
 }
 
-export function updateInvestigationNotes(currentNotes: string | null | undefined, notesUpdateText: string): string {
+export function updateInvestigationNotes(currentNotes: string, notesUpdateText: string): string {
   const safeCurrentNotes = currentNotes || initialInvestigationNotes;
   const notesUpdateTextLower = notesUpdateText.toLowerCase();
-
+ // This might be overly complex for AI output. A simple append might be better? Or a specific instruction format. Let's stick to append for now unless "REVISION COMPLETE" is explicitly part of the AI schema/prompt.
   if (notesUpdateTextLower.startsWith("révision complète des notes:")) {
     return notesUpdateText.substring(notesUpdateTextLower.indexOf(":") + 1).trim();
   }
@@ -327,13 +325,8 @@ export async function processAndApplyAIScenarioOutput(
 
   if (aiOutput.pnjInteractions && Array.isArray(aiOutput.pnjInteractions)) {
     aiOutput.pnjInteractions.forEach(pnjDataFromAI => {
-      if (!pnjDataFromAI.id) pnjDataFromAI.id = `pnj_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      if (!pnjDataFromAI.name) pnjDataFromAI.name = "PNJ Inconnu";
-      if (!pnjDataFromAI.description) pnjDataFromAI.description = "Aucune description.";
-      if (!pnjDataFromAI.relationStatus) pnjDataFromAI.relationStatus = 'neutral';
-      if (!pnjDataFromAI.importance) pnjDataFromAI.importance = 'minor';
-      if (!pnjDataFromAI.firstEncountered) pnjDataFromAI.firstEncountered = "Contexte actuel";
-
+      // Use the addOrUpdatePNJ helper which now handles defaults and updates
+      // Pass the full pnjDataFromAI to the helper
       const oldPNJ = (updatedPlayer.encounteredPNJs || []).find(p => p.id === pnjDataFromAI.id);
       const oldDispositionScore = oldPNJ?.dispositionScore;
 
@@ -343,7 +336,7 @@ export async function processAndApplyAIScenarioOutput(
         pnjDataFromAI.updatedDispositionScore,
         pnjDataFromAI.newInteractionLogEntry
       );
-
+ // Use the returned list to update player state
       const updatedPNJ = (updatedPlayer.encounteredPNJs || []).find(p => p.id === pnjDataFromAI.id);
 
       if (updatedPNJ) {

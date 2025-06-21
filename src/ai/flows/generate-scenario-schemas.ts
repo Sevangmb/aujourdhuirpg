@@ -42,16 +42,34 @@ export const GenerateScenarioInputSchema = z.object({
   playerLocation: LocationSchema.describe("The player's current location."),
   toneSettings: ToneSettingsSchema.optional(),
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
+  /**
+ * Summary of significant NPCs encountered by the player, including their relationship,
+ * disposition score, and a summary of interaction history.
+ */
   encounteredPNJsSummary: z.array(z.object({
     name: z.string(),
+    /** The player's current relationship status with the PNJ (e.g., 'friend', 'enemy'). */
     relationStatus: z.string(),
-    dispositionScore: z.number(), // Added: disposition score from PNJ type
-    interactionHistory: z.array(z.string()) // Added: full interaction history from PNJ type
+    /** A numerical score representing the PNJ's disposition towards the player (e.g., -100 to 100). */
+    dispositionScore: z.number().optional(),
+    /** A concise summary of the player's interaction history with this PNJ. */
+    interactionHistorySummary: z.string().optional()
   })).optional().describe("Résumé des PNJ importants déjà rencontrés, incluant leur relation, score de disposition et historique d'interaction complet."),
-  currentCluesSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
-  currentDocumentsSummary: z.array(z.object({title: z.string(), type: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
+  /**
+ * Summary of important clues the player has discovered.
+ */
+  currentCluesSummary: z.array(z.object({
+    /** The title or name of the clue. */
+    title: z.string(),
+    /** A brief description or type of the clue. */
+    summary: z.string()
+  })).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
+  /**
+ * Summary of important documents the player has obtained.
+ */
+  currentDocumentsSummary: z.array(z.object({title: z.string(), summary: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
   currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")
-});
+}).describe("Input schema for the generateScenario flow.");
 
 // --- Simplified Input Schema (for the flow/prompt) ---
 export const SimplifiedGenerateScenarioInputSchema = GenerateScenarioInputSchema.omit({
@@ -70,32 +88,58 @@ export const SimplifiedGenerateScenarioInputSchema = GenerateScenarioInputSchema
   })).optional().describe("Simplified list of active quests."),
   encounteredPNJsSummary: z.array(z.object({
     name: z.string(),
-    relationStatus: z.string(),
+    relationStatus: z.string().optional(),
     dispositionScore: z.number().optional(), // Added optional disposition score
-    interactionHistory: z.string().optional() // Changed to string for summarized history
+    interactionHistorySummary: z.string().optional() // Changed to string for summarized history
   })).optional().describe("Simplified list of encountered PNJ summaries, including disposition and recent history (summarized as a string)."),
   currentCluesSummary: z.array(z.object({
     title: z.string(),
-    type: z.string()
+    summary: z.string()
   })).optional().describe("Simplified list of current clue summaries."),
   currentDocumentsSummary: z.array(z.object({
     title: z.string(),
-    type: z.string()
+    summary: z.string()
   })).optional().describe("Simplified list of current document summaries.")
 });
 
 // --- Main Output Schema ---
 // NewLocationDetailsSchema depends on LocationSchema, defined here for clarity.
 export const NewLocationDetailsSchema = LocationSchema.extend({
-    reasonForMove: z.string().optional().describe("A brief explanation if the AI decided the player moved, e.g., 'Took a train to Marseille'.")
+  /** A brief explanation if the AI decided the player moved, e.g., 'Took a train to Marseille'. */
+  reasonForMove: z.string().optional()
 }).describe("Details of the new location if the player's action caused them to move significantly. Omit if no significant location change.");
 
 export const GenerateScenarioOutputSchema = z.object({
+  /** The generated scenario text, formatted in HTML (e.g., using <p> tags). */
   scenarioText: z.string().describe('The generated scenario text, formatted in HTML (e.g., using <p> tags). This text describes the outcome of the player action and sets the scene for the next player input. It should NOT contain interactive elements like buttons.'),
+  /** Details of the new location if the player's action caused them to move significantly. */
   newLocationDetails: NewLocationDetailsSchema.nullable().optional(),
+  /** Interactions with NPCs or significant changes to their relationship/information. */
   pnjInteractions: z.array(PNJInteractionSchema).optional().describe("PNJ rencontrés ou dont la relation/information a changé de manière significative."),
+  /** Important decisions made by the player that should be recorded. */
   majorDecisionsLogged: z.array(MajorDecisionSchema).optional().describe("Décisions importantes prises par le joueur qui méritent d'être enregistrées."),
-  investigationNotesUpdate: z.string().nullable().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradictoires. Préciser si c'est un ajout ou une révision."),
+  /**
+ * Text to be added to the player's investigation notes.
+ * The AI can either add a new paragraph or suggest a concise revision of existing notes
+ * if they become too long or contradictory. Specify if it's an addition or a revision.
+ */
+  investigationNotesUpdate: z.string().nullable().optional().describe("Texte à ajouter aux notes d'enquête du joueur. L'IA peut soit ajouter un nouveau paragraphe, soit suggérer une réécriture concise des notes existantes si elles deviennent trop longues ou contradadictoires. Préciser si c'est un ajout ou une révision."),
+  /**
+ * List of new quests proposed by the AI in QuestInputSchema format.
+ * These quests will be added to the player's journal.
+ */
   newQuestsProposed: z.array(QuestInputSchema).optional().describe("Liste des nouvelles quêtes proposées par l'IA au format QuestInputSchema. Ces quêtes seront ajoutées au journal du joueur."),
-  questUpdatesProposed: z.array(QuestUpdateSchema).optional().describe("Liste des mises à jour de quêtes existantes proposées par l'IA au format QuestUpdateSchema (ex: objectif complété, statut changé).")
-});
+  /**
+ * List of updates to existing quests proposed by the AI in QuestUpdateSchema format
+ * (e.g., objective completed, status changed).
+ */
+  questUpdatesProposed: z.array(QuestUpdateSchema).optional().describe("Liste des mises à jour de quêtes existantes proposées par l'IA au format QuestUpdateSchema (ex: objectif complété, statut changé)."),
+  /**
+ * Proposed changes to the player's money or other relevant stats.
+ * This could be a positive or negative change.
+ */
+  playerStatsChanges: z.object({
+    moneyChange: z.number().optional().describe("Change in the player's money (can be positive or negative)."),
+    // Add other potential stat changes here if needed, e.g., health, sanity, etc.
+  }).optional().describe("Proposed changes to the player's money or other relevant stats.")
+}).describe("Output schema for the generateScenario flow, including narrative and mechanical updates.");
