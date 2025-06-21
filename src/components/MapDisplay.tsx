@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
-import { MapPin, AlertTriangle, Loader2 } from 'lucide-react';
+import { MapPin, AlertTriangle, Loader2, } from 'lucide-react';
 import type { Position } from '@/lib/types/game-types';
 
 interface MapDisplayProps {
@@ -15,13 +15,6 @@ interface MapDisplayProps {
 }
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-const MARKER_COLORS = {
-  current: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-  nearby: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-  visited: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
-  locked: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
-};
 
 const mapContainerStyle = {
   height: '100%',
@@ -41,7 +34,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: API_KEY || "", // Ensure API_KEY is not undefined
-    // libraries: ['places'], // Add any libraries you might need
   });
 
   const handleMarkerClick = (markerPos: Position) => {
@@ -130,20 +122,18 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number' ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
-            zoom={zoom}
             onLoad={onLoadMap}
             options={{
               streetViewControl: false,
               mapTypeControl: false,
               fullscreenControl: false,
-              clickableIcons: false, 
+              clickableIcons: false,
             }}
           >
             {currentLocation && typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number' && (
               <MarkerF
                 position={{ lat: currentLocation.latitude, lng: currentLocation.longitude }}
                 onClick={() => handleMarkerClick(currentLocation)}
-                icon={MARKER_COLORS.current}
                 title={currentLocation.name}
               />
             )}
@@ -153,7 +143,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                   key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
                   position={{ lat: poi.latitude, lng: poi.longitude }}
                   onClick={() => handleMarkerClick(poi)}
-                  icon={MARKER_COLORS.nearby}
                   title={poi.name}
                 />
               )
@@ -164,7 +153,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                   key={`visited-${loc.latitude}-${loc.longitude}-${loc.name}`}
                   position={{ lat: loc.latitude, lng: loc.longitude }}
                   onClick={() => handleMarkerClick(loc)}
-                  icon={MARKER_COLORS.visited}
                   title={loc.name}
                 />
               )
@@ -175,7 +163,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                   key={`locked-${loc.latitude}-${loc.longitude}-${loc.name}`}
                   position={{ lat: loc.latitude, lng: loc.longitude }}
                   onClick={() => handleMarkerClick(loc)}
-                  icon={MARKER_COLORS.locked}
                   title={loc.name}
                   opacity={0.7}
                 />
