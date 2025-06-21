@@ -1,6 +1,6 @@
 
 "use client";
-
+import { debounce } from 'lodash';
 import React from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox'; // Assuming a combobox component
 import type { Player } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import {
@@ -24,10 +25,11 @@ import {
   defaultAvatarUrl,
   initialToneSettings
 } from '@/data/initial-game-data';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2, Globe as EraIcon, MapPin as LocationIcon } from 'lucide-react';
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2, Globe as EraIcon, MapPin as LocationIcon, Search } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 
+// Define the Zod schema for the form data
 const characterSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }).max(50, { message: "Le nom ne peut pas dépasser 50 caractères." }),
   gender: z.string().min(1, { message: "Veuillez sélectionner un genre." }),
@@ -35,7 +37,7 @@ const characterSchema = z.object({
   origin: z.string().min(5, { message: "L'origine doit contenir au moins 5 caractères." }).max(200, {message: "L'origine ne peut pas dépasser 200 caractères."}),
   background: z.string().min(10, { message: "L'historique doit contenir au moins 10 caractères." }).max(500, { message: "L'historique ne peut pas dépasser 500 caractères." }),
   era: z.string().min(1, { message: "Veuillez sélectionner une époque." }),
-  startingLocation: z.string().min(5, { message: "Le lieu de départ doit contenir au moins 5 caractères." }).max(200, { message: "Le lieu de départ ne peut pas dépasser 200 caractères." }),
+  startingLocation: z.string().min(2, { message: "Veuillez sélectionner un lieu de départ ou en saisir un." }).max(200, { message: "Le lieu de départ ne peut pas dépasser 200 caractères." }),
 });
 
 type CharacterFormData = z.infer<typeof characterSchema>;
@@ -56,6 +58,9 @@ interface CharacterCreationFormProps {
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate, isGeneratingAvatar }) => {
+  const [locationSuggestions, setLocationSuggestions] = React.useState<{ value: string; label: string }[]>([]);
+  const [isSearchingLocations, setIsSearchingLocations] = React.useState(false);
+
   const form = useForm<CharacterFormData>({
     resolver: zodResolver(characterSchema),
     defaultValues: {
@@ -69,18 +74,33 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
     },
   });
 
+  // Debounced function to search locations
+  const searchLocations = React.useCallback(
+    debounce(async (query: string) => {
+      if (query.length < 2) {
+        setLocationSuggestions([]);
+        setIsSearchingLocations(false);
+        return;
+      }
+      setIsSearchingLocations(true);
+      try {
+        // Assuming /api/search-locations is your endpoint
+        const response = await fetch(`/api/search-locations?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        setLocationSuggestions(data.map((item: string) => ({ value: item, label: item })));
+      } catch (error) {
+        console.error('Error searching locations:', error);
+        setLocationSuggestions([]); // Clear suggestions on error
+      } finally {
+        setIsSearchingLocations(false);
+      }
+    }, 500), // 500ms debounce delay
+    [] // No dependencies, function is stable
+  );
+
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
-    if (isGeneratingAvatar) return; // Prevent multiple submissions
-    const newPlayerData = {
-      name: data.name,
-      gender: data.gender,
-      age: data.age,
-      origin: data.origin,
-      era: data.era, // Include era in the new player data
-      startingLocation: data.startingLocation, // Include starting location in the new player data
-      background: data.background,
-    };
-    onCharacterCreate(newPlayerData);
+ if (isGeneratingAvatar) return; // Prevent multiple submissions
+ onCharacterCreate(data); // Pass all form data
   };
 
   return (
@@ -174,20 +194,38 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             />
 
             <FormField
-              control={form.control}
+             control={form.control}
               name="startingLocation"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center"><LocationIcon className="w-4 h-4 mr-2" />Lieu de Départ</FormLabel>
                   <FormControl>
+                    <Combobox
+                      items={locationSuggestions}
+                      placeholder="Rechercher un lieu..."
+                      isLoading={isSearchingLocations}
+                      onInputChange={(value) => {
+                        field.onChange(value); // Update form state with current input value
+                        searchLocations(value); // Trigger debounced search
+                      }}
+                      onValueChange={(value) => {
+                         field.onChange(value); // Update form state with selected value
+                         setLocationSuggestions([]); // Clear suggestions after selection
+                      }}
+                    />
+                  </FormControl>
+                  <FormControl>
                     <Input placeholder="Ex: Un village isolé dans les montagnes" {...field} disabled={isGeneratingAvatar} />
                   </FormControl>
                   <FormDescription>Décrivez brièvement où votre aventure commence. L'IA détaillera la scène.</FormDescription>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
+ {/* Remove the redundant Input component */}
+ {/* <FormControl>
+ <Input placeholder="Ex: Un village isolé dans les montagnes" {...field} disabled={isGeneratingAvatar} />
+ </FormControl> */}
+ </FormItem>
+ )}
+ />
             <FormField
               control={form.control}
               name="origin"

@@ -1,9 +1,10 @@
 
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression } from './types';
 import type { InventoryItem } from './types/item-types'; // Import InventoryItem if needed here
+import type { GenerateScenarioInput } from '@/ai/flows/generate-scenario'; // Import AI input type
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
-import { saveGameStateToFirestore } from '@/services/firestore-service';
 import { initialPlayerStats, initialPlayerMoney } from '@/data/initial-game-data';
+import { loadGameStateFromLocal, clearGameState, LOCAL_STORAGE_KEY } from '@/services/localStorageService'; // Import from local storage service
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import {
   initialSkills,
@@ -25,8 +26,6 @@ import {
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
-
-export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -58,23 +57,6 @@ export async function saveGameState(state: GameState): Promise<SaveGameResult> {
   if (!state || !state.player) {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
     return result;
-  }
-  if (typeof window !== 'undefined' && localStorage) {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-      result.localSaveSuccess = true;
-    } catch (error) {
-      console.error("LocalStorage Error: Failed to save game state:", error);
-    }
-  }
-  if (state.player && state.player.uid) {
-    try {
-      await saveGameStateToFirestore(state.player.uid, state);
-      result.cloudSaveSuccess = true;
-    } catch (error) {
-      result.cloudSaveSuccess = false;
-      console.error("GameLogic Error: Cloud save attempt failed:", error);
-    }
   }
   return result;
 }
@@ -118,38 +100,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   }
 
   return player;
-}
-
-export function loadGameStateFromLocal(): GameState | null {
-  if (typeof window !== 'undefined' && localStorage) {
-    const savedStateString = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedStateString) {
-      try {
-        const parsedState = JSON.parse(savedStateString) as Partial<GameState>;
-        if (!parsedState.player) return null;
-        const hydratedPlayer = hydratePlayer(parsedState.player);
-        return {
-          player: hydratedPlayer,
-          currentScenario: parsedState.currentScenario || getInitialScenario(hydratedPlayer),
-          nearbyPois: parsedState.nearbyPois || null,
-          gameTimeInMinutes: parsedState.gameTimeInMinutes || 0,
-          journal: parsedState.journal || [],
-          toneSettings: parsedState.toneSettings || initialToneSettings,
-        };
-      } catch (error) {
-        console.error("LocalStorage Error: Error parsing game state:", error);
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      }
-    }
-  }
-  return null;
-}
-
-export function clearGameState(): void {
-  if (typeof window !== 'undefined' && localStorage) {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    console.log("LocalStorage Info: Game state cleared.");
-  }
 }
 
 // --- Game Actions & Reducer ---
@@ -306,4 +256,62 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
     console.error("Error fetching new POIs:", error);
     return null;
   }
+}
+
+// --- AI Input Preparation ---
+/**
+ * Prepares the input object for the AI\'s generateScenario flow based on the current game state.
+ * @param gameState The current state of the game.
+ * @param playerChoice The action text the player entered (or a system action).
+ * @param deterministicEvents A list of events that have already been calculated by the game engine.
+ * @returns An object formatted for the GenerateScenarioInput schema.
+ */
+export function prepareAIInput(gameState: GameState, playerChoice: string, deterministicEvents: string[] = []): GenerateScenarioInput | null {
+  if (!gameState.player) {
+    console.error("Cannot prepare AI input: Player state is missing.");
+    return null;
+  }
+
+  const player = gameState.player;
+
+  // Summarize active quests for the AI
+  const activeQuestsSummary = player.questLog
+    .filter(q => q.status === \'active\')
+    .map(q => ({
+      title: q.title,
+      description: q.description,
+      currentObjectivesDescriptions: q.objectives.map(obj => obj.description)
+    }));
+
+  return {
+    playerName: player.name,
+    playerGender: player.gender,
+    playerAge: player.age,
+    playerOrigin: player.origin,
+    playerEra: player.era || 'Modern', // Assuming a default era if not set
+    playerStartingLocation: player.startingLocationName || player.currentLocation.name, // Use startingLocationName for prologue, else current
+    playerBackground: player.background,
+    playerStats: player.stats,
+    playerSkills: player.skills,
+    playerTraitsMentalStates: player.traitsMentalStates,
+    playerProgression: player.progression,
+    playerAlignment: player.alignment,
+    playerInventory: player.inventory.map(item => ({ id: item.id, name: item.name, quantity: item.quantity })),
+    playerMoney: player.money,
+    playerChoice: playerChoice,
+    currentScenario: gameState.currentScenario?.scenarioText || \'\', // Pass previous scenario text
+    playerLocation: player.currentLocation,
+    toneSettings: player.toneSettings,
+    deterministicEvents: deterministicEvents,
+    activeQuests: activeQuestsSummary,
+    encounteredPNJsSummary: player.encounteredPNJs.map(pnj => ({ // Summarize PNJs
+        name: pnj.name,
+        relationStatus: pnj.relationStatus,
+        dispositionScore: pnj.dispositionScore,
+        interactionHistorySummary: pnj.interactionHistorySummary
+    })),
+    currentCluesSummary: player.clues.map(clue => ({ title: clue.title, summary: clue.summary })), // Summarize clues
+    currentDocumentsSummary: player.documents.map(doc => ({ title: doc.title, summary: doc.summary })), // Summarize documents
+    currentInvestigationNotes: player.investigationNotes, // Include investigation notes
+  };
 }

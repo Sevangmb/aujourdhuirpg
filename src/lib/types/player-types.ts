@@ -45,6 +45,7 @@ export type Player = {
   origin: string; // Origine géographique, sociale, etc.
   era?: string; // New field for the character's starting era
   background: string; // Historique plus détaillé du personnage, style RP
+  startingLocationName?: string; // Added for character creation context
   stats: PlayerStats;
   skills: Skills;
   traitsMentalStates: TraitsMentalStates;

@@ -169,7 +169,7 @@ const generateScenarioFlow = ai.defineFlow(
     let promptToUse = FULL_PROMPT;
     let selectedPrompt = scenarioPrompt;
 
-    if (!input.currentScenario || input.currentScenario === "") {
+    if (input.playerChoice === "[COMMENCER L'AVENTURE]") {
       selectedPrompt = prologuePrompt; // Use the specific prologue prompt
     }
 
