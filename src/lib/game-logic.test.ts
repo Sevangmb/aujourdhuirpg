@@ -1,7 +1,13 @@
 
-import { fetchPoisForCurrentLocation, checkForLocationBasedEvents, type GameAction } from './game-logic';
-import type { Position, GameState } from './types'; // Assuming Position is in types.ts or game-types.ts via types.ts
+import {
+  fetchPoisForCurrentLocation,
+  checkForLocationBasedEvents,
+  calculateDeterministicEffects,
+  type GameAction,
+} from './game-logic';
+import type { Position, GameState, Player, GameNotification } from './types';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service'; // To be mocked
+import { getMasterItemById } from '@/data/items';
 
 // Mocking @/services/osm-service
 jest.mock('@/services/osm-service', () => ({
@@ -265,5 +271,104 @@ describe('checkForLocationBasedEvents', () => {
     const newLocation: Position = { latitude: 3, longitude: 3, name: "Safe House", zone: { name: "Residential Area" } };
     const actions = checkForLocationBasedEvents(newLocation, mockGameState);
     expect(actions).toHaveLength(0);
+  });
+});
+
+describe('calculateDeterministicEffects', () => {
+  const energyBar = getMasterItemById('energy_bar_01');
+
+  if (!energyBar) {
+    throw new Error('Test setup failed: energy_bar_01 not found in master items.');
+  }
+
+  const mockPlayer: Player = {
+    uid: 'test-user',
+    name: 'Test',
+    gender: 'Test',
+    age: 25,
+    avatarUrl: '',
+    origin: '',
+    background: '',
+    stats: {
+      Sante: 50,
+      Charisme: 50,
+      Intelligence: 50,
+      Force: 50,
+      Energie: 50,
+      Stress: 10,
+      Volonte: 50,
+      Reputation: 0,
+    },
+    skills: {},
+    traitsMentalStates: [],
+    progression: { level: 1, xp: 0, xpToNextLevel: 100, perks: [] },
+    alignment: { chaosLawful: 0, goodEvil: 0 },
+    inventory: [{ ...energyBar, quantity: 2 }],
+    money: 50,
+    currentLocation: { latitude: 0, longitude: 0, name: 'Test Location' },
+    toneSettings: {},
+    questLog: [],
+    encounteredPNJs: [],
+    decisionLog: [],
+    clues: [],
+    documents: [],
+    investigationNotes: '',
+  };
+
+  test('should correctly apply effects when using a consumable item', async () => {
+    const actionText = 'Utiliser Barre énergétique';
+    const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(
+      mockPlayer,
+      actionText
+    );
+
+    // Check stats
+    expect(updatedPlayer.stats.Sante).toBe(60); // 50 + 10 from energy bar
+
+    // Check inventory
+    expect(updatedPlayer.inventory.length).toBe(1);
+    expect(updatedPlayer.inventory[0].quantity).toBe(1);
+
+    // Check notifications
+    expect(notifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'item_removed',
+          title: 'Objet Utilisé',
+          description: 'Vous avez utilisé : Barre énergétique.',
+        }),
+        expect.objectContaining({
+          type: 'stat_changed',
+          title: 'Statistique modifiée',
+          description: 'Sante a changé de +10.',
+        }),
+      ])
+    );
+    expect(notifications.length).toBe(2);
+
+    // Check AI events
+    expect(eventsForAI).toEqual([
+      "Le joueur a utilisé 'Barre énergétique'.",
+      "Effet : Sante a changé de 10.",
+    ]);
+  });
+  
+  test('should return no changes if item is not in inventory', async () => {
+    const playerWithNoItems = { ...mockPlayer, inventory: [] };
+    const actionText = "Utiliser Potion"; // An item the player doesn't have
+    
+    const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(
+      playerWithNoItems,
+      actionText
+    );
+    
+    expect(updatedPlayer).toEqual(playerWithNoItems); // Player state should be unchanged
+    expect(notifications.length).toBe(1);
+    expect(notifications[0]).toEqual({
+        type: 'warning',
+        title: 'Action impossible',
+        description: `Vous n'avez pas d'objet nommé 'Potion'.`
+    });
+    expect(eventsForAI.length).toBe(0);
   });
 });

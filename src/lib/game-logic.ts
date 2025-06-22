@@ -3,7 +3,7 @@ import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry,
 import type { InventoryItem } from './types/item-types'; // Import InventoryItem if needed here
 import type { GenerateScenarioInput } from '@/ai/flows/generate-scenario'; // Import AI input type
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
-import { initialPlayerStats, initialPlayerMoney } from '@/data/initial-game-data';
+import { initialPlayerMoney } from '@/data/initial-game-data';
 import { loadGameStateFromLocal, clearGameState, LOCAL_STORAGE_KEY } from '@/services/localStorageService'; // Import from local storage service
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import {
@@ -21,7 +21,8 @@ import {
   initialDocuments,
   initialInvestigationNotes,
   initialToneSettings,
-  UNKNOWN_STARTING_PLACE_NAME
+  UNKNOWN_STARTING_PLACE_NAME,
+  initialPlayerStats
 } from '@/data/initial-game-data';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -58,6 +59,9 @@ export async function saveGameState(state: GameState): Promise<SaveGameResult> {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
     return result;
   }
+  // Logic for local and cloud save will be handled by their respective services
+  // For now, this function is a placeholder for the concept.
+  // In a real implementation, you would call saveGameStateToLocal and saveGameStateToFirestore here.
   return result;
 }
 
@@ -70,6 +74,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     avatarUrl: savedPlayer?.avatarUrl || defaultAvatarUrl,
     origin: savedPlayer?.origin || "Inconnue",
     background: savedPlayer?.background || '',
+    startingLocationName: savedPlayer?.startingLocationName,
     stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
     skills: { ...initialSkills, ...(savedPlayer?.skills || {}) },
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
@@ -175,7 +180,7 @@ export async function calculateDeterministicEffects(
   if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed) {
     const itemInInventory = updatedPlayer.inventory.find(i => i.name.toLowerCase() === parsedAction.itemUsed!.toLowerCase());
 
-    if (itemInInventory && itemInInventory.effects) {
+    if (itemInInventory && itemInInventory.type === 'consumable' && itemInInventory.effects) {
       // 1. Apply effects
       updatedPlayer.stats = applyStatChanges(updatedPlayer.stats, itemInInventory.effects);
 
@@ -192,17 +197,16 @@ export async function calculateDeterministicEffects(
 
       for (const [stat, change] of Object.entries(itemInInventory.effects as Partial<PlayerStats>)) {
         if (typeof change === 'number') {
- notifications.push({
- type: 'stat_changed',
- title: `Statistique modifiée`,
- description: `${stat} a changé de ${change > 0 ? '+' : ''}${change}.`,
- });
-
+            notifications.push({
+                type: 'stat_changed',
+                title: `Statistique modifiée`,
+                description: `${stat} a changé de ${change > 0 ? '+' : ''}${change}.`,
+            });
         }
         eventsForAI.push(`Effet : ${stat} a changé de ${change}.`);
       }
     } else if (itemInInventory) {
-        notifications.push({type: 'warning', title: "Action impossible", description: `L'objet '${itemInInventory.name}' n'a pas d'effet utilisable.`});
+        notifications.push({type: 'warning', title: "Action impossible", description: `L'objet '${itemInInventory.name}' n'est pas consommable ou n'a pas d'effet.`});
     } else {
         notifications.push({type: 'warning', title: "Action impossible", description: `Vous n'avez pas d'objet nommé '${parsedAction.itemUsed}'.`});
     }
@@ -241,7 +245,8 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
         radius: 500,
         limit: 10
     });
-    if (poisFromService.message && poisFromService.pois.length === 0) return [];
+    if (!poisFromService || (poisFromService.message && poisFromService.pois.length === 0)) return [];
+    
     return poisFromService.pois.map(poi => ({
       latitude: poi.lat ?? playerLocation.latitude,
       longitude: poi.lon ?? playerLocation.longitude,
@@ -260,7 +265,7 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 
 // --- AI Input Preparation ---
 /**
- * Prepares the input object for the AI\'s generateScenario flow based on the current game state.
+ * Prepares the input object for the AI's generateScenario flow based on the current game state.
  * @param gameState The current state of the game.
  * @param playerChoice The action text the player entered (or a system action).
  * @param deterministicEvents A list of events that have already been calculated by the game engine.
@@ -274,44 +279,49 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
 
   const player = gameState.player;
 
-  // Summarize active quests for the AI
-  const activeQuestsSummary = player.questLog
-    .filter(q => q.status === \'active\')
-    .map(q => ({
-      title: q.title,
-      description: q.description,
-      currentObjectivesDescriptions: q.objectives.map(obj => obj.description)
-    }));
-
   return {
     playerName: player.name,
     playerGender: player.gender,
     playerAge: player.age,
     playerOrigin: player.origin,
-    playerEra: player.era || 'Modern', // Assuming a default era if not set
-    playerStartingLocation: player.startingLocationName || player.currentLocation.name, // Use startingLocationName for prologue, else current
+    playerEra: player.era || 'Époque Contemporaine',
+    playerStartingLocation: player.startingLocationName || player.currentLocation.name,
     playerBackground: player.background,
     playerStats: player.stats,
     playerSkills: player.skills,
     playerTraitsMentalStates: player.traitsMentalStates,
     playerProgression: player.progression,
     playerAlignment: player.alignment,
-    playerInventory: player.inventory.map(item => ({ id: item.id, name: item.name, quantity: item.quantity })),
+    playerInventory: player.inventory.map(item => ({ name: item.name, quantity: item.quantity })),
     playerMoney: player.money,
     playerChoice: playerChoice,
-    currentScenario: gameState.currentScenario?.scenarioText || \'\', // Pass previous scenario text
+    currentScenario: gameState.currentScenario?.scenarioText || '',
     playerLocation: player.currentLocation,
     toneSettings: player.toneSettings,
     deterministicEvents: deterministicEvents,
-    activeQuests: activeQuestsSummary,
-    encounteredPNJsSummary: player.encounteredPNJs.map(pnj => ({ // Summarize PNJs
-        name: pnj.name,
-        relationStatus: pnj.relationStatus,
-        dispositionScore: pnj.dispositionScore,
-        interactionHistorySummary: pnj.interactionHistorySummary
+    activeQuests: (player.questLog || [])
+      .filter(q => q.status === 'active')
+      .map(q => ({
+        id: q.id,
+        title: q.title,
+        description: q.description.substring(0, 250),
+        type: q.type,
+        giver: q.giver,
+        rewardDescription: q.rewardDescription,
+        moneyReward: q.moneyReward,
+        relatedLocation: q.relatedLocation,
+        currentObjectivesDescriptions: (q.objectives || [])
+          .filter(obj => !obj.isCompleted)
+          .map(obj => obj.description)
+      })),
+    encounteredPNJsSummary: (player.encounteredPNJs || []).map(p => ({
+        name: p.name,
+        relationStatus: p.relationStatus,
+        dispositionScore: p.dispositionScore,
+        interactionHistorySummary: p.interactionHistory?.slice(-2).join('; ')
     })),
-    currentCluesSummary: player.clues.map(clue => ({ title: clue.title, summary: clue.summary })), // Summarize clues
-    currentDocumentsSummary: player.documents.map(doc => ({ title: doc.title, summary: doc.summary })), // Summarize documents
-    currentInvestigationNotes: player.investigationNotes, // Include investigation notes
+    currentCluesSummary: (player.clues || []).map(clue => ({ title: clue.title, summary: clue.description.substring(0, 150) })),
+    currentDocumentsSummary: (player.documents || []).map(doc => ({ title: doc.title, summary: doc.content.substring(0, 150) })),
+    currentInvestigationNotes: player.investigationNotes,
   };
 }

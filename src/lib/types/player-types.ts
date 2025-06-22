@@ -64,4 +64,3 @@ export type Player = {
   documents: GameDocument[];
   investigationNotes: string; // Un texte libre pour les hypothèses, suspects, lieux
 };
-

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, Player } from '@/lib/types';
+import type { GameState } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 
 // Removed LoadingState import as HomePageContent handles the primary loading states
@@ -14,7 +14,15 @@ interface GameScreenProps {
   user: User; // User is now guaranteed to be non-null when this component is rendered
   gameState: GameState | null;
   isGameActive: boolean;
-  onCharacterCreate: (playerData: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => void;
+  onCharacterCreate: (playerData: {
+    name: string;
+    gender: string;
+    age: number;
+    origin: string;
+    background: string;
+    era: string;
+    startingLocation: string;
+  }) => void;
   onRestartGame: () => void; // Kept for potential future use or pass-through
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
   weatherData: WeatherData | null;

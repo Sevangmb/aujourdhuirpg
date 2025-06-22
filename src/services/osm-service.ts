@@ -5,9 +5,7 @@
  */
 import { z } from 'genkit'; // For type consistency if we use Zod types internally or for params
 
-import type { Position, Zone } from '@/lib/types';
-// Re-using schema definitions from the tool for consistency in data structure.
-// These are not exported from the service itself to avoid "use server" export issues.
+// Internal schema for data returned by this service. This is the raw-ish data from Overpass.
 const OverpassPoiSchemaInternal = z.object({
   name: z.string().optional().describe('The name of the POI.'),
   type: z.string().describe('The primary type/category of the POI (e.g., restaurant, museum, shop).'),
@@ -15,7 +13,11 @@ const OverpassPoiSchemaInternal = z.object({
   tags: z.record(z.string()).optional().describe('Raw OSM tags associated with the POI.'),
   lat: z.number().optional().describe('Latitude of the POI if available.'),
   lon: z.number().optional().describe('Longitude of the POI if available.'),
+});
+type OverpassPoiInternal = z.infer<typeof OverpassPoiSchemaInternal>;
 
+
+// Schema for the input parameters of the service function.
 const GetNearbyPoisInputSchemaInternal = z.object({
   latitude: z.number().describe("The player's current latitude."),
   longitude: z.number().describe("The player's current longitude."),
@@ -24,6 +26,13 @@ const GetNearbyPoisInputSchemaInternal = z.object({
   limit: z.number().min(1).max(15).optional().default(7).describe('Maximum number of POIs to return (default 7, max 15).'),
 });
 export type GetNearbyPoisServiceInput = z.infer<typeof GetNearbyPoisInputSchemaInternal>;
+
+
+// Type for the output of the service function.
+export type GetNearbyPoisServiceOutput = {
+  pois: OverpassPoiInternal[];
+  message?: string;
+};
 
 
 const USER_AGENT_OVERPASS = 'AujourdhuiRPG/0.1 (Firebase Studio App; https://firebase.google.com/docs/studio; for Overpass API)';
@@ -79,7 +88,6 @@ const poiTypeToOverpassQuery = (poiType?: string): string => {
 export async function fetchNearbyPoisFromOSM(
   { latitude, longitude, radius = 500, poiType, limit = 7 }: GetNearbyPoisServiceInput
 ): Promise<GetNearbyPoisServiceOutput> {
-): Promise<Position[] | null> {
   const specificPoiQueries = poiTypeToOverpassQuery(poiType)
     .replace(/{{latitude}}/g, String(latitude))
     .replace(/{{longitude}}/g, String(longitude))
@@ -107,50 +115,36 @@ export async function fetchNearbyPoisFromOSM(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Overpass API error (osm-service): ${response.status} ${response.statusText}`, errorText);
- return null;
+      const errorMessage = `Failed to fetch POIs from Overpass API: ${response.status} ${response.statusText}. Details: ${errorText.substring(0, 200)}`;
+      console.error(`Overpass API error (osm-service):`, errorMessage);
+      return { pois: [], message: errorMessage };
     }
 
     const data = await response.json();
-    const pois: Position[] = [];
+    const pois: OverpassPoiInternal[] = [];
 
     if (data.elements && data.elements.length > 0) {
- for (const element of data.elements) {
+      for (const element of data.elements) {
         if (element.tags) {
           const name = element.tags.name || element.tags['name:fr'] || element.tags['name:en'];
-          let type = element.tags.amenity || element.tags.shop || element.tags.tourism || element.tags.historic || 'unknown';
+          let type = 'unknown';
           let subtype = '';
           
           if(element.tags.amenity) { type = 'amenity'; subtype = element.tags.amenity; }
           else if(element.tags.shop) { type = 'shop'; subtype = element.tags.shop; }
           else if(element.tags.tourism) { type = 'tourism'; subtype = element.tags.tourism; }
           else if(element.tags.historic) { type = 'historic'; subtype = element.tags.historic; }
-          else if (element.tags.cuisine) { subtype = element.tags.cuisine + (subtype ? ` ${subtype}` : ''); }
+          
+          if (element.tags.cuisine) { subtype = element.tags.cuisine + (subtype ? ` ${subtype}` : ''); }
 
           if (name || (type !== 'unknown')) {
-            // Extract coordinates
-            let poiLat: number | undefined = undefined;
-            let poiLon: number | undefined = undefined;
-
-            if (typeof element.lat === 'number') {
-              poiLat = element.lat;
-            } else if (typeof element.center?.lat === 'number') {
-              poiLat = element.center.lat;
-            }
-
-            if (typeof element.lon === 'number') {
-              poiLon = element.lon;
-            } else if (typeof element.center?.lon === 'number') {
-              poiLon = element.center.lon;
-            }
-
- if (poiLat !== undefined && poiLon !== undefined) {
             pois.push({
               name: name,
-              latitude: poiLat,
-              longitude: poiLon,
-              summary: element.tags.description || element.tags.note || `${subtype || type}`,
-              zone: { name: subtype || type } as Zone, // Simple zone based on type/subtype
+              type: type,
+              subtype: subtype,
+              tags: element.tags,
+              lat: element.lat ?? element.center?.lat,
+              lon: element.lon ?? element.center?.lon,
             });
           }
         }
@@ -158,20 +152,18 @@ export async function fetchNearbyPoisFromOSM(
     }
 
     if (pois.length === 0) {
- return [];
+      return { pois: [], message: `No POIs of type "${poiType || 'any'}" found within ${radius}m.` };
     }
-    // Ensure we don't exceed the requested limit, even if Overpass returns more for one element type
- // The slice handles the limit
+    
     const finalPois = pois.sort((a, b) => {
-      // Basic sort: POIs with names first, then by type. Could be refined.
-      if (a.name && !b.name) return -1; // items with name first
-      if (!a.name && b.name) return 1;  // items with name first
-      return 0; // keep original order otherwise
+      if (a.name && !b.name) return -1;
+      if (!a.name && b.name) return 1;
+      return 0;
     }).slice(0, limit);
 
- return finalPois;
+    return { pois: finalPois };
   } catch (error: any) {
     console.error('Error in fetchNearbyPoisFromOSM (osm-service):', error);
- return null;
+    return { pois: [], message: `An unexpected error occurred in osm-service: ${error.message}` };
   }
 }

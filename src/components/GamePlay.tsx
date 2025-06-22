@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, Player, Position, JournalEntry, GameNotification } from '@/lib/types';
-import { gameReducer, GameAction, fetchPoisForCurrentLocation, checkForLocationBasedEvents, calculateDeterministicEffects, saveGameState } from '@/lib/game-logic';
+import { gameReducer, GameAction, fetchPoisForCurrentLocation, calculateDeterministicEffects, saveGameState, prepareAIInput } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getInitialScenario } from '@/lib/game-logic';
@@ -17,45 +17,6 @@ import LocationImageDisplay from './LocationImageDisplay';
 import PlayerInputForm from './PlayerInputForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-const prepareAIInput = (
-  player: Player,
-  currentScenarioText: string,
-  actionText: string,
-  deterministicEvents: string[]
-): GenerateScenarioInput => {
-  return {
-    playerName: player.name,
-    playerGender: player.gender,
-    playerAge: player.age,
-    playerOrigin: player.origin,
-    playerBackground: player.background,
-    playerStats: player.stats,
-    playerSkills: player.skills,
-    playerTraitsMentalStates: player.traitsMentalStates || [],
-    playerProgression: player.progression,
-    playerAlignment: player.alignment,
-    playerInventory: player.inventory?.map(item => ({ name: item.name, quantity: item.quantity })) || [],
-    playerMoney: player.money,
-    playerChoice: actionText.trim(),
-    currentScenario: currentScenarioText,
-    playerLocation: player.currentLocation,
-    toneSettings: player.toneSettings || initialToneSettings,
-    deterministicEvents, // Pass the pre-calculated events to the AI
-    // Pass summaries for narrative context
-    activeQuests: (player.questLog || []).filter(q => q.status === 'active').map(q => ({
-      id: q.id, title: q.title, description: q.description.substring(0, 150), type: q.type, moneyReward: q.moneyReward,
-      currentObjectivesDescriptions: (q.objectives || []).filter(obj => !obj.isCompleted).map(obj => obj.description)
-    })),
-    encounteredPNJsSummary: (player.encounteredPNJs || []).map(p => ({
-      name: p.name, relationStatus: p.relationStatus, dispositionScore: p.dispositionScore,
-      interactionHistorySummary: (p.interactionHistory || []).slice(-3).join('; ')
-    })),
-    currentCluesSummary: (player.clues || []).map(c => ({ title: c.title, summary: c.description.substring(0,100) })),
-    currentDocumentsSummary: (player.documents || []).map(d => ({ title: d.title, summary: d.content.substring(0,100) })),
-    investigationNotes: player.investigationNotes,
-  };
-};
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -123,8 +84,19 @@ const GamePlay: React.FC<GamePlayProps> = ({
       // 1. CALCULATE DETERMINISTIC EFFECTS (Code)
       const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, actionText);
 
+      // Construct a temporary gameState for the AI input function
+      const tempGameStateForAI: GameState = {
+          ...initialGameState,
+          player: updatedPlayer,
+          currentScenario: currentScenario,
+      };
+
       // 2. PREPARE AI INPUT
-      const inputForAI = prepareAIInput(updatedPlayer, currentScenario.scenarioText, actionText, eventsForAI);
+      const inputForAI = prepareAIInput(tempGameStateForAI, actionText, eventsForAI);
+      
+      if (!inputForAI) {
+        throw new Error("Failed to prepare AI input.");
+      }
 
       // 3. GENERATE NARRATIVE (IA)
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);

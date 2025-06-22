@@ -1,6 +1,6 @@
 
 "use client";
-import { debounce } from 'lodash';
+
 import React from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Combobox } from '@/components/ui/combobox'; // Assuming a combobox component
 import type { Player } from '@/lib/types';
 import StatDisplay from './StatDisplay';
 import {
@@ -25,7 +24,7 @@ import {
   defaultAvatarUrl,
   initialToneSettings
 } from '@/data/initial-game-data';
-import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2, Globe as EraIcon, MapPin as LocationIcon, Search } from 'lucide-react';
+import { User, Cake, MapPin as OriginIcon, Drama, Briefcase, Euro, Loader2, Globe as EraIcon, MapPin as LocationIcon } from 'lucide-react';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 
@@ -58,8 +57,6 @@ interface CharacterCreationFormProps {
 }
 
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate, isGeneratingAvatar }) => {
-  const [locationSuggestions, setLocationSuggestions] = React.useState<{ value: string; label: string }[]>([]);
-  const [isSearchingLocations, setIsSearchingLocations] = React.useState(false);
 
   const form = useForm<CharacterFormData>({
     resolver: zodResolver(characterSchema),
@@ -69,38 +66,14 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       age: 25,
       origin: '',
       background: '',
-      era: '', // Default value for era
-      startingLocation: '', // Default value for starting location
+      era: 'Époque Contemporaine',
+      startingLocation: 'Paris, France', 
     },
   });
 
-  // Debounced function to search locations
-  const searchLocations = React.useCallback(
-    debounce(async (query: string) => {
-      if (query.length < 2) {
-        setLocationSuggestions([]);
-        setIsSearchingLocations(false);
-        return;
-      }
-      setIsSearchingLocations(true);
-      try {
-        // Assuming /api/search-locations is your endpoint
-        const response = await fetch(`/api/search-locations?query=${encodeURIComponent(query)}`);
-        const data = await response.json();
-        setLocationSuggestions(data.map((item: string) => ({ value: item, label: item })));
-      } catch (error) {
-        console.error('Error searching locations:', error);
-        setLocationSuggestions([]); // Clear suggestions on error
-      } finally {
-        setIsSearchingLocations(false);
-      }
-    }, 500), // 500ms debounce delay
-    [] // No dependencies, function is stable
-  );
-
   const onSubmit: SubmitHandler<CharacterFormData> = (data) => {
- if (isGeneratingAvatar) return; // Prevent multiple submissions
- onCharacterCreate(data); // Pass all form data
+    if (isGeneratingAvatar) return; // Prevent multiple submissions
+    onCharacterCreate(data);
   };
 
   return (
@@ -110,7 +83,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
            <Image src={defaultAvatarUrl} alt="Avatar par défaut" width={100} height={100} className="rounded-full border-2 border-primary" data-ai-hint="character portrait"/>
         </div>
         <CardTitle className="font-headline text-3xl text-primary">Créez Votre Personnage</CardTitle>
-        <CardDescription>Donnez vie à votre avatar pour une aventure commençant en un lieu inconnu.</CardDescription>
+        <CardDescription>Donnez vie à votre avatar pour commencer votre aventure.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -181,11 +154,11 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
- <SelectItem value="Antiquité">Antiquité</SelectItem>
- <SelectItem value="Moyen-Âge">Moyen-Âge</SelectItem>
- <SelectItem value="Renaissance">Renaissance</SelectItem>
- <SelectItem value="Époque Moderne">Époque Moderne</SelectItem>
- <SelectItem value="Époque Contemporaine">Époque Contemporaine</SelectItem>
+                     <SelectItem value="Antiquité">Antiquité</SelectItem>
+                     <SelectItem value="Moyen-Âge">Moyen-Âge</SelectItem>
+                     <SelectItem value="Renaissance">Renaissance</SelectItem>
+                     <SelectItem value="Époque Moderne">Époque Moderne</SelectItem>
+                     <SelectItem value="Époque Contemporaine">Époque Contemporaine</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -200,32 +173,13 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 <FormItem>
                   <FormLabel className="flex items-center"><LocationIcon className="w-4 h-4 mr-2" />Lieu de Départ</FormLabel>
                   <FormControl>
-                    <Combobox
-                      items={locationSuggestions}
-                      placeholder="Rechercher un lieu..."
-                      isLoading={isSearchingLocations}
-                      onInputChange={(value) => {
-                        field.onChange(value); // Update form state with current input value
-                        searchLocations(value); // Trigger debounced search
-                      }}
-                      onValueChange={(value) => {
-                         field.onChange(value); // Update form state with selected value
-                         setLocationSuggestions([]); // Clear suggestions after selection
-                      }}
-                    />
-                  </FormControl>
-                  <FormControl>
                     <Input placeholder="Ex: Un village isolé dans les montagnes" {...field} disabled={isGeneratingAvatar} />
                   </FormControl>
                   <FormDescription>Décrivez brièvement où votre aventure commence. L'IA détaillera la scène.</FormDescription>
                   <FormMessage />
- {/* Remove the redundant Input component */}
- {/* <FormControl>
- <Input placeholder="Ex: Un village isolé dans les montagnes" {...field} disabled={isGeneratingAvatar} />
- </FormControl> */}
- </FormItem>
- )}
- />
+                 </FormItem>
+                )}
+             />
             <FormField
               control={form.control}
               name="origin"
@@ -306,10 +260,6 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 <p className="text-xs text-center text-muted-foreground">(Ajustable via le menu Paramètres)</p>
               </div>
             </div>
-
-            <p className="text-sm text-center text-muted-foreground">
-              Votre aventure commencera en un lieu aléatoire sur la planète. L'IA déterminera les détails de votre environnement initial.
-            </p>
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" variant="default" size="lg" disabled={isGeneratingAvatar}>

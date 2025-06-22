@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { User } from 'firebase/auth';
@@ -11,7 +10,7 @@ import {
   signOut as firebaseSignOut 
 } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
-import { clearGameState as clearLocalGameState } from '@/lib/game-logic'; 
+import { clearGameState as clearLocalGameState } from '@/services/localStorageService'; 
 
 interface AuthContextData {
   user: User | null;

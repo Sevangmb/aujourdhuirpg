@@ -18,7 +18,7 @@ export const QuestInputSchema = z.object({
   status: z.enum(['active', 'inactive', 'completed', 'failed']).default('active').describe("Statut de la quête."),
   objectives: z.array(QuestObjectiveInputSchema).describe("Liste des objectifs de la quête."),
   giver: z.string().optional().describe("Nom du PNJ qui a donné la quête. OMITTIR si pas de PNJ donneur spécifique."),
-  reward: z.string().optional().describe("Description textuelle de la récompense potentielle (objets, XP)."),
+  rewardDescription: z.string().optional().describe("Description textuelle de la récompense potentielle (objets, XP)."),
   moneyReward: z.number().optional().describe("Montant d'argent (euros) offert en récompense pour la quête."),
   relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
 }).describe("Structure pour une nouvelle quête à ajouter au journal du joueur.");

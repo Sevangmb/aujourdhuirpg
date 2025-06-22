@@ -47,7 +47,7 @@ export function saveGameStateToLocal(state: GameState): boolean {
 }
 
 
-export function clearGameStateLocal(): void {
+export function clearGameState(): void {
   if (typeof window !== 'undefined' && localStorage) {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     console.log('LocalStorage Info: Game state cleared locally.');

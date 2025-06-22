@@ -4,10 +4,10 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 // Corrected import path for game logic types
 import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
-import { generateScenario, generatePlayerAvatar } from '@/services/aiService';
+import { generatePlayerAvatar } from '@/services/aiService';
 import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
 import { saveGameState, type SaveGameResult, getInitialScenario, hydratePlayer, prepareAIInput } from '@/lib/game-logic';
-import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings, UNKNOWN_STARTING_PLACE_SUMMARY } from '@/data/initial-game-data';
+import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service'; // Corrected import path
 import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
@@ -16,6 +16,8 @@ import GameScreen from '@/components/GameScreen';
 // Corrected path for getCurrentWeather based on ls output
 import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
 // Corrected paths for AI flows to match original page.tsx
+import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
+
 
 interface AuthenticatedAppViewProps {
   user: User | null; // Allow null for initial state before user is fully loaded
@@ -160,7 +162,15 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, []);
 
 
-  const handleCharacterCreate = useCallback(async (playerBaseDetails: Omit<Player, 'currentLocation' | 'uid' | 'stats' | 'skills' | 'traitsMentalStates' | 'progression' | 'alignment' | 'inventory' | 'avatarUrl' | 'questLog' | 'encounteredPNJs' | 'decisionLog' | 'clues' | 'documents' | 'investigationNotes' | 'money' | 'toneSettings'>) => {
+  const handleCharacterCreate = useCallback(async (playerBaseDetails: {
+      name: string;
+      gender: string;
+      age: number;
+      origin: string;
+      background: string;
+      era: string;
+      startingLocation: string;
+    }) => {
     if (!user) {
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
@@ -201,7 +211,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         ...playerBaseDetails,
         uid: user.uid,
         avatarUrl: avatarUrl,
- startingLocationName: playerBaseDetails.startingLocation,
+        startingLocationName: playerBaseDetails.startingLocation,
     });
 
     // Set a temporary starting location and summary for the prologue AI call
@@ -209,7 +219,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         latitude: Math.random() * 180 - 90,
         longitude: Math.random() * 360 - 180,
         name: UNKNOWN_STARTING_PLACE_NAME,
-        summary: UNKNOWN_STARTING_PLACE_SUMMARY,
+        summary: "Début de l'aventure...",
     };
 
     // Set an initial game state shell
@@ -222,20 +232,21 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       toneSettings: hydratedPlayer.toneSettings,
     });
     setIsCharacterCreationMode(false);
-    setIsCharacterCreationMode(false);
-
+    
     console.log("Character created, generating prologue with AI. Player location:", hydratedPlayer.currentLocation);
 
     try {
       // Prepare input for the AI, specifically triggering the prologue
-      const aiInput: GenerateScenarioInput = prepareAIInput({
-        gameState: {
-          ...gameState!, // Use the newly set game state shell - assumes gameState is not null here
-          player: hydratedPlayer, // Ensure the hydrated player is used, overriding the gameState shell player
-        } as GameState, // Explicitly cast to GameState
-        playerActionText: "[COMMENCER L'AVENTURE]", // System action to trigger the prologue scenario
-        deterministicEvents: [], // No deterministic events yet for prologue
-      });
+      const aiInput = prepareAIInput({
+        player: hydratedPlayer,
+        currentScenario: { scenarioText: '' },
+        gameTimeInMinutes: 0,
+        journal: [],
+        nearbyPois: null,
+        toneSettings: hydratedPlayer.toneSettings,
+      }, "[COMMENCER L'AVENTURE]");
+
+      if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
 
       const prologueResult = await generateScenario(aiInput);
       setGameState(prevState => prevState ? { ...prevState, currentScenario: { scenarioText: prologueResult.scenarioText } } : null);
