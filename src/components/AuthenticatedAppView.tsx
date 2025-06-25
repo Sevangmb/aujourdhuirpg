@@ -4,7 +4,7 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 // Corrected import path for game logic types
 import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
-import { generatePlayerAvatar } from '@/services/aiService';
+import { aiService } from '@/services/aiService';
 import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
 import { saveGameState, type SaveGameResult, getInitialScenario, hydratePlayer, prepareAIInput } from '@/lib/game-logic';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
@@ -185,7 +185,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
             origin: playerBaseDetails.origin,
             playerBackground: playerBaseDetails.background
         };
-        const avatarResult = await generatePlayerAvatar(avatarInput);
+        const avatarResult = await aiService.generatePlayerAvatar(avatarInput);
         if (avatarResult.imageUrl) {
             avatarUrl = avatarResult.imageUrl;
         } else if (avatarResult.error) {
