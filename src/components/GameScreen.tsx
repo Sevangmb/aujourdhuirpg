@@ -1,24 +1,32 @@
-
 "use client";
 
 import React from 'react';
 import { useGame } from '@/contexts/GameContext';
 import GamePlay from '@/components/GamePlay';
+import AppMenubar from '@/components/AppMenubar';
+import { Loader2 } from 'lucide-react';
 
 const GameScreen: React.FC = () => {
   const { isGameActive } = useGame();
 
   if (isGameActive) {
-    return <GamePlay />;
+    return (
+      <div className="flex flex-col h-screen bg-background">
+        <AppMenubar />
+        <div className="flex-grow overflow-hidden">
+          <GamePlay />
+        </div>
+      </div>
+    );
   }
   
-  // The CharacterCreationForm is now handled by CharacterSelectionScreen
-  // This component becomes simpler, mainly rendering the active game.
-  // A loading or error state could be added here if needed.
   return (
-      <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto bg-background">
-          <p>Chargement du jeu...</p>
-      </main>
+    <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 bg-background h-full">
+      <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      <p className="mt-4 text-xl font-headline">
+        Chargement de votre aventure...
+      </p>
+    </main>
   );
 };
 
