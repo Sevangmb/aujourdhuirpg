@@ -61,6 +61,8 @@ export const initialInventory: InventoryItem[] = [
     quantity: masterItem.id === 'energy_bar_01' ? 2 : 1,
     condition: 100,
     acquiredAt: new Date().toISOString(),
+    usageCount: 0,
+    experience: 0,
   };
 });
 

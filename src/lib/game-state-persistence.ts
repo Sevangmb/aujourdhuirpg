@@ -101,6 +101,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       instanceId: item.instanceId || `${item.id}_${Math.random().toString(36).substring(2)}`,
       condition: typeof item.condition === 'number' ? item.condition : 100,
       acquiredAt: item.acquiredAt || new Date(0).toISOString(),
+      usageCount: item.usageCount || 0,
+      experience: item.experience || 0,
+      lastUsed: item.lastUsed,
     };
   }).filter((item): item is InventoryItem => item !== null);
 

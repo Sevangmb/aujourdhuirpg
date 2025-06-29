@@ -30,7 +30,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
       <CardContent className="px-4 pb-3 flex-grow flex flex-col justify-between">
         <p className="text-xs text-muted-foreground mb-2">{item.description}</p>
         <div className="space-y-2">
-           <p className="text-xs mt-1"><span className="font-medium">Type:</span> {item.type}</p>
+           <p className="text-xs mt-1"><span className="font-medium">Type:</span> {item.type} | <span className="font-medium">Usages:</span> {item.usageCount}</p>
            <div>
               <TooltipProvider>
                 <Tooltip>
@@ -42,6 +42,21 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Condition: {item.condition}%</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+           </div>
+            <div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-muted-foreground">Expérience</Label>
+                      <Progress value={item.experience % 100} className="h-1.5" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Expérience: {item.experience}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

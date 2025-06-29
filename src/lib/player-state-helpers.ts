@@ -38,6 +38,8 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
         quantity: quantityToAdd,
         condition: 100,
         acquiredAt: new Date().toISOString(),
+        usageCount: 0,
+        experience: 0,
       });
     }
   } else {
@@ -49,6 +51,8 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
         quantity: 1,
         condition: 100,
         acquiredAt: new Date().toISOString(),
+        usageCount: 0,
+        experience: 0,
       });
     }
   }
