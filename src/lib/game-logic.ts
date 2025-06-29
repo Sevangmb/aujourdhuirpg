@@ -4,7 +4,6 @@ import type { InventoryItem } from './types/item-types'; // Import InventoryItem
 import type { GenerateScenarioInput } from '@/ai/flows/generate-scenario'; // Import AI input type
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
 import { initialPlayerMoney } from '@/data/initial-game-data';
-import { loadGameStateFromLocal, clearGameState, LOCAL_STORAGE_KEY } from '@/services/localStorageService'; // Import from local storage service
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import {
   initialSkills,
