@@ -4,7 +4,7 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, Eye, Search, Hotel } from 'lucide-react';
+import { Loader2, Send, Eye, Search } from 'lucide-react';
 
 interface PlayerInputFormProps {
   playerInput: string;
@@ -39,9 +39,6 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
         </Button>
         <Button variant="outline" size="sm" onClick={() => handleQuickAction("Chercher des objets ou indices intéressants")} disabled={isLoading}>
           <Search className="mr-2 h-4 w-4" /> Chercher
-        </Button>
-         <Button variant="outline" size="sm" onClick={() => handleQuickAction("Se reposer et reprendre de l'énergie")} disabled={isLoading}>
-          <Hotel className="mr-2 h-4 w-4" /> Se reposer
         </Button>
       </div>
       <form onSubmit={handleSubmit} className="flex gap-2 items-center">
