@@ -1,3 +1,4 @@
+
 'use server';
 
 import { fetchWikipediaSummary } from '../../services/wikipedia-service';

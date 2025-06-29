@@ -3,7 +3,7 @@
 import React from 'react';
 import type { HistoricalContact } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
 
