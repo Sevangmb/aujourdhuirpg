@@ -46,9 +46,20 @@ const GameScreen: React.FC<GameScreenProps> = ({
   locationImageError,
   isCreatingCharacter,
 }) => {
-  // Primary loading states (auth and initial game data) are handled by AuthenticatedAppView.
-  // GameScreen now assumes that if it's rendered, the user is authenticated,
-  // and initial game data loading attempt has completed.
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleCreate = async (data: Parameters<typeof onCharacterCreate>[0]) => {
+    setIsSubmitting(true);
+    try {
+      await onCharacterCreate(data);
+    } catch (error) {
+      console.error("Character creation failed at GameScreen level:", error);
+      setIsSubmitting(false);
+    }
+    // If successful, the parent component will unmount this one.
+    // If it fails, the parent will set the mode back, remounting this component,
+    // which will reset isSubmitting to false.
+  };
 
   // If game is active and player exists, show GamePlay
   if (isGameActive && gameState && gameState.player) {
@@ -71,8 +82,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto bg-background">
         <CharacterCreationForm 
-            onCharacterCreate={onCharacterCreate} 
-            isSubmitting={isCreatingCharacter}
+            onCharacterCreate={handleCreate} 
+            isSubmitting={isSubmitting}
         />
     </main>
   );
