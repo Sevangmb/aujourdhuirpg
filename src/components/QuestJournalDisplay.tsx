@@ -27,8 +27,10 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
   let statusBadgeVariant: "default" | "secondary" | "destructive" | "outline" = "secondary";
   let StatusIcon = Lightbulb;
   if (quest.status === 'completed') { statusBadgeVariant = "default"; StatusIcon = ShieldAlert; } 
-  else if (quest.status === 'failed') { statusBadgeVariant = "destructive"; StatusIcon = CircleX; } // Assuming 'failed' is a possible status
+  else if (quest.status === 'failed') { statusBadgeVariant = "destructive"; StatusIcon = CircleX; }
   else if (quest.status === 'active') { statusBadgeVariant = "outline"; StatusIcon = Lightbulb; }
+  else if (quest.status === 'inactive') { statusBadgeVariant = "secondary"; StatusIcon = Info; }
+
 
   const getQuestTypeLabel = (type: Quest['type']) => {
     switch(type) {
@@ -96,7 +98,6 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
     </Card>
   );
 };
-
 
 const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
   let relationColor = "text-foreground";
@@ -180,6 +181,45 @@ const DecisionCard: React.FC<{ decision: MajorDecision }> = ({ decision }) => (
   </Card>
 );
 
+const QuestCategorySection: React.FC<{ quests: Quest[]; categoryTitle: string }> = ({ quests, categoryTitle }) => {
+  const active = quests.filter(q => q.status === 'active');
+  const inactive = quests.filter(q => q.status === 'inactive');
+  const archived = quests.filter(q => q.status === 'completed' || q.status === 'failed');
+
+  if (quests.length === 0) {
+    return <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête de type {categoryTitle}.</CardContent></Card>;
+  }
+
+  return (
+    <Accordion type="multiple" defaultValue={['active_quests']} className="w-full">
+      {active.length > 0 && (
+        <AccordionItem value="active_quests">
+          <AccordionTrigger className="text-sm">Actives ({active.length})</AccordionTrigger>
+          <AccordionContent className="p-1">
+            {active.map(q => <QuestCard quest={q} key={q.id} />)}
+          </AccordionContent>
+        </AccordionItem>
+      )}
+      {inactive.length > 0 && (
+        <AccordionItem value="available_quests">
+          <AccordionTrigger className="text-sm">Disponibles ({inactive.length})</AccordionTrigger>
+           <AccordionContent className="p-1">
+            {inactive.map(q => <QuestCard quest={q} key={q.id} />)}
+          </AccordionContent>
+        </AccordionItem>
+      )}
+      {archived.length > 0 && (
+        <AccordionItem value="archived_quests">
+          <AccordionTrigger className="text-sm">Archivées ({archived.length})</AccordionTrigger>
+           <AccordionContent className="p-1">
+            {archived.map(q => <QuestCard quest={q} key={q.id} />)}
+          </AccordionContent>
+        </AccordionItem>
+      )}
+    </Accordion>
+  );
+};
+
 
 const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => {
   if (!player) return <p className="p-4 text-muted-foreground">Données du joueur non disponibles.</p>;
@@ -195,33 +235,21 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 shrink-0 mb-1">
             <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4 mr-1" />Principales</TabsTrigger>
             <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4 mr-1" />Secondaires</TabsTrigger>
-            <TabsTrigger value="jobs" className="text-xs p-1.5" aria-label={`Jobs disponibles (${jobs.filter(q=>q.status === 'active').length})`}><Briefcase className="w-4 h-4 mr-1" />Jobs</TabsTrigger>
+            <TabsTrigger value="jobs" className="text-xs p-1.5" aria-label={`Jobs disponibles (${jobs.filter(q=>q.status === 'active' || q.status === 'inactive').length})`}><Briefcase className="w-4 h-4 mr-1" />Jobs</TabsTrigger>
             <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4 mr-1" />Décisions</TabsTrigger>
             <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4 mr-1" />PNJ</TabsTrigger>
         </TabsList>
         
         <TabsContent value="main" className="mt-0 pt-1 flex-1 min-h-0"> 
-            {mainQuests.length > 0 ? (
-                mainQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
-            ) : (
-              <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête principale.</CardContent></Card>
-            )}
+          <QuestCategorySection quests={mainQuests} categoryTitle="principale" />
         </TabsContent>
 
         <TabsContent value="secondary" className="mt-0 pt-1 flex-1 min-h-0"> 
-            {secondaryQuests.length > 0 ? (
-                secondaryQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
-            ) : (
-              <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête secondaire.</CardContent></Card>
-            )}
+           <QuestCategorySection quests={secondaryQuests} categoryTitle="secondaire" />
         </TabsContent>
 
         <TabsContent value="jobs" className="mt-0 pt-1 flex-1 min-h-0"> 
-            {jobs.length > 0 ? (
-                jobs.map(quest => <QuestCard quest={quest} key={quest.id} />)
-            ) : (
-              <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucun job disponible.</CardContent></Card>
-            )}
+           <QuestCategorySection quests={jobs} categoryTitle="de job" />
         </TabsContent>
 
         <TabsContent value="decisions" className="mt-0 pt-1 flex-1 min-h-0"> 

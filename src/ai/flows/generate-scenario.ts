@@ -42,15 +42,17 @@ const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire ET Diriger le Jeu**
 Votre mission a deux volets :
 1.  **Générer le 'scenarioText' :** Rédigez une description narrative captivante en HTML de ce qui se passe après l'action du joueur. Intégrez de manière transparente les 'deterministicEvents' fournis (conséquences déjà calculées par le moteur de jeu). **NE répétez PAS** les calculs de stats dans votre narration. Racontez le *ressenti*.
-2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés (\`newQuests\`, \`newPNJs\`, \`itemsToAddToInventory\`, \`newTransactions\`, etc.) pour créer ces éléments. C'est votre principal moyen de rendre le monde interactif.
-    - **Créer des opportunités :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job') qui sont des quêtes simples axées sur le gain d'argent (ex: "Livrer un colis", "Faire des photos pour un touriste").
+2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés (\`newQuests\`, \`newPNJs\`, \`itemsToAddToInventory\`, \`newTransactions\`, etc.) pour créer ces éléments.
+    - **Créer des opportunités de Jobs :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job'). **IMPORTANT : Créez ces jobs avec le statut \`'inactive'\`**. La narration doit présenter l'opportunité (ex: une annonce, une offre de PNJ) plutôt que de commencer la quête directement.
+    - **Gérer l'acceptation de Jobs :** Si l'action du joueur indique qu'il accepte un job (ex: "j'accepte la mission de livraison"), générez un événement \`updatedQuests\` pour passer le statut de la quête correspondante à \`'active'\`.
     - **Simuler la vie :** Si le joueur achète quelque chose (un café, un ticket de métro), générez une transaction de dépense ('expense') correspondante.
 
-**Exemple de synergie :**
-- **Action Joueur :** "Je vends la vieille montre au prêteur sur gages."
-- **Votre Narration ('scenarioText') :** "<p>Le prêteur sur gages examine la montre à la loupe, puis hoche la tête. 'Je peux vous en donner 50 euros', dit-il en sortant quelques billets de sa caisse.</p>"
+**Exemple de synergie (Acceptation de Job) :**
+- **Narration précédente :** "<p>Sur un panneau d'affichage, une note manuscrite propose 20€ pour livrer un colis de l'autre côté de la rue.</p>" (L'IA a aussi créé une quête 'inactive' avec l'id 'job_livraison_colis_01')
+- **Action Joueur :** "Je prends l'annonce et j'accepte le job de livraison."
+- **Votre Narration ('scenarioText') :** "<p>Vous décrochez le papier. Le numéro indiqué répond immédiatement. On vous attend au point de rendez-vous pour récupérer le colis.</p>"
 - **Vos Événements de Jeu (Sortie JSON) :**
-  - \\\`newTransactions\\\`: [ { "amount": 50, "type": "income", "category": "sold_item", "description": "Vente d'une vieille montre" } ]
+  - \\\`updatedQuests\\\`: [ { "questId": "job_livraison_colis_01", "newStatus": "active" } ]
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
