@@ -1,12 +1,11 @@
 
 import type { Player } from './player-types';
+import type { ToneSettings } from './tone-types';
 
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {
   scenarioText: string; // HTML content from AI
 };
-
-import type { Position } from './game-types'; // Already here, but good to ensure for Position
 
 export type JournalEntry = {
   id: string; // unique ID, e.g., from uuid
@@ -19,10 +18,11 @@ export type JournalEntry = {
 export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
-  nearbyPois: Position[] | null; // Added for available POIs
-  gameTimeInMinutes: number; // Added for tracking in-game time
-  journal: JournalEntry[]; // Added for player journal
-  toneSettings: any; // Keep any for now
+  nearbyPois: Position[] | null;
+  gameTimeInMinutes: number;
+  journal: JournalEntry[];
+  toneSettings: ToneSettings;
+  lastPlayed?: any; // For Firestore server timestamp
 };
 
 // Notification types for UI feedback after AI processing
@@ -36,36 +36,36 @@ export type GameNotificationType =
   | 'quest_added'
   | 'quest_updated'
   | 'pnj_encountered'
-  | 'pnj_disposition_changed' // New
-  | 'pnj_interaction_logged' // New
+  | 'pnj_disposition_changed'
+  | 'pnj_interaction_logged'
   | 'decision_logged'
   | 'money_changed'
   | 'clue_added'
   | 'document_added'
   | 'investigation_notes_updated'
   | 'tone_settings_updated'
-  | 'skill_check' // For results of skill checks
-  | 'info' // Generic informational toast
-  | 'warning'; // For generic warnings or unclear actions
+  | 'skill_check'
+  | 'info'
+  | 'warning';
 
 export interface GameNotification {
   type: GameNotificationType;
   title: string;
   description?: string;
-  details?: Record<string, any>; // e.g., { itemName: 'Potion', quantity: 1 } or { amount: 50 }
+  details?: Record<string, any>;
 }
 
 export type Zone = {
   name: string;
-  description?: string; // Optional description for the zone
+  description?: string;
 };
 
 export type Position = {
   latitude: number;
   longitude: number;
   name: string;
-  summary?: string; // Optional summary from Wikipedia
-  imageUrl?: string; // Optional image URL
-  zone?: Zone; // Optional zone information
-  poiHighlights?: string[]; // Optional list of nearby POI names
+  summary?: string;
+  imageUrl?: string;
+  zone?: Zone;
+  poiHighlights?: string[];
 };

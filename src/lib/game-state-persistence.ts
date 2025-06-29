@@ -1,6 +1,7 @@
+
 import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument } from './types';
 import { getMasterItemById } from '@/data/items';
-import { saveGameStateToFirestore } from '@/services/firestore-service';
+import { saveCharacter } from '@/services/firestore-service';
 import {
   initialPlayerStats,
   initialSkills,
@@ -18,9 +19,8 @@ import {
   initialDocuments,
   initialInvestigationNotes,
   initialToneSettings,
-  UNKNOWN_STARTING_PLACE_NAME,
 } from '@/data/initial-game-data';
-import { getInitialScenario } from './game-logic'; // We will keep getInitialScenario in game-logic for now
+import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
 import { calculateXpToNextLevel } from './player-state-helpers';
 
@@ -30,18 +30,19 @@ export interface SaveGameResult {
   cloudSaveSuccess: boolean | null;
 }
 
-export async function saveGameState(state: GameState): Promise<SaveGameResult> {
+export async function saveGameState(uid: string, characterId: string, state: GameState): Promise<SaveGameResult> {
   const result: SaveGameResult = { localSaveSuccess: false, cloudSaveSuccess: null };
   if (!state || !state.player) {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
     return result;
   }
   
+  // Local save remains simple, it just caches the last played character's state.
   result.localSaveSuccess = saveGameStateToLocal(state);
 
-  if (state.player && state.player.uid && !state.player.isAnonymous) {
+  if (state.player && !state.player.isAnonymous) {
     try {
-      await saveGameStateToFirestore(state.player.uid, state);
+      await saveCharacter(uid, characterId, state);
       result.cloudSaveSuccess = true;
     } catch (error) {
       result.cloudSaveSuccess = false;
@@ -61,7 +62,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     avatarUrl: savedPlayer?.avatarUrl || defaultAvatarUrl,
     origin: savedPlayer?.origin || "Inconnue",
     background: savedPlayer?.background || '',
-    era: savedPlayer?.era, // Include era here
+    era: savedPlayer?.era || 'Époque Contemporaine',
     startingLocationName: savedPlayer?.startingLocationName,
     stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
     skills: { ...initialSkills, ...(savedPlayer?.skills || {}) },
@@ -78,26 +79,27 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     clues: savedPlayer?.clues || [...initialClues],
     documents: savedPlayer?.documents || [...initialDocuments],
     investigationNotes: savedPlayer?.investigationNotes || initialInvestigationNotes,
+    lastPlayed: savedPlayer?.lastPlayed,
   };
 
   if (!player.progression.xpToNextLevel) {
     player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
   }
 
-  if (savedPlayer?.inventory && savedPlayer.inventory.length > 0) {
-    player.inventory = savedPlayer.inventory.map(item => {
-      const masterItem = getMasterItemById(item.id);
-      if (!masterItem) {
-        console.warn(`Could not find master item for id ${item.id} during hydration.`);
-        return null;
-      }
-      return {
-        ...masterItem, ...item
-      }
-    }).filter(Boolean) as InventoryItem[];
-  } else {
-    player.inventory = initialInventory.map(item => ({...item}));
-  }
+  // Handle inventory hydration
+  const inventoryToHydrate = savedPlayer?.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : initialInventory;
+  player.inventory = inventoryToHydrate.map(item => {
+    const masterItem = getMasterItemById(item.id);
+    if (!masterItem) {
+      console.warn(`Could not find master item for id ${item.id} during hydration.`);
+      return null;
+    }
+    return {
+      ...masterItem,
+      ...item // This ensures quantity and any other instance-specific data is preserved
+    };
+  }).filter((item): item is InventoryItem => item !== null);
+
 
   return player;
 }

@@ -33,7 +33,8 @@ import {
     BookOpen,
     Search,
     BookText,
-    BrainCircuit // Icon for Geo-Intelligence
+    BrainCircuit, // Icon for Geo-Intelligence
+    Users
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
@@ -55,7 +56,7 @@ interface AppMenubarProps {
   isGameActive: boolean;
   player: Player | null;
   journal: JournalEntry[]; // Added journal prop
-  onRestartGame: () => void;
+  onRestartGame: () => void; // This will now be "Change Character"
   onSaveGame: () => void;
   onToggleFullScreen: () => void;
   onOpenToneSettings: () => void;
@@ -106,7 +107,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
         </MenubarTrigger>
         <MenubarContent>
           <MenubarItem onClick={onRestartGame}>
-            Nouvelle Partie
+            <Users className="mr-2 h-4 w-4" /> Changer de Personnage
           </MenubarItem>
           <MenubarItem onClick={onSaveGame} disabled={!isGameActive}>
             <Save className="mr-2 h-4 w-4" /> Sauvegarder la Partie

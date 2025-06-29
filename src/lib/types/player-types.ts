@@ -64,4 +64,5 @@ export type Player = {
   clues: Clue[];
   documents: GameDocument[];
   investigationNotes: string; // Un texte libre pour les hypothèses, suspects, lieux
+  lastPlayed?: string; // Added to track last played timestamp, hydrated from save file
 };

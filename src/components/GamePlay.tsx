@@ -23,8 +23,7 @@ import { getMasterItemById } from '@/data/items';
 
 interface GamePlayProps {
   initialGameState: GameState;
-  onRestart: () => void;
-  onStateUpdate: (newState: GameState | ((prevState: GameState) => GameState)) => void;
+  onStateUpdate: (newState: GameState | ((prevState: GameState | null) => GameState | null)) => void;
   weatherData: WeatherData | null;
   weatherLoading: boolean;
   weatherError: string | null;
@@ -57,18 +56,19 @@ const GamePlay: React.FC<GamePlayProps> = ({
   }, [initialGameState, onStateUpdate]);
 
   const handleGameAction = useCallback(async (action: GameAction) => {
-    if (!initialGameState.player) return;
-    
-    const newState = gameReducer(initialGameState, action);
-    
-    onStateUpdate(newState);
-    await saveGameState(newState);
-  }, [initialGameState, onStateUpdate]);
+    onStateUpdate(prevState => {
+      if (!prevState) return null;
+      const newState = gameReducer(prevState, action);
+      // Save is handled by the main view's autosave effect
+      return newState;
+    });
+  }, [onStateUpdate]);
   
   const dispatchGameActions = useCallback((actions: GameAction[]) => {
       onStateUpdate(prevState => {
+        if (!prevState) return null;
         const nextState = actions.reduce(gameReducer, prevState);
-        saveGameState(nextState); // Save state after all actions are reduced
+        // Save is handled by the main view's autosave effect
         return nextState;
       });
   }, [onStateUpdate]);
@@ -189,31 +189,34 @@ const GamePlay: React.FC<GamePlayProps> = ({
 
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      let finalGameState: GameState = {
-        ...initialGameState,
-        player: updatedPlayer,
-        currentScenario: { scenarioText: aiOutput.scenarioText },
-        journal: [
-            ...(journal || []),
-            {
-                id: `${gameTimeInMinutes}-${Math.random()}`,
-                timestamp: gameTimeInMinutes,
-                type: 'player_action',
-                text: actionText,
-                location: updatedPlayer.currentLocation
-            }
-        ]
-      };
-      
-      if (aiOutput.newLocationDetails) {
-         finalGameState.player.currentLocation = {
-            ...finalGameState.player.currentLocation,
-            ...aiOutput.newLocationDetails
-         }
-      }
+      onStateUpdate(prevState => {
+        if (!prevState) return null;
+        let finalGameState: GameState = {
+          ...prevState,
+          player: updatedPlayer,
+          currentScenario: { scenarioText: aiOutput.scenarioText },
+          journal: [
+              ...(prevState.journal || []),
+              {
+                  id: `${gameTimeInMinutes}-${Math.random()}`,
+                  timestamp: gameTimeInMinutes,
+                  type: 'player_action',
+                  text: actionText,
+                  location: updatedPlayer.currentLocation
+              }
+          ]
+        };
+        
+        if (aiOutput.newLocationDetails && finalGameState.player) {
+           finalGameState.player.currentLocation = {
+              ...finalGameState.player.currentLocation,
+              ...aiOutput.newLocationDetails
+           }
+        }
+        processAIEvents(aiOutput); // This will dispatch its own updates based on the AI output
+        return finalGameState;
+      });
 
-      onStateUpdate(finalGameState);
-      processAIEvents(aiOutput);
 
       setPlayerInput('');
 

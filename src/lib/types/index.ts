@@ -8,3 +8,4 @@ export * from './evidence-types';
 export * from './tone-types';
 export * from './game-types';
 export * from './geo-intelligence-types';
+export type { CharacterSummary } from '@/services/firestore-service';

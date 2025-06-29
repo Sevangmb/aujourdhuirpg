@@ -1,45 +1,48 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
-// Corrected import path for game logic types
 import { aiService } from '@/services/aiService';
-import type { GameState, Player, ToneSettings, Position, GeoIntelligence } from '@/lib/types';
+import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary } from '@/lib/types';
 import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
-import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service'; // Corrected import path
+import { listCharacters, loadCharacter, createNewCharacter, saveCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
-// Corrected path for getCurrentWeather based on ls output
 import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
-// Corrected paths for AI flows to match original page.tsx
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
-import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow'; // Import new flow
-import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
+import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow';
+import { clearGameState as clearLocalGameState } from '@/services/localStorageService';
 import { fetchWikipediaSummary } from '@/services/wikipedia-service';
 import GameScreen from '@/components/GameScreen';
-
+import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen';
 
 interface AuthenticatedAppViewProps {
-  user: User | null; // Allow null for initial state before user is fully loaded
+  user: User;
   signOutUser: () => Promise<void>;
 }
 
+type AppMode = 'loading' | 'selecting_character' | 'creating_character' | 'playing';
+
 const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signOutUser }) => {
-  // State variables
+  const [appMode, setAppMode] = useState<AppMode>('loading');
+  const [characterList, setCharacterList] = useState<CharacterSummary[]>([]);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [isDeletingCharacter, setIsDeletingCharacter] = useState<string | null>(null);
+
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [isLoadingState, setIsLoadingState] = useState(true); // For game data loading
-  const [isCharacterCreationMode, setIsCharacterCreationMode] = useState(false);
   const [isToneSettingsDialogOpen, setIsToneSettingsDialogOpen] = useState(false);
+  
+  // Contextual Data State
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [locationImageUrl, setLocationImageUrl] = useState<string | null>(null);
   const [locationImageLoading, setLocationImageLoading] = useState(false);
   const [locationImageError, setLocationImageError] = useState<string | null>(null);
-  const [isCreatingCharacter, setIsCreatingCharacter] = useState(false);
   const [geoIntelligenceData, setGeoIntelligenceData] = useState<GeoIntelligence | null>(null);
   const [geoIntelligenceLoading, setGeoIntelligenceLoading] = useState(false);
   const [geoIntelligenceError, setGeoIntelligenceError] = useState<string | null>(null);
@@ -47,387 +50,246 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const { toast } = useToast();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-
-  const performInitialLoad = useCallback(async () => {
-    if (!user) {
-      setGameState(null);
-      setIsLoadingState(false);
-      return;
-    }
-    setIsLoadingState(true);
-    console.log("AuthenticatedAppView: Performing initial load for user:", user.uid);
-    let loadedState: GameState | null = null;
-    
-    if (!user.isAnonymous) {
-        loadedState = await loadGameStateFromFirestore(user.uid);
-    }
-
-    if (!loadedState) {
-        loadedState = loadGameStateFromLocal();
-    }
-    
-    if (loadedState && loadedState.player) { // Check if player exists to consider it a valid loaded state
-      console.log("AuthenticatedAppView: Game state loaded:", loadedState);
-      const hydratedPlayer = hydratePlayer(loadedState.player);
-      setGameState({ ...loadedState, player: hydratedPlayer });
-      setIsCharacterCreationMode(false);
+  const fetchCharacterList = useCallback(async () => {
+    if (!user) return;
+    setAppMode('loading');
+    const characters = await listCharacters(user.uid);
+    setCharacterList(characters);
+    if (characters.length === 0) {
+      setAppMode('creating_character');
     } else {
-        console.log("AuthenticatedAppView: No saved game state found or invalid state, initializing new game shell for character creation.");
-        const initialPlayer = hydratePlayer({uid: user.uid, isAnonymous: user.isAnonymous }); // Pass UID for hydration
-        const initialScenario = getInitialScenario(initialPlayer);
-        setGameState({
-          currentScenario: initialScenario,
-          player: initialPlayer,
-          gameTimeInMinutes: 0,
-          journal: [],
-          nearbyPois: null,
-          toneSettings: initialPlayer.toneSettings,
-        });
-        setIsCharacterCreationMode(true);
+      setAppMode('selecting_character');
     }
-    setIsLoadingState(false);
   }, [user]);
+
+  useEffect(() => {
+    fetchCharacterList();
+  }, [user, fetchCharacterList]);
+
+  // Combined data fetching hook
+  useEffect(() => {
+    const fetchContextualData = async (location: Position) => {
+        fetchWeatherForLocation(location);
+        fetchLocationImage(location.name, gameState?.player?.era);
+        fetchGeoIntelligence(location);
+        fetchPoisForLocation(location);
+    };
+
+    if (appMode === 'playing' && gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
+      fetchContextualData(gameState.player.currentLocation);
+    } else {
+      // Clear data when not in playing mode or location is unknown
+      setWeatherData(null);
+      setLocationImageUrl(null);
+      setGeoIntelligenceData(null);
+      setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
+    }
+  }, [appMode, gameState?.player?.currentLocation, gameState?.player?.era]);
+  
+  // Debounced Autosave Effect
+  useEffect(() => {
+    if (appMode !== 'playing' || !gameState) return;
+
+    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+
+    autosaveTimeoutRef.current = setTimeout(() => {
+      handleSaveGame(true); // isAutoSave = true
+    }, 5000);
+
+    return () => {
+      if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+    };
+  }, [gameState, appMode]);
 
   const fetchPoisForLocation = useCallback(async (location: Position) => {
     if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME) {
       setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
       return;
     }
-    console.log(`Fetching POIs for ${location.name}`);
     try {
       const pois = await fetchPoisForCurrentLocation(location);
-      setGameState(prevState => {
-        if (!prevState) return null;
-        return { ...prevState, nearbyPois: pois };
-      });
+      setGameState(prevState => prevState ? { ...prevState, nearbyPois: pois } : null);
     } catch (error) {
       console.error("Failed to fetch POIs:", error);
-      setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
-      toast({
-        title: "Erreur de réseau",
-        description: "Impossible de charger les lieux d'intérêt proches.",
-        variant: "destructive",
-      });
+      toast({ variant: "destructive", title: "Erreur de réseau", description: "Impossible de charger les lieux d'intérêt proches." });
     }
   }, [toast]);
 
   const fetchWeatherForLocation = useCallback(async (location: Position) => {
-    if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
-        setWeatherData(null);
-        setWeatherError(null);
-        return;
-    }
     setWeatherLoading(true);
     setWeatherError(null);
-    console.log(`Fetching weather for ${location.name} at ${location.latitude}, ${location.longitude}`);
     try {
       const data = await getCurrentWeather(location.latitude, location.longitude);
-      if ('error' in data) {
-        setWeatherData(null);
-        setWeatherError(data.error);
-        console.error("Failed to fetch weather data:", data.error);
-      } else {
-        setWeatherData(data);
-        console.log("Weather data received:", data);
-      }
+      if ('error' in data) setWeatherError(data.error);
+      else setWeatherData(data);
     } catch (error) {
-      console.error("Failed to fetch weather data (catch block):", error);
-      setWeatherError((error as Error).message || "Failed to fetch weather. Please ensure the API key is configured correctly.");
-      setWeatherData(null);
+      setWeatherError((error as Error).message || "Erreur inconnue.");
     } finally {
       setWeatherLoading(false);
     }
   }, []);
 
-  const fetchLocationImage = useCallback(async (placeName: string) => {
-    if (!placeName || placeName === UNKNOWN_STARTING_PLACE_NAME || !gameState?.player) {
-      setLocationImageUrl(null);
-      setLocationImageError(null);
-      return;
-    }
+  const fetchLocationImage = useCallback(async (placeName: string, era?: string) => {
     setLocationImageLoading(true);
     setLocationImageError(null);
-    console.log(`Fetching image for ${placeName} in era ${gameState.player.era}`);
     try {
-      const result = await generateLocationImageService({ placeName, era: gameState.player.era });
-      if (result.error) {
-        setLocationImageError(result.error);
-        setLocationImageUrl(null);
-      } else {
-        setLocationImageUrl(result.imageUrl);
-      }
-      console.log("Location image result:", result);
+      const result = await generateLocationImageService({ placeName, era: era || 'Époque Contemporaine' });
+      if (result.error) setLocationImageError(result.error);
+      else setLocationImageUrl(result.imageUrl);
     } catch (error) {
-      console.error("Failed to generate location image:", error);
-      setLocationImageError((error as Error).message || "Failed to generate location image.");
-      setLocationImageUrl(null);
+      setLocationImageError((error as Error).message || "Erreur inconnue.");
     } finally {
       setLocationImageLoading(false);
     }
-  }, [gameState]);
+  }, []);
 
   const fetchGeoIntelligence = useCallback(async (location: Position) => {
-    if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME) {
-      setGeoIntelligenceData(null);
-      setGeoIntelligenceError(null);
-      return;
-    }
     setGeoIntelligenceLoading(true);
     setGeoIntelligenceError(null);
-    console.log(`Fetching geo-intelligence for ${location.name}`);
     try {
       const result = await generateGeoIntelligence({
         placeName: location.name,
         latitude: location.latitude,
         longitude: location.longitude,
       });
-      if (result) {
-        setGeoIntelligenceData(result);
-      } else {
-        setGeoIntelligenceError("L'IA n'a pas pu analyser ce lieu.");
-        setGeoIntelligenceData(null);
-      }
+      if (result) setGeoIntelligenceData(result);
+      else setGeoIntelligenceError("L'IA n'a pas pu analyser ce lieu.");
     } catch (error) {
-      const errorMessage = (error as Error).message || "Une erreur inattendue est survenue lors de l'analyse du lieu.";
-      console.error("Failed to fetch geo-intelligence:", error);
-      setGeoIntelligenceError(errorMessage);
-      setGeoIntelligenceData(null);
+      setGeoIntelligenceError((error as Error).message || "Erreur inattendue.");
     } finally {
       setGeoIntelligenceLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    performInitialLoad();
-  }, [user, performInitialLoad]);
-
-  useEffect(() => {
-    if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
-      const location = gameState.player.currentLocation;
-      fetchWeatherForLocation(location);
-      fetchLocationImage(location.name);
-      fetchGeoIntelligence(location);
-      fetchPoisForLocation(location);
+  const handleSelectCharacter = useCallback(async (characterId: string) => {
+    setAppMode('loading');
+    const loadedState = await loadCharacter(user.uid, characterId);
+    if (loadedState) {
+      const hydratedPlayer = hydratePlayer(loadedState.player);
+      setGameState({ ...loadedState, player: hydratedPlayer });
+      setSelectedCharacterId(characterId);
+      setAppMode('playing');
     } else {
-      setWeatherData(null);
-      setWeatherError(null);
-      setLocationImageUrl(null);
-      setLocationImageError(null);
-      setGeoIntelligenceData(null);
-      setGeoIntelligenceError(null);
-      setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
+      toast({ title: "Erreur de chargement", description: "Impossible de charger ce personnage.", variant: "destructive" });
+      fetchCharacterList(); // Refresh list in case of error
     }
-  }, [gameState?.player?.currentLocation, fetchWeatherForLocation, fetchLocationImage, fetchGeoIntelligence, fetchPoisForLocation]);
+  }, [user, toast, fetchCharacterList]);
 
   const handleCharacterCreate = useCallback(async (playerData: {
-      name: string;
-      gender: string;
-      age: number;
-      origin: string;
-      background: string;
-      era: string;
-      startingLocation: string;
-      avatarUrl: string; // Avatar URL is now passed in
+      name: string; gender: string; age: number; origin: string; background: string; era: string; startingLocation: string; avatarUrl: string;
     }) => {
-    if (!user) {
-      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
-      return;
-    }
-    
-    setIsCreatingCharacter(true);
-
+    setAppMode('loading');
     try {
       const locationData = await fetchWikipediaSummary(playerData.startingLocation);
-
-      if (!locationData || typeof locationData.latitude !== 'number' || typeof locationData.longitude !== 'number') {
-        toast({
-          title: "Lieu de départ introuvable",
-          description: `Impossible de trouver les coordonnées pour "${playerData.startingLocation}". Veuillez essayer un nom plus précis.`,
-          variant: "destructive",
-        });
-        setIsCreatingCharacter(false);
+      if (!locationData || typeof locationData.latitude !== 'number') {
+        toast({ title: "Lieu de départ introuvable", variant: "destructive" });
+        setAppMode('creating_character');
         return;
       }
 
-      const hydratedPlayer = hydratePlayer({
-          ...playerData,
-          uid: user.uid,
-          isAnonymous: user.isAnonymous,
-          avatarUrl: playerData.avatarUrl,
-          startingLocationName: playerData.startingLocation,
+      let hydratedPlayer = hydratePlayer({
+          ...playerData, uid: user.uid, isAnonymous: user.isAnonymous,
       });
-
       hydratedPlayer.currentLocation = {
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
-          name: locationData.title, // Use the official title from Wikipedia for consistency
-          summary: locationData.summary,
-          imageUrl: locationData.imageUrl,
+          latitude: locationData.latitude, longitude: locationData.longitude, name: locationData.title,
       };
 
-      const tempStateForPrologue = {
+      const tempStateForPrologue: GameState = {
         currentScenario: { scenarioText: "<p>Création du monde en cours...</p>" },
-        player: hydratedPlayer,
-        gameTimeInMinutes: 0,
-        journal: [],
-        nearbyPois: null,
-        toneSettings: hydratedPlayer.toneSettings,
+        player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null, toneSettings: hydratedPlayer.toneSettings,
       };
-
-      setGameState(tempStateForPrologue);
-      setIsCharacterCreationMode(false);
-      
-      console.log("Character created, generating prologue with AI. Player location:", hydratedPlayer.currentLocation);
       
       const aiInput = prepareAIInput(tempStateForPrologue, "[COMMENCER L'AVENTURE]");
       if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
 
       const prologueResult = await generateScenario(aiInput);
       
-      // After prologue, set location image from the fetched data if available
-      setLocationImageUrl(hydratedPlayer.currentLocation.imageUrl || null);
-      
-      setGameState(prevState => prevState ? { ...prevState, currentScenario: { scenarioText: prologueResult.scenarioText } } : null);
-    
+      const finalGameState: GameState = {
+        ...tempStateForPrologue,
+        currentScenario: { scenarioText: prologueResult.scenarioText }
+      };
+
+      await createNewCharacter(user.uid, finalGameState);
+
+      toast({ title: "Personnage créé !", description: `${playerData.name} est prêt(e) pour l'aventure.` });
+      fetchCharacterList();
+
     } catch (error) {
-      console.error("Error during character creation or prologue generation:", error);
-      toast({
-        title: "Erreur de création",
-        description: "Impossible de commencer l'aventure. Veuillez réessayer.",
-        variant: "destructive",
-      });
-      // Optionally reset to character creation screen
-      setIsCharacterCreationMode(true);
+      console.error("Error during character creation:", error);
+      toast({ title: "Erreur de création", description: "Impossible de commencer l'aventure.", variant: "destructive" });
+      setAppMode('creating_character');
+    }
+  }, [user, toast, fetchCharacterList]);
+
+  const handleDeleteCharacter = useCallback(async (characterId: string) => {
+    setIsDeletingCharacter(characterId);
+    try {
+      await deleteCharacter(user.uid, characterId);
+      toast({ title: "Personnage supprimé" });
+      if (selectedCharacterId === characterId) {
+        setSelectedCharacterId(null);
+        setGameState(null);
+        clearLocalGameState();
+      }
+      fetchCharacterList();
+    } catch (error) {
+      toast({ title: "Erreur", description: "Impossible de supprimer le personnage.", variant: "destructive" });
     } finally {
-      setIsCreatingCharacter(false);
+      setIsDeletingCharacter(null);
     }
-  }, [user, toast]);
+  }, [user, toast, fetchCharacterList, selectedCharacterId]);
 
-
-  const handleRestartGame = useCallback(async () => {
-    if (!user) {
-      toast({ title: "Error", description: "User not authenticated for restart.", variant: "destructive" });
-      return;
-    }
-    console.log("Restarting game for user:", user.uid);
-    setIsLoadingState(true);
-    if (!user.isAnonymous) {
-        await deletePlayerStateFromFirestore(user.uid);
-    }
-    clearGameState();
-    
-    const newPlayerBase = hydratePlayer({ uid: user.uid, isAnonymous: user.isAnonymous });
-    newPlayerBase.currentLocation = {
-        latitude: Math.random() * 180 - 90,
-        longitude: Math.random() * 360 - 180,
-        name: UNKNOWN_STARTING_PLACE_NAME,
-    };
-    const initialScenario = getInitialScenario(newPlayerBase);
-
-    setGameState({
-      currentScenario: initialScenario,
-      player: newPlayerBase,
-      gameTimeInMinutes: 0,
-      journal: [],
-      nearbyPois: null,
-      toneSettings: newPlayerBase.toneSettings,
-    });
-    setIsCharacterCreationMode(true);
-    setLocationImageUrl(null);
-    setWeatherData(null);
-    setIsLoadingState(false);
-    toast({ title: "Game Restarted", description: "Create a new character to begin your adventure." });
-  }, [user, toast]);
+  const handleExitToSelection = () => {
+    handleSaveGame(false); // Save before exiting
+    setGameState(null);
+    setSelectedCharacterId(null);
+    clearLocalGameState();
+    setAppMode('selecting_character');
+  };
 
   const handleSaveGame = useCallback(async (isAutoSave: boolean = false) => {
-    if (!gameState || !user || !gameState.player) {
-      if (!isAutoSave) {
-        toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder ou utilisateur non authentifié.", variant: "destructive" });
-      }
+    if (!gameState || !user || !gameState.player || !selectedCharacterId) {
+      if (!isAutoSave) toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
       return;
     }
-
-    const stateToSave: GameState = {
-      ...gameState,
-      player: {
-        ...gameState.player,
-        uid: user.uid,
-      },
-    };
-
+    const result = await saveGameState(user.uid, selectedCharacterId, gameState);
     if (!isAutoSave) {
-      console.log("Saving game state manually for user:", user.uid);
+        if (result.cloudSaveSuccess) toast({ title: "Partie Sauvegardée" });
+        else toast({ title: "Échec de la sauvegarde", variant: "destructive" });
     }
-    const result = await saveGameState(stateToSave);
-
-    if (result.localSaveSuccess || result.cloudSaveSuccess) {
-      if (!isAutoSave) {
-        toast({ title: "Partie Sauvegardée", description: `Local: ${result.localSaveSuccess ? 'Oui' : 'Non'}. Cloud: ${result.cloudSaveSuccess === null ? 'N/A' : (result.cloudSaveSuccess ? 'Oui' : 'Non')}.` });
-      } else {
-        console.log(`Autosave successful. Local: ${result.localSaveSuccess}, Cloud: ${result.cloudSaveSuccess}`);
-      }
-    } else {
-      if (!isAutoSave) {
-        toast({ title: "Échec de la sauvegarde", description: "Impossible de sauvegarder localement ou sur le cloud.", variant: "destructive" });
-      }
-    }
-  }, [gameState, user, toast]);
+  }, [gameState, user, selectedCharacterId, toast]);
 
   const handleToggleFullScreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else if (document.exitFullscreen) document.exitFullscreen();
   };
 
   const handleSaveToneSettings = (newSettings: ToneSettings) => {
     if (gameState && gameState.player) {
       const updatedPlayer = { ...gameState.player, toneSettings: newSettings };
-      const updatedGameState = { ...gameState, player: updatedPlayer, toneSettings: newSettings }; // Also update top-level toneSettings
-      setGameState(updatedGameState);
-      toast({ title: "Tone Settings Saved", description: "The narration style has been updated." });
+      setGameState({ ...gameState, player: updatedPlayer, toneSettings: newSettings });
+      toast({ title: "Tonalité Sauvegardée" });
     }
     setIsToneSettingsDialogOpen(false);
   };
   
-  // Debounced Autosave Effect
-  useEffect(() => {
-    if (isCharacterCreationMode || !gameState || isLoadingState) {
-      return;
-    }
-
-    if (autosaveTimeoutRef.current) {
-      clearTimeout(autosaveTimeoutRef.current);
-    }
-
-    autosaveTimeoutRef.current = setTimeout(() => {
-      handleSaveGame(true);
-    }, 5000); // 5 seconds after the last gameState change
-
-    return () => {
-      if (autosaveTimeoutRef.current) {
-        clearTimeout(autosaveTimeoutRef.current);
-      }
-    };
-  }, [gameState, isCharacterCreationMode, isLoadingState, handleSaveGame]);
-
-
-  if (isLoadingState) {
+  if (appMode === 'loading') {
+    return <div className="flex h-screen w-full items-center justify-center">Chargement...</div>;
+  }
+  
+  if (appMode === 'selecting_character') {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
-        <p>Chargement de votre aventure...</p>
-      </div>
+      <CharacterSelectionScreen 
+        characters={characterList}
+        onSelectCharacter={handleSelectCharacter}
+        onCreateNew={() => setAppMode('creating_character')}
+        onDeleteCharacter={handleDeleteCharacter}
+        isDeleting={isDeletingCharacter}
+      />
     );
   }
 
-  const isGameActive = !isCharacterCreationMode && !!(gameState && gameState.player && gameState.currentScenario);
-
-  const currentMapLocation = gameState?.player?.currentLocation || initialPlayerLocation;
-  const nearbyPoisForMap = gameState?.nearbyPois || null;
-  const playerJournal = gameState?.journal || [];
+  const isGameActive = appMode === 'playing' && !!gameState?.player;
 
   return (
     <div className="flex flex-col h-screen">
@@ -435,9 +297,14 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         user={user}
         isGameActive={isGameActive}
         player={gameState?.player || null}
-        journal={playerJournal}
-        currentLocation={currentMapLocation}
-        nearbyPois={nearbyPoisForMap}
+        journal={gameState?.journal || []}
+        onRestartGame={handleExitToSelection}
+        onSaveGame={() => handleSaveGame(false)}
+        onSignOut={signOutUser}
+        onToggleFullScreen={handleToggleFullScreen}
+        onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
+        currentLocation={gameState?.player?.currentLocation || null}
+        nearbyPois={gameState?.nearbyPois || null}
         weatherData={weatherData}
         weatherLoading={weatherLoading}
         weatherError={weatherError}
@@ -447,11 +314,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         geoIntelligenceData={geoIntelligenceData}
         geoIntelligenceLoading={geoIntelligenceLoading}
         geoIntelligenceError={geoIntelligenceError}
-        onRestartGame={handleRestartGame}
-        onSaveGame={() => handleSaveGame(false)}
-        onSignOut={signOutUser}
-        onToggleFullScreen={handleToggleFullScreen}
-        onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
       />
       <ToneSettingsDialog
         isOpen={isToneSettingsDialogOpen}
@@ -461,11 +323,11 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       />
       <div className="flex-grow overflow-auto">
         <GameScreen
-          user={user!}
+          user={user}
           gameState={gameState}
           isGameActive={isGameActive}
           onCharacterCreate={handleCharacterCreate}
-          onRestartGame={handleRestartGame}
+          onRestartGame={handleExitToSelection}
           setGameState={setGameState}
           weatherData={weatherData}
           weatherLoading={weatherLoading}
@@ -473,7 +335,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
           locationImageUrl={locationImageUrl}
           locationImageLoading={locationImageLoading}
           locationImageError={locationImageError}
-          isCreatingCharacter={isCreatingCharacter}
+          isCreatingCharacter={appMode === 'creating_character'}
         />
       </div>
     </div>
