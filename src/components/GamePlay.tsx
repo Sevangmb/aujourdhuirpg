@@ -2,9 +2,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, GameNotification, QuestUpdate, PNJ, Quest, JournalEntry, Transaction } from '@/lib/types';
+import type { GameState, GameNotification, Quest, PNJ, JournalEntry, Transaction } from '@/lib/types';
 import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
-import { saveGameState } from '@/lib/game-state-persistence';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getInitialScenario } from '@/lib/game-logic';
@@ -64,113 +63,9 @@ const GamePlay: React.FC<GamePlayProps> = ({
     });
   }, [onStateUpdate]);
   
-  const dispatchGameActions = useCallback((actions: GameAction[]) => {
-      onStateUpdate(prevState => {
-        if (!prevState) return null;
-        const nextState = actions.reduce(gameReducer, prevState);
-        // Save is handled by the main view's autosave effect
-        return nextState;
-      });
-  }, [onStateUpdate]);
-
-
-  const processAIEvents = useCallback((aiOutput: GenerateScenarioOutput) => {
-    const actions: GameAction[] = [];
-    const notifications: GameNotification[] = [];
-
-    if (aiOutput.newQuests) {
-      aiOutput.newQuests.forEach(quest => {
-        actions.push({ type: 'ADD_QUEST', payload: quest as Omit<Quest, 'dateAdded'> });
-        actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'quest_update', text: `Nouvelle quête commencée : "${quest.title}".` }
-        });
-        notifications.push({ type: 'quest_added', title: 'Nouvelle Quête', description: `Vous avez commencé la quête : "${quest.title}".` });
-      });
-    }
-    if (aiOutput.updatedQuests) {
-      aiOutput.updatedQuests.forEach(update => {
-        actions.push({ type: 'UPDATE_QUEST', payload: update });
-        actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'quest_update', text: `La quête "${update.questId}" a progressé.` }
-        });
-        notifications.push({ type: 'quest_updated', title: 'Quête Mise à Jour', description: `La quête "${update.questId}" a progressé.` });
-      });
-    }
-    if (aiOutput.newPNJs) {
-        aiOutput.newPNJs.forEach(pnj => {
-          actions.push({ type: 'ADD_PNJ', payload: pnj as Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> });
-          actions.push({
-              type: 'ADD_JOURNAL_ENTRY',
-              payload: { type: 'npc_interaction', text: `Vous avez rencontré ${pnj.name}.` }
-          });
-          notifications.push({ type: 'pnj_encountered', title: 'Nouvelle Rencontre', description: `Vous avez rencontré ${pnj.name}.` });
-        });
-    }
-    if (aiOutput.itemsToAddToInventory) {
-      aiOutput.itemsToAddToInventory.forEach(item => {
-        const masterItem = getMasterItemById(item.itemId);
-        const itemName = masterItem?.name || item.itemId;
-        actions.push({ type: 'ADD_ITEM_TO_INVENTORY', payload: item });
-        actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'event', text: `Objet obtenu : ${itemName} (x${item.quantity}).` }
-        });
-        notifications.push({ type: 'item_added', title: 'Objet Obtenu', description: `Vous avez obtenu : ${itemName} (x${item.quantity}).` });
-      });
-    }
-    if (aiOutput.newTransactions) {
-      aiOutput.newTransactions.forEach(transaction => {
-        // The payload for ADD_TRANSACTION matches the NewTransactionSchema from the AI
-        actions.push({ type: 'ADD_TRANSACTION', payload: transaction });
-        actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'event', text: `${transaction.description}: ${transaction.amount > 0 ? '+' : ''}${transaction.amount}€.` }
-        });
-        notifications.push({ type: 'money_changed', title: 'Transaction Financière', description: `${transaction.description}: ${transaction.amount > 0 ? '+' : ''}${transaction.amount}€.` });
-      });
-    }
-    if (aiOutput.xpGained) {
-      actions.push({ type: 'ADD_XP', payload: aiOutput.xpGained });
-       actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'event', text: `Vous avez gagné ${aiOutput.xpGained} XP.` }
-      });
-      notifications.push({ type: 'xp_gained', title: 'Expérience Gagnée', description: `Vous avez gagné ${aiOutput.xpGained} XP.` });
-    }
-    if (aiOutput.newClues) {
-      aiOutput.newClues.forEach(clue => {
-        actions.push({ type: 'ADD_CLUE', payload: clue as any });
-        actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'event', text: `Nouvel indice découvert : "${clue.title}".` }
-        });
-        notifications.push({ type: 'clue_added', title: 'Nouvel Indice', description: `Indice ajouté : "${clue.title}".` });
-      });
-    }
-     if (aiOutput.newDocuments) {
-      aiOutput.newDocuments.forEach(doc => {
-        actions.push({ type: 'ADD_DOCUMENT', payload: doc as any });
-        actions.push({
-            type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'event', text: `Nouveau document obtenu : "${doc.title}".` }
-        });
-        notifications.push({ type: 'document_added', title: 'Nouveau Document', description: `Document obtenu : "${doc.title}".` });
-      });
-    }
-
-    // Dispatch all game state changes together
-    if (actions.length > 0) {
-      dispatchGameActions(actions);
-    }
-    // Show all notifications
-    notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
-
-  }, [dispatchGameActions, toast]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
-    const { player, currentScenario, gameTimeInMinutes, journal } = initialGameState;
+    const { player, currentScenario, gameTimeInMinutes } = initialGameState;
     if (!player || !currentScenario || !actionText.trim()) {
       if (!actionText.trim()) toast({ variant: "destructive", title: "Action vide", description: "Veuillez entrer une action." });
       return;
@@ -192,35 +87,109 @@ const GamePlay: React.FC<GamePlayProps> = ({
 
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
+      // Collect all state updates and notifications from AI output
+      const aiActions: GameAction[] = [];
+      const aiNotifications: GameNotification[] = [];
+
+      if (aiOutput.newQuests) {
+        aiOutput.newQuests.forEach(quest => {
+          aiActions.push({ type: 'ADD_QUEST', payload: quest as Omit<Quest, 'dateAdded'> });
+          aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'quest_update', text: `Nouvelle quête commencée : "${quest.title}".` } });
+          aiNotifications.push({ type: 'quest_added', title: 'Nouvelle Quête', description: `Vous avez commencé la quête : "${quest.title}".` });
+        });
+      }
+      if (aiOutput.updatedQuests) {
+        aiOutput.updatedQuests.forEach(update => {
+          aiActions.push({ type: 'UPDATE_QUEST', payload: update });
+          aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'quest_update', text: `La quête "${update.questId}" a progressé.` } });
+          aiNotifications.push({ type: 'quest_updated', title: 'Quête Mise à Jour', description: `La quête "${update.questId}" a progressé.` });
+        });
+      }
+      if (aiOutput.newPNJs) {
+          aiOutput.newPNJs.forEach(pnj => {
+            aiActions.push({ type: 'ADD_PNJ', payload: pnj as Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> });
+            aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'npc_interaction', text: `Vous avez rencontré ${pnj.name}.` } });
+            aiNotifications.push({ type: 'pnj_encountered', title: 'Nouvelle Rencontre', description: `Vous avez rencontré ${pnj.name}.` });
+          });
+      }
+      if (aiOutput.itemsToAddToInventory) {
+        aiOutput.itemsToAddToInventory.forEach(item => {
+          const masterItem = getMasterItemById(item.itemId);
+          const itemName = masterItem?.name || item.itemId;
+          aiActions.push({ type: 'ADD_ITEM_TO_INVENTORY', payload: item });
+          aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'event', text: `Objet obtenu : ${itemName} (x${item.quantity}).` } });
+          aiNotifications.push({ type: 'item_added', title: 'Objet Obtenu', description: `Vous avez obtenu : ${itemName} (x${item.quantity}).` });
+        });
+      }
+      if (aiOutput.newTransactions) {
+        aiOutput.newTransactions.forEach(transaction => {
+          aiActions.push({ type: 'ADD_TRANSACTION', payload: transaction });
+          aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'event', text: `${transaction.description}: ${transaction.amount > 0 ? '+' : ''}${transaction.amount}€.` } });
+          aiNotifications.push({ type: 'money_changed', title: 'Transaction Financière', description: `${transaction.description}: ${transaction.amount > 0 ? '+' : ''}${transaction.amount}€.` });
+        });
+      }
+      if (aiOutput.xpGained) {
+        aiActions.push({ type: 'ADD_XP', payload: aiOutput.xpGained });
+        aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'event', text: `Vous avez gagné ${aiOutput.xpGained} XP.` } });
+        aiNotifications.push({ type: 'xp_gained', title: 'Expérience Gagnée', description: `Vous avez gagné ${aiOutput.xpGained} XP.` });
+      }
+      if (aiOutput.newClues) {
+        aiOutput.newClues.forEach(clue => {
+          aiActions.push({ type: 'ADD_CLUE', payload: clue as any });
+          aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'event', text: `Nouvel indice découvert : "${clue.title}".` } });
+          aiNotifications.push({ type: 'clue_added', title: 'Nouvel Indice', description: `Indice ajouté : "${clue.title}".` });
+        });
+      }
+       if (aiOutput.newDocuments) {
+        aiOutput.newDocuments.forEach(doc => {
+          aiActions.push({ type: 'ADD_DOCUMENT', payload: doc as any });
+          aiActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'event', text: `Nouveau document obtenu : "${doc.title}".` } });
+          aiNotifications.push({ type: 'document_added', title: 'Nouveau Document', description: `Document obtenu : "${doc.title}".` });
+        });
+      }
+
+      // Update the state in one atomic operation
       onStateUpdate(prevState => {
         if (!prevState) return null;
-        let finalGameState: GameState = {
-          ...prevState,
-          player: updatedPlayer,
-          currentScenario: { scenarioText: aiOutput.scenarioText },
-          journal: [
-              ...(prevState.journal || []),
-              {
-                  id: `${gameTimeInMinutes}-${Math.random()}`,
-                  timestamp: gameTimeInMinutes,
-                  type: 'player_action',
-                  text: actionText,
-                  location: updatedPlayer.currentLocation
-              }
-          ]
-        };
-        
-        if (aiOutput.newLocationDetails && finalGameState.player) {
-           finalGameState.player.currentLocation = {
-              ...finalGameState.player.currentLocation,
-              ...aiOutput.newLocationDetails
-           }
+
+        // Start with the state after deterministic effects
+        const intermediateState: GameState = { ...prevState, player: updatedPlayer };
+
+        // Apply new scenario text and log the player's action
+        const stateWithScenarioAndJournal = gameReducer(
+          gameReducer(intermediateState, {
+            type: 'SET_CURRENT_SCENARIO',
+            payload: { scenarioText: aiOutput.scenarioText },
+          }),
+          {
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: {
+              type: 'player_action',
+              text: actionText,
+              location: updatedPlayer.currentLocation,
+            },
+          }
+        );
+
+        // Apply new location if any
+        let stateWithLocation = stateWithScenarioAndJournal;
+        if (aiOutput.newLocationDetails && stateWithLocation.player) {
+          stateWithLocation.player = {
+            ...stateWithLocation.player,
+            currentLocation: {
+              ...stateWithLocation.player.currentLocation,
+              ...aiOutput.newLocationDetails,
+            },
+          };
         }
-        processAIEvents(aiOutput); // This will dispatch its own updates based on the AI output
-        return finalGameState;
+
+        // Reduce all AI-driven actions onto the new state
+        return aiActions.reduce(gameReducer, stateWithLocation);
       });
 
-
+      // Show all notifications AFTER the state update has been dispatched
+      aiNotifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
+      
       setPlayerInput('');
 
     } catch (error) {
@@ -230,7 +199,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [initialGameState, onStateUpdate, toast, processAIEvents]);
+  }, [initialGameState, onStateUpdate, toast]);
 
   const { player, currentScenario, nearbyPois } = initialGameState;
 
