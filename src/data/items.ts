@@ -3,9 +3,9 @@
  * @fileOverview Master list of all items available in the game.
  * This acts as the "item database".
  */
-import type { MasterInventoryItem, PlayerStats } from '@/lib/types';
+import type { MasterIntelligentItem } from '@/lib/types';
 
-export const ALL_ITEMS: MasterInventoryItem[] = [
+export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
   {
     id: 'smartphone_01',
     name: 'Smartphone',
@@ -189,6 +189,6 @@ export const ALL_ITEMS: MasterInventoryItem[] = [
   }
 ];
 
-export function getMasterItemById(itemId: string): MasterInventoryItem | undefined {
-  return ALL_ITEMS.find(item => item.id === itemId);
+export function getMasterItemById(itemId: string): MasterIntelligentItem | undefined {
+  return ALL_MASTER_ITEMS.find(item => item.id === itemId);
 }

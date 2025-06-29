@@ -1,14 +1,14 @@
 
 "use client";
 
-import type { Player, InventoryItem, InventoryItemType } from '@/lib/types';
+import type { Player, IntelligentItem, InventoryItemType } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InventoryItemCard from './InventoryItemCard';
 import { Package, Shirt, Utensils, KeyRound, MonitorSmartphone, Wrench, Archive, Drama } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 
 interface InventoryDisplayProps {
-  inventory: InventoryItem[];
+  inventory: IntelligentItem[];
 }
 
 const itemTypeCategories: InventoryItemType[] = ['wearable', 'consumable', 'key', 'electronic', 'tool', 'quest', 'misc'];

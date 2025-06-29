@@ -2,7 +2,7 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact } from '@/lib/types';
+import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact } from '@/lib/types';
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +50,7 @@ export const initialAlignment: Alignment = {
   goodEvil: 0,
 };
 
-export const initialInventory: InventoryItem[] = [
+export const initialInventory: IntelligentItem[] = [
   getMasterItemById('smartphone_01'),
   getMasterItemById('wallet_01'),
   getMasterItemById('keys_apartment_01'),
@@ -58,15 +58,18 @@ export const initialInventory: InventoryItem[] = [
 ]
 .filter((item): item is NonNullable<typeof item> => item !== undefined)
 .map(masterItem => {
-  // Create a full InventoryItem instance
+  // Create a full IntelligentItem instance
   return {
     ...masterItem,
     instanceId: uuidv4(),
     quantity: masterItem.id === 'energy_bar_01' ? 2 : 1,
-    condition: 100,
-    acquiredAt: new Date().toISOString(),
-    usageCount: 0,
+    condition: { durability: 100 },
     experience: 0,
+    memory: {
+      acquiredAt: new Date().toISOString(),
+      acquisitionStory: "Fait partie de votre équipement de départ standard.",
+      usageHistory: [],
+    },
   };
 });
 

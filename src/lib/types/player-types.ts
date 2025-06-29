@@ -1,4 +1,5 @@
-import type { InventoryItem } from './item-types';
+
+import type { IntelligentItem } from './item-types';
 import type { Quest } from './quest-types';
 import type { PNJ } from './pnj-types';
 import type { MajorDecision } from './decision-types';
@@ -97,7 +98,7 @@ export type Player = {
   traitsMentalStates: TraitsMentalStates;
   progression: Progression;
   alignment: Alignment;
-  inventory: InventoryItem[];
+  inventory: IntelligentItem[];
   money: number; // Player's current money (euros)
   transactionLog: Transaction[];
   currentLocation: Position; // Changed from LocationData to Position

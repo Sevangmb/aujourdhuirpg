@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import type { InventoryItem } from '@/lib/types';
+import type { IntelligentItem } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import * as LucideIcons from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface InventoryItemCardProps {
-  item: InventoryItem;
+  item: IntelligentItem;
 }
 
 const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
@@ -21,7 +21,17 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
       <CardHeader className="flex flex-row items-center space-x-3 pb-2 pt-3 px-4">
         <IconComponent className="w-6 h-6 text-primary" />
         <div>
-          <CardTitle className="text-md font-semibold">{item.name}</CardTitle>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CardTitle className="text-md font-semibold cursor-help">{item.name}</CardTitle>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                <p className="max-w-xs text-xs">{item.memory.acquisitionStory}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           {item.stackable && item.quantity > 1 && (
             <CardDescription className="text-xs">Quantité: {item.quantity}</CardDescription>
           )}
@@ -30,18 +40,18 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
       <CardContent className="px-4 pb-3 flex-grow flex flex-col justify-between">
         <p className="text-xs text-muted-foreground mb-2 min-h-[40px]">{item.description}</p>
         <div className="space-y-2">
-           <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Type:</span> {item.type} | <span className="font-medium text-foreground">Usages:</span> {item.usageCount}</p>
+           <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Type:</span> {item.type} | <span className="font-medium text-foreground">Usages:</span> {item.memory.usageHistory.length}</p>
            <div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="space-y-1">
                       <Label className="text-xs font-medium text-muted-foreground">État</Label>
-                      <Progress value={item.condition} className="h-1.5" />
+                      <Progress value={item.condition.durability} className="h-1.5" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Condition: {item.condition}%</p>
+                    <p>Durabilité: {item.condition.durability}%</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

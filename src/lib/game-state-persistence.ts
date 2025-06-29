@@ -1,5 +1,5 @@
 
-import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem } from './types';
+import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -113,26 +113,36 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
   }
 
-  // Handle inventory hydration
+  // Handle inventory hydration, converting old item formats to the new IntelligentItem structure
   const inventoryToHydrate = savedPlayer?.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : initialInventory;
-  player.inventory = inventoryToHydrate.map(item => {
+  player.inventory = inventoryToHydrate.map((item: any) => { // Use 'any' to handle old format
     const masterItem = getMasterItemById(item.id);
     if (!masterItem) {
       console.warn(`Could not find master item for id ${item.id} during hydration.`);
       return null;
     }
-    // Ensure new dynamic fields exist for items from old saves
-    return {
+    
+    const newIntelligentItem: IntelligentItem = {
       ...masterItem,
-      ...item, 
+      ...item,
       instanceId: item.instanceId || uuidv4(),
-      condition: typeof item.condition === 'number' ? item.condition : 100,
-      acquiredAt: item.acquiredAt || new Date(0).toISOString(),
-      usageCount: item.usageCount || 0,
-      experience: item.experience || 0,
-      lastUsed: item.lastUsed,
+      quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+      experience: typeof item.experience === 'number' ? item.experience : 0,
+      
+      condition: {
+        durability: typeof item.condition === 'number' ? item.condition : (item.condition?.durability ?? 100),
+      },
+      
+      memory: {
+        acquiredAt: item.acquiredAt || item.memory?.acquiredAt || new Date(0).toISOString(),
+        acquisitionStory: item.memory?.acquisitionStory || "Trouvé dans des circonstances oubliées.",
+        usageHistory: item.memory?.usageHistory || [],
+        lastUsed: item.lastUsed || item.memory?.lastUsed,
+      },
     };
-  }).filter((item): item is InventoryItem => item !== null);
+
+    return newIntelligentItem;
+  }).filter((item): item is IntelligentItem => item !== null);
 
 
   return player;

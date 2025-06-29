@@ -1,5 +1,5 @@
 
-import type { PlayerStats, InventoryItem, Progression, AdvancedSkillSystem } from './types';
+import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem } from './types';
 import { getMasterItemById } from '@/data/items';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,7 +19,7 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Partial<Pla
   return newStats;
 }
 
-export function addItemToInventory(currentInventory: InventoryItem[], itemId: string, quantityToAdd: number): InventoryItem[] {
+export function addItemToInventory(currentInventory: IntelligentItem[], itemId: string, quantityToAdd: number): IntelligentItem[] {
   const masterItem = getMasterItemById(itemId);
   if (!masterItem) {
     console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}. Item not added.`);
@@ -38,10 +38,13 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
         ...masterItem,
         instanceId: uuidv4(),
         quantity: quantityToAdd,
-        condition: 100,
-        acquiredAt: new Date().toISOString(),
-        usageCount: 0,
+        condition: { durability: 100 },
         experience: 0,
+        memory: {
+          acquiredAt: new Date().toISOString(),
+          acquisitionStory: `Acquis dans des circonstances normales.`,
+          usageHistory: [],
+        }
       });
     }
   } else {
@@ -51,10 +54,13 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
         ...masterItem,
         instanceId: uuidv4(),
         quantity: 1,
-        condition: 100,
-        acquiredAt: new Date().toISOString(),
-        usageCount: 0,
+        condition: { durability: 100 },
         experience: 0,
+        memory: {
+          acquiredAt: new Date().toISOString(),
+          acquisitionStory: `Acquis dans des circonstances normales.`,
+          usageHistory: [],
+        }
       });
     }
   }
@@ -62,7 +68,7 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
 }
 
 
-export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: InventoryItem[], removedItemEffects?: Partial<PlayerStats>, removedItemName?: string } {
+export function removeItemFromInventory(currentInventory: IntelligentItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: IntelligentItem[], removedItemEffects?: Partial<PlayerStats>, removedItemName?: string } {
   const newInventory = [...currentInventory];
   const itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName || item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
 
