@@ -88,21 +88,51 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appMode, gameState?.player?.currentLocation, gameState?.player?.era]);
   
-  // Debounced Autosave Effect
+  const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto') => {
+    if (!gameState || !user || !gameState.player || !selectedCharacterId) {
+      if (saveType === 'manual') toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
+      return;
+    }
+    const result = await saveGameState(user.uid, selectedCharacterId, gameState, saveType);
+    if (saveType === 'manual') {
+        if (result.cloudSaveSuccess) toast({ title: "Partie Sauvegardée" });
+        else if (result.cloudSaveSuccess === false) toast({ title: "Échec de la sauvegarde Cloud", variant: "destructive" });
+        else if(result.localSaveSuccess) toast({ title: "Partie Sauvegardée (localement)" }); // For anonymous users
+    }
+  }, [gameState, user, selectedCharacterId, toast]);
+
+  // Debounced Autosave Effect (saves after a period of inactivity)
   useEffect(() => {
     if (appMode !== 'playing' || !gameState) return;
 
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
 
     autosaveTimeoutRef.current = setTimeout(() => {
-      handleSaveGame('auto'); // Use 'auto' saveType
-    }, 5000);
+      handleSaveGame('auto');
+    }, 5000); // 5 seconds after the last game state change
 
     return () => {
       if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState, appMode]);
+  }, [gameState, appMode, handleSaveGame]);
+
+  // Fail-safe Autosave on Page Exit/Hide
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && appMode === 'playing' && gameState) {
+        // Use a synchronous save if possible, or a last-ditch async save.
+        // For this implementation, we'll just call the existing async save function.
+        // Modern browsers often allow small async operations to complete.
+        handleSaveGame('auto');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [appMode, gameState, handleSaveGame]);
 
   const fetchPoisForLocation = useCallback(async (location: Position) => {
     if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME) {
@@ -215,11 +245,13 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
       // This now creates a character document and an initial save file
       const newCharacterId = await createNewCharacter(user.uid, finalGameState);
-      setSelectedCharacterId(newCharacterId); // Set the new character as active
+      if (!newCharacterId) throw new Error("Failed to create character in Firestore.");
+
+      setSelectedCharacterId(newCharacterId);
+      setGameState(finalGameState);
+      setAppMode('playing');
 
       toast({ title: "Personnage créé !", description: `${playerData.name} est prêt(e) pour l'aventure.` });
-      setAppMode('playing'); // Manually switch to playing mode with the new character
-      setGameState(finalGameState);
 
     } catch (error) {
       console.error("Error during character creation:", error);
@@ -255,19 +287,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     clearLocalGameState();
     fetchCharacterList(); // This will fetch the list and set the mode to 'selecting_character' or 'creating_character'
   };
-
-  const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto') => {
-    if (!gameState || !user || !gameState.player || !selectedCharacterId) {
-      if (saveType === 'manual') toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
-      return;
-    }
-    const result = await saveGameState(user.uid, selectedCharacterId, gameState, saveType);
-    if (saveType === 'manual') {
-        if (result.cloudSaveSuccess) toast({ title: "Partie Sauvegardée" });
-        else if (result.cloudSaveSuccess === false) toast({ title: "Échec de la sauvegarde Cloud", variant: "destructive" });
-        else if(result.localSaveSuccess) toast({ title: "Partie Sauvegardée (localement)" }); // For anonymous users
-    }
-  }, [gameState, user, selectedCharacterId, toast]);
 
   const handleToggleFullScreen = () => {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen();
