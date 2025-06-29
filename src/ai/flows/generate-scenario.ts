@@ -49,7 +49,10 @@ Votre mission a trois volets :
     - **Créer des opportunités de Jobs :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job'). **IMPORTANT : Créez ces jobs avec le statut \`'inactive'\`**. La narration doit présenter l'opportunité (ex: une annonce, une offre de PNJ) plutôt que de commencer la quête directement.
     - **Gérer l'acceptation de Jobs :** Si l'action du joueur indique qu'il accepte un job (ex: "j'accepte la mission de livraison"), générez un événement \`updatedQuests\` pour passer le statut de la quête correspondante à \`'active'\`.
     - **Mise à jour du Dossier d'Enquête :** Si le joueur fait une découverte majeure ou tire une conclusion, mettez à jour le champ \`updatedInvestigationNotes\` pour refléter cette nouvelle synthèse.
-3.  **Générer des Choix Guidés :** Pour guider le joueur, peuplez le champ \`choices\` avec 3 ou 4 objets 'StoryChoice' riches, variés et pertinents. Proposez un mélange d'actions couvrant différents types (observation, action, social, etc.) et qui ouvrent des pistes narratives intéressantes. Évitez les choix génériques comme "Continuer" ou "Regarder autour". Chaque choix doit être un objet JSON avec les champs: id (unique, ex: 'chercher_indices'), text, description, iconName (choisir parmi: ${CHOICE_ICON_NAMES.join(', ')}), type (choisir parmi: ${ACTION_TYPES.join(', ')}), mood (choisir parmi: ${MOOD_TYPES.join(', ')}), energyCost (1-20), timeCost (5-60), consequences (2-3 mots-clés).
+3.  **Générer des Choix Guidés (Actions Adaptatives) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ \`choices\` avec 3 ou 4 objets 'StoryChoice' riches et variés.
+    - **Basé sur les Compétences :** Analysez attentivement le profil de compétences du joueur (\`playerSkills\`). Créez des choix qui permettent au joueur d'utiliser ses **compétences les plus élevées**. Par exemple, si le joueur a une compétence élevée en \`social.persuasion\`, proposez un choix de dialogue complexe. S'il est fort en \`physical.stealth\`, proposez une option d'infiltration. Ces actions doivent inclure un \`skillCheck\` pertinent.
+    - **Variété d'Approches :** Proposez un mélange d'actions couvrant différents types (observation, action, social, etc.) et qui ouvrent des pistes narratives intéressantes. Évitez les choix génériques comme "Continuer" ou "Regarder autour".
+    - **Structure Complète :** Chaque choix doit être un objet JSON avec les champs: id (unique, ex: 'chercher_indices'), text, description, iconName (choisir parmi: ${CHOICE_ICON_NAMES.join(', ')}), type (choisir parmi: ${ACTION_TYPES.join(', ')}), mood (choisir parmi: ${MOOD_TYPES.join(', ')}), energyCost (1-20), timeCost (5-60), consequences (2-3 mots-clés), et le \`skillCheck\` si applicable.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -68,7 +71,13 @@ const PROMPT_PLAYER_CONTEXT = `
 - Joueur : {{{playerName}}}, {{{playerGender}}}, {{{playerAge}}} ans. Passé : {{{playerBackground}}}.
 - Lieu : {{{playerLocation.name}}}
 - Argent : {{{playerMoney}}}€
-- Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}} (Utilisez pour colorer la narration)
+- Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
+- Compétences :
+  - Cognitives: {{#each playerSkills.cognitive}}{{{@key}}}: {{{this}}}, {{/each}}
+  - Sociales: {{#each playerSkills.social}}{{{@key}}}: {{{this}}}, {{/each}}
+  - Physiques: {{#each playerSkills.physical}}{{{@key}}}: {{{this}}}, {{/each}}
+  - Techniques: {{#each playerSkills.technical}}{{{@key}}}: {{{this}}}, {{/each}}
+  - Survie: {{#each playerSkills.survival}}{{{@key}}}: {{{this}}}, {{/each}}
 - Tonalité : {{#if toneSettings}}{{#each toneSettings}}{{{@key}}}: {{{this}}} {{/each}}{{else}}(Équilibrée){{/if}}
 - Scène Précédente : {{{currentScenario}}}
 - Dossier d'Enquête : {{{currentInvestigationNotes}}}
