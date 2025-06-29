@@ -46,66 +46,6 @@ export function getInitialScenario(player: Player): Scenario {
   };
 }
 
-// --- Game State Persistence ---
-export interface SaveGameResult {
-  localSaveSuccess: boolean;
-  cloudSaveSuccess: boolean | null;
-}
-
-export async function saveGameState(state: GameState): Promise<SaveGameResult> {
-  const result: SaveGameResult = { localSaveSuccess: false, cloudSaveSuccess: null };
-  if (!state || !state.player) {
-    console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
-    return result;
-  }
-  // Logic for local and cloud save will be handled by their respective services
-  // For now, this function is a placeholder for the concept.
-  // In a real implementation, you would call saveGameStateToLocal and saveGameStateToFirestore here.
-  return result;
-}
-
-export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
-  const player: Player = {
-    uid: savedPlayer?.uid,
-    name: savedPlayer?.name || '',
-    gender: savedPlayer?.gender || "Préfère ne pas préciser",
-    age: savedPlayer?.age || 25,
-    avatarUrl: savedPlayer?.avatarUrl || defaultAvatarUrl,
-    origin: savedPlayer?.origin || "Inconnue",
-    background: savedPlayer?.background || '',
-    startingLocationName: savedPlayer?.startingLocationName,
-    stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
-    skills: { ...initialSkills, ...(savedPlayer?.skills || {}) },
-    traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
-    progression: { ...initialProgression, ...(savedPlayer?.progression || {}) },
-    alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
-    money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
-    inventory: [],
-    currentLocation: savedPlayer?.currentLocation || initialPlayerLocation,
-    toneSettings: { ...initialToneSettings, ...(savedPlayer?.toneSettings || {}) },
-    questLog: savedPlayer?.questLog || [...initialQuestLog],
-    encounteredPNJs: savedPlayer?.encounteredPNJs || [...initialEncounteredPNJs],
-    decisionLog: savedPlayer?.decisionLog || [...initialDecisionLog],
-    clues: savedPlayer?.clues || [...initialClues],
-    documents: savedPlayer?.documents || [...initialDocuments],
-    investigationNotes: savedPlayer?.investigationNotes || initialInvestigationNotes,
-  };
-
-  if (!player.progression.xpToNextLevel) {
-    player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
-  }
-
-  if (savedPlayer?.inventory && savedPlayer.inventory.length > 0) {
-    player.inventory = savedPlayer.inventory.map(item => ({
-      ...getMasterItemById(item.id)!, ...item
-    })).filter(Boolean) as InventoryItem[];
-  } else {
-    player.inventory = initialInventory.map(item => ({...item}));
-  }
-
-  return player;
-}
-
 // --- Game Actions & Reducer ---
 export type GameAction =
   | { type: 'MOVE_TO_LOCATION'; payload: Position }

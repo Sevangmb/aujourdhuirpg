@@ -1,9 +1,9 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, Player, Position, JournalEntry, GameNotification } from '@/lib/types';
-import { gameReducer, GameAction, fetchPoisForCurrentLocation, calculateDeterministicEffects, saveGameState, prepareAIInput } from '@/lib/game-logic';
+import { gameReducer, GameAction, fetchPoisForCurrentLocation, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
+import { saveGameState } from '@/lib/game-state-persistence';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getInitialScenario } from '@/lib/game-logic';

@@ -1,5 +1,5 @@
 import type { GameState, Player } from '@/lib/types';
-import { hydratePlayer } from '@/lib/game-logic';
+import { hydratePlayer } from '@/lib/game-state-persistence';
 import { getInitialScenario } from '@/lib/game-logic'; // Keep this import for now
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';

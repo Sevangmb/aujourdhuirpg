@@ -22,6 +22,7 @@ interface GameScreenProps {
     background: string;
     era: string;
     startingLocation: string;
+    avatarUrl: string;
   }) => void;
   onRestartGame: () => void; // Kept for potential future use or pass-through
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
@@ -31,7 +32,7 @@ interface GameScreenProps {
   locationImageUrl: string | null;
   locationImageLoading: boolean;
   locationImageError: string | null;
-  isGeneratingAvatar: boolean;
+  isCreatingCharacter: boolean;
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
@@ -47,7 +48,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   locationImageUrl,
   locationImageLoading,
   locationImageError,
-  isGeneratingAvatar,
+  isCreatingCharacter,
 }) => {
   // Primary loading states (auth and initial game data) are handled by HomePageContent.
   // GameScreen now assumes that if it's rendered, the user is authenticated,
@@ -76,7 +77,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto bg-background">
         <CharacterCreationForm 
             onCharacterCreate={onCharacterCreate} 
-            isGeneratingAvatar={isGeneratingAvatar}
+            isSubmitting={isCreatingCharacter}
         />
     </main>
   );

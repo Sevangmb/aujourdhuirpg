@@ -21,8 +21,9 @@ import {
   UNKNOWN_STARTING_PLACE_NAME,
 } from '@/data/initial-game-data';
 import { getInitialScenario } from './game-logic'; // We will keep getInitialScenario in game-logic for now
+import { saveGameStateToLocal } from '@/services/localStorageService';
+import { calculateXpToNextLevel } from './player-state-helpers';
 
-export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
 export interface SaveGameResult {
   localSaveSuccess: boolean;
@@ -35,14 +36,9 @@ export async function saveGameState(state: GameState): Promise<SaveGameResult> {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
     return result;
   }
-  if (typeof window !== 'undefined' && localStorage) {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-      result.localSaveSuccess = true;
-    } catch (error) {
-      console.error("LocalStorage Error: Failed to save game state:", error);
-    }
-  }
+  
+  result.localSaveSuccess = saveGameStateToLocal(state);
+
   if (state.player && state.player.uid) {
     try {
       await saveGameStateToFirestore(state.player.uid, state);
@@ -65,6 +61,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     origin: savedPlayer?.origin || "Inconnue",
     background: savedPlayer?.background || '',
     era: savedPlayer?.era, // Include era here
+    startingLocationName: savedPlayer?.startingLocationName,
     stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
     skills: { ...initialSkills, ...(savedPlayer?.skills || {}) },
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
@@ -82,10 +79,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     investigationNotes: savedPlayer?.investigationNotes || initialInvestigationNotes,
   };
 
-  // Assuming calculateXpToNextLevel will be imported or handled elsewhere
-  // if (!player.progression.xpToNextLevel) {
-  //   player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
-  // }
+  if (!player.progression.xpToNextLevel) {
+    player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
+  }
 
   if (savedPlayer?.inventory && savedPlayer.inventory.length > 0) {
     player.inventory = savedPlayer.inventory.map(item => ({
@@ -96,36 +92,4 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   }
 
   return player;
-}
-
-export function loadGameStateFromLocal(): GameState | null {
-  if (typeof window !== 'undefined' && localStorage) {
-    const savedStateString = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedStateString) {
-      try {
-        const parsedState = JSON.parse(savedStateString) as Partial<GameState>;
-        if (!parsedState.player) return null;
-        const hydratedPlayer = hydratePlayer(parsedState.player);
-        return {
-          player: hydratedPlayer,
-          currentScenario: parsedState.currentScenario || getInitialScenario(hydratedPlayer),
-          nearbyPois: parsedState.nearbyPois || null,
-          gameTimeInMinutes: parsedState.gameTimeInMinutes || 0,
-          journal: parsedState.journal || [],
-          toneSettings: parsedState.toneSettings || initialToneSettings,
-        };
-      } catch (error) {
-        console.error("LocalStorage Error: Error parsing game state:", error);
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      }
-    }
-  }
-  return null;
-}
-
-export function clearGameState(): void {
-  if (typeof window !== 'undefined' && localStorage) {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    console.log("LocalStorage Info: Game state cleared.");
-  }
 }

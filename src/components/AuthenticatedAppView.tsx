@@ -3,10 +3,10 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 // Corrected import path for game logic types
-import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
 import { aiService } from '@/services/aiService';
 import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
-import { saveGameState, type SaveGameResult, getInitialScenario, hydratePlayer, prepareAIInput } from '@/lib/game-logic';
+import { getInitialScenario, prepareAIInput } from '@/lib/game-logic';
+import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service'; // Corrected import path
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,7 @@ import GameScreen from '@/components/GameScreen';
 import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
 // Corrected paths for AI flows to match original page.tsx
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
+import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
 
 
 interface AuthenticatedAppViewProps {
@@ -36,7 +37,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const [locationImageUrl, setLocationImageUrl] = useState<string | null>(null);
   const [locationImageLoading, setLocationImageLoading] = useState(false);
   const [locationImageError, setLocationImageError] = useState<string | null>(null);
-  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [isCreatingCharacter, setIsCreatingCharacter] = useState(false);
 
   const { toast } = useToast();
 
@@ -162,7 +163,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, []);
 
 
-  const handleCharacterCreate = useCallback(async (playerBaseDetails: {
+  const handleCharacterCreate = useCallback(async (playerData: {
       name: string;
       gender: string;
       age: number;
@@ -170,88 +171,61 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       background: string;
       era: string;
       startingLocation: string;
+      avatarUrl: string; // Avatar URL is now passed in
     }) => {
     if (!user) {
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
-    setIsGeneratingAvatar(true);
-    let avatarUrl = defaultAvatarUrl;
-    try {
-        const avatarInput = {
-            name: playerBaseDetails.name,
-            gender: playerBaseDetails.gender,
-            age: playerBaseDetails.age,
-            origin: playerBaseDetails.origin,
-            playerBackground: playerBaseDetails.background
-        };
-        const avatarResult = await aiService.generatePlayerAvatar(avatarInput);
-        if (avatarResult.imageUrl) {
-            avatarUrl = avatarResult.imageUrl;
-        } else if (avatarResult.error) {
-            console.error("Avatar generation failed:", avatarResult.error);
-            toast({
-                title: "Avatar Generation Failed",
-                description: avatarResult.error || "Could not generate avatar. Using default.",
-                variant: "destructive",
-            });
-        }
-    } catch (error) {
-      console.error("Avatar generation failed (catch):", error);
-      toast({
-        title: "Avatar Generation Failed",
-        description: (error as Error).message || "Could not generate avatar. Using default.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingAvatar(false);
-    }
-
-    const hydratedPlayer = hydratePlayer({
-        ...playerBaseDetails,
-        uid: user.uid,
-        avatarUrl: avatarUrl,
-        startingLocationName: playerBaseDetails.startingLocation,
-    });
-
-    // Set a temporary starting location and summary for the prologue AI call
-    hydratedPlayer.currentLocation = {
-        latitude: Math.random() * 180 - 90,
-        longitude: Math.random() * 360 - 180,
-        name: UNKNOWN_STARTING_PLACE_NAME,
-        summary: "Début de l'aventure...",
-    };
-
-    // Set an initial game state shell
-    setGameState({
-      currentScenario: { scenarioText: "<p>Création du monde en cours...</p>" }, // Temporary loading message
-      player: hydratedPlayer,
-      gameTimeInMinutes: 0,
-      journal: [],
-      nearbyPois: null,
-      toneSettings: hydratedPlayer.toneSettings,
-    });
-    setIsCharacterCreationMode(false);
     
-    console.log("Character created, generating prologue with AI. Player location:", hydratedPlayer.currentLocation);
+    setIsCreatingCharacter(true);
 
     try {
-      // Prepare input for the AI, specifically triggering the prologue
-      const aiInput = prepareAIInput({
+      const hydratedPlayer = hydratePlayer({
+          ...playerData,
+          uid: user.uid,
+          avatarUrl: playerData.avatarUrl,
+          startingLocationName: playerData.startingLocation,
+      });
+
+      hydratedPlayer.currentLocation = {
+          latitude: Math.random() * 180 - 90,
+          longitude: Math.random() * 360 - 180,
+          name: UNKNOWN_STARTING_PLACE_NAME,
+          summary: "Début de l'aventure...",
+      };
+
+      const tempStateForPrologue = {
+        currentScenario: { scenarioText: "<p>Création du monde en cours...</p>" },
         player: hydratedPlayer,
-        currentScenario: { scenarioText: '' },
         gameTimeInMinutes: 0,
         journal: [],
         nearbyPois: null,
         toneSettings: hydratedPlayer.toneSettings,
-      }, "[COMMENCER L'AVENTURE]");
+      };
 
+      setGameState(tempStateForPrologue);
+      setIsCharacterCreationMode(false);
+      
+      console.log("Character created, generating prologue with AI. Player location:", hydratedPlayer.currentLocation);
+      
+      const aiInput = prepareAIInput(tempStateForPrologue, "[COMMENCER L'AVENTURE]");
       if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
 
       const prologueResult = await generateScenario(aiInput);
       setGameState(prevState => prevState ? { ...prevState, currentScenario: { scenarioText: prologueResult.scenarioText } } : null);
+    
     } catch (error) {
-      console.error("Error generating prologue:", error);
+      console.error("Error during character creation or prologue generation:", error);
+      toast({
+        title: "Erreur de création",
+        description: "Impossible de commencer l'aventure. Veuillez réessayer.",
+        variant: "destructive",
+      });
+      // Optionally reset to character creation screen
+      setIsCharacterCreationMode(true);
+    } finally {
+      setIsCreatingCharacter(false);
     }
   }, [user, toast]);
 
@@ -387,7 +361,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
           locationImageUrl={locationImageUrl}
           locationImageLoading={locationImageLoading}
           locationImageError={locationImageError}
-          isGeneratingAvatar={isGeneratingAvatar}
+          isCreatingCharacter={isCreatingCharacter}
         />
       </div>
     </div>
