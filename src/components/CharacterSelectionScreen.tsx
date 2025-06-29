@@ -14,28 +14,36 @@ import { defaultAvatarUrl } from '@/data/initial-game-data';
 import { listSavesForCharacter, type SaveSummary } from '@/services/firestore-service';
 import { ScrollArea } from './ui/scroll-area';
 import { formatGameTime } from '@/lib/utils/time-utils';
+import CharacterCreationForm, { FullCharacterFormData } from './CharacterCreationForm';
+
+type AppMode = 'loading' | 'selecting_character' | 'creating_character' | 'playing';
 
 interface CharacterSelectionScreenProps {
-  user: FirebaseUser; // Needed to fetch saves for a specific user
+  user: FirebaseUser;
   characters: CharacterSummary[];
   onSelectCharacterAndSave: (characterId: string, saveId: string) => void;
-  onCreateNew: () => void;
+  onGoToCreate: () => void;
+  onCharacterCreate: (data: FullCharacterFormData) => void;
   onDeleteCharacter: (characterId: string) => void;
-  isDeleting: string | null; // ID of the character being deleted
+  isDeleting: string | null;
+  mode: AppMode;
 }
 
 export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> = ({
   user,
   characters,
   onSelectCharacterAndSave,
-  onCreateNew,
+  onGoToCreate,
+  onCharacterCreate,
   onDeleteCharacter,
-  isDeleting
+  isDeleting,
+  mode
 }) => {
   const [isSavesModalOpen, setIsSavesModalOpen] = useState(false);
   const [saves, setSaves] = useState<SaveSummary[]>([]);
   const [selectedCharForSaves, setSelectedCharForSaves] = useState<CharacterSummary | null>(null);
   const [isLoadingSaves, setIsLoadingSaves] = useState(false);
+  const [isSubmittingCreation, setIsSubmittingCreation] = useState(false);
 
   const handleShowSaves = async (character: CharacterSummary) => {
     if (!user) return;
@@ -48,7 +56,6 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
     } catch (error) {
       console.error("Failed to load saves:", error);
       setSaves([]);
-      // Optionally, show a toast notification here
     } finally {
       setIsLoadingSaves(false);
     }
@@ -60,6 +67,23 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
       setIsSavesModalOpen(false);
     }
   };
+  
+  const handleCreate = async (data: FullCharacterFormData) => {
+    setIsSubmittingCreation(true);
+    await onCharacterCreate(data);
+    setIsSubmittingCreation(false);
+  };
+  
+  if (mode === 'creating_character') {
+      return (
+        <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto bg-background min-h-screen">
+            <CharacterCreationForm 
+                onCharacterCreate={handleCreate} 
+                isSubmitting={isSubmittingCreation}
+            />
+        </main>
+      );
+  }
 
   return (
     <>
@@ -116,7 +140,7 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
             </Card>
           ))}
           <Card
-            onClick={onCreateNew}
+            onClick={onGoToCreate}
             className="flex flex-col items-center justify-center border-2 border-dashed hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200 min-h-[340px] bg-card/50"
           >
             <PlusCircle className="w-16 h-16 text-muted-foreground group-hover:text-primary" />

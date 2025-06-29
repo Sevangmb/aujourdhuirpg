@@ -1,9 +1,8 @@
+
 "use client";
 
 import React from 'react';
-import type { Position, Player } from '@/lib/types';
-import type { WeatherData } from '@/app/actions/get-current-weather';
-
+import { useGame } from '@/contexts/GameContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MapDisplay from './MapDisplay';
 import WeatherDisplay from './WeatherDisplay';
@@ -13,55 +12,36 @@ import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
-interface GameSidebarProps {
-  player: Player;
-  currentLocation: Position;
-  nearbyPois: Position[] | null;
-  gameTimeInMinutes: number;
-  weatherData: WeatherData | null;
-  weatherLoading: boolean;
-  weatherError: string | null;
-  locationImageUrl: string | null;
-  locationImageLoading: boolean;
-  locationImageError: string | null;
-  onPoiClick?: (poi: Position) => void;
-}
-
-const GameSidebar: React.FC<GameSidebarProps> = ({
-  player,
-  currentLocation,
-  nearbyPois,
-  gameTimeInMinutes,
-  weatherData,
-  weatherLoading,
-  weatherError,
-  locationImageUrl,
-  locationImageLoading,
-  locationImageError,
-  onPoiClick,
-}) => {
+const GameSidebar: React.FC = () => {
+  const { gameState, contextualData, handleInitiateTravel } = useGame();
+  const { weather, locationImage, pois } = contextualData;
   const isMobile = useIsMobile();
   
+  if (!gameState || !gameState.player) return null;
+
+  const { player, nearbyPois, gameTimeInMinutes } = gameState;
+  const currentLocation = player.currentLocation;
+
   const content = (
     <div className="space-y-4">
       <PlayerStatusPanel player={player} />
       <WeatherDisplay
-        weatherData={weatherData}
-        isLoading={weatherLoading}
-        error={weatherError}
+        weatherData={weather.data}
+        isLoading={weather.loading}
+        error={weather.error}
         placeName={currentLocation.name}
         gameTimeInMinutes={gameTimeInMinutes}
       />
       <MapDisplay
         currentLocation={currentLocation}
-        nearbyPois={nearbyPois || []}
-        onPoiClick={onPoiClick}
+        nearbyPois={pois.data || []}
+        onPoiClick={handleInitiateTravel}
       />
       <LocationImageDisplay
-        imageUrl={locationImageUrl}
+        imageUrl={locationImage.url}
         placeName={currentLocation.name || UNKNOWN_STARTING_PLACE_NAME}
-        isLoading={locationImageLoading}
-        error={locationImageError}
+        isLoading={locationImage.loading}
+        error={locationImage.error}
       />
     </div>
   );

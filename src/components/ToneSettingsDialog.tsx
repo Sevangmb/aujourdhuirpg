@@ -8,20 +8,26 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import type { ToneSettings, GameTone } from '@/lib/types';
 import { AVAILABLE_TONES } from '@/lib/types';
+import { useGame } from '@/contexts/GameContext'; // Import context
+import { useToast } from '@/hooks/use-toast'; // Import toast
+
 
 interface ToneSettingsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  currentSettings: ToneSettings;
-  onSave: (newSettings: ToneSettings) => void;
 }
 
-const ToneSettingsDialog: React.FC<ToneSettingsDialogProps> = ({ isOpen, onOpenChange, currentSettings, onSave }) => {
-  const [localSettings, setLocalSettings] = useState<ToneSettings>(currentSettings);
+const ToneSettingsDialog: React.FC<ToneSettingsDialogProps> = ({ isOpen, onOpenChange }) => {
+  const { gameState, dispatch } = useGame();
+  const { toast } = useToast();
+  const currentSettings = gameState?.toneSettings;
+
+  const [localSettings, setLocalSettings] = useState<ToneSettings>(currentSettings || {});
 
   useEffect(() => {
-    // Sync local state if currentSettings prop changes (e.g., after save or initial load)
-    setLocalSettings(currentSettings);
+    if (currentSettings) {
+      setLocalSettings(currentSettings);
+    }
   }, [currentSettings]);
 
   const handleSliderChange = (tone: GameTone, value: number[]) => {
@@ -29,23 +35,28 @@ const ToneSettingsDialog: React.FC<ToneSettingsDialogProps> = ({ isOpen, onOpenC
   };
 
   const handleSave = () => {
-    onSave(localSettings);
+    if (!gameState || !gameState.player) return;
+
+    const updatedPlayer = { ...gameState.player, toneSettings: localSettings };
+    dispatch({ type: 'UPDATE_PLAYER_DATA', payload: updatedPlayer });
+    toast({ title: "Tonalité Sauvegardée" });
     onOpenChange(false);
   };
 
   const handleCancel = () => {
-    setLocalSettings(currentSettings); // Reset to original before closing
+    if (currentSettings) {
+      setLocalSettings(currentSettings);
+    }
     onOpenChange(false);
   };
   
-  // Ensure that even if a tone is not in currentSettings, it gets a default of 50
   const getToneValue = (tone: GameTone): number => {
     return localSettings[tone] ?? 50;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) handleCancel(); // Ensure settings are reset if dialog is closed via X or overlay click
+      if (!open) handleCancel();
       else onOpenChange(true);
     }}>
       <DialogContent className="sm:max-w-md">
