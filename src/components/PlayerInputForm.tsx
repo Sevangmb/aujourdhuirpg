@@ -5,12 +5,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Send, Brain, Navigation } from 'lucide-react';
-import type { GameState, Position } from '@/lib/types';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Loader2, Send, Brain, Navigation, Footprints, TrainFront, Car } from 'lucide-react';
+import type { GameState, Position, PlayerStats } from '@/lib/types';
 import type { GameAction } from '@/lib/game-logic';
 import { checkForLocationBasedEvents } from '@/lib/game-logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { useToast } from '@/hooks/use-toast';
+import { applyStatChanges } from '@/lib/player-state-helpers';
 
 interface PlayerInputFormProps {
   playerInput: string;
@@ -20,6 +22,16 @@ interface PlayerInputFormProps {
   gameState: GameState; // To access nearbyPois
   dispatch: (action: GameAction) => void; // To dispatch game actions
 }
+
+interface TravelOption {
+    mode: 'walk' | 'metro' | 'taxi';
+    label: string;
+    icon: React.ElementType;
+    time: number;
+    cost: number;
+    energy: number;
+}
+
 
 const PLAYER_ACTION_REFLECT = "[PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS]";
 
@@ -32,6 +44,8 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
   dispatch,
 }) => {
   const [selectedPoiId, setSelectedPoiId] = useState<string>("");
+  const [isTravelModalOpen, setIsTravelModalOpen] = useState(false);
+  const [travelOptions, setTravelOptions] = useState<TravelOption[]>([]);
   const previousLocationRef = useRef<Position | null | undefined>(null);
   const { toast } = useToast();
 
@@ -39,28 +53,24 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
     const currentLocation = gameState.player?.currentLocation;
     const previousLocation = previousLocationRef.current;
 
-    // Check if location is valid and has actually changed from a known different previous location
     if (currentLocation && previousLocation &&
         (currentLocation.latitude !== previousLocation.latitude ||
          currentLocation.longitude !== previousLocation.longitude ||
          currentLocation.name !== previousLocation.name)
        ) {
-      console.log("PlayerInputForm: Location changed, checking for events.", currentLocation);
       const eventActions = checkForLocationBasedEvents(currentLocation, gameState);
       if (eventActions.length > 0) {
-        console.log("PlayerInputForm: Dispatching event actions:", eventActions);
         dispatch({ type: 'TRIGGER_EVENT_ACTIONS', payload: eventActions });
       }
     }
 
-    // Update previous location ref *after* the check, for the next render
-    if (currentLocation !== previousLocation) { // Only update if it's actually different or new
+    if (currentLocation !== previousLocation) {
         previousLocationRef.current = currentLocation;
-    } else if (!previousLocation && currentLocation) { // Handle initial population of previousLocationRef
+    } else if (!previousLocation && currentLocation) {
         previousLocationRef.current = currentLocation;
     }
 
-  }, [gameState.player?.currentLocation, gameState, dispatch]); // Effect dependencies
+  }, [gameState.player?.currentLocation, gameState, dispatch]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -71,51 +81,101 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
   const handleReflectClick = () => {
     onSubmit(PLAYER_ACTION_REFLECT);
   };
+  
+  const destination = gameState.nearbyPois?.find(
+    (poi) => `${poi.latitude},${poi.longitude}` === selectedPoiId
+  );
 
-  const handleMoveToPoi = () => {
-    if (!selectedPoiId) return;
-    const destination = gameState.nearbyPois?.find(
-      (poi) => `${poi.latitude},${poi.longitude}` === selectedPoiId
-    );
-    const origin = gameState.player?.currentLocation;
+  const calculateTravelOptions = () => {
+    if (!destination || !gameState.player) {
+      setTravelOptions([]);
+      return;
+    }
 
-    if (destination && origin && gameState.player) {
-      const distanceKm = getDistanceInKm(origin.latitude, origin.longitude, destination.latitude, destination.longitude);
-      
-      // Assuming average speed of 10km/h in a city for mixed transport/walking
-      const travelTimeMinutes = Math.round(distanceKm * 6); // (distance / 10) * 60
-      
-      // Assuming cost of 1.5€ per km for transport
-      const travelCost = parseFloat((distanceKm * 1.5).toFixed(2));
+    const origin = gameState.player.currentLocation;
+    const distanceKm = getDistanceInKm(origin.latitude, origin.longitude, destination.latitude, destination.longitude);
 
-      if (gameState.player.money < travelCost) {
+    const options: TravelOption[] = [
+      {
+        mode: 'walk',
+        label: 'Marcher',
+        icon: Footprints,
+        time: Math.round(distanceKm * 12 + 1), // 5 km/h
+        cost: 0,
+        energy: Math.max(1, Math.round(distanceKm * 5)),
+      },
+      {
+        mode: 'metro',
+        label: 'Transport en commun',
+        icon: TrainFront,
+        time: Math.round(5 + distanceKm * 4), // ~15 km/h avg + 5 min wait
+        cost: 2.15,
+        energy: Math.max(1, Math.round(distanceKm * 1)),
+      },
+      {
+        mode: 'taxi',
+        label: 'Taxi / VTC',
+        icon: Car,
+        time: Math.round(3 + distanceKm * 2), // ~30 km/h avg + 3 min wait
+        cost: parseFloat((5 + distanceKm * 1.8).toFixed(2)),
+        energy: 0,
+      }
+    ];
+    setTravelOptions(options);
+  };
+
+  const handleOpenTravelModal = () => {
+    calculateTravelOptions();
+    setIsTravelModalOpen(true);
+  };
+
+  const handleConfirmTravel = (option: TravelOption) => {
+    if (!destination || !gameState.player) return;
+
+    if (gameState.player.money < option.cost) {
+      toast({
+        variant: "destructive",
+        title: "Fonds insuffisants",
+        description: `Il vous faut ${option.cost.toFixed(2)}€ pour ce trajet.`,
+      });
+      return;
+    }
+
+    if (gameState.player.stats.Energie < option.energy) {
         toast({
-          variant: "destructive",
-          title: "Fonds insuffisants",
-          description: `Il vous faut ${travelCost.toFixed(2)}€ pour ce trajet, mais vous n'avez que ${gameState.player.money.toFixed(2)}€.`,
+            variant: "destructive",
+            title: "Pas assez d'énergie",
+            description: `Ce trajet est trop fatiguant pour le moment. Reposez-vous.`
         });
         return;
-      }
+    }
 
-      dispatch({ type: 'MOVE_TO_LOCATION', payload: destination });
-      dispatch({ type: 'ADD_GAME_TIME', payload: travelTimeMinutes });
+    const newStats = applyStatChanges(gameState.player.stats, { Energie: -option.energy });
+    
+    dispatch({ type: 'MOVE_TO_LOCATION', payload: destination });
+    dispatch({ type: 'ADD_GAME_TIME', payload: option.time });
+    
+    if (option.cost > 0) {
       dispatch({ 
         type: 'ADD_TRANSACTION', 
         payload: {
-          amount: -travelCost,
+          amount: -option.cost,
           type: 'expense',
           category: 'transport',
-          description: `Déplacement vers ${destination.name}`
+          description: `Trajet en ${option.label} vers ${destination.name}`
         } 
       });
-
-      toast({
-        title: "Déplacement en cours...",
-        description: `Trajet vers ${destination.name}. Durée: ~${travelTimeMinutes} min. Coût: ${travelCost.toFixed(2)}€.`
-      });
-
-      setSelectedPoiId("");
     }
+    
+    dispatch({ type: 'UPDATE_PLAYER_DATA', payload: { stats: newStats } });
+
+    toast({
+      title: `Déplacement vers ${destination.name}...`,
+      description: `Mode: ${option.label}, Durée: ~${option.time} min, Coût: ${option.cost.toFixed(2)}€, Énergie: -${option.energy}`
+    });
+
+    setIsTravelModalOpen(false);
+    setSelectedPoiId("");
   };
 
   const nearbyPoisAvailable = gameState.nearbyPois && gameState.nearbyPois.length > 0;
@@ -165,22 +225,61 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
                     key={`${poi.latitude},${poi.longitude}`}
                     value={`${poi.latitude},${poi.longitude}`}
                   >
-                    {poi.name} ({poi.zone?.name || 'Zone inconnue'})
+                    {poi.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <Button
-            type="button"
-            onClick={handleMoveToPoi}
-            disabled={isLoading || !selectedPoiId}
-            variant="outline"
-            className="shrink-0"
-          >
-            <Navigation className="mr-0 sm:mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">S'y rendre</span>
-          </Button>
+          <AlertDialog open={isTravelModalOpen} onOpenChange={setIsTravelModalOpen}>
+            <AlertDialogTrigger asChild>
+                <Button
+                    type="button"
+                    onClick={handleOpenTravelModal}
+                    disabled={isLoading || !selectedPoiId}
+                    variant="outline"
+                    className="shrink-0"
+                >
+                    <Navigation className="mr-0 sm:mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">S'y rendre</span>
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Se rendre à {destination?.name || 'destination'}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Comment souhaitez-vous voyager ?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                    {travelOptions.map(option => {
+                        const canAfford = gameState.player && gameState.player.money >= option.cost;
+                        const hasEnergy = gameState.player && gameState.player.stats.Energie >= option.energy;
+                        const canTravel = canAfford && hasEnergy;
+                        
+                        let disabledReason = "";
+                        if (!canAfford) disabledReason = "Fonds insuffisants";
+                        else if (!hasEnergy) disabledReason = "Pas assez d'énergie";
+
+                        return (
+                            <Button key={option.mode} variant="outline" className="w-full justify-start h-auto p-3" onClick={() => handleConfirmTravel(option)} disabled={!canTravel}>
+                                <option.icon className="mr-4 h-5 w-5" />
+                                <div className="text-left flex-grow">
+                                    <p className="font-semibold">{option.label}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Durée: ~{option.time} min | Coût: {option.cost.toFixed(2)}€ | Énergie: -${option.energy}
+                                    </p>
+                                </div>
+                                {!canTravel && <span className="ml-2 text-xs text-destructive">{disabledReason}</span>}
+                            </Button>
+                        );
+                    })}
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
         </div>
       )}
     </>
