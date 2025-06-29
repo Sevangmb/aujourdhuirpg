@@ -30,7 +30,7 @@ export interface SaveGameResult {
   cloudSaveSuccess: boolean | null;
 }
 
-export async function saveGameState(uid: string, characterId: string, state: GameState): Promise<SaveGameResult> {
+export async function saveGameState(uid: string, characterId: string, state: GameState, saveType: 'auto' | 'manual'): Promise<SaveGameResult> {
   const result: SaveGameResult = { localSaveSuccess: false, cloudSaveSuccess: null };
   if (!state || !state.player) {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
@@ -42,7 +42,7 @@ export async function saveGameState(uid: string, characterId: string, state: Gam
 
   if (state.player && !state.player.isAnonymous) {
     try {
-      await saveCharacter(uid, characterId, state);
+      await saveCharacter(uid, characterId, state, saveType);
       result.cloudSaveSuccess = true;
     } catch (error) {
       result.cloudSaveSuccess = false;

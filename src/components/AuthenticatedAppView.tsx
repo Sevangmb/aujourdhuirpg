@@ -93,7 +93,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
 
     autosaveTimeoutRef.current = setTimeout(() => {
-      handleSaveGame(true); // isAutoSave = true
+      handleSaveGame('auto'); // Use 'auto' saveType
     }, 5000);
 
     return () => {
@@ -209,10 +209,14 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         currentScenario: { scenarioText: prologueResult.scenarioText }
       };
 
-      await createNewCharacter(user.uid, finalGameState);
+      // This now creates a character document and an initial save file
+      const newCharacterId = await createNewCharacter(user.uid, finalGameState);
+      setSelectedCharacterId(newCharacterId); // Set the new character as active
 
       toast({ title: "Personnage créé !", description: `${playerData.name} est prêt(e) pour l'aventure.` });
-      fetchCharacterList();
+      fetchCharacterList(); // This will switch the mode to 'selecting_character'
+      setAppMode('playing'); // Manually switch to playing mode with the new character
+      setGameState(finalGameState);
 
     } catch (error) {
       console.error("Error during character creation:", error);
@@ -240,20 +244,20 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, [user, toast, fetchCharacterList, selectedCharacterId]);
 
   const handleExitToSelection = () => {
-    handleSaveGame(false); // Save before exiting
+    handleSaveGame('auto'); // Save before exiting
     setGameState(null);
     setSelectedCharacterId(null);
     clearLocalGameState();
     setAppMode('selecting_character');
   };
 
-  const handleSaveGame = useCallback(async (isAutoSave: boolean = false) => {
+  const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto') => {
     if (!gameState || !user || !gameState.player || !selectedCharacterId) {
-      if (!isAutoSave) toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
+      if (saveType === 'manual') toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
       return;
     }
-    const result = await saveGameState(user.uid, selectedCharacterId, gameState);
-    if (!isAutoSave) {
+    const result = await saveGameState(user.uid, selectedCharacterId, gameState, saveType);
+    if (saveType === 'manual') {
         if (result.cloudSaveSuccess) toast({ title: "Partie Sauvegardée" });
         else toast({ title: "Échec de la sauvegarde", variant: "destructive" });
     }
@@ -299,7 +303,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         player={gameState?.player || null}
         journal={gameState?.journal || []}
         onRestartGame={handleExitToSelection}
-        onSaveGame={() => handleSaveGame(false)}
+        onSaveGame={() => handleSaveGame('manual')}
         onSignOut={signOutUser}
         onToggleFullScreen={handleToggleFullScreen}
         onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
