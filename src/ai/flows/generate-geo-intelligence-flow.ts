@@ -9,6 +9,9 @@ import {
   GenerateGeoIntelligenceInputSchema,
   GenerateGeoIntelligenceOutputSchema,
 } from './schemas/generate-geo-intelligence-schemas';
+import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool';
+import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
+
 
 export type GenerateGeoIntelligenceInput = z.infer<typeof GenerateGeoIntelligenceInputSchema>;
 export type GenerateGeoIntelligenceOutput = z.infer<typeof GenerateGeoIntelligenceOutputSchema>;
@@ -25,11 +28,14 @@ export async function generateGeoIntelligence(
 
 const geoIntelligencePrompt = ai.definePrompt({
   name: 'generateGeoIntelligencePrompt',
+  tools: [getWikipediaInfoTool, getNearbyPoisTool],
   input: { schema: GenerateGeoIntelligenceInputSchema },
   output: { schema: GenerateGeoIntelligenceOutputSchema },
   prompt: `
     Vous êtes un analyste géospatial expert et un guide local pour un jeu de rôle se déroulant dans la France contemporaine.
     Votre mission est de fournir une analyse détaillée et immersive pour le lieu suivant : {{placeName}} ({{latitude}}, {{longitude}}).
+
+    Utilisez les outils \`getWikipediaInfoTool\` et \`getNearbyPoisTool\` pour rassembler des informations sur le lieu et ses environs afin de remplir tous les champs requis. Si le lieu est un commerce spécifique (comme un restaurant), basez votre analyse sur le quartier général où il se trouve.
 
     Produisez une réponse JSON structurée qui suit précisément le schéma de sortie fourni.
 
@@ -38,7 +44,7 @@ const geoIntelligencePrompt = ai.definePrompt({
     - criminalityLevel : Sur une échelle de 0 (très sûr) à 100 (très dangereux), quel est le niveau de criminalité ressenti ?
     - cultureScore : Sur une échelle de 0 à 100, évaluez la richesse culturelle (musées, théâtres, galeries, etc.).
     - economicActivity : Listez 2-3 activités économiques clés (ex: "Tourisme", "Finance", "Artisanat", "Restauration").
-    - historicalAnecdote : Racontez une anecdote historique intéressante et peu connue sur ce lieu.
+    - historicalAnecdote : Racontez une anecdote historique intéressante et peu connue sur ce lieu ou son quartier.
     - dominantAtmosphere : Décrivez l'ambiance générale en quelques mots (ex: "Vibrant et bruyant", "Calme et verdoyant").
 
     RECOMMANDATIONS IA :
@@ -60,7 +66,9 @@ const generateGeoIntelligenceFlow = ai.defineFlow(
   async (input) => {
     try {
       const { output } = await geoIntelligencePrompt(input);
-      return output;
+      // The prompt might return undefined if it can't generate the structured output.
+      // We explicitly return null in that case, which is handled by the UI.
+      return output || null;
     } catch (error) {
       console.error(`Error in generateGeoIntelligenceFlow for "${input.placeName}":`, error);
       // In case of error, return null instead of throwing to allow the UI to handle it gracefully.
