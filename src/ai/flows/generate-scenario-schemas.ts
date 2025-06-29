@@ -58,7 +58,7 @@ export const GenerateScenarioInputSchema = z.object({
   })).optional().describe("Résumé des PNJ importants déjà rencontrés."),
   currentCluesSummary: z.array(z.object({ title: z.string(), summary: z.string() })).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
   currentDocumentsSummary: z.array(z.object({title: z.string(), summary: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
-  currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.).")
+  currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.). L'IA peut mettre à jour ce champ dans sa réponse.")
 }).describe("Input schema for the generateScenario flow.");
 
 
@@ -94,6 +94,9 @@ export const GenerateScenarioOutputSchema = z.object({
   /** A list of new documents obtained by the player. */
   newDocuments: z.array(DocumentInputSchema).optional().describe("Nouveaux documents que le joueur obtient."),
   
+  /** Optional: The AI can update the player's investigation notes with new summaries or hypotheses. */
+  updatedInvestigationNotes: z.string().optional().describe("Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA."),
+
   /** A list of items to add directly to the player's inventory. */
   itemsToAddToInventory: z.array(z.object({
     itemId: z.string().describe("The ID of the item from the master item list (e.g., 'medkit_basic_01')."),

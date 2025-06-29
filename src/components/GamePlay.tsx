@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -146,6 +147,11 @@ const GamePlay: React.FC<GamePlayProps> = ({
           aiNotifications.push({ type: 'document_added', title: 'Nouveau Document', description: `Document obtenu : "${doc.title}".` });
         });
       }
+      if (aiOutput.updatedInvestigationNotes) {
+        aiActions.push({ type: 'UPDATE_INVESTIGATION_NOTES', payload: aiOutput.updatedInvestigationNotes });
+        aiNotifications.push({ type: 'investigation_notes_updated', title: 'Synthèse Mise à Jour', description: 'Vos notes d\'enquête ont été mises à jour.' });
+      }
+
 
       // Update the state in one atomic operation
       onStateUpdate(prevState => {

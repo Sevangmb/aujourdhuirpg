@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, FileText as DocumentIcon, Lightbulb, MessageSquare } from 'lucide-react';
 import Image from "next/image";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface EvidenceLogDisplayProps {
   player: Player;
@@ -44,7 +45,9 @@ const DocumentCard: React.FC<{ documentItem: GameDocument }> = ({ documentItem }
         <CardDescription className="text-xs">Type: {documentItem.type} | Acquis: {documentItem.dateAcquired ? new Date(documentItem.dateAcquired).toLocaleDateString('fr-FR') : 'N/A'}</CardDescription>
     </CardHeader>
     <CardContent className="p-3 pt-0">
-        <div className="prose prose-sm dark:prose-invert max-h-48 overflow-y-auto text-xs" dangerouslySetInnerHTML={{ __html: documentItem.content }}></div>
+        <ScrollArea className="max-h-40">
+            <div className="prose prose-sm dark:prose-invert text-xs p-1" dangerouslySetInnerHTML={{ __html: documentItem.content }}></div>
+        </ScrollArea>
         {documentItem.source && <p className="text-xs mt-2 border-t pt-2"><span className="font-semibold">Source:</span> {documentItem.source}</p>}
     </CardContent>
  </Card>
@@ -85,11 +88,14 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center"><Search className="w-5 h-5 mr-2"/>Résumé de l'Enquête</CardTitle>
+                <CardDescription>Synthèse des informations et hypothèses actuelles, générée par l'IA.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="whitespace-pre-wrap text-sm leading-relaxed prose prose-sm dark:prose-invert">
-                  {investigationNotes}
-                </div>
+                <ScrollArea className="h-64">
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed prose prose-sm dark:prose-invert p-1">
+                      {investigationNotes}
+                    </div>
+                </ScrollArea>
               </CardContent>
             </Card>
         </TabsContent>

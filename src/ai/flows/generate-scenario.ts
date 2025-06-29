@@ -45,13 +45,7 @@ Votre mission a deux volets :
 2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés (\`newQuests\`, \`newPNJs\`, \`itemsToAddToInventory\`, \`newTransactions\`, etc.) pour créer ces éléments.
     - **Créer des opportunités de Jobs :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job'). **IMPORTANT : Créez ces jobs avec le statut \`'inactive'\`**. La narration doit présenter l'opportunité (ex: une annonce, une offre de PNJ) plutôt que de commencer la quête directement.
     - **Gérer l'acceptation de Jobs :** Si l'action du joueur indique qu'il accepte un job (ex: "j'accepte la mission de livraison"), générez un événement \`updatedQuests\` pour passer le statut de la quête correspondante à \`'active'\`.
-
-**Exemple de synergie (Acceptation de Job) :**
-- **Narration précédente :** "<p>Sur un panneau d'affichage, une note manuscrite propose 20€ pour livrer un colis de l'autre côté de la rue.</p>" (L'IA a aussi créé une quête 'inactive' avec l'id 'job_livraison_colis_01')
-- **Action Joueur :** "Je prends l'annonce et j'accepte le job de livraison."
-- **Votre Narration ('scenarioText') :** "<p>Vous décrochez le papier. Le numéro indiqué répond immédiatement. On vous attend au point de rendez-vous pour récupérer le colis.</p>"
-- **Vos Événements de Jeu (Sortie JSON) :**
-  - \\\`updatedQuests\\\`: [ { "questId": "job_livraison_colis_01", "newStatus": "active" } ]
+    - **Mise à jour du Dossier d'Enquête :** Si le joueur fait une découverte majeure ou tire une conclusion, mettez à jour le champ \`updatedInvestigationNotes\` pour refléter cette nouvelle synthèse.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -73,6 +67,9 @@ const PROMPT_PLAYER_CONTEXT = `
 - Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}} (Utilisez pour colorer la narration)
 - Tonalité : {{#if toneSettings}}{{#each toneSettings}}{{{@key}}}: {{{this}}} {{/each}}{{else}}(Équilibrée){{/if}}
 - Scène Précédente : {{{currentScenario}}}
+- Dossier d'Enquête : {{{currentInvestigationNotes}}}
+- Indices Connus : {{#each currentCluesSummary}}{{this.title}}; {{/each}}
+- Documents Possédés : {{#each currentDocumentsSummary}}{{this.title}}; {{/each}}
 `;
 
 const PROMPT_ACTION_AND_EFFECTS = `

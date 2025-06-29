@@ -29,6 +29,7 @@ export type GameAction =
   | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
   | { type: 'ADD_CLUE'; payload: Omit<Clue, 'dateFound'> }
   | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
+  | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
   | { type: 'ADD_XP'; payload: number }
@@ -209,6 +210,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return {
             ...state,
             player: { ...state.player, documents: [...(state.player.documents || []), newDocument] },
+        };
+    }
+    case 'UPDATE_INVESTIGATION_NOTES': {
+        return {
+            ...state,
+            player: { ...state.player, investigationNotes: action.payload }
         };
     }
     case 'ADD_HISTORICAL_CONTACT': {
