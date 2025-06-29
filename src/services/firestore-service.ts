@@ -59,6 +59,39 @@ export interface SaveSummary {
   aiSummary?: string; // AI-generated summary of the save state
 }
 
+/**
+ * Recursively removes any properties with `undefined` values from an object.
+ * This is necessary because Firestore does not support `undefined` values.
+ * @param obj The object to clean.
+ * @returns A new object with all `undefined` values removed.
+ */
+function cleanForFirebase<T>(obj: T): T {
+    if (obj === null || obj === undefined) {
+        return obj;
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(item => cleanForFirebase(item)) as any;
+    }
+    
+    // Check for Firestore specific types (like Timestamps) which are objects but not plain objects
+    if (typeof obj === 'object' && obj.constructor === Object) {
+        const cleanedObj: { [key: string]: any } = {};
+        for (const key in obj) {
+            // hasOwnProperty check is important
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                const value = (obj as any)[key];
+                if (value !== undefined) {
+                    cleanedObj[key] = cleanForFirebase(value);
+                }
+            }
+        }
+        return cleanedObj as T;
+    }
+
+    return obj;
+}
+
 
 /**
  * Lists all characters for a given user, ordered by most recently played.
@@ -140,7 +173,8 @@ export async function saveCharacter(uid: string, characterId: string, gameState:
 
   try {
     const stateToSave = { ...gameState, lastPlayed: serverTimestamp(), aiSummary };
-    await setDoc(saveDocRef, stateToSave);
+    const cleanedState = cleanForFirebase(stateToSave); // Remove undefined values
+    await setDoc(saveDocRef, cleanedState);
 
     const metadata = {
       name: gameState.player.name,
@@ -244,7 +278,7 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
     return [];
   }
   try {
-    const savesCollectionRef = collection(db, USERS_COLlection, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
+    const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
     const q = query(savesCollectionRef, orderBy("lastPlayed", "desc"));
     const querySnapshot = await getDocs(q);
 
