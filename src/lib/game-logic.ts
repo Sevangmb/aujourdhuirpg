@@ -1,4 +1,4 @@
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -6,6 +6,7 @@ import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
 import { montmartreInitialChoices } from '@/data/choices';
 import type { WeatherData } from '@/app/actions/get-current-weather';
+import { v4 as uuidv4 } from 'uuid';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -16,6 +17,13 @@ export function getInitialScenario(player: Player): Scenario {
 }
 
 // --- Game Actions & Reducer ---
+// Types for simplified AI payloads
+type AddQuestPayload = Omit<Quest, 'id' | 'dateAdded' | 'dateCompleted' | 'status' | 'objectives'> & { objectives: string[] };
+type AddPnjPayload = Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'dispositionScore' | 'trustLevel' | 'notes'> & { dispositionScore?: number };
+type AddCluePayload = Omit<Clue, 'id' | 'dateFound'>;
+type AddDocumentPayload = Omit<GameDocument, 'id' | 'dateAcquired'>;
+
+
 export type GameAction =
   | { type: 'EXECUTE_TRAVEL', payload: { destination: Position, travelNarrative: string, time: number, cost: number, energy: number } }
   | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
@@ -24,13 +32,13 @@ export type GameAction =
   | { type: 'ADD_GAME_TIME'; payload: number }
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
-  // AI-driven actions
-  | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded' | 'dateCompleted'> }
+  // AI-driven actions from simplified schemas
+  | { type: 'ADD_QUEST'; payload: AddQuestPayload }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
-  | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'dispositionScore'> & { dispositionScore?: number } }
+  | { type: 'ADD_PNJ'; payload: AddPnjPayload }
   | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
-  | { type: 'ADD_CLUE'; payload: Omit<Clue, 'dateFound'> }
-  | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
+  | { type: 'ADD_CLUE'; payload: AddCluePayload }
+  | { type: 'ADD_DOCUMENT'; payload: AddDocumentPayload }
   | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
@@ -111,7 +119,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     
     // --- AI-Driven Reducers ---
     case 'ADD_QUEST': {
-        const newQuest: Quest = { ...action.payload, dateAdded: nowISO, status: action.payload.status || (action.payload.type === 'job' ? 'inactive' : 'active') };
+        const newQuest: Quest = {
+            id: uuidv4(),
+            ...action.payload,
+            dateAdded: nowISO,
+            status: action.payload.type === 'job' ? 'inactive' : 'active',
+            objectives: action.payload.objectives.map((desc): QuestObjective => ({
+                id: uuidv4(),
+                description: desc,
+                isCompleted: false
+            })),
+        };
         return {
             ...state,
             player: { ...state.player, questLog: [...(state.player.questLog || []), newQuest] },
@@ -149,6 +167,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'ADD_PNJ': {
         const newPNJ: PNJ = { 
+            id: uuidv4(),
             ...action.payload, 
             firstEncountered: state.player.currentLocation.name, 
             lastSeen: nowISO, 
@@ -188,7 +207,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'ADD_TRANSACTION': {
         const newTransaction: Transaction = {
             ...action.payload,
-            id: `${now}-${Math.random().toString(36).substring(2, 9)}`,
+            id: uuidv4(),
             timestamp: new Date().toISOString(),
             locationName: state.player.currentLocation.name,
         };
@@ -210,14 +229,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...state, player: { ...state.player, progression: newProgression } };
     }
      case 'ADD_CLUE': {
-        const newClue: Clue = { ...action.payload, dateFound: nowISO };
+        const newClue: Clue = { id: uuidv4(), ...action.payload, dateFound: nowISO };
         return {
             ...state,
             player: { ...state.player, clues: [...(state.player.clues || []), newClue] },
         };
     }
     case 'ADD_DOCUMENT': {
-        const newDocument: GameDocument = { ...action.payload, dateAcquired: nowISO };
+        const newDocument: GameDocument = { id: uuidv4(), ...action.payload, dateAcquired: nowISO };
         return {
             ...state,
             player: { ...state.player, documents: [...(state.player.documents || []), newDocument] },
@@ -402,7 +421,7 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 }
 
 // --- AI Input Preparation ---
-export function prepareAIInput(gameState: GameState, playerChoice: string, deterministicEvents: string[] = []): GenerateScenarioInput | null {
+export function prepareAIInput(gameState: GameState, playerChoice: string, deterministicEvents: string[] = []): any | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");
     return null;

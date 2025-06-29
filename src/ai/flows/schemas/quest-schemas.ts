@@ -3,25 +3,20 @@
  */
 import { z } from 'genkit';
 
-export const QuestObjectiveInputSchema = z.object({
-  id: z.string().describe("Identifiant unique de l'objectif (ex: 'trouver_document_x')."),
-  description: z.string().describe("Description de ce que le joueur doit faire."),
-  isCompleted: z.boolean().default(false).describe("Si l'objectif est complété (généralement false à la création).")
-}).describe("Un objectif spécifique d'une quête.");
-
+// This schema is simplified for AI generation.
+// The game logic will handle adding IDs and managing status.
 export const QuestInputSchema = z.object({
-  id: z.string().describe("Identifiant unique de la quête (ex: 'quete_principale_01', 'secondaire_cafe_mystere'). Doit être unique et mémorable."),
   title: z.string().describe("Titre de la quête."),
   description: z.string().describe("Description générale de la quête."),
   type: z.enum(['main', 'secondary', 'job']).describe("Type de quête (principale, secondaire, ou un 'job'/'gig' qui est principalement pour gagner de l'argent)."),
-  status: z.enum(['active', 'inactive', 'completed', 'failed']).default('active').describe("Statut de la quête."),
-  objectives: z.array(QuestObjectiveInputSchema).describe("Liste des objectifs de la quête."),
-  giver: z.string().optional().describe("Nom du PNJ qui a donné la quête. OMITTIR si pas de PNJ donneur spécifique."),
+  objectives: z.array(z.string()).min(1).describe("Liste des descriptions textuelles des objectifs. Chaque chaîne est un objectif."),
+  giver: z.string().optional().describe("Nom du PNJ qui a donné la quête. OMETTRE si pas de PNJ donneur spécifique."),
   rewardDescription: z.string().optional().describe("Description textuelle de la récompense potentielle (objets, XP)."),
   moneyReward: z.number().optional().describe("Montant d'argent (euros) offert en récompense pour la quête."),
   relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
-}).describe("Structure pour une nouvelle quête à ajouter au journal du joueur.");
+}).describe("Structure pour une nouvelle quête à ajouter au journal du joueur. L'IA n'a pas besoin de fournir un ID ou un statut.");
 
+// This schema remains the same, as it's used for updating existing quests by ID.
 export const QuestUpdateSchema = z.object({
   questId: z.string().describe("ID de la quête existante à mettre à jour."),
   newStatus: z.enum(['active', 'completed', 'failed']).optional().describe("Nouveau statut de la quête si changé."),
