@@ -32,11 +32,14 @@ export interface CharacterSummary {
   lastPlayed: string; // ISO string
 }
 
-// A summary of a single save file for the loading screen
+// A summary of a single save file for the loading screen, now with more metadata
 export interface SaveSummary {
   id: string; // Document ID of the save file
   type: 'auto' | 'manual';
   timestamp: string; // ISO string of when it was saved
+  level: number;
+  locationName: string;
+  playTimeInMinutes: number;
 }
 
 
@@ -201,13 +204,11 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
   }
   try {
     const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
-    // Order by document ID for manual saves, which contain timestamps. 'auto' will appear first or last.
-    // To get the most recent on top, we sort by the `lastPlayed` field inside the document.
     const q = query(savesCollectionRef, orderBy("lastPlayed", "desc"));
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map(docSnap => {
-      const data = docSnap.data();
+      const data = docSnap.data() as GameState;
       const timestamp = (data.lastPlayed as Timestamp)?.toDate()?.toISOString() || new Date(0).toISOString();
       const docId = docSnap.id;
       
@@ -215,6 +216,9 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
         id: docId,
         type: docId.startsWith('manual_') ? 'manual' : 'auto',
         timestamp: timestamp,
+        level: data.player?.progression.level || 1,
+        locationName: data.player?.currentLocation.name || 'Lieu inconnu',
+        playTimeInMinutes: data.gameTimeInMinutes || 0,
       };
     });
   } catch (error) {

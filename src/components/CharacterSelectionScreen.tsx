@@ -2,20 +2,21 @@
 "use client";
 
 import React, { useState } from 'react';
-import type { User } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 import type { CharacterSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { PlusCircle, Trash2, Loader2, Save } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Save, User, MapPin, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
 import { listSavesForCharacter, type SaveSummary } from '@/services/firestore-service';
 import { ScrollArea } from './ui/scroll-area';
+import { formatGameTime } from '@/lib/utils/time-utils';
 
 interface CharacterSelectionScreenProps {
-  user: User; // Needed to fetch saves for a specific user
+  user: FirebaseUser; // Needed to fetch saves for a specific user
   characters: CharacterSummary[];
   onSelectCharacterAndSave: (characterId: string, saveId: string) => void;
   onCreateNew: () => void;
@@ -125,15 +126,15 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
       </div>
 
       <Dialog open={isSavesModalOpen} onOpenChange={setIsSavesModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>Charger une partie pour {selectedCharForSaves?.name}</DialogTitle>
                 <DialogDescription>
-                    Choisissez une sauvegarde à charger.
+                    Choisissez un point de sauvegarde pour continuer votre aventure.
                 </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[60vh] -mx-4 px-4">
-              <div className="space-y-2 py-4">
+            <ScrollArea className="max-h-[60vh] -mx-6 px-6">
+              <div className="space-y-3 py-4">
                 {isLoadingSaves ? (
                   <div className="flex items-center justify-center p-8">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -143,19 +144,21 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
                       <Button
                         key={save.id}
                         variant="outline"
-                        className="w-full flex justify-between items-center h-auto py-2"
+                        className="w-full flex justify-between items-center h-auto p-3 text-left"
                         onClick={() => handleLoadSave(save.id)}
                       >
-                        <div className="flex items-center">
-                          <Save className="w-4 h-4 mr-3 text-muted-foreground" />
-                          <div className="text-left">
-                            <p className="font-semibold capitalize">{save.type === 'manual' ? 'Sauvegarde Manuelle' : 'Sauvegarde Auto'}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(save.timestamp).toLocaleString('fr-FR')}</p>
-                          </div>
+                        <div className="flex items-center gap-4">
+                            <Save className="w-8 h-8 text-primary shrink-0" />
+                            <div className="flex-grow">
+                                <p className="font-semibold capitalize">{save.type === 'manual' ? 'Sauvegarde Manuelle' : 'Sauvegarde Auto'}</p>
+                                <p className="text-xs text-muted-foreground">{new Date(save.timestamp).toLocaleString('fr-FR')}</p>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-2 text-muted-foreground">
+                                    <span className="flex items-center gap-1"><User className="w-3 h-3"/>Niv. {save.level}</span>
+                                    <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3"/>{save.locationName}</span>
+                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3"/>{formatGameTime(save.playTimeInMinutes)}</span>
+                                </div>
+                            </div>
                         </div>
-                        <span className="text-xs font-mono ml-4 bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
-                          {save.id.startsWith('manual_') ? save.id.substring(16, 22) : save.id}
-                        </span>
                       </Button>
                   ))
                 ) : (
