@@ -1,4 +1,18 @@
 
+/**
+ * @fileoverview Service for all Firestore interactions related to player characters and their save data.
+ *
+ * This service manages the following data structure in Firestore:
+ *
+ * /users/{uid}/characters/{characterId}
+ *   - name: string
+ *   - avatarUrl: string
+ *   - level: number
+ *   - lastPlayed: Timestamp
+ *   - (subcollection) saves/{saveId}
+ *     - saveId can be 'auto', 'manual_timestamp', or 'checkpoint_timestamp'.
+ *     - The document contains the full GameState object.
+ */
 import { db } from '@/lib/firebase';
 import type { GameState } from '@/lib/types';
 import {
@@ -75,8 +89,15 @@ export async function listCharacters(uid: string): Promise<CharacterSummary[]> {
 
 /**
  * Saves a character's game state to a specific slot in Firestore.
- * This function saves the full game state into a 'saves' subcollection
- * and updates the parent character document with lightweight metadata for quick listing.
+ *
+ * This function implements a robust saving strategy:
+ * 1.  It saves the full game state into a 'saves' subcollection within the character's document.
+ * 2.  The name of the save document is determined by `saveType`:
+ *     - 'auto': Overwrites a single document named 'auto' for quick recovery.
+ *     - 'manual' | 'checkpoint': Creates a new versioned document (e.g., 'manual_2024-01-01T12:00:00.000Z') to preserve history.
+ * 3.  It updates the parent character document with lightweight metadata (name, level, lastPlayed) for efficient listing on the character selection screen.
+ * 4.  It generates and includes an AI summary of the current game state within the save file.
+ *
  * @param uid The user's Firebase UID.
  * @param characterId The unique ID for the character.
  * @param gameState The game state to save.
@@ -130,11 +151,15 @@ export async function saveCharacter(uid: string, characterId: string, gameState:
 }
 
 /**
- * Creates a new character, which involves creating a main character document for metadata
- * and an initial save state in a subcollection.
+ * Creates a new character in Firestore.
+ *
+ * This process involves two main steps:
+ * 1. Creating a primary character document in the user's `characters` subcollection. This document holds lightweight metadata (name, avatar, level) for quick and efficient display on the character selection screen.
+ * 2. Creating an initial save file (as an 'auto' save) within the `saves` subcollection of the new character document. This ensures every new character is immediately playable.
+ *
  * @param uid The user's Firebase UID.
- * @param gameState The initial game state for the new character.
- * @returns The ID of the newly created character document.
+ * @param gameState The initial game state for the new character, typically from the character creation form.
+ * @returns A promise that resolves to the ID of the newly created character document.
  */
 export async function createNewCharacter(uid: string, gameState: GameState): Promise<string> {
    if (!db) throw new Error("Firestore not available.");
@@ -203,7 +228,7 @@ export async function loadSpecificSave(uid: string, characterId: string, saveId:
 }
 
 /**
- * Lists all available save files for a given character.
+ * Lists all available save files for a given character, ordered by most recent.
  * @param uid The user's Firebase UID.
  * @param characterId The ID of the character.
  * @returns A promise that resolves to an array of save summaries.
@@ -261,6 +286,9 @@ export async function deleteCharacter(uid: string, characterId: string): Promise
     console.error("Firestore Error: Firestore service is not initialized.");
     throw new Error("Firestore not available.");
   }
+  // Hardcoded collection names for consistency
+  const USERS_COLLECTION = 'users';
+  const CHARACTERS_SUBCOLLECTION = 'characters';
   try {
     const characterDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId);
     await deleteDoc(characterDocRef);
@@ -270,3 +298,5 @@ export async function deleteCharacter(uid: string, characterId: string): Promise
     throw error;
   }
 }
+
+    
