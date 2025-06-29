@@ -1,3 +1,4 @@
+
 # Aujourd'hui RPG
 
 ## Introduction
@@ -10,7 +11,10 @@ Aujourd'hui RPG is an interactive role-playing game set in modern-day France. Pl
 *   **Interactive Scenarios:** Engage with scenarios presented in HTML format, making choices that directly influence the narrative.
 *   **Dynamic Storytelling:** Experience a story that evolves with your decisions, powered by generative AI. Events are tailored to be relevant to contemporary life in France.
 *   **Stat Tracking:** Monitor and see your character's stats change based on scenario outcomes and choices.
-*   **Save and Load Progress:** Save your game state and return to it later within the same browser session.
+*   **Living Economy**: Actively earn money through jobs and manage realistic expenses. The world has a cost.
+*   **Intelligent Transport System**: Travel between locations with choices of transport mode (walk, metro, taxi), each with time, cost, and energy trade-offs. Journeys can include narrative events.
+*   **Geospatial Analysis**: Use AI-powered tools to get strategic insights on your current location, including safety, atmosphere, and hidden gems.
+*   **Save and Load Progress:** Save your game state and return to it later. Progress for registered users is saved to the cloud.
 
 ## Tech Stack
 
