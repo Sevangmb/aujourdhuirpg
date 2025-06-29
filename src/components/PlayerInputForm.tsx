@@ -12,7 +12,7 @@ import type { GameAction } from '@/lib/game-logic';
 import { checkForLocationBasedEvents } from '@/lib/game-logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { useToast } from '@/hooks/use-toast';
-import { applyStatChanges } from '@/lib/player-state-helpers';
+import { aiService } from '@/services/aiService';
 
 interface PlayerInputFormProps {
   playerInput: string;
@@ -129,7 +129,7 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
     setIsTravelModalOpen(true);
   };
 
-  const handleConfirmTravel = (option: TravelOption) => {
+  const handleConfirmTravel = async (option: TravelOption) => {
     if (!destination || !gameState.player) return;
 
     if (gameState.player.money < option.cost) {
@@ -150,24 +150,32 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
         return;
     }
 
-    const newStats = applyStatChanges(gameState.player.stats, { Energie: -option.energy });
-    
-    dispatch({ type: 'MOVE_TO_LOCATION', payload: destination });
-    dispatch({ type: 'ADD_GAME_TIME', payload: option.time });
-    
-    if (option.cost > 0) {
-      dispatch({ 
-        type: 'ADD_TRANSACTION', 
-        payload: {
-          amount: -option.cost,
-          type: 'expense',
-          category: 'transport',
-          description: `Trajet en ${option.label} vers ${destination.name}`
-        } 
-      });
+    let travelNarrative = "";
+    try {
+        const eventResult = await aiService.generateTravelEvent({
+            travelMode: option.mode,
+            origin: gameState.player.currentLocation,
+            destination: destination,
+            playerStats: gameState.player.stats,
+            playerSkills: gameState.player.skills,
+            gameTimeInMinutes: gameState.gameTimeInMinutes,
+        });
+        travelNarrative = eventResult.narrative;
+    } catch (e) {
+        console.error("Failed to generate travel event narrative.", e);
+        // Fail silently and continue with the travel.
     }
-    
-    dispatch({ type: 'UPDATE_PLAYER_DATA', payload: { stats: newStats } });
+
+    dispatch({
+        type: 'EXECUTE_TRAVEL',
+        payload: {
+            destination: destination,
+            travelNarrative: travelNarrative,
+            time: option.time,
+            cost: option.cost,
+            energy: option.energy,
+        }
+    });
 
     toast({
       title: `Déplacement vers ${destination.name}...`,
@@ -267,7 +275,7 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
                                 <div className="text-left flex-grow">
                                     <p className="font-semibold">{option.label}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        Durée: ~{option.time} min | Coût: {option.cost.toFixed(2)}€ | Énergie: -${option.energy}
+                                        Durée: ~{option.time} min | Coût: {option.cost.toFixed(2)}€ | Énergie: -{option.energy}
                                     </p>
                                 </div>
                                 {!canTravel && <span className="ml-2 text-xs text-destructive">{disabledReason}</span>}

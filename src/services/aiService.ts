@@ -1,3 +1,4 @@
+
 import {
   generateScenario as generateScenarioFlow,
   GenerateScenarioInput,
@@ -8,6 +9,11 @@ import {
   GeneratePlayerAvatarInput,
   GeneratePlayerAvatarOutput,
 } from '@/ai/flows/generate-player-avatar-flow';
+import {
+  generateTravelEvent as generateTravelEventFlow,
+  GenerateTravelEventInput,
+  GenerateTravelEventOutput
+} from '@/ai/flows/generate-travel-event-flow';
 
 /**
  * Centralized service for interacting with AI flows.
@@ -33,5 +39,16 @@ export const aiService = {
     input: GeneratePlayerAvatarInput
   ): Promise<GeneratePlayerAvatarOutput> => {
     return generatePlayerAvatarFlow(input);
+  },
+
+  /**
+   * Calls the generateTravelEvent AI flow.
+   * @param input The input for generating a travel event.
+   * @returns The output from the generateTravelEvent flow.
+   */
+  generateTravelEvent: async (
+    input: GenerateTravelEventInput
+  ): Promise<GenerateTravelEventOutput> => {
+    return generateTravelEventFlow(input);
   },
 };

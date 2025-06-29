@@ -15,7 +15,7 @@ export function getInitialScenario(player: Player): Scenario {
 
 // --- Game Actions & Reducer ---
 export type GameAction =
-  | { type: 'MOVE_TO_LOCATION'; payload: Position }
+  | { type: 'EXECUTE_TRAVEL', payload: { destination: Position, travelNarrative: string, time: number, cost: number, energy: number } }
   | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'UPDATE_PLAYER_DATA'; payload: Partial<Player> }
@@ -40,20 +40,52 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   const nowISO = new Date().toISOString(); // For dating new entries
 
   switch (action.type) {
-    case 'MOVE_TO_LOCATION': {
-      const newLocation = action.payload;
+    case 'EXECUTE_TRAVEL': {
+      const { destination, travelNarrative, time, cost, energy } = action.payload;
+
+      // 1. Update location, time, money, stats
+      const newStats = applyStatChanges(state.player.stats, { Energie: -energy });
+      const newMoney = state.player.money - cost;
+      const newTime = (state.gameTimeInMinutes || 0) + time;
+
+      // 2. Create journal entry for the travel
       const newJournalEntry: JournalEntry = {
-        id: `${now}-${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: now,
+        id: `${newTime}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: newTime,
         type: 'location_change',
-        text: `Déplacé vers ${newLocation.name}.`,
-        location: newLocation,
+        text: `Voyage vers ${destination.name}.`,
+        location: destination,
       };
+
+      // 3. Create transaction if there was a cost
+      const newTransaction: Transaction | null = cost > 0 ? {
+        id: `${newTime}-tx-${Math.random().toString(36).substr(2, 9)}`,
+        amount: -cost,
+        type: 'expense',
+        category: 'transport',
+        description: `Transport vers ${destination.name}`,
+        timestamp: new Date().toISOString(),
+        locationName: state.player.currentLocation.name,
+      } : null;
+
+      const transactionLog = newTransaction ? [...(state.player.transactionLog || []), newTransaction] : state.player.transactionLog;
+
+      // 4. Construct new scenario text
+      const arrivalText = `<p>Vous arrivez à ${destination.name}.</p>`;
+      const newScenarioText = `${travelNarrative}\n${arrivalText}`;
+
       return {
         ...state,
-        player: { ...state.player, currentLocation: newLocation },
-        currentScenario: { scenarioText: `<p>Vous arrivez à ${newLocation.name}.</p>` },
-        nearbyPois: null,
+        gameTimeInMinutes: newTime,
+        player: {
+          ...state.player,
+          currentLocation: destination,
+          stats: newStats,
+          money: newMoney,
+          transactionLog: transactionLog || [],
+        },
+        currentScenario: { scenarioText: newScenarioText },
+        nearbyPois: null, // Clear POIs since we moved
         journal: [...(state.journal || []), newJournalEntry],
       };
     }
@@ -75,7 +107,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     
     // --- AI-Driven Reducers ---
     case 'ADD_QUEST': {
-        const newQuest: Quest = { ...action.payload, dateAdded: nowISO, status: 'active' };
+        const newQuest: Quest = { ...action.payload, dateAdded: nowISO, status: action.payload.type === 'job' ? 'inactive' : 'active' };
         return {
             ...state,
             player: { ...state.player, questLog: [...(state.player.questLog || []), newQuest] },
