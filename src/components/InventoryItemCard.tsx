@@ -18,6 +18,14 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
   const IconComponent = (LucideIcons as any)[item.iconName] || LucideIcons.Package;
   const xpPercentage = item.xpToNextItemLevel > 0 ? (item.itemXp / item.xpToNextItemLevel) * 100 : 0;
 
+  const localValue = item.contextual_properties.local_value;
+  const baseValue = item.economics.base_value;
+  const valueColor = localValue > baseValue 
+    ? 'text-green-600 bg-green-100/50' 
+    : localValue < baseValue 
+    ? 'text-red-600 bg-red-100/50' 
+    : 'text-green-600 bg-green-100/50';
+
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow duration-150 flex flex-col">
       <CardHeader className="flex flex-row items-start justify-between space-x-3 pb-2 pt-3 px-4">
@@ -40,9 +48,9 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
               )}
             </div>
         </div>
-         <div className="flex items-center text-xs font-semibold text-green-600 bg-green-100/50 rounded-full px-2 py-0.5">
+         <div className={`flex items-center text-xs font-semibold rounded-full px-2 py-0.5 ${valueColor}`}>
             <Euro className="w-3 h-3 mr-1" />
-            {item.economics.base_value}
+            {localValue.toFixed(2)}
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-3 flex-grow flex flex-col justify-between">

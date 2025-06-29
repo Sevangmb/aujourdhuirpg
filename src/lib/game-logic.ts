@@ -1,6 +1,6 @@
 
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains } from './player-state-helpers';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -57,12 +57,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'EXECUTE_TRAVEL': {
       const { destination, travelNarrative, time, cost, energy } = action.payload;
 
-      // 1. Update location, time, money, stats
       const newStats = applyStatChanges(state.player.stats, { Energie: -energy });
       const newMoney = state.player.money - cost;
       const newTime = (state.gameTimeInMinutes || 0) + time;
 
-      // 2. Create journal entry for the travel
       const newJournalEntry: JournalEntry = {
         id: `${newTime}-${Math.random().toString(36).substr(2, 9)}`,
         timestamp: newTime,
@@ -71,7 +69,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         location: destination,
       };
 
-      // 3. Create transaction if there was a cost
       const newTransaction: Transaction | null = cost > 0 ? {
         id: `${newTime}-tx-${Math.random().toString(36).substr(2, 9)}`,
         amount: -cost,
@@ -81,10 +78,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         timestamp: new Date().toISOString(),
         locationName: state.player.currentLocation.name,
       } : null;
-
       const transactionLog = newTransaction ? [...(state.player.transactionLog || []), newTransaction] : state.player.transactionLog;
 
-      // 4. Construct new scenario text
+      // Re-contextualize the entire inventory on arrival
+      const recontextualizedInventory = state.player.inventory.map(item => 
+        updateItemContextualProperties(item, destination)
+      );
+
       const arrivalText = `<p>Vous arrivez à ${destination.name}.</p>`;
       const newScenarioText = `${travelNarrative}\n${arrivalText}`;
 
@@ -97,9 +97,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           stats: newStats,
           money: newMoney,
           transactionLog: transactionLog || [],
+          inventory: recontextualizedInventory,
         },
         currentScenario: { scenarioText: newScenarioText, choices: montmartreInitialChoices /* TODO: Make dynamic */ },
-        nearbyPois: null, // Clear POIs since we moved
+        nearbyPois: null,
         journal: [...(state.journal || []), newJournalEntry],
       };
     }
@@ -214,7 +215,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'ADD_ITEM_TO_INVENTORY': {
         const { itemId, quantity } = action.payload;
-        const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity);
+        const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity, state.player.currentLocation);
         return { ...state, player: { ...state.player, inventory: updatedInventory } };
     }
     case 'ADD_TRANSACTION': {
@@ -383,7 +384,7 @@ export async function calculateDeterministicEffects(
        if (newPlayerState.money >= crepeCost) {
             newPlayerState.money -= crepeCost;
             newPlayerState.stats.Energie = Math.min(100, newPlayerState.stats.Energie + 5);
-            notifications.push({ type: 'money_changed', title: 'Achat', description: `Vous avez acheté une crêpe pour ${crepeCost}€.`});
+            notifications.push({ type: 'money_changed', title: 'Achat', description: `Vous avez acheté une crêpe pour ${crepeCost}€. `});
             notifications.push({ type: 'stat_changed', title: 'Énergie', description: `La crêpe vous redonne 5 points d'énergie.`});
             eventsForAI.push(`Le joueur a acheté une crêpe pour ${crepeCost}€ et a regagné 5 énergie.`);
        } else {

@@ -1,5 +1,5 @@
 
-import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem, GameNotification } from './types';
+import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem, GameNotification, Position } from './types';
 import { getMasterItemById } from '@/data/items';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,7 +19,40 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Partial<Pla
   return newStats;
 }
 
-export function addItemToInventory(currentInventory: IntelligentItem[], itemId: string, quantityToAdd: number): IntelligentItem[] {
+/**
+ * Recalculates the contextual properties of an item based on the player's location.
+ * @param item The item to update.
+ * @param location The player's current location.
+ * @returns The item with updated contextual properties.
+ */
+export function updateItemContextualProperties(item: IntelligentItem, location: Position): IntelligentItem {
+    const newItem = { ...item };
+    let localValue = item.economics.base_value;
+
+    // Example rule 1: Ancient Coin is more valuable in historical cities like Rome.
+    if (item.id === 'ancient_coin_01' && location.name.toLowerCase().includes('rome')) {
+        localValue *= 2;
+    }
+    
+    // Example rule 2: A map of Paris is less valuable when you are in Paris.
+    if (item.id === 'map_paris_01' && location.name.toLowerCase().includes('paris')) {
+        localValue *= 0.5;
+    }
+    
+    // Example rule 3: Lockpicks might be more valuable in a dense urban area with opportunities.
+    if (item.id === 'lockpicks_01' && (location.name.toLowerCase().includes('paris') || location.name.toLowerCase().includes('new york'))) {
+        localValue *= 1.5;
+    }
+
+    newItem.contextual_properties.local_value = parseFloat(localValue.toFixed(2));
+
+    // Future logic for legal_status, social_perception etc. can go here.
+
+    return newItem;
+}
+
+
+export function addItemToInventory(currentInventory: IntelligentItem[], itemId: string, quantityToAdd: number, location: Position): IntelligentItem[] {
   const masterItem = getMasterItemById(itemId);
   if (!masterItem) {
     console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}. Item not added.`);
@@ -28,56 +61,42 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
 
   const newInventory = [...currentInventory];
 
+  const createNewInstance = (): IntelligentItem => {
+      const baseInstance: IntelligentItem = {
+        ...masterItem,
+        instanceId: uuidv4(),
+        quantity: 1, // Will be adjusted for stackables
+        condition: { durability: 100 },
+        itemLevel: 1,
+        itemXp: 0,
+        xpToNextItemLevel: masterItem.xpToNextItemLevel,
+        memory: {
+          acquiredAt: new Date().toISOString(),
+          acquisitionStory: `Acquis à ${location.name}.`,
+          usageHistory: [],
+        },
+        contextual_properties: {
+          local_value: masterItem.economics.base_value,
+          legal_status: 'legal',
+          social_perception: 'normal',
+          utility_rating: 50,
+        },
+      };
+      return updateItemContextualProperties(baseInstance, location);
+  };
+
   if (masterItem.stackable) {
     const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
     if (existingItemIndex > -1) {
       newInventory[existingItemIndex].quantity += quantityToAdd;
     } else {
-      // Add new stackable item instance
-      newInventory.push({
-        ...masterItem,
-        instanceId: uuidv4(),
-        quantity: quantityToAdd,
-        condition: { durability: 100 },
-        itemLevel: 1,
-        itemXp: 0,
-        xpToNextItemLevel: masterItem.xpToNextItemLevel,
-        memory: {
-          acquiredAt: new Date().toISOString(),
-          acquisitionStory: `Acquis dans des circonstances normales.`,
-          usageHistory: [],
-        },
-        contextual_properties: {
-          local_value: masterItem.economics.base_value,
-          legal_status: 'legal',
-          social_perception: 'normal',
-          utility_rating: 50,
-        },
-      });
+      const newInstance = createNewInstance();
+      newInstance.quantity = quantityToAdd;
+      newInventory.push(newInstance);
     }
   } else {
-    // Add one new instance for each quantity of a non-stackable item
     for (let i = 0; i < quantityToAdd; i++) {
-      newInventory.push({
-        ...masterItem,
-        instanceId: uuidv4(),
-        quantity: 1,
-        condition: { durability: 100 },
-        itemLevel: 1,
-        itemXp: 0,
-        xpToNextItemLevel: masterItem.xpToNextItemLevel,
-        memory: {
-          acquiredAt: new Date().toISOString(),
-          acquisitionStory: `Acquis dans des circonstances normales.`,
-          usageHistory: [],
-        },
-        contextual_properties: {
-          local_value: masterItem.economics.base_value,
-          legal_status: 'legal',
-          social_perception: 'normal',
-          utility_rating: 50,
-        },
-      });
+      newInventory.push(createNewInstance());
     }
   }
   return newInventory;
