@@ -34,9 +34,6 @@ import {
     Euro,
     BookUser,
     User as UserIcon,
-    MapPin,
-    Sun,
-    Image as ImageIcon
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
@@ -44,13 +41,8 @@ import InventoryDisplay from '@/components/InventoryDisplay';
 import QuestJournalDisplay from '@/components/QuestJournalDisplay';
 import EvidenceLogDisplay from '@/components/EvidenceLogDisplay';
 import StatDisplay from '@/components/StatDisplay';
-import WeatherDisplay from '@/components/WeatherDisplay';
-import MapDisplay from '@/components/MapDisplay';
-import LocationImageDisplay from '@/components/LocationImageDisplay';
-import JournalDisplay from '@/components/JournalDisplay';
 import GeoIntelligenceDisplay from './GeoIntelligenceDisplay'; // Import new component
 import FinancialsDisplay from './FinancialsDisplay'; // Import new component
-import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import HistoricalContactsBook from './HistoricalContactsBook';
 import ToneSettingsDialog from './ToneSettingsDialog'; // Import ToneSettingsDialog
@@ -64,18 +56,14 @@ const AppMenubar: React.FC = () => {
         handleManualSave,
         handleExitToSelection,
         handleSignOut,
-        handleInitiateTravel,
         contextualData
     } = useGame();
 
     const { 
-        weather, 
-        locationImage, 
         geoIntelligence,
     } = contextualData;
     
     const [isToneSettingsOpen, setIsToneSettingsOpen] = React.useState(false);
-    const isMobile = useIsMobile();
     const player = gameState?.player;
 
     const onToggleFullScreen = () => {
@@ -234,50 +222,6 @@ const AppMenubar: React.FC = () => {
                 </Dialog>
             </MenubarContent>
         </MenubarMenu>
-
-        {isMobile && player.currentLocation && (
-            <MenubarMenu>
-              <MenubarTrigger className="px-2 sm:px-3">
-                <MapPin className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">Contexte</span>
-              </MenubarTrigger>
-              <MenubarContent>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><Sun className="mr-2 h-4 w-4" />Voir la Météo</MenubarItem>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
-                    <DialogHeader><DialogTitle>Météo Actuelle</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-1">
-                      <WeatherDisplay weatherData={weather.data} isLoading={weather.loading} error={weather.error} placeName={player.currentLocation?.name || 'Lieu Actuel'} gameTimeInMinutes={gameState.gameTimeInMinutes ?? undefined}/>
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><MapPin className="mr-2 h-4 w-4" />Voir la Carte</MenubarItem>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                    <DialogHeader><DialogTitle>Carte Locale</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-1">
-                      <MapDisplay currentLocation={player.currentLocation} nearbyPois={gameState.nearbyPois || []} onPoiClick={handleInitiateTravel} zoom={14} />
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><ImageIcon className="mr-2 h-4 w-4" />Voir le Lieu</MenubarItem>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
-                    <DialogHeader><DialogTitle>Vue du Lieu</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-1">
-                       <LocationImageDisplay imageUrl={locationImage.url} placeName={player.currentLocation?.name || UNKNOWN_STARTING_PLACE_NAME} isLoading={locationImage.loading} error={locationImage.error} />
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-              </MenubarContent>
-            </MenubarMenu>
-        )}
 
         <MenubarMenu>
             <MenubarTrigger className="px-2 sm:px-3">

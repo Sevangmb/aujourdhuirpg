@@ -110,8 +110,8 @@ const GamePlay: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden">
-      <main className="flex-grow flex flex-col p-2 bg-muted/20">
-        <ScrollArea className="h-full rounded-lg">
+      <main className="flex-grow flex flex-col bg-muted/20">
+        <ScrollArea className="flex-grow">
           <div className="p-4 md:p-6 space-y-6">
             <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
             {!isLoading && (

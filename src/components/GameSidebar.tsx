@@ -10,6 +10,7 @@ import LocationImageDisplay from './LocationImageDisplay';
 import PlayerStatusPanel from './PlayerStatusPanel';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ChevronsUpDown } from 'lucide-react';
 
 
 const GameSidebar: React.FC = () => {
@@ -19,7 +20,7 @@ const GameSidebar: React.FC = () => {
   
   if (!gameState || !gameState.player) return null;
 
-  const { player, nearbyPois, gameTimeInMinutes } = gameState;
+  const { player, gameTimeInMinutes } = gameState;
   const currentLocation = player.currentLocation;
 
   const content = (
@@ -48,9 +49,12 @@ const GameSidebar: React.FC = () => {
 
   if (isMobile) {
     return (
-        <details className="p-2 border-t md:hidden">
-            <summary className="font-semibold text-sm cursor-pointer">Afficher le statut et le contexte</summary>
-            <div className="pt-4">
+        <details className="border-t bg-background md:hidden group">
+            <summary className="font-semibold text-sm cursor-pointer list-none flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
+                <span>Afficher le Statut & Contexte</span>
+                <ChevronsUpDown className="h-5 w-5 text-muted-foreground" />
+            </summary>
+            <div className="p-2 pt-0">
               {content}
             </div>
         </details>
@@ -58,7 +62,7 @@ const GameSidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-full md:w-80 lg:w-96 flex-shrink-0 hidden md:block">
+    <aside className="w-full md:w-80 lg:w-96 flex-shrink-0 hidden md:block border-l bg-background/30">
       <ScrollArea className="h-full p-2">
         {content}
       </ScrollArea>

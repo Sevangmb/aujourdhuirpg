@@ -96,17 +96,19 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
           </div>
         </form>
         
-        <div className="relative flex items-center my-4">
+        <div className="relative flex items-center">
           <div className="flex-grow border-t border-border"></div>
           <span className="flex-shrink mx-4 text-muted-foreground text-xs uppercase">Ou</span>
           <div className="flex-grow border-t border-border"></div>
         </div>
 
-        <Button onClick={handleSignInAnon} variant="outline" className="w-full" disabled={isLoading}>
+      </CardContent>
+      <CardFooter>
+         <Button onClick={handleSignInAnon} variant="outline" className="w-full" disabled={isLoading}>
            {isSigningInAnon && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground mr-2"></div>}
           Continuer en tant qu'anonyme
         </Button>
-      </CardContent>
+      </CardFooter>
     </Card>
   );
 };
