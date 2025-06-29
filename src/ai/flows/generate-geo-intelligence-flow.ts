@@ -28,6 +28,7 @@ export async function generateGeoIntelligence(
 
 const geoIntelligencePrompt = ai.definePrompt({
   name: 'generateGeoIntelligencePrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWikipediaInfoTool, getNearbyPoisTool],
   input: { schema: GenerateGeoIntelligenceInputSchema },
   output: { schema: GenerateGeoIntelligenceOutputSchema },
@@ -35,9 +36,13 @@ const geoIntelligencePrompt = ai.definePrompt({
     Vous êtes un analyste géospatial expert et un guide local pour un jeu de rôle se déroulant dans la France contemporaine.
     Votre mission est de fournir une analyse détaillée et immersive pour le lieu suivant : {{placeName}} ({{latitude}}, {{longitude}}).
 
-    Utilisez les outils \`getWikipediaInfoTool\` et \`getNearbyPoisTool\` pour rassembler des informations sur le lieu et ses environs afin de remplir tous les champs requis. Si le lieu est un commerce spécifique (comme un restaurant), basez votre analyse sur le quartier général où il se trouve.
+    **Instructions Clés :**
+    1.  **Utilisez les outils :** Interrogez les outils \`getWikipediaInfoTool\` et \`getNearbyPoisTool\` pour obtenir des informations factuelles sur le lieu et ses environs.
+    2.  **Analysez le quartier :** Si le lieu est un commerce spécifique (comme "Pomme de Pain", un café, etc.), basez votre analyse sur le quartier général où il se trouve, en utilisant les informations des outils pour le contexte.
+    3.  **Plan de secours :** Si les outils ne retournent aucune information utile ou si le lieu est très générique, utilisez vos connaissances générales sur les villes françaises pour fournir une analyse plausible et crédible. Ne laissez PAS la réponse vide.
+    4.  **Formatage :** Produisez une réponse JSON structurée qui suit précisément le schéma de sortie fourni, sans aucune exception.
 
-    Produisez une réponse JSON structurée qui suit précisément le schéma de sortie fourni.
+    **Champs à remplir :**
 
     ANALYSE DE LA ZONE :
     - socialClass : Quel est le profil social dominant ? (populaire, bourgeois, bohème, business, mixte, résidentiel, inconnu)
@@ -55,6 +60,14 @@ const geoIntelligencePrompt = ai.definePrompt({
 
     Le ton doit être informatif mais immersif.
   `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    ],
+  },
 });
 
 const generateGeoIntelligenceFlow = ai.defineFlow(
