@@ -8,7 +8,7 @@ import type { GameState, Player, ToneSettings, Position, GeoIntelligence, Charac
 import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
-import { listCharacters, loadCharacter, createNewCharacter, saveCharacter, deleteCharacter } from '@/services/firestore-service';
+import { listCharacters, loadSpecificSave, createNewCharacter, saveCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
@@ -194,16 +194,16 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
   }, []);
 
-  const handleSelectCharacter = useCallback(async (characterId: string) => {
+  const handleSelectCharacterAndSave = useCallback(async (characterId: string, saveId: string) => {
     setAppMode('loading');
-    const loadedState = await loadCharacter(user.uid, characterId);
+    const loadedState = await loadSpecificSave(user.uid, characterId, saveId);
     if (loadedState) {
       const hydratedPlayer = hydratePlayer(loadedState.player);
       setGameState({ ...loadedState, player: hydratedPlayer });
       setSelectedCharacterId(characterId);
       setAppMode('playing');
     } else {
-      toast({ title: "Erreur de chargement", description: "Impossible de charger ce personnage.", variant: "destructive" });
+      toast({ title: "Erreur de chargement", description: "Impossible de charger cette sauvegarde.", variant: "destructive" });
       fetchCharacterList(); // Refresh list in case of error
     }
   }, [user.uid, toast, fetchCharacterList]);
@@ -310,10 +310,11 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     return (
       <CharacterSelectionScreen 
         characters={characterList}
-        onSelectCharacter={handleSelectCharacter}
+        onSelectCharacterAndSave={handleSelectCharacterAndSave}
         onCreateNew={() => setAppMode('creating_character')}
         onDeleteCharacter={handleDeleteCharacter}
         isDeleting={isDeletingCharacter}
+        user={user}
       />
     );
   }

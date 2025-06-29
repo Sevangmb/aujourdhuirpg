@@ -1,91 +1,170 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
+import type { User } from 'firebase/auth';
 import type { CharacterSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Save } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
+import { listSavesForCharacter, type SaveSummary } from '@/services/firestore-service';
+import { ScrollArea } from './ui/scroll-area';
 
 interface CharacterSelectionScreenProps {
+  user: User; // Needed to fetch saves for a specific user
   characters: CharacterSummary[];
-  onSelectCharacter: (characterId: string) => void;
+  onSelectCharacterAndSave: (characterId: string, saveId: string) => void;
   onCreateNew: () => void;
   onDeleteCharacter: (characterId: string) => void;
   isDeleting: string | null; // ID of the character being deleted
 }
 
 export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> = ({
+  user,
   characters,
-  onSelectCharacter,
+  onSelectCharacterAndSave,
   onCreateNew,
   onDeleteCharacter,
   isDeleting
 }) => {
+  const [isSavesModalOpen, setIsSavesModalOpen] = useState(false);
+  const [saves, setSaves] = useState<SaveSummary[]>([]);
+  const [selectedCharForSaves, setSelectedCharForSaves] = useState<CharacterSummary | null>(null);
+  const [isLoadingSaves, setIsLoadingSaves] = useState(false);
+
+  const handleShowSaves = async (character: CharacterSummary) => {
+    if (!user) return;
+    setIsLoadingSaves(true);
+    setSelectedCharForSaves(character);
+    setIsSavesModalOpen(true);
+    try {
+      const savesList = await listSavesForCharacter(user.uid, character.id);
+      setSaves(savesList);
+    } catch (error) {
+      console.error("Failed to load saves:", error);
+      setSaves([]);
+      // Optionally, show a toast notification here
+    } finally {
+      setIsLoadingSaves(false);
+    }
+  };
+
+  const handleLoadSave = (saveId: string) => {
+    if (selectedCharForSaves) {
+      onSelectCharacterAndSave(selectedCharForSaves.id, saveId);
+      setIsSavesModalOpen(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-muted/40 flex flex-col items-center justify-center p-4">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold font-headline text-primary">Choisissez votre Destin</h1>
-        <p className="text-muted-foreground mt-2">Sélectionnez un personnage pour continuer votre aventure ou en commencer une nouvelle.</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl w-full">
-        {characters.map(char => (
-          <Card key={char.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300 bg-card">
-            <CardHeader className="p-0 relative">
-              <Image
-                src={char.avatarUrl || defaultAvatarUrl}
-                alt={`Avatar de ${char.name}`}
-                width={300}
-                height={300}
-                className="w-full h-48 object-cover"
-                unoptimized={char.avatarUrl.startsWith('data:')}
-                data-ai-hint="character portrait"
-              />
-            </CardHeader>
-            <CardContent className="p-4 flex-grow">
-              <CardTitle className="text-lg font-headline">{char.name}</CardTitle>
-              <CardDescription>Niveau {char.level}</CardDescription>
-              <p className="text-xs text-muted-foreground mt-2">
-                Dernière partie : {new Date(char.lastPlayed).toLocaleString('fr-FR')}
-              </p>
-            </CardContent>
-            <CardFooter className="p-2 bg-muted/50 flex justify-between items-center gap-1">
-              <Button onClick={() => onSelectCharacter(char.id)} className="flex-grow">Jouer</Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon" disabled={isDeleting === char.id}>
-                    {isDeleting === char.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action est irréversible. Le personnage "{char.name}" et toutes ses sauvegardes seront supprimés définitivement.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDeleteCharacter(char.id)} className="bg-destructive hover:bg-destructive/90">
-                      Supprimer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardFooter>
+    <>
+      <div className="min-h-screen bg-muted/40 flex flex-col items-center justify-center p-4">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold font-headline text-primary">Choisissez votre Destin</h1>
+          <p className="text-muted-foreground mt-2">Sélectionnez un personnage pour continuer votre aventure ou en commencer une nouvelle.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl w-full">
+          {characters.map(char => (
+            <Card key={char.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300 bg-card">
+              <CardHeader className="p-0 relative">
+                <Image
+                  src={char.avatarUrl || defaultAvatarUrl}
+                  alt={`Avatar de ${char.name}`}
+                  width={300}
+                  height={300}
+                  className="w-full h-48 object-cover"
+                  unoptimized={char.avatarUrl.startsWith('data:')}
+                  data-ai-hint="character portrait"
+                />
+              </CardHeader>
+              <CardContent className="p-4 flex-grow">
+                <CardTitle className="text-lg font-headline">{char.name}</CardTitle>
+                <CardDescription>Niveau {char.level}</CardDescription>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Dernière partie : {new Date(char.lastPlayed).toLocaleString('fr-FR')}
+                </p>
+              </CardContent>
+              <CardFooter className="p-2 bg-muted/50 flex justify-between items-center gap-1">
+                <Button onClick={() => handleShowSaves(char)} className="flex-grow">Jouer</Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="icon" disabled={isDeleting === char.id}>
+                      {isDeleting === char.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Cette action est irréversible. Le personnage "{char.name}" et toutes ses sauvegardes seront supprimés définitivement.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onDeleteCharacter(char.id)} className="bg-destructive hover:bg-destructive/90">
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardFooter>
+            </Card>
+          ))}
+          <Card
+            onClick={onCreateNew}
+            className="flex flex-col items-center justify-center border-2 border-dashed hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200 min-h-[340px] bg-card/50"
+          >
+            <PlusCircle className="w-16 h-16 text-muted-foreground group-hover:text-primary" />
+            <p className="mt-4 font-semibold">Nouveau Personnage</p>
           </Card>
-        ))}
-        <Card
-          onClick={onCreateNew}
-          className="flex flex-col items-center justify-center border-2 border-dashed hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200 min-h-[340px] bg-card/50"
-        >
-          <PlusCircle className="w-16 h-16 text-muted-foreground group-hover:text-primary" />
-          <p className="mt-4 font-semibold">Nouveau Personnage</p>
-        </Card>
+        </div>
       </div>
-    </div>
+
+      <Dialog open={isSavesModalOpen} onOpenChange={setIsSavesModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Charger une partie pour {selectedCharForSaves?.name}</DialogTitle>
+                <DialogDescription>
+                    Choisissez une sauvegarde à charger.
+                </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh] -mx-4 px-4">
+              <div className="space-y-2 py-4">
+                {isLoadingSaves ? (
+                  <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : saves.length > 0 ? (
+                  saves.map(save => (
+                      <Button
+                        key={save.id}
+                        variant="outline"
+                        className="w-full flex justify-between items-center h-auto py-2"
+                        onClick={() => handleLoadSave(save.id)}
+                      >
+                        <div className="flex items-center">
+                          <Save className="w-4 h-4 mr-3 text-muted-foreground" />
+                          <div className="text-left">
+                            <p className="font-semibold capitalize">{save.type === 'manual' ? 'Sauvegarde Manuelle' : 'Sauvegarde Auto'}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(save.timestamp).toLocaleString('fr-FR')}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono ml-4 bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                          {save.id.startsWith('manual_') ? save.id.substring(16, 22) : save.id}
+                        </span>
+                      </Button>
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground p-8">Aucune sauvegarde trouvée pour ce personnage.</p>
+                )}
+              </div>
+            </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

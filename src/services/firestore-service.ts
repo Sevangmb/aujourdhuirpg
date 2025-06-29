@@ -32,6 +32,45 @@ export interface CharacterSummary {
   lastPlayed: string; // ISO string
 }
 
+// A summary of a single save file for the loading screen
+export interface SaveSummary {
+  id: string; // Document ID of the save file
+  type: 'auto' | 'manual';
+  timestamp: string; // ISO string of when it was saved
+}
+
+
+/**
+ * Lists all characters for a given user, ordered by most recently played.
+ * @param uid The user's Firebase UID.
+ * @returns A promise that resolves to an array of character summaries.
+ */
+export async function listCharacters(uid: string): Promise<CharacterSummary[]> {
+  if (!db) {
+    console.error("Firestore Error: Firestore service is not initialized.");
+    return [];
+  }
+  try {
+    const charactersCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION);
+    const q = query(charactersCollectionRef, orderBy("lastPlayed", "desc"));
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      const lastPlayedTimestamp = data.lastPlayed as Timestamp;
+      return {
+        id: docSnap.id,
+        name: data.name || 'Sans Nom',
+        avatarUrl: data.avatarUrl || '',
+        level: data.level || 1,
+        lastPlayed: lastPlayedTimestamp ? lastPlayedTimestamp.toDate().toISOString() : new Date(0).toISOString(),
+      };
+    });
+  } catch (error) {
+    console.error(`Firestore Error: listing characters for user ${uid}:`, error);
+    return [];
+  }
+}
 
 /**
  * Saves a character's game state to a specific slot in Firestore.
@@ -113,105 +152,73 @@ export async function createNewCharacter(uid: string, gameState: GameState): Pro
 
 
 /**
- * Loads the game state for a character, prioritizing the latest manual save.
- * It first attempts to load the latest 'manual' save. If it doesn't exist, it falls back to 'auto'.
+ * Loads a specific save file for a character.
  * @param uid The user's Firebase UID.
- * @param characterId The ID of the character to load.
+ * @param characterId The ID of the character.
+ * @param saveId The ID of the specific save document to load ('auto', or 'manual_...').
  * @returns The game state if found, otherwise null.
  */
-export async function loadCharacter(uid: string, characterId: string): Promise<GameState | null> {
+export async function loadSpecificSave(uid: string, characterId: string, saveId: string): Promise<GameState | null> {
   if (!db) {
     console.error("Firestore Error: Firestore service is not initialized.");
     return null;
   }
+  
+  try {
+    const saveDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, saveId);
+    const docSnap = await getDoc(saveDocRef);
 
-  // Helper function to process a document snapshot
-  const processDoc = (docSnap: DocumentSnapshot): GameState | null => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       // Convert Firestore Timestamp to a serializable format (ISO string)
       if (data.lastPlayed && data.lastPlayed instanceof Timestamp) {
+        data.lastPlayed = data.lastPlayed.toDate().toISOString(); // Mutating for serialization
         if (data.player) {
-          data.player.lastPlayed = data.lastPlayed.toDate().toISOString();
+          data.player.lastPlayed = data.lastPlayed;
         }
       }
       return data as GameState;
+    } else {
+      console.warn(`Firestore Warning: Specific save document with ID "${saveId}" not found for character "${characterId}".`);
+      return null;
     }
-    return null;
-  };
-
-  try {
-    // 1. Prioritize loading the latest manual save.
-    const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
-    const q = query(
-        savesCollectionRef,
-        where(documentId(), '>=', 'manual_'),
-        where(documentId(), '<', 'manual`'), // ` is the character after _ in ASCII
-        orderBy(documentId(), "desc"),
-        limit(1)
-    );
-    const manualSaveSnapshot = await getDocs(q);
-
-    if (!manualSaveSnapshot.empty) {
-      const latestManualDoc = manualSaveSnapshot.docs[0];
-      const manualSaveData = processDoc(latestManualDoc);
-       if (manualSaveData) {
-        console.log(`Firestore Info: Loaded latest manual save for character ${characterId}.`);
-        return manualSaveData;
-      }
-    }
-
-
-    // 2. If no manual save, fall back to the auto save.
-    const autoSaveRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, 'auto');
-    const autoDocSnap = await getDoc(autoSaveRef);
-    const autoSaveData = processDoc(autoDocSnap);
-
-    if (autoSaveData) {
-      console.log(`Firestore Info: No manual save found. Loaded 'auto' save for character ${characterId}.`);
-      return autoSaveData;
-    }
-
-    // 3. If neither save exists.
-    console.log(`Firestore Info: No manual or auto saves found for character ID ${characterId} for user ${uid}.`);
-    return null;
-
   } catch (error) {
-    console.error(`Firestore Error: loading character ${characterId} for user ${uid}:`, error);
+    console.error(`Firestore Error: loading specific save "${saveId}" for character "${characterId}":`, error);
     return null;
   }
 }
 
-
 /**
- * Lists all character summaries for a given user by reading their metadata documents.
+ * Lists all available save files for a given character.
  * @param uid The user's Firebase UID.
- * @returns A promise that resolves to an array of character summaries.
+ * @param characterId The ID of the character.
+ * @returns A promise that resolves to an array of save summaries.
  */
-export async function listCharacters(uid: string): Promise<CharacterSummary[]> {
+export async function listSavesForCharacter(uid: string, characterId: string): Promise<SaveSummary[]> {
   if (!db) {
     console.error("Firestore Error: Firestore service is not initialized.");
     return [];
   }
   try {
-    // Now reads from the parent character documents which only contain metadata.
-    const charactersCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION);
-    const q = query(charactersCollectionRef, orderBy("lastPlayed", "desc"));
+    const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
+    // Order by document ID for manual saves, which contain timestamps. 'auto' will appear first or last.
+    // To get the most recent on top, we sort by the `lastPlayed` field inside the document.
+    const q = query(savesCollectionRef, orderBy("lastPlayed", "desc"));
     const querySnapshot = await getDocs(q);
-    
+
     return querySnapshot.docs.map(docSnap => {
-      const data = docSnap.data(); // This is now just the metadata
-      const lastPlayedTimestamp = data.lastPlayed as Timestamp;
+      const data = docSnap.data();
+      const timestamp = (data.lastPlayed as Timestamp)?.toDate()?.toISOString() || new Date(0).toISOString();
+      const docId = docSnap.id;
+      
       return {
-        id: docSnap.id,
-        name: data.name || 'Sans Nom',
-        avatarUrl: data.avatarUrl || '',
-        level: data.level || 1,
-        lastPlayed: lastPlayedTimestamp ? lastPlayedTimestamp.toDate().toISOString() : new Date().toISOString(),
+        id: docId,
+        type: docId.startsWith('manual_') ? 'manual' : 'auto',
+        timestamp: timestamp,
       };
     });
   } catch (error) {
-    console.error(`Firestore Error: listing characters for user ${uid}:`, error);
+    console.error(`Firestore Error: listing saves for character ${characterId}:`, error);
     return [];
   }
 }
