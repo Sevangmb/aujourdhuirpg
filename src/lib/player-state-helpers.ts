@@ -1,5 +1,7 @@
+
 import type { PlayerStats, InventoryItem, Progression, AdvancedSkillSystem } from './types';
-import { getMasterItemById } from '@/data/items'; // Assuming getMasterItemById is needed
+import { getMasterItemById } from '@/data/items';
+import { v4 as uuidv4 } from 'uuid';
 
 export function calculateXpToNextLevel(level: number): number {
   if (level <= 0) level = 1; // Ensure level is at least 1
@@ -34,7 +36,7 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
       // Add new stackable item instance
       newInventory.push({
         ...masterItem,
-        instanceId: `stack_${itemId}_${Math.random().toString(36).substring(2)}`,
+        instanceId: uuidv4(),
         quantity: quantityToAdd,
         condition: 100,
         acquiredAt: new Date().toISOString(),
@@ -47,7 +49,7 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
     for (let i = 0; i < quantityToAdd; i++) {
       newInventory.push({
         ...masterItem,
-        instanceId: `${itemId}_${Math.random().toString(36).substring(2)}`,
+        instanceId: uuidv4(),
         quantity: 1,
         condition: 100,
         acquiredAt: new Date().toISOString(),

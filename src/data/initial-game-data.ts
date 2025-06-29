@@ -1,9 +1,11 @@
+
 /**
  * @fileOverview Centralized initial game data constants.
  */
 import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact } from '@/lib/types';
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
@@ -54,13 +56,12 @@ export const initialInventory: InventoryItem[] = [
   getMasterItemById('keys_apartment_01'),
   getMasterItemById('energy_bar_01'),
 ]
-.filter(item => item !== undefined)
+.filter((item): item is NonNullable<typeof item> => item !== undefined)
 .map(masterItem => {
-  if (!masterItem) throw new Error("Unreachable: masterItem is undefined after filter");
   // Create a full InventoryItem instance
   return {
     ...masterItem,
-    instanceId: Math.random().toString(36).substring(2), // Simple unique ID for initial items
+    instanceId: uuidv4(),
     quantity: masterItem.id === 'energy_bar_01' ? 2 : 1,
     condition: 100,
     acquiredAt: new Date().toISOString(),

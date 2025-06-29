@@ -28,9 +28,9 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-3 flex-grow flex flex-col justify-between">
-        <p className="text-xs text-muted-foreground mb-2">{item.description}</p>
+        <p className="text-xs text-muted-foreground mb-2 min-h-[40px]">{item.description}</p>
         <div className="space-y-2">
-           <p className="text-xs mt-1"><span className="font-medium">Type:</span> {item.type} | <span className="font-medium">Usages:</span> {item.usageCount}</p>
+           <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Type:</span> {item.type} | <span className="font-medium text-foreground">Usages:</span> {item.usageCount}</p>
            <div>
               <TooltipProvider>
                 <Tooltip>
@@ -56,7 +56,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Expérience: {item.experience}</p>
+                    <p>Expérience: {item.experience} / 100</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

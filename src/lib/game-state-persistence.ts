@@ -1,3 +1,4 @@
+
 import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
@@ -25,6 +26,7 @@ import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
 import { calculateXpToNextLevel } from './player-state-helpers';
 import { deepmerge } from 'deepmerge-ts';
+import { v4 as uuidv4 } from 'uuid';
 
 
 export interface SaveGameResult {
@@ -123,7 +125,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     return {
       ...masterItem,
       ...item, 
-      instanceId: item.instanceId || `${item.id}_${Math.random().toString(36).substring(2)}`,
+      instanceId: item.instanceId || uuidv4(),
       condition: typeof item.condition === 'number' ? item.condition : 100,
       acquiredAt: item.acquiredAt || new Date(0).toISOString(),
       usageCount: item.usageCount || 0,

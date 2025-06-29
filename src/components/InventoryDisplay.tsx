@@ -5,6 +5,7 @@ import type { Player, InventoryItem, InventoryItemType } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InventoryItemCard from './InventoryItemCard';
 import { Package, Shirt, Utensils, KeyRound, MonitorSmartphone, Wrench, Archive, Drama } from 'lucide-react';
+import { ScrollArea } from './ui/scroll-area';
 
 interface InventoryDisplayProps {
   inventory: InventoryItem[];
@@ -51,6 +52,7 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
           })}
         </TabsList>
         
+        <ScrollArea className="flex-grow">
           <TabsContent value="all" className="mt-0 flex-1 min-h-0"> 
             {inventory.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">Votre inventaire est vide.</p>
@@ -72,6 +74,7 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
               )}
             </TabsContent>
           ))}
+        </ScrollArea>
     </Tabs>
   );
 };
