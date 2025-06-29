@@ -242,6 +242,24 @@ export async function calculateDeterministicEffects(
   const eventsForAI: string[] = [];
 
   const parsedAction = await parsePlayerAction(actionText);
+  
+  // New skill check logic for specific actions
+  if (parsedAction.actionType === 'EXAMINE' || (parsedAction.actionType === 'UNKNOWN' && /chercher|fouiller|observer/i.test(actionText))) {
+    const skillToCheck = 'Perception';
+    const difficulty = 50; // Base difficulty, can be adjusted based on context
+    const checkResult = performSkillCheck(player.skills, player.stats, skillToCheck, difficulty);
+    
+    eventsForAI.push(
+      `Résultat du jet de compétence (${checkResult.skillUsed}): ${checkResult.degreeOfSuccess}. ` +
+      `Détails: (Jet: ${checkResult.rollValue} + Score: ${checkResult.effectiveScore} = ${checkResult.totalAchieved} vs Difficulté: ${checkResult.difficultyTarget})`
+    );
+    notifications.push({
+      type: 'skill_check',
+      title: `Jet de ${checkResult.skillUsed}`,
+      description: `Résultat: ${checkResult.degreeOfSuccess} (Total: ${checkResult.totalAchieved} vs DC: ${checkResult.difficultyTarget})`,
+    });
+  }
+
 
   if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed) {
     const itemIndex = newPlayerState.inventory.findIndex(

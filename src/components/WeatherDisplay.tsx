@@ -1,9 +1,11 @@
+
 "use client";
 
 import React from 'react';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import * as LucideIcons from 'lucide-react';
 import { formatGameTime } from '@/lib/utils/time-utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface WeatherDisplayProps {
   weatherData: WeatherData | null;
@@ -18,10 +20,16 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading,
 
   if (isLoading) {
     return (
-      <div className={`flex flex-col items-center justify-center text-xs text-muted-foreground p-3 ${containerHeight} bg-background/50 rounded-lg`}>
-        <LucideIcons.Loader2 className="h-5 w-5 animate-spin mb-1.5" />
-        <p>Chargement météo...</p>
-        <p className="text-xs">à {placeName}</p>
+      <div className={`p-2 md:p-3 bg-background/50 rounded-lg ${containerHeight} flex flex-col`}>
+        <div className="flex items-center mb-1 md:mb-1.5">
+          <Skeleton className="w-4 h-4 mr-2 rounded-full" />
+          <Skeleton className="w-32 h-4" />
+        </div>
+        <div className="flex-grow flex flex-col items-center justify-center text-center space-y-2">
+          <Skeleton className="w-12 h-12 rounded-full" />
+          <Skeleton className="w-16 h-8" />
+          <Skeleton className="w-24 h-4" />
+        </div>
       </div>
     );
   }

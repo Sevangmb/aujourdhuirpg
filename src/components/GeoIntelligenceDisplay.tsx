@@ -22,6 +22,8 @@ import {
     UserCheck
 } from 'lucide-react';
 import { Progress } from './ui/progress';
+import { Skeleton } from './ui/skeleton';
+
 
 interface GeoIntelligenceDisplayProps {
   data: GeoIntelligence | null;
@@ -33,9 +35,32 @@ interface GeoIntelligenceDisplayProps {
 const GeoIntelligenceDisplay: React.FC<GeoIntelligenceDisplayProps> = ({ data, isLoading, error, placeName }) => {
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-muted-foreground">
-        <Loader2 className="w-8 h-8 animate-spin mb-2 text-primary" />
-        <p>Analyse IA de "{placeName}" en cours...</p>
+      <div className="space-y-4 p-1">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+             <Skeleton className="h-6 w-56" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
       </div>
     );
   }

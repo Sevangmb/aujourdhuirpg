@@ -80,6 +80,7 @@ const PROMPT_ACTION_AND_EFFECTS = `
 2.  **Événements Déterministes (Calculés par le Moteur) à Raconter :**
     {{#if deterministicEvents}}
       {{#each deterministicEvents}}- {{{this}}}\n{{/each}}
+      **Instruction Spéciale :** Si un événement est un "Résultat du jet de compétence", votre narration DOIT refléter le succès ou l'échec. Un succès critique peut révéler un secret, un échec critique peut causer un problème. Ne vous contentez pas d'énoncer le résultat, décrivez-le de manière immersive.
     {{else}}
       - Aucun événement mécanique spécifique.
     {{/if}}

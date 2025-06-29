@@ -16,7 +16,7 @@ import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-w
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
 import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow';
 import { clearGameState as clearLocalGameState } from '@/services/localStorageService';
-import { fetchWikipediaSummary } from '@/services/wikipedia-service';
+import { getPositionData } from '@/services/position-service';
 import GameScreen from '@/components/GameScreen';
 import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen';
 import LoadingState from './LoadingState';
@@ -268,12 +268,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const handleCharacterCreate = useCallback(async (simplePlayerData: SimpleCharacterFormData) => {
     setAppMode('loading');
     try {
-      const locationData = await fetchWikipediaSummary(simplePlayerData.startingLocation);
-      if (!locationData || typeof locationData.latitude !== 'number') {
-        toast({ title: "Lieu de départ introuvable", variant: "destructive", description: "Veuillez choisir un lieu plus connu ou vérifier l'orthographe." });
-        setAppMode('creating_character');
-        return;
-      }
+      const locationData = await getPositionData(simplePlayerData.startingLocation);
 
       const fullPlayerData = {
         ...simplePlayerData,
@@ -287,9 +282,11 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
           ...fullPlayerData, uid: user.uid, isAnonymous: user.isAnonymous,
       });
       hydratedPlayer.currentLocation = {
-          latitude: locationData.latitude, longitude: locationData.longitude, name: locationData.title,
+          latitude: locationData.latitude!,
+          longitude: locationData.longitude!,
+          name: locationData.name,
       };
-       hydratedPlayer.startingLocationName = locationData.title;
+       hydratedPlayer.startingLocationName = locationData.name;
 
       const tempStateForPrologue: GameState = {
         currentScenario: { scenarioText: "<p>Création du monde en cours...</p>" },
@@ -317,7 +314,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
     } catch (error) {
       console.error("Error during character creation:", error);
-      toast({ title: "Erreur de création", description: "Impossible de commencer l'aventure.", variant: "destructive" });
+      toast({ title: "Erreur de création", description: (error as Error).message || "Impossible de commencer l'aventure.", variant: "destructive" });
       setAppMode('creating_character');
     }
   }, [user, toast]);
