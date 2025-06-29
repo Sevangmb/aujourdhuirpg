@@ -24,9 +24,49 @@ export type PlayerStats = {
   [key: string]: number; // Allows for dynamic stats if needed
 };
 
-// Removed LocationData interface
+// --- NEW ADVANCED SKILL SYSTEM ---
+export interface AdvancedSkillSystem {
+  cognitive: {
+    analysis: number;
+    memory: number;
+    creativity: number;
+    logic: number;
+    observation: number;
+  };
+  social: {
+    persuasion: number;
+    empathy: number;
+    leadership: number;
+    networking: number;
+    cultural_adaptation: number;
+  };
+  physical: {
+    endurance: number;
+    agility: number;
+    stealth: number;
+    strength: number;
+    dexterity: number;
+  };
+  technical: {
+    technology: number;
+    investigation: number;
+    languages: number;
+    finance: number;
+    crafting: number;
+  };
+  survival: {
+    streetwise: number;
+    wilderness: number;
+    medical: number;
+    navigation: number;
+    adaptation: number;
+  };
+}
 
-export type Skills = Record<string, number>; // e.g., {"Informatique": 10, "Discretion": 5}
+// DEPRECATED, but kept for type compatibility during transition
+export type Skills = Record<string, number>;
+// --- END ADVANCED SKILL SYSTEM ---
+
 export type TraitsMentalStates = string[]; // e.g., ["Stressé", "Fatigué"]
 
 export type Progression = {
@@ -53,7 +93,7 @@ export type Player = {
   background: string; // Historique plus détaillé du personnage, style RP
   startingLocationName?: string; // Added for character creation context
   stats: PlayerStats;
-  skills: Skills;
+  skills: AdvancedSkillSystem; // UPDATED from Skills to AdvancedSkillSystem
   traitsMentalStates: TraitsMentalStates;
   progression: Progression;
   alignment: Alignment;

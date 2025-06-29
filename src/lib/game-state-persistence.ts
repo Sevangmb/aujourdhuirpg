@@ -1,5 +1,4 @@
-
-import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact } from './types';
+import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -25,6 +24,7 @@ import {
 import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
 import { calculateXpToNextLevel } from './player-state-helpers';
+import { deepmerge } from 'deepmerge-ts';
 
 
 export interface SaveGameResult {
@@ -54,6 +54,27 @@ export async function saveGameState(uid: string, characterId: string, state: Gam
   return result;
 }
 
+function migrateSkills(oldSkills: any): AdvancedSkillSystem {
+    const newSkills = JSON.parse(JSON.stringify(initialSkills)); // Deep copy of the initial structure
+    if (!oldSkills || typeof oldSkills !== 'object' || Array.isArray(oldSkills)) {
+        return newSkills;
+    }
+
+    // Check if it's already the new structure
+    if ('cognitive' in oldSkills && 'social' in oldSkills) {
+        return deepmerge(newSkills, oldSkills);
+    }
+    
+    // Map old flat skills to new nested structure
+    if (typeof oldSkills.Informatique === 'number') newSkills.technical.technology = oldSkills.Informatique;
+    if (typeof oldSkills.Discretion === 'number') newSkills.physical.stealth = oldSkills.Discretion;
+    if (typeof oldSkills.Dialogue === 'number') newSkills.social.persuasion = oldSkills.Dialogue;
+    if (typeof oldSkills.Perception === 'number') newSkills.cognitive.observation = oldSkills.Perception;
+    if (typeof oldSkills.Survie === 'number') newSkills.survival.wilderness = oldSkills.Survie;
+
+    return newSkills;
+}
+
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   const player: Player = {
     uid: savedPlayer?.uid,
@@ -67,7 +88,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     era: savedPlayer?.era || 'Époque Contemporaine',
     startingLocationName: savedPlayer?.startingLocationName,
     stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
-    skills: { ...initialSkills, ...(savedPlayer?.skills || {}) },
+    skills: migrateSkills(savedPlayer?.skills), // Use migration function for skills
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
     progression: { ...initialProgression, ...(savedPlayer?.progression || {}) },
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },

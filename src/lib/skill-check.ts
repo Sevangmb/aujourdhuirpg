@@ -4,7 +4,7 @@
  * stats, and situational factors against a difficulty target.
  */
 
-import type { Skills, PlayerStats } from './types';
+import type { AdvancedSkillSystem, PlayerStats } from './types';
 
 export type DegreeOfSuccess = 'critical_failure' | 'failure' | 'success' | 'critical_success';
 
@@ -25,36 +25,49 @@ export interface SkillCheckResult {
 const CRITICAL_SUCCESS_ROLL_THRESHOLD = 95; // Roll of 95-100 is always a critical success
 const CRITICAL_FAILURE_ROLL_THRESHOLD = 5;   // Roll of 1-5 is always a critical failure
 
-const skillToStatMap: Record<string, keyof PlayerStats> = {
-  Perception: 'Intelligence',
-  Dialogue: 'Charisme',
-  Discretion: 'Intelligence',
-  Informatique: 'Intelligence',
-  Survie: 'Force',
-  // Add other skill-to-stat mappings here as needed
+const skillCategoryToStatMap: { [key in keyof AdvancedSkillSystem]: keyof PlayerStats } = {
+  cognitive: 'Intelligence',
+  social: 'Charisme',
+  physical: 'Force',
+  technical: 'Intelligence',
+  survival: 'Intelligence',
 };
+
+function getSkillValueByPath(skills: AdvancedSkillSystem, path: string): number {
+    const pathParts = path.split('.');
+    if (pathParts.length !== 2) return 0;
+
+    const [category, subSkill] = pathParts as [keyof AdvancedSkillSystem, string];
+    const categorySkills = skills[category];
+
+    if (categorySkills && typeof (categorySkills as any)[subSkill] === 'number') {
+        return (categorySkills as any)[subSkill];
+    }
+    return 0;
+}
 
 /**
  * Performs a skill check for a player using a D100 + modifiers vs. difficulty system.
  *
- * @param skills The player's skills object (e.g., { "Informatique": 10, "Discretion": 5 }).
+ * @param skills The player's advanced, categorized skills object.
  * @param stats The player's stats object to derive modifiers.
- * @param skillName The name of the skill being checked (e.g., "Informatique").
+ * @param skillPath The path to the skill being checked (e.g., "cognitive.observation").
  * @param difficultyTarget The target number the player needs to meet or exceed for a success.
  * @param situationalModifiers Optional situational modifiers (e.g., +10 for good tools, -5 for bad lighting).
  * @returns A SkillCheckResult object detailing the outcome of the check.
  */
 export function performSkillCheck(
-  skills: Skills,
+  skills: AdvancedSkillSystem,
   stats: PlayerStats,
-  skillName: string,
+  skillPath: string,
   difficultyTarget: number,
   situationalModifiers: number = 0
 ): SkillCheckResult {
-  const baseSkillValue = skills[skillName] || 0;
+  const baseSkillValue = getSkillValueByPath(skills, skillPath);
+  const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
 
-  // Calculate the modifier from the relevant stat (e.g., Intelligence for Perception)
-  const controllingStatName = skillToStatMap[skillName];
+  // Calculate the modifier from the relevant stat (e.g., Intelligence for cognitive skills)
+  const controllingStatName = skillCategoryToStatMap[category];
   const controllingStatValue = controllingStatName ? (stats[controllingStatName] || 0) : 0;
   const statModifierValue = Math.floor(controllingStatValue / 10); // e.g., 50 INT gives a +5 bonus
 
@@ -80,7 +93,7 @@ export function performSkillCheck(
     success: degreeOfSuccess.includes('success'), // True for 'success' and 'critical_success'
     degreeOfSuccess,
     rollValue,
-    skillUsed: skillName,
+    skillUsed: skillPath,
     baseSkillValue,
     statModifierValue,
     situationalModifierValue: situationalModifiers,

@@ -1,18 +1,33 @@
-
 "use client";
 
-import type { Player } from '@/lib/types';
+import type { Player, AdvancedSkillSystem } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { User, Shield, Brain as BrainIcon, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as ReputationIcon, Heart, Smile, Dumbbell } from 'lucide-react';
+import { User, Shield, Brain as BrainIcon, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as ReputationIcon, Heart, Smile, Dumbbell, BookOpen, UserCog, Stethoscope, Hand, Landmark } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 
 interface PlayerSheetProps {
   player: Player;
 }
+
+const skillCategoryIcons: { [key in keyof AdvancedSkillSystem]: React.ElementType } = {
+  cognitive: BrainIcon,
+  social: Users,
+  physical: Dumbbell,
+  technical: UserCog,
+  survival: Landmark,
+};
+
+const skillCategoryLabels: { [key in keyof AdvancedSkillSystem]: string } = {
+  cognitive: "Cognitives",
+  social: "Sociales",
+  physical: "Physiques",
+  technical: "Techniques",
+  survival: "Survie",
+};
 
 const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   if (!player) return null;
@@ -102,13 +117,33 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
             <CardHeader className="p-3">
               <CardTitle className="font-headline text-primary text-lg">Compétences</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1 p-3 text-sm">
-              {player.skills && Object.keys(player.skills).length > 0 ? Object.entries(player.skills).map(([skill, value]) => (
-                <div key={skill} className="flex justify-between p-1.5 bg-muted/30 rounded-md text-xs">
-                  <span className="font-medium">{skill}</span>
-                  <span className="font-bold text-primary">{value}</span>
-                </div>
-              )) : <p className="text-muted-foreground text-xs">Aucune compétence acquise.</p>}
+            <CardContent className="p-3 text-sm">
+                <Accordion type="multiple" className="w-full">
+                    {(Object.keys(player.skills) as Array<keyof AdvancedSkillSystem>).map(category => {
+                        const Icon = skillCategoryIcons[category] || Sparkles;
+                        const subSkills = player.skills[category];
+                        return (
+                            <AccordionItem value={category} key={category}>
+                                <AccordionTrigger>
+                                    <div className="flex items-center">
+                                        <Icon className="w-4 h-4 mr-2" />
+                                        {skillCategoryLabels[category]}
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="space-y-1 pl-2">
+                                        {Object.entries(subSkills).map(([skill, value]) => (
+                                            <div key={skill} className="flex justify-between p-1.5 text-xs">
+                                                <span className="font-medium capitalize">{skill.replace(/_/g, ' ')}</span>
+                                                <span className="font-bold text-primary">{value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        );
+                    })}
+                </Accordion>
             </CardContent>
           </Card>
         </TabsContent>

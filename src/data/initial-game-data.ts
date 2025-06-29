@@ -1,8 +1,8 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone, Transaction, HistoricalContact } from '@/lib/types';
-import { getMasterItemById } from './items'; // Assuming items.ts is in the same data directory or adjust path
+import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact } from '@/lib/types';
+import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 
 // --- Initial Player Data ---
@@ -20,12 +20,13 @@ export const initialPlayerStats: PlayerStats = {
   Inspiration: 10,
 };
 
-export const initialSkills: Skills = {
-  Informatique: 10,
-  Discretion: 5,
-  Dialogue: 15,
-  Perception: 12,
-  Survie: 8,
+// UPDATED to new AdvancedSkillSystem structure
+export const initialSkills: AdvancedSkillSystem = {
+  cognitive: { analysis: 5, memory: 5, creativity: 5, logic: 5, observation: 10 },
+  social: { persuasion: 10, empathy: 5, leadership: 5, networking: 5, cultural_adaptation: 5 },
+  physical: { endurance: 5, agility: 5, stealth: 5, strength: 5, dexterity: 5 },
+  technical: { technology: 10, investigation: 5, languages: 5, finance: 5, crafting: 5 },
+  survival: { streetwise: 10, wilderness: 5, medical: 5, navigation: 5, adaptation: 5 },
 };
 
 export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];

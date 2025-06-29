@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Zod schema definitions for common player-related data structures used as input for scenarios.
  */
@@ -11,7 +10,45 @@ export const LocationSchema = z.object({
   name: z.string().describe('The human-readable name of the location (e.g., "Paris, France").'),
 });
 
-export const SkillsSchema = z.record(z.number()).describe("Player's skills (e.g., {\"Informatique\": 10, \"Discretion\": 5}).");
+// UPDATED to AdvancedSkillSystem structure
+export const SkillsSchema = z.object({
+  cognitive: z.object({
+    analysis: z.number(),
+    memory: z.number(),
+    creativity: z.number(),
+    logic: z.number(),
+    observation: z.number(),
+  }),
+  social: z.object({
+    persuasion: z.number(),
+    empathy: z.number(),
+    leadership: z.number(),
+    networking: z.number(),
+    cultural_adaptation: z.number(),
+  }),
+  physical: z.object({
+    endurance: z.number(),
+    agility: z.number(),
+    stealth: z.number(),
+    strength: z.number(),
+    dexterity: z.number(),
+  }),
+  technical: z.object({
+    technology: z.number(),
+    investigation: z.number(),
+    languages: z.number(),
+    finance: z.number(),
+    crafting: z.number(),
+  }),
+  survival: z.object({
+    streetwise: z.number(),
+    wilderness: z.number(),
+    medical: z.number(),
+    navigation: z.number(),
+    adaptation: z.number(),
+  }),
+}).describe("Player's granular skills, categorized.");
+
 export const TraitsMentalStatesSchema = z.array(z.string()).describe("Player's current mental states or traits (e.g., [\"Stressé\", \"Observateur\"]).");
 
 export const ProgressionInputSchema = z.object({

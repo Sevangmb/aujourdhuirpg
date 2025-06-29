@@ -7,9 +7,11 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { GenerateTravelEventInputSchema, GenerateTravelEventOutputSchema } from './schemas/generate-travel-event-schemas';
+import type { GenerateTravelEventInput as TypegenInput, GenerateTravelEventOutput as TypegenOutput } from './schemas/generate-travel-event-schemas';
 
-export type GenerateTravelEventInput = z.infer<typeof GenerateTravelEventInputSchema>;
-export type GenerateTravelEventOutput = z.infer<typeof GenerateTravelEventOutputSchema>;
+
+export type GenerateTravelEventInput = TypegenInput;
+export type GenerateTravelEventOutput = TypegenOutput;
 
 export async function generateTravelEvent(input: GenerateTravelEventInput): Promise<GenerateTravelEventOutput> {
   // Add a check for API key to avoid unnecessary calls if not configured.
