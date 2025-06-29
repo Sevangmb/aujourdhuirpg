@@ -5,6 +5,7 @@ import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
 import { montmartreInitialChoices } from '@/data/choices';
+import type { WeatherData } from '@/app/actions/get-current-weather';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -240,9 +241,40 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
 // --- Deterministic Logic ---
 
+export function getWeatherModifier(skillPath: string, weatherData: WeatherData | null): { modifier: number, reason: string } {
+  if (!weatherData) {
+    return { modifier: 0, reason: "" };
+  }
+
+  const weatherDesc = weatherData.description.toLowerCase();
+  let modifier = 0;
+  let reason = "";
+
+  const isBadWeather = weatherDesc.includes('pluie') || weatherDesc.includes('brouillard') || weatherDesc.includes('neige') || weatherDesc.includes('orage');
+  
+  // Observation is harder in bad weather
+  if (skillPath.includes('observation') || skillPath.includes('navigation')) {
+    if (isBadWeather) {
+      modifier = -10;
+      reason = `Le mauvais temps (${weatherData.description}) pénalise cette action.`;
+    }
+  }
+
+  // Stealth is easier in bad weather
+  if (skillPath.includes('stealth')) {
+    if (isBadWeather) {
+      modifier = 10;
+      reason = `Le mauvais temps (${weatherData.description}) favorise cette action.`;
+    }
+  }
+
+  return { modifier, reason };
+}
+
 export async function calculateDeterministicEffects(
   player: Player,
-  choice: StoryChoice
+  choice: StoryChoice,
+  weatherData: WeatherData | null
 ): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[]}> {
   const newPlayerState = JSON.parse(JSON.stringify(player));
   const notifications: GameNotification[] = [];
@@ -258,11 +290,18 @@ export async function calculateDeterministicEffects(
   // Handle skill checks
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
+    
+    const { modifier: weatherModifier, reason: weatherReason } = getWeatherModifier(skill, weatherData);
+    if (weatherReason) {
+      eventsForAI.push(weatherReason);
+    }
+    
     const skillCheckResult = performSkillCheck(
       newPlayerState.skills,
       newPlayerState.stats,
       skill,
-      difficulty
+      difficulty,
+      weatherModifier
     );
 
     const outcomeTextMap = {

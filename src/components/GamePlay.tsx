@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, GameNotification, Quest, PNJ, JournalEntry, Transaction, Position, StoryChoice } from '@/lib/types';
-import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
+import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput, getWeatherModifier } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getInitialScenario } from '@/lib/game-logic';
@@ -57,11 +57,13 @@ const GamePlay: React.FC<GamePlayProps> = ({
     if (player) {
       const choicesWithProbability = choices.map(choice => {
         if (choice.skillCheck) {
+          const { modifier: weatherModifier } = getWeatherModifier(choice.skillCheck.skill, weatherData);
           const probability = calculateSuccessProbability(
             player.skills,
             player.stats,
             choice.skillCheck.skill,
-            choice.skillCheck.difficulty
+            choice.skillCheck.difficulty,
+            weatherModifier
           );
           return { ...choice, successProbability: probability };
         }
@@ -71,7 +73,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     } else {
       setCurrentChoices(choices);
     }
-  }, [initialGameState.currentScenario, initialGameState.player]);
+  }, [initialGameState.currentScenario, initialGameState.player, weatherData]);
 
 
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
@@ -81,7 +83,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     setIsLoading(true);
 
     try {
-      const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice);
+      const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice, weatherData);
       notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
       
       const tempGameStateForAI: GameState = { ...initialGameState, player: updatedPlayer };
@@ -118,7 +120,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [initialGameState, handleGameAction, toast]);
+  }, [initialGameState, handleGameAction, toast, weatherData]);
 
 
   const { player, currentScenario, nearbyPois, gameTimeInMinutes } = initialGameState;
