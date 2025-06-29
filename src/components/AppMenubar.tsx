@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { User as FirebaseUser } from 'firebase/auth'; // Correct type for Firebase user
-import type { Player, Position, WeatherData, JournalEntry, GeoIntelligence } from '@/lib/types';
+import type { Player, Position, WeatherData, JournalEntry, GeoIntelligence, Transaction } from '@/lib/types';
 
 import {
     Menubar,
@@ -34,7 +34,8 @@ import {
     Search,
     BookText,
     BrainCircuit, // Icon for Geo-Intelligence
-    Users
+    Users,
+    Euro
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
@@ -47,6 +48,7 @@ import MapDisplay from '@/components/MapDisplay';
 import LocationImageDisplay from '@/components/LocationImageDisplay';
 import JournalDisplay from '@/components/JournalDisplay';
 import GeoIntelligenceDisplay from './GeoIntelligenceDisplay'; // Import new component
+import FinancialsDisplay from './FinancialsDisplay'; // Import new component
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 
@@ -196,6 +198,16 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                     <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
                         <DialogHeader><DialogTitle>Dossier d'Enquête</DialogTitle></DialogHeader>
                         <ScrollArea className="max-h-[70vh] p-1">{player ? <EvidenceLogDisplay player={player} /> : <p>Dossier d'enquête non disponible.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                <MenubarSeparator />
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><Euro className="mr-2 h-4 w-4" />Finances</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                        <DialogHeader><DialogTitle>Relevé Financier</DialogTitle></DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">{player ? <FinancialsDisplay transactions={player.transactionLog || []} currentBalance={player.money} /> : <p>Données financières non disponibles.</p>}</ScrollArea>
                     </DialogContent>
                 </Dialog>
             </MenubarContent>

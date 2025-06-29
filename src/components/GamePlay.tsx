@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, GameNotification, QuestUpdate, PNJ, Quest, JournalEntry } from '@/lib/types';
+import type { GameState, GameNotification, QuestUpdate, PNJ, Quest, JournalEntry, Transaction } from '@/lib/types';
 import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import ScenarioDisplay from './ScenarioDisplay';
@@ -120,13 +120,16 @@ const GamePlay: React.FC<GamePlayProps> = ({
         notifications.push({ type: 'item_added', title: 'Objet Obtenu', description: `Vous avez obtenu : ${itemName} (x${item.quantity}).` });
       });
     }
-    if (aiOutput.moneyChange) {
-      actions.push({ type: 'CHANGE_MONEY', payload: aiOutput.moneyChange });
-       actions.push({
+    if (aiOutput.newTransactions) {
+      aiOutput.newTransactions.forEach(transaction => {
+        // The payload for ADD_TRANSACTION matches the NewTransactionSchema from the AI
+        actions.push({ type: 'ADD_TRANSACTION', payload: transaction });
+        actions.push({
             type: 'ADD_JOURNAL_ENTRY',
-            payload: { type: 'event', text: `Argent : ${aiOutput.moneyChange > 0 ? '+' : ''}${aiOutput.moneyChange}€.` }
+            payload: { type: 'event', text: `${transaction.description}: ${transaction.amount > 0 ? '+' : ''}${transaction.amount}€.` }
+        });
+        notifications.push({ type: 'money_changed', title: 'Transaction Financière', description: `${transaction.description}: ${transaction.amount > 0 ? '+' : ''}${transaction.amount}€.` });
       });
-      notifications.push({ type: 'money_changed', title: 'Argent Modifié', description: `Argent : ${aiOutput.moneyChange > 0 ? '+' : ''}${aiOutput.moneyChange}€.` });
     }
     if (aiOutput.xpGained) {
       actions.push({ type: 'ADD_XP', payload: aiOutput.xpGained });

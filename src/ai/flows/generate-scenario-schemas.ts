@@ -19,6 +19,7 @@ import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas';
 import { PNJInteractionSchema } from './schemas/pnj-schemas';
 import { MajorDecisionSchema } from './schemas/decision-schemas';
 import { ClueInputSchema, DocumentInputSchema } from './schemas/evidence-schemas';
+import { NewTransactionSchema } from './schemas/finance-schemas';
 
 
 // --- Main Input Schema ---
@@ -99,9 +100,9 @@ export const GenerateScenarioOutputSchema = z.object({
     quantity: z.number().min(1).describe("The quantity of the item to add.")
   })).optional().describe("Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés)."),
   
-  /** A positive or negative amount of money to give to the player. */
-  moneyChange: z.number().optional().describe("Montant d'argent (positif ou négatif) à ajouter ou retirer au joueur."),
-  
+  /** A list of financial transactions that occurred as a result of the narrative. Use this for any monetary changes. */
+  newTransactions: z.array(NewTransactionSchema).optional().describe("A list of financial transactions that occurred. Use this for any monetary changes (income or expenses)."),
+
   /** The amount of experience points (XP) the player has gained. */
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
 

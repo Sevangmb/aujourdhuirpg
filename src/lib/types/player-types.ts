@@ -6,6 +6,7 @@ import type { MajorDecision } from './decision-types';
 import type { Clue, GameDocument } from './evidence-types';
 import type { ToneSettings } from './tone-types';
 import type { Position } from './game-types'; // Corrected path
+import type { Transaction } from './finance-types';
 
 export type PlayerStats = {
   Sante: number;
@@ -54,6 +55,7 @@ export type Player = {
   alignment: Alignment;
   inventory: InventoryItem[];
   money: number; // Player's current money (euros)
+  transactionLog: Transaction[];
   currentLocation: Position; // Changed from LocationData to Position
   toneSettings: ToneSettings;
   // Nouveaux champs pour le journal de quêtes, etc.

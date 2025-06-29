@@ -2,7 +2,7 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone } from '@/lib/types';
+import type { PlayerStats, Position, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone, Transaction } from '@/lib/types';
 import { getMasterItemById } from './items'; // Assuming items.ts is in the same data directory or adjust path
 import { AVAILABLE_TONES } from '@/lib/types';
 
@@ -75,6 +75,7 @@ export const initialPlayerLocation: Position = { // Changed from LocationData to
 
 export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
 export const initialPlayerMoney: number = 50;
+export const initialTransactionLog: Transaction[] = [];
 
 export const initialToneSettings: ToneSettings = AVAILABLE_TONES.reduce((acc, tone) => {
   acc[tone] = 50; // Default all tones to a neutral 50

@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -30,7 +30,7 @@ export type GameAction =
   | { type: 'ADD_CLUE'; payload: Omit<Clue, 'dateFound'> }
   | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
-  | { type: 'CHANGE_MONEY'; payload: number }
+  | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
   | { type: 'ADD_XP'; payload: number };
 
 
@@ -122,8 +122,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity);
         return { ...state, player: { ...state.player, inventory: updatedInventory } };
     }
-    case 'CHANGE_MONEY': {
-        return { ...state, player: { ...state.player, money: state.player.money + action.payload } };
+    case 'ADD_TRANSACTION': {
+        const newTransaction: Transaction = {
+            ...action.payload,
+            id: `${now}-${Math.random().toString(36).substring(2, 9)}`,
+            timestamp: new Date().toISOString(),
+            locationName: state.player.currentLocation.name,
+        };
+        const newMoneyTotal = state.player.money + newTransaction.amount;
+        return {
+            ...state,
+            player: {
+                ...state.player,
+                money: newMoneyTotal,
+                transactionLog: [...(state.player.transactionLog || []), newTransaction],
+            }
+        };
     }
     case 'ADD_XP': {
         const { newProgression, leveledUp } = addXP(state.player.progression, action.payload);
