@@ -88,7 +88,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
         const avatarInput = {
             name: data.name,
             gender: data.gender,
-            age: data.age,
+            age: Number(data.age),
             origin: data.origin,
             playerBackground: data.background
         };
