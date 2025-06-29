@@ -31,7 +31,11 @@ export interface IntelligentItem {
   condition: {
     durability: number; // 0-100
   };
-  experience: number; // XP gained by using the item, can lead to evolution.
+  
+  // New: Item-specific progression
+  itemLevel: number;
+  itemXp: number;
+  xpToNextItemLevel: number;
 
   // The "memory" of the item
   memory: {
@@ -61,9 +65,11 @@ export interface MasterIntelligentItem extends Omit<IntelligentItem,
   'quantity' | 
   'instanceId' | 
   'condition' | 
-  'experience' |
   'memory' |
-  'contextual_properties' // Contextual properties are instance-specific
+  'contextual_properties' |
+  'itemLevel' |
+  'itemXp'
 > {
   // All properties here are static and define the item's base state.
+  // We can add base evolution properties here if needed in the future.
 }

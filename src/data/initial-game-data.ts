@@ -55,6 +55,7 @@ export const initialInventory: IntelligentItem[] = [
   getMasterItemById('wallet_01'),
   getMasterItemById('keys_apartment_01'),
   getMasterItemById('energy_bar_01'),
+  getMasterItemById('vintage_camera_01'), // Added the new evolving item
 ]
 .filter((item): item is NonNullable<typeof item> => item !== undefined)
 .map(masterItem => {
@@ -64,11 +65,19 @@ export const initialInventory: IntelligentItem[] = [
     instanceId: uuidv4(),
     quantity: masterItem.id === 'energy_bar_01' ? 2 : 1,
     condition: { durability: 100 },
-    experience: 0,
+    itemLevel: 1,
+    itemXp: 0,
+    // xpToNextItemLevel is already on masterItem
     memory: {
       acquiredAt: new Date().toISOString(),
       acquisitionStory: "Fait partie de votre équipement de départ standard.",
       usageHistory: [],
+    },
+    contextual_properties: {
+      local_value: masterItem.economics.base_value,
+      legal_status: 'legal',
+      social_perception: 'normal',
+      utility_rating: 50,
     },
   };
 });

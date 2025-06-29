@@ -8,7 +8,7 @@ import * as LucideIcons from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Euro } from 'lucide-react';
+import { Euro, Star } from 'lucide-react';
 
 interface InventoryItemCardProps {
   item: IntelligentItem;
@@ -16,10 +16,11 @@ interface InventoryItemCardProps {
 
 const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
   const IconComponent = (LucideIcons as any)[item.iconName] || LucideIcons.Package;
+  const xpPercentage = item.xpToNextItemLevel > 0 ? (item.itemXp / item.xpToNextItemLevel) * 100 : 0;
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow duration-150 flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-x-3 pb-2 pt-3 px-4">
+      <CardHeader className="flex flex-row items-start justify-between space-x-3 pb-2 pt-3 px-4">
         <div className="flex items-center space-x-3">
             <IconComponent className="w-6 h-6 text-primary" />
             <div>
@@ -63,21 +64,31 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
                 </Tooltip>
               </TooltipProvider>
            </div>
+            {item.xpToNextItemLevel > 0 && (
             <div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">Expérience</Label>
-                      <Progress value={item.experience % 100} className="h-1.5" />
+                       <div className="flex justify-between items-center">
+                        <Label className="text-xs font-medium text-muted-foreground flex items-center">
+                          <Star className="w-3 h-3 mr-1 text-yellow-500" />
+                          Niveau {item.itemLevel}
+                        </Label>
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          XP: {item.itemXp}/{item.xpToNextItemLevel}
+                        </Label>
+                      </div>
+                      <Progress value={xpPercentage} className="h-1.5 [&>div]:bg-yellow-500" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Expérience: {item.experience} / 100</p>
+                    <p>Expérience de l'objet: {item.itemXp} / {item.xpToNextItemLevel}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
            </div>
+            )}
         </div>
       </CardContent>
     </Card>

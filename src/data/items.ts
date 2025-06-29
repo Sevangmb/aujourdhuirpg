@@ -14,6 +14,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Smartphone',
     stackable: false,
     economics: { base_value: 150, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0, // Ne peut pas évoluer
   },
   {
     id: 'wallet_01',
@@ -23,6 +24,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Wallet',
     stackable: false,
     economics: { base_value: 5, rarity_multiplier: 0.8 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'keys_apartment_01',
@@ -32,6 +34,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'KeyRound',
     stackable: false,
     economics: { base_value: 0, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'energy_bar_01',
@@ -42,6 +45,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true,
     effects: { Sante: 10 },
     economics: { base_value: 3, rarity_multiplier: 0.5 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'water_bottle_01',
@@ -52,6 +56,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true,
     effects: { Sante: 2 },
     economics: { base_value: 1, rarity_multiplier: 0.2 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'notebook_pen_01',
@@ -61,6 +66,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'NotebookPen',
     stackable: false,
     economics: { base_value: 4, rarity_multiplier: 0.7 },
+    xpToNextItemLevel: 50,
   },
    {
     id: 'map_paris_01',
@@ -70,6 +76,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Map',
     stackable: false,
     economics: { base_value: 7, rarity_multiplier: 1.1 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'medkit_basic_01',
@@ -80,6 +87,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true, 
     effects: { Sante: 25 },
     economics: { base_value: 15, rarity_multiplier: 1.2 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'mysterious_key_01',
@@ -89,6 +97,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Key',
     stackable: false,
     economics: { base_value: 10, rarity_multiplier: 2.5 },
+    xpToNextItemLevel: 100, // This key has potential
   },
   {
     id: 'data_stick_01',
@@ -98,6 +107,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Usb',
     stackable: false,
     economics: { base_value: 25, rarity_multiplier: 1.8 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'ancient_coin_01',
@@ -107,6 +117,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'CircleDollarSign',
     stackable: true,
     economics: { base_value: 50, rarity_multiplier: 3.0 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'encrypted_laptop_01',
@@ -116,6 +127,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Laptop',
     stackable: false,
     economics: { base_value: 200, rarity_multiplier: 2.2 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'worn_leather_jacket_01',
@@ -125,6 +137,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Shirt', 
     stackable: false,
     economics: { base_value: 40, rarity_multiplier: 1.5 },
+    xpToNextItemLevel: 250, // This jacket could become iconic
   },
   {
     id: 'research_notes_quest_01',
@@ -134,6 +147,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'FileText',
     stackable: false,
     economics: { base_value: 0, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'painkillers_01',
@@ -144,6 +158,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true,
     effects: { Sante: 5 },
     economics: { base_value: 10, rarity_multiplier: 1.3 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'flashlight_01',
@@ -153,6 +168,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Torus', // Using Torus as a stand-in for Flashlight if not available
     stackable: false,
     economics: { base_value: 12, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'multitool_01',
@@ -162,6 +178,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Wrench',
     stackable: false,
     economics: { base_value: 20, rarity_multiplier: 1.4 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'sim_card_01',
@@ -171,6 +188,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Router', // Placeholder icon
     stackable: false,
     economics: { base_value: 10, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'lighter_01',
@@ -180,6 +198,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Flame',
     stackable: false,
     economics: { base_value: 2, rarity_multiplier: 0.6 },
+    xpToNextItemLevel: 0,
   },
   {
     id: 'lockpicks_01',
@@ -189,6 +208,17 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'KeySquare',
     stackable: false,
     economics: { base_value: 30, rarity_multiplier: 2.0 },
+    xpToNextItemLevel: 0,
+  },
+  {
+    id: 'vintage_camera_01',
+    name: 'Appareil Photo Vintage',
+    description: 'Un vieil appareil photo argentique. Il semble robuste et a certainement capturé de nombreuses histoires.',
+    type: 'tool',
+    iconName: 'Camera',
+    stackable: false,
+    economics: { base_value: 80, rarity_multiplier: 1.8 },
+    xpToNextItemLevel: 100, // This item can evolve!
   }
 ];
 

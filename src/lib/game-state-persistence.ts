@@ -128,7 +128,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       ...item,
       instanceId: item.instanceId || uuidv4(),
       quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-      experience: typeof item.experience === 'number' ? item.experience : 0,
+      itemLevel: typeof item.itemLevel === 'number' ? item.itemLevel : 1,
+      itemXp: typeof item.itemXp === 'number' ? item.itemXp : (typeof item.experience === 'number' ? item.experience : 0),
+      xpToNextItemLevel: typeof item.xpToNextItemLevel === 'number' && item.xpToNextItemLevel > 0 ? item.xpToNextItemLevel : (masterItem.xpToNextItemLevel || 0),
       condition: {
         durability: typeof item.condition === 'number' ? item.condition : (item.condition?.durability ?? 100),
       },
