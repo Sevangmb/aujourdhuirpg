@@ -4,7 +4,7 @@ import type { StoryChoice } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, Zap, HelpCircle } from 'lucide-react';
+import { Clock, Zap, HelpCircle, Target } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 
@@ -38,9 +38,14 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) =
         <Icon className="w-8 h-8 mt-1" />
         <div>
           <CardTitle className="text-base">{choice.text}</CardTitle>
-          <div className="flex items-center gap-x-3 text-xs opacity-80 mt-1">
+          <div className="flex items-center gap-x-3 text-xs opacity-80 mt-1 flex-wrap">
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {choice.timeCost} min</span>
             <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> -{choice.energyCost} Énergie</span>
+            {choice.successProbability !== undefined && (
+              <span className="flex items-center gap-1 font-medium text-blue-600 dark:text-blue-400">
+                <Target className="w-3 h-3" /> {choice.successProbability}% Succès
+              </span>
+            )}
           </div>
         </div>
       </CardHeader>

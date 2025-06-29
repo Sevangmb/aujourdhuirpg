@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { Player, AdvancedSkillSystem } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { User, Shield, Brain as BrainIcon, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as ReputationIcon, Heart, Smile, Dumbbell, BookOpen, UserCog, Stethoscope, Hand, Landmark } from 'lucide-react';
+import { User, Shield, Brain as BrainIcon, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users, Heart, Smile, Dumbbell, BookOpen, UserCog, Stethoscope, Hand, Landmark } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -96,7 +97,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                 else if (stat === "Energie") Icon = Zap;
                 else if (stat === "Stress") Icon = CloudFog;
                 else if (stat === "Volonte") Icon = Anchor;
-                else if (stat === "Reputation") Icon = ReputationIcon;
+                else if (stat === "Reputation") Icon = Users;
 
                 return (
                   <div key={stat} className="flex justify-between items-center p-1.5 bg-muted/30 rounded-md text-xs">

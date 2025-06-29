@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -14,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { getMasterItemById } from '@/data/items';
-import { performSkillCheck } from '@/lib/skill-check';
+import { performSkillCheck, calculateSuccessProbability } from '@/lib/skill-check';
 
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
@@ -52,10 +51,27 @@ const GamePlay: React.FC<GamePlayProps> = ({
   const isMobile = useIsMobile();
   
   useEffect(() => {
-    // This effect ensures that whenever the scenario from the global state changes,
-    // the choices displayed to the user are updated accordingly.
-    setCurrentChoices(initialGameState.currentScenario?.choices || []);
-  }, [initialGameState.currentScenario]);
+    const choices = initialGameState.currentScenario?.choices || [];
+    const player = initialGameState.player;
+
+    if (player) {
+      const choicesWithProbability = choices.map(choice => {
+        if (choice.skillCheck) {
+          const probability = calculateSuccessProbability(
+            player.skills,
+            player.stats,
+            choice.skillCheck.skill,
+            choice.skillCheck.difficulty
+          );
+          return { ...choice, successProbability: probability };
+        }
+        return choice;
+      });
+      setCurrentChoices(choicesWithProbability);
+    } else {
+      setCurrentChoices(choices);
+    }
+  }, [initialGameState.currentScenario, initialGameState.player]);
 
 
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {

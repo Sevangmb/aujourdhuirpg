@@ -103,3 +103,41 @@ export function performSkillCheck(
     margin,
   };
 }
+
+
+/**
+ * Calculates the probability of success for a skill check for display purposes.
+ * @param skills The player's skills object.
+ * @param stats The player's stats object.
+ * @param skillPath The path to the skill being checked (e.g., "cognitive.observation").
+ * @param difficultyTarget The target difficulty for the check.
+ * @param situationalModifiers Any situational modifiers.
+ * @returns A number representing the percentage chance of success (clamped between 6% and 95%).
+ */
+export function calculateSuccessProbability(
+  skills: AdvancedSkillSystem,
+  stats: PlayerStats,
+  skillPath: string,
+  difficultyTarget: number,
+  situationalModifiers: number = 0
+): number {
+  const baseSkillValue = getSkillValueByPath(skills, skillPath);
+  const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
+
+  const controllingStatName = skillCategoryToStatMap[category];
+  const controllingStatValue = controllingStatName ? (stats[controllingStatName] || 0) : 0;
+  const statModifierValue = Math.floor(controllingStatValue / 10);
+
+  const effectiveScore = baseSkillValue + statModifierValue + situationalModifiers;
+
+  // Player needs to roll `difficultyTarget - effectiveScore` or higher.
+  const requiredRoll = difficultyTarget - effectiveScore;
+
+  // Chance of rolling X or higher on a D100 is (101 - X)%.
+  const successChance = 101 - requiredRoll;
+
+  // Clamp the probability between 6% and 95% to reflect auto-failure/success rolls.
+  // A roll of 1-5 always fails, so you can't have more than 95% chance.
+  // A roll of 95-100 always succeeds, so you can't have less than 6% chance.
+  return Math.round(Math.max(6, Math.min(95, successChance)));
+}

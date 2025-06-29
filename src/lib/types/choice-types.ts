@@ -32,4 +32,5 @@ export interface StoryChoice {
     skill: string; // e.g., "cognitive.observation", "physical.stealth". A path in AdvancedSkillSystem
     difficulty: number; // e.g., 60
   };
+  successProbability?: number;
 }
