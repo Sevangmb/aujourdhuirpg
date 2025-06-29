@@ -1,5 +1,6 @@
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
+import type { Skills } from './player-types';
 
 export const ACTION_TYPES = ["observation", "exploration", "social", "action", "reflection"] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
@@ -27,4 +28,8 @@ export interface StoryChoice {
   energyCost: number;
   timeCost: number; // in minutes
   consequences: string[];
+  skillCheck?: {
+    skill: keyof Skills | string; // e.g., "Perception", "Discretion". Corresponds to a key in Player['skills']
+    difficulty: number; // e.g., 60
+  };
 }

@@ -255,6 +255,35 @@ export async function calculateDeterministicEffects(
     notifications.push({ type: 'stat_changed', title: 'Énergie', description: `Vous avez dépensé ${choice.energyCost} points d'énergie.` });
     eventsForAI.push(`Le joueur a dépensé ${choice.energyCost} énergie.`);
   }
+
+  // Handle skill checks
+  if (choice.skillCheck) {
+    const { skill, difficulty } = choice.skillCheck;
+    const skillCheckResult = performSkillCheck(
+      newPlayerState.skills,
+      newPlayerState.stats,
+      skill,
+      difficulty
+    );
+
+    const outcomeTextMap = {
+      critical_success: "Réussite Critique !",
+      success: "Réussite",
+      failure: "Échec",
+      critical_failure: "Échec Critique !"
+    };
+    const outcomeText = outcomeTextMap[skillCheckResult.degreeOfSuccess];
+
+    notifications.push({
+      type: 'skill_check',
+      title: `Jet de ${skill}`,
+      description: `${outcomeText} (Jet: ${skillCheckResult.rollValue} + Mod: ${skillCheckResult.effectiveScore} = ${skillCheckResult.totalAchieved} vs Diff: ${skillCheckResult.difficultyTarget})`
+    });
+
+    eventsForAI.push(
+      `Résultat du jet de compétence (${skill}) : ${outcomeText} (Jet: ${skillCheckResult.rollValue} + Score: ${skillCheckResult.effectiveScore} = ${skillCheckResult.totalAchieved} vs Difficulté: ${skillCheckResult.difficultyTarget})`
+    );
+  }
   
   // Specific hardcoded effects for certain choices can be added here
   if (choice.id === 'montmartre_buy_crepe') {
