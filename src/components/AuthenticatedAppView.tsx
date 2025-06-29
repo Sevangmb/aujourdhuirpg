@@ -137,16 +137,16 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, []);
 
   const fetchLocationImage = useCallback(async (placeName: string) => {
-    if (!placeName || placeName === UNKNOWN_STARTING_PLACE_NAME) {
+    if (!placeName || placeName === UNKNOWN_STARTING_PLACE_NAME || !gameState?.player) {
       setLocationImageUrl(null);
       setLocationImageError(null);
       return;
     }
     setLocationImageLoading(true);
     setLocationImageError(null);
-    console.log(`Fetching image for ${placeName}`);
+    console.log(`Fetching image for ${placeName} in era ${gameState.player.era}`);
     try {
-      const result = await generateLocationImageService({ placeName }); // Assuming a new service function
+      const result = await generateLocationImageService({ placeName, era: gameState.player.era });
       if (result.error) {
         setLocationImageError(result.error);
         setLocationImageUrl(null);
@@ -161,7 +161,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     } finally {
       setLocationImageLoading(false);
     }
-  }, []);
+  }, [gameState]);
 
   const fetchGeoIntelligence = useCallback(async (location: Position) => {
     if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME) {

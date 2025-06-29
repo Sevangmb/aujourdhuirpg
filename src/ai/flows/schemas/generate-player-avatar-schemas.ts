@@ -10,6 +10,7 @@ export const GeneratePlayerAvatarInputSchema = z.object({
   age: z.number().describe("The character's approximate age."),
   origin: z.string().describe("The character's origin (social, geographical)."),
   playerBackground: z.string().describe("The character's background, history, or style description."),
+  era: z.string().describe("The historical era of the character."),
 });
 
 export const GeneratePlayerAvatarOutputSchema = z.object({

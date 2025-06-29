@@ -71,13 +71,13 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   const handleGenerateAvatar = async () => {
     const data = form.getValues();
     // Manually check only the fields required for avatar generation
-    const requiredFieldsForAvatar = ['name', 'gender', 'age', 'origin', 'background'] as const;
+    const requiredFieldsForAvatar = ['name', 'gender', 'age', 'origin', 'background', 'era'] as const;
     const validationResult = await form.trigger(requiredFieldsForAvatar);
 
     if (!validationResult) {
         toast({
             title: "Champs Incomplets",
-            description: "Veuillez remplir les champs Nom, Genre, Âge, Origine et Historique avant de générer l'avatar.",
+            description: "Veuillez remplir les champs Nom, Genre, Âge, Origine, Historique et Époque avant de générer l'avatar.",
             variant: "destructive"
         });
         return;
@@ -90,7 +90,8 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             gender: data.gender,
             age: Number(data.age),
             origin: data.origin,
-            playerBackground: data.background
+            playerBackground: data.background,
+            era: data.era,
         };
         const avatarResult = await aiService.generatePlayerAvatar(avatarInput);
         if (avatarResult.imageUrl) {

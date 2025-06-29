@@ -40,12 +40,13 @@ const generatePlayerAvatarFlow = ai.defineFlow(
 
     try {
       const {media, text} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', 
+        model: 'googleai/gemini-2.0-flash-preview-image-generation', 
         prompt: `Generate a character portrait for a text-based RPG.
 Character Details:
 - Name: ${input.name}
 - Gender: ${input.gender}
 - Approximate Age: ${input.age}
+- Era: ${input.era}
 - Origin (Social/Geographical): ${input.origin}
 - Background/Style/Vibe: ${input.playerBackground}
 
@@ -53,7 +54,7 @@ Instructions for the image:
 - Style: Aim for a grounded, realistic, or slightly stylized realistic portrait. Avoid overly cartoonish or anime styles.
 - Composition: Focus on the character's face and upper body (bust or portrait shot, square aspect ratio).
 - Expression: Reflect a neutral, thoughtful, or subtly expressive mood suitable for an RPG character. Avoid overly dramatic or exaggerated expressions unless implied by the background.
-- Details: Subtly incorporate elements from their origin and background into their appearance (e.g., clothing style, minor accessories, hints of their past experiences if visually representable).
+- Details: Subtly incorporate elements from their origin, background, and era into their appearance (e.g., clothing style, minor accessories, hints of their past experiences if visually representable).
 - NO TEXT or overlays on the image.
 - Image should be SFW (suitable for a general audience).
 - Ensure the image is square.`,
