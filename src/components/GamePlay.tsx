@@ -247,8 +247,6 @@ const GamePlay: React.FC<GamePlayProps> = ({
           onPlayerInputChange={setPlayerInput}
           onSubmit={handlePlayerActionSubmit}
           isLoading={isLoading}
-          gameState={initialGameState}
-          dispatch={handleGameAction}
         />
       </div>
     </div>

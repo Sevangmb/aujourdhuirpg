@@ -23,6 +23,7 @@ import LoadingState from './LoadingState';
 import { findAndAdaptHistoricalContactsForLocation, type AdaptedContact } from '@/services/historical-contact-service';
 import { HistoricalEncounterModal } from './HistoricalEncounterModal';
 import { v4 as uuidv4 } from 'uuid';
+import type { SimpleCharacterFormData } from './CharacterCreationForm';
 
 
 interface AuthenticatedAppViewProps {
@@ -264,20 +265,26 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
   }, [user.uid, toast, fetchCharacterList]);
 
-  const handleCharacterCreate = useCallback(async (playerData: {
-      name: string; gender: string; age: number; origin: string; background: string; era: GameEra; startingLocation: string; avatarUrl: string;
-    }) => {
+  const handleCharacterCreate = useCallback(async (simplePlayerData: SimpleCharacterFormData) => {
     setAppMode('loading');
     try {
-      const locationData = await fetchWikipediaSummary(playerData.startingLocation);
+      const locationData = await fetchWikipediaSummary(simplePlayerData.startingLocation);
       if (!locationData || typeof locationData.latitude !== 'number') {
         toast({ title: "Lieu de départ introuvable", variant: "destructive", description: "Veuillez choisir un lieu plus connu ou vérifier l'orthographe." });
         setAppMode('creating_character');
         return;
       }
 
+      const fullPlayerData = {
+        ...simplePlayerData,
+        gender: 'Préfère ne pas préciser',
+        origin: 'Origine non spécifiée',
+        era: 'Époque Contemporaine' as GameEra,
+        avatarUrl: defaultAvatarUrl,
+      };
+
       let hydratedPlayer = hydratePlayer({
-          ...playerData, uid: user.uid, isAnonymous: user.isAnonymous,
+          ...fullPlayerData, uid: user.uid, isAnonymous: user.isAnonymous,
       });
       hydratedPlayer.currentLocation = {
           latitude: locationData.latitude, longitude: locationData.longitude, name: locationData.title,
@@ -299,7 +306,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         currentScenario: { scenarioText: prologueResult.scenarioText }
       };
 
-      // This now creates a character document and an initial save file
       const newCharacterId = await createNewCharacter(user.uid, finalGameState);
       if (!newCharacterId) throw new Error("Failed to create character in Firestore.");
 
@@ -307,7 +313,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setGameState(finalGameState);
       setAppMode('playing');
 
-      toast({ title: "Personnage créé !", description: `${playerData.name} est prêt(e) pour l'aventure.` });
+      toast({ title: "Personnage créé !", description: `${fullPlayerData.name} est prêt(e) pour l'aventure.` });
 
     } catch (error) {
       console.error("Error during character creation:", error);
