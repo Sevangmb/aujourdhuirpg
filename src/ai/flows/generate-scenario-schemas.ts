@@ -84,10 +84,10 @@ export const StoryChoiceSchema = z.object({
 // --- Main Output Schema ---
 // This schema describes the AI's response, which now includes both narration and game-state-changing events.
 export const GenerateScenarioOutputSchema = z.object({
-  /** The generated scenario text, formatted in HTML. This text describes the outcome of the player action and sets the scene for the next player input. */
+  /** Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l'action du joueur et prépare la scène pour la prochaine action. */
   scenarioText: z.string().describe('Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l\'action du joueur et prépare la scène pour la prochaine action.'),
   
-  /** If the AI's narrative causes a significant location change, it can specify the new location details here. */
+  /** Détails d'un nouveau lieu si l'action du joueur l'a fait se déplacer de manière significative. */
   newLocationDetails: LocationSchema.extend({
     reasonForMove: z.string().optional()
   }).nullable().optional().describe("Détails d'un nouveau lieu si l'action du joueur l'a fait se déplacer de manière significative."),
@@ -95,50 +95,56 @@ export const GenerateScenarioOutputSchema = z.object({
   // --- NEW AI-DRIVEN GAME EVENTS ---
   // The AI can now populate these fields to directly influence the game state.
 
-  /** A list of new quests the AI wants to add to the player's journal. */
+  /** Liste de nouvelles quêtes à ajouter au journal du joueur. L'IA crée ces quêtes lorsque l'histoire le justifie. */
   newQuests: z.array(QuestInputSchema).optional().describe("Liste de nouvelles quêtes à ajouter au journal du joueur. L'IA crée ces quêtes lorsque l'histoire le justifie."),
   
-  /** A list of updates to existing quests (e.g., completing an objective). */
+  /** Liste des mises à jour des quêtes existantes (ex: marquer un objectif comme complété). */
   updatedQuests: z.array(QuestUpdateSchema).optional().describe("Liste des mises à jour des quêtes existantes (ex: marquer un objectif comme complété)."),
 
-  /** A list of new Non-Player Characters (PNJ) introduced in the narrative. */
+  /** Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde. */
   newPNJs: z.array(PNJInteractionSchema).optional().describe("Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde."),
 
-  /** A list of updates to existing PNJ's dispositions or relationships. */
+  /** Mises à jour des PNJ existants, comme leur disposition envers le joueur. */
   updatedPNJs: z.array(z.object({
     id: z.string().describe("ID du PNJ existant à mettre à jour."),
     dispositionScore: z.number().optional().describe("Nouveau score de disposition du PNJ envers le joueur après l'interaction."),
     newInteractionLogEntry: z.string().optional().describe("Nouvelle entrée à ajouter à l'historique des interactions du PNJ.")
   })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
 
-  /** A list of new clues for the player's investigation log. */
+  /** Nouveaux indices découverts par le joueur. */
   newClues: z.array(ClueInputSchema).optional().describe("Nouveaux indices découverts par le joueur."),
   
-  /** A list of new documents obtained by the player. */
+  /** Nouveaux documents que le joueur obtient. */
   newDocuments: z.array(DocumentInputSchema).optional().describe("Nouveaux documents que le joueur obtient."),
   
-  /** Optional: The AI can update the player's investigation notes with new summaries or hypotheses. */
+  /** Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA. */
   updatedInvestigationNotes: z.string().nullable().optional().describe("Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA."),
 
-  /** A list of items to add directly to the player's inventory. */
+  /** Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés). */
   itemsToAddToInventory: z.array(z.object({
-    itemId: z.string().describe("The ID of the item from the master item list (e.g., 'medkit_basic_01')."),
-    quantity: z.number().min(1).describe("The quantity of the item to add.")
+    itemId: z.string().describe("L'ID de l'objet depuis la liste maîtresse (ex: 'medkit_basic_01')."),
+    quantity: z.number().min(1).describe("La quantité d'objet à ajouter.")
   })).optional().describe("Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés)."),
   
-  /** A list of financial transactions that occurred as a result of the narrative. Use this for any monetary changes. */
+  /** Mises à jour des objets dans l'inventaire du joueur, comme un gain d'expérience. */
+  itemUpdates: z.array(z.object({
+    instanceId: z.string().describe("L'ID d'instance unique de l'objet à mettre à jour."),
+    xpGained: z.number().describe("La quantité de points d'expérience que l'objet a gagné.")
+  })).optional().describe("Mises à jour des objets dans l'inventaire du joueur, comme un gain d'expérience."),
+
+  /** Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense). */
   newTransactions: z.array(NewTransactionSchema).optional().describe("Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense)."),
   
-  /** AI's strategic recommendation for the player's next move. */
+  /** La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente. */
   aiRecommendation: z.object({
     focus: z.string().describe("Un ou deux mots résumant l'axe recommandé, ex: 'Gagner de l'argent' ou 'Enquêter sur la piste'."),
     reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
-  /** A list of 3-4 rich, context-aware choices for the player to take next. This field is required. */
+  /** Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ce champ est obligatoire. */
   choices: z.array(StoryChoiceSchema).min(1).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ne doit pas être vide."),
 
-  /** The amount of experience points (XP) the player has gained. */
+  /** Points d'expérience (XP) que le joueur gagne. */
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
 
 }).describe("Schéma de sortie pour le flux generateScenario, incluant maintenant les événements de jeu pilotés par l'IA.");

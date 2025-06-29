@@ -1,5 +1,6 @@
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains } from './player-state-helpers';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, addXpToItem } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -41,6 +42,7 @@ export type GameAction =
   | { type: 'ADD_DOCUMENT'; payload: AddDocumentPayload }
   | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
+  | { type: 'ADD_XP_TO_ITEM'; payload: { instanceId: string; xpGained: number } }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
   | { type: 'ADD_XP'; payload: number }
   | { type: 'ADD_HISTORICAL_CONTACT'; payload: HistoricalContact };
@@ -121,7 +123,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'ADD_QUEST': {
         const newQuest: Quest = {
             id: uuidv4(),
-            ...action.payload,
+            title: action.payload.title,
+            description: action.payload.description,
+            type: action.payload.type,
+            giver: action.payload.giver,
+            rewardDescription: action.payload.rewardDescription,
+            moneyReward: action.payload.moneyReward,
+            relatedLocation: action.payload.relatedLocation,
             dateAdded: nowISO,
             status: action.payload.type === 'job' ? 'inactive' : 'active',
             objectives: action.payload.objectives.map((desc): QuestObjective => ({
@@ -167,14 +175,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'ADD_PNJ': {
         const newPNJ: PNJ = { 
-            id: uuidv4(),
-            ...action.payload, 
+            id: action.payload.id || uuidv4(),
+            name: action.payload.name,
+            description: action.payload.description,
+            relationStatus: action.payload.relationStatus,
+            importance: action.payload.importance,
+            dispositionScore: action.payload.dispositionScore || 0,
             firstEncountered: state.player.currentLocation.name, 
             lastSeen: nowISO, 
             interactionHistory: ["Rencontre initiale."],
-            dispositionScore: action.payload.dispositionScore || 0,
-            trustLevel: 50, // Initialize with default trust
-            notes: [], // Initialize with empty notes
+            trustLevel: 50,
+            notes: [],
         };
         return {
             ...state,
@@ -203,6 +214,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const { itemId, quantity } = action.payload;
         const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity);
         return { ...state, player: { ...state.player, inventory: updatedInventory } };
+    }
+    case 'ADD_XP_TO_ITEM': {
+      const { instanceId, xpGained } = action.payload;
+      const { updatedInventory, leveledUp, itemName } = addXpToItem(state.player.inventory, instanceId, xpGained);
+      // Future: Could dispatch a notification here if leveledUp is true.
+      return { ...state, player: { ...state.player, inventory: updatedInventory } };
     }
     case 'ADD_TRANSACTION': {
         const newTransaction: Transaction = {

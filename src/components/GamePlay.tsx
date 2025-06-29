@@ -83,6 +83,9 @@ const GamePlay: React.FC = () => {
       if (aiOutput.newClues) aiOutput.newClues.forEach(c => allActions.push({ type: 'ADD_CLUE', payload: c as any }));
       if (aiOutput.newDocuments) aiOutput.newDocuments.forEach(d => allActions.push({ type: 'ADD_DOCUMENT', payload: d as any }));
       if (aiOutput.updatedInvestigationNotes) allActions.push({ type: 'UPDATE_INVESTIGATION_NOTES', payload: aiOutput.updatedInvestigationNotes });
+      if (aiOutput.itemUpdates) {
+          aiOutput.itemUpdates.forEach(update => allActions.push({ type: 'ADD_XP_TO_ITEM', payload: update }));
+      }
       
       dispatch({ type: 'TRIGGER_EVENT_ACTIONS', payload: allActions });
 
@@ -108,23 +111,25 @@ const GamePlay: React.FC = () => {
   const { currentScenario } = gameState;
 
   return (
-    <div className="flex flex-col md:flex-row">
-      <main className="flex-grow bg-muted/20">
-        <div className="p-4 md:p-6 space-y-6">
-          <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
-          {!isLoading && (
-            <ChoiceSelectionDisplay
-              choices={currentChoices}
-              onSelectChoice={handleChoiceSelected}
-              isLoading={isLoading}
-              aiRecommendation={currentScenario.aiRecommendation || null}
-            />
-          )}
-        </div>
-        {isMobile && <GameSidebar />}
+    <div className="flex flex-col md:flex-row min-h-screen">
+      <main className="flex-grow bg-muted/20 p-4 md:p-6 space-y-6">
+        <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+        {!isLoading && (
+          <ChoiceSelectionDisplay
+            choices={currentChoices}
+            onSelectChoice={handleChoiceSelected}
+            isLoading={isLoading}
+            aiRecommendation={currentScenario.aiRecommendation || null}
+          />
+        )}
       </main>
 
       {!isMobile && <GameSidebar />}
+      {isMobile && (
+        <div className="md:hidden sticky bottom-0 z-10">
+          <GameSidebar />
+        </div>
+      )}
     </div>
   );
 };

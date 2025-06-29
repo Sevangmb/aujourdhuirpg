@@ -39,7 +39,9 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
         instanceId: uuidv4(),
         quantity: quantityToAdd,
         condition: { durability: 100 },
-        experience: 0,
+        itemLevel: 1,
+        itemXp: 0,
+        xpToNextItemLevel: masterItem.xpToNextItemLevel,
         memory: {
           acquiredAt: new Date().toISOString(),
           acquisitionStory: `Acquis dans des circonstances normales.`,
@@ -61,7 +63,9 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
         instanceId: uuidv4(),
         quantity: 1,
         condition: { durability: 100 },
-        experience: 0,
+        itemLevel: 1,
+        itemXp: 0,
+        xpToNextItemLevel: masterItem.xpToNextItemLevel,
         memory: {
           acquiredAt: new Date().toISOString(),
           acquisitionStory: `Acquis dans des circonstances normales.`,
@@ -151,4 +155,38 @@ export function applySkillGains(currentSkills: AdvancedSkillSystem, gains: Recor
         }
     }
     return { updatedSkills: newSkills, notifications };
+}
+
+export function addXpToItem(
+  currentInventory: IntelligentItem[],
+  instanceId: string,
+  xpToAdd: number
+): { updatedInventory: IntelligentItem[]; leveledUp: boolean; itemName: string | undefined } {
+  const newInventory = JSON.parse(JSON.stringify(currentInventory));
+  const itemIndex = newInventory.findIndex((item: IntelligentItem) => item.instanceId === instanceId);
+
+  if (itemIndex === -1) {
+    console.warn(`Item XP Warning: Item with instanceId ${instanceId} not found.`);
+    return { updatedInventory: currentInventory, leveledUp: false, itemName: undefined };
+  }
+
+  const item = newInventory[itemIndex];
+  let leveledUp = false;
+
+  // Only add XP if the item can evolve
+  if (item.xpToNextItemLevel > 0) {
+    item.itemXp += xpToAdd;
+
+    while (item.itemXp >= item.xpToNextItemLevel && item.xpToNextItemLevel > 0) {
+      item.itemLevel += 1;
+      item.itemXp -= item.xpToNextItemLevel;
+      // For now, let's just double the XP requirement for the next level.
+      // Later, this could be a more complex calculation or a lookup table.
+      item.xpToNextItemLevel *= 2; 
+      leveledUp = true;
+      // Here is where item transformation logic would go in the future.
+    }
+  }
+
+  return { updatedInventory: newInventory, leveledUp, itemName: item.name };
 }
