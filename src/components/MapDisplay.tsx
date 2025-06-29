@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -101,13 +100,56 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     );
   }
 
-  const clickableIcon = {
-    path: google.maps.SymbolPath.CIRCLE,
-    scale: 5,
-    fillColor: "blue",
-    fillOpacity: 0.8,
-    strokeWeight: 2,
-    strokeColor: "white",
+  const renderLoadedMap = () => {
+    // Because this is only called when isLoaded is true, 'google' will be defined.
+    const clickableIcon = {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 5,
+      fillColor: "blue",
+      fillOpacity: 0.8,
+      strokeWeight: 2,
+      strokeColor: "white",
+    };
+
+    return (
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={currentLocation?.latitude && currentLocation?.longitude ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
+        onLoad={onLoadMap}
+        options={{
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: false,
+          clickableIcons: false,
+        }}
+      >
+        {currentLocation?.latitude && currentLocation?.longitude && (
+          <MarkerF
+            position={{ lat: currentLocation.latitude, lng: currentLocation.longitude }}
+            title={currentLocation.name}
+          />
+        )}
+        {(nearbyPois || []).map((poi) => (
+           poi?.latitude && poi?.longitude && (
+            <MarkerF
+              key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
+              position={{ lat: poi.latitude, lng: poi.longitude }}
+              onClick={() => onPoiClick && onPoiClick(poi)}
+              title={`Voyager vers ${poi.name}`}
+              options={{
+                icon: onPoiClick ? clickableIcon : undefined,
+                label: {
+                  text: " ", // Empty label to provide a larger click area
+                  color: "transparent",
+                  fontSize: "24px",
+                },
+              }}
+              cursor={onPoiClick ? 'pointer' : 'default'}
+            />
+          )
+        ))}
+      </GoogleMap>
+    );
   };
 
   return (
@@ -117,47 +159,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         <span className="truncate">{currentLocation?.name || "Localisation actuelle"}</span>
       </div>
       <div className="flex-grow rounded-md overflow-hidden border border-border">
-        {!isLoaded ? (
-          loadingElement
-        ) : (
-          <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={currentLocation?.latitude && currentLocation?.longitude ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
-            onLoad={onLoadMap}
-            options={{
-              streetViewControl: false,
-              mapTypeControl: false,
-              fullscreenControl: false,
-              clickableIcons: false,
-            }}
-          >
-            {currentLocation?.latitude && currentLocation?.longitude && (
-              <MarkerF
-                position={{ lat: currentLocation.latitude, lng: currentLocation.longitude }}
-                title={currentLocation.name}
-              />
-            )}
-            {(nearbyPois || []).map((poi) => (
-               poi?.latitude && poi?.longitude && (
-                <MarkerF
-                  key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
-                  position={{ lat: poi.latitude, lng: poi.longitude }}
-                  onClick={() => onPoiClick && onPoiClick(poi)}
-                  title={`Voyager vers ${poi.name}`}
-                  options={{
-                    icon: onPoiClick ? clickableIcon : undefined,
-                    label: {
-                      text: " ", // Empty label to provide a larger click area
-                      color: "transparent",
-                      fontSize: "24px",
-                    },
-                  }}
-                  cursor={onPoiClick ? 'pointer' : 'default'}
-                />
-              )
-            ))}
-          </GoogleMap>
-        )}
+        {!isLoaded ? loadingElement : renderLoadedMap()}
       </div>
       {isLoaded && onPoiClick && <p className="text-[10px] text-muted-foreground mt-1 text-center truncate flex items-center justify-center gap-1">
         <MousePointerClick className="w-2.5 h-2.5" />Cliquez sur un point pour voyager.
