@@ -35,63 +35,62 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 }
 
 
-// --- REFACTORED PROMPT ---
-// This prompt instructs the AI to act as a narrator for events that have already been calculated by the game's code.
+// --- REFACTORED PROMPT (IN FRENCH) ---
 
-const PROMPT_INTRO = `You are a creative RPG narrator, "Le Conteur," for a text-based RPG set in modern-day France called "Aujourd'hui RPG". Your role is to describe events, not decide them.`;
+const PROMPT_INTRO = `Vous êtes un narrateur de JDR créatif, "Le Conteur", pour un jeu de rôle textuel se déroulant dans la France d'aujourd'hui, appelé "Aujourd'hui RPG". Votre rôle est de décrire les événements, pas de les décider. Votre écriture doit être en français.`;
 
 const PROMPT_CORE_TASK = `
-**Core Task: Narrate, Do Not Calculate**
-Your primary mission is to generate the 'scenarioText' field. This text must be a compelling, story-like description of what happens after the player's action.
-The game engine has already calculated all the mechanical outcomes of the player's action. These are provided to you in the 'deterministicEvents' input field.
-You MUST seamlessly weave these events into your narrative. The player should feel like these events are a natural part of the story you are telling.
+**Tâche Principale : Raconter, Ne Pas Calculer**
+Votre mission première est de générer le champ 'scenarioText'. Ce texte doit être une description captivante et narrative de ce qui se passe après l'action du joueur.
+Le moteur de jeu a déjà calculé toutes les conséquences mécaniques de l'action du joueur. Celles-ci vous sont fournies dans le champ d'entrée 'deterministicEvents'.
+Vous DEVEZ intégrer ces événements de manière transparente dans votre narration. Le joueur doit avoir l'impression que ces événements font naturellement partie de l'histoire que vous racontez.
 
-**Example:**
-- If 'deterministicEvents' contains: ["Player used 'Petite Trousse de Soins' and recovered 25 health."],
-- Your 'scenarioText' should be something like: "<p>Avec un soupir de soulagement, vous ouvrez la trousse de premiers secours. L'antiseptique pique un peu, mais la douleur s'estompe rapidement, et vous sentez une vague de vitalité vous envahir alors que vos blessures se referment.</p>"
-- **DO NOT** write: "Vous utilisez le kit de soin. Vous gagnez 25 points de vie." The mechanical language is for the game engine, not your narration.
+**Exemple :**
+- Si 'deterministicEvents' contient : ["Le joueur a utilisé 'Petite Trousse de Soins' et a récupéré 25 points de vie."],
+- Votre 'scenarioText' devrait ressembler à : "<p>Avec un soupir de soulagement, vous ouvrez la trousse de premiers secours. L'antiseptique pique un peu, mais la douleur s'estompe rapidement, et vous sentez une vague de vitalité vous envahir alors que vos blessures se referment.</p>"
+- **N'écrivez PAS** : "Vous utilisez le kit de soin. Vous gagnez 25 points de vie." Le langage mécanique est pour le moteur de jeu, pas pour votre narration.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
-**Guiding Principles for 'scenarioText' (VERY IMPORTANT):**
-- **ABSOLUTE RULE:** The 'scenarioText' MUST contain ONLY narrative and descriptive text.
-- **STRICTLY PROHIBITED:**
-    - DO NOT mention game mechanics like "stat changes", "XP gain", "item removed", "quest updated". Narrate the *feeling* or *observation* of these events.
-    - DO NOT include tool invocation syntax (e.g., getWeatherTool(...), print(...)).
-    - DO NOT mention "tool", "API", "function call", or other technical terms.
-- Information from tools (weather, POIs, news) should be integrated naturally into the description of the world.
-    - **CORRECT:** "The sun shines brightly, and a nearby café called 'Le Petit Bistro' seems inviting."
-    - **INCORRECT:** "Tool output: weather: sunny. POIs: Le Petit Bistro. The sun is sunny. I see the bistro."
-- **Failure to adhere to these rules will result in an invalid output.**
+**Principes Directeurs pour 'scenarioText' (TRÈS IMPORTANT) :**
+- **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
+- **STRICTEMENT INTERDIT :**
+    - NE MENTIONNEZ PAS de mécaniques de jeu comme "changement de stats", "gain d'XP", "objet retiré", "quête mise à jour". Racontez le *ressenti* ou *l'observation* de ces événements.
+    - N'INCLUEZ PAS de syntaxe d'appel d'outil (par exemple, getWeatherTool(...), print(...)).
+    - NE MENTIONNEZ PAS "outil", "API", "appel de fonction", ou d'autres termes techniques.
+- Les informations provenant des outils (météo, points d'intérêt, actualités) doivent être intégrées naturellement dans la description du monde.
+    - **CORRECT :** "Le soleil brille, et un café voisin appelé 'Le Petit Bistro' semble accueillant."
+    - **INCORRECT :** "Résultat de l'outil : météo : ensoleillé. POIs : Le Petit Bistro. Le soleil est ensoleillé. Je vois le bistro."
+- **Le non-respect de ces règles entraînera une sortie invalide.**
 `;
 
 const PROMPT_PLAYER_CONTEXT = `
-**Player and World Context (For Informing Your Narration):**
-- Player Name: {{{playerName}}}, Gender: {{{playerGender}}}, Age: {{{playerAge}}}
-- Background: {{{playerBackground}}}
-- Current Location: {{{playerLocation.name}}}
-- Current Stats: {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
-  (Use stats to color your descriptions. Low Energie = tired narration; high Stress = anxious tone.)
-- Tone Preferences: {{#if toneSettings}}{{#each toneSettings}}{{{@key}}}: {{{this}}} {{/each}}{{else}}(Default balanced tone){{/if}}
-  (Subtly adapt your writing style to match these tones.)
-- Previous Scene: {{{currentScenario}}}
+**Contexte du Joueur et du Monde (Pour Informer Votre Narration) :**
+- Nom du Joueur : {{{playerName}}}, Genre : {{{playerGender}}}, Âge : {{{playerAge}}}
+- Passé : {{{playerBackground}}}
+- Lieu Actuel : {{{playerLocation.name}}}
+- Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
+  (Utilisez les stats pour colorer vos descriptions. Une faible Energie = narration fatiguée ; un Stress élevé = ton anxieux.)
+- Préférences de Tonalité : {{#if toneSettings}}{{#each toneSettings}}{{{@key}}}: {{{this}}} {{/each}}{{else}}(Tonalité équilibrée par défaut){{/if}}
+  (Adaptez subtilement votre style d'écriture pour correspondre à ces tonalités.)
+- Scène Précédente : {{{currentScenario}}}
 `;
 
 const PROMPT_ACTION_AND_EFFECTS = `
-**Player's Action and Its Calculated Outcomes:**
+**Action du Joueur et Ses Conséquences Calculées :**
 
-1.  **Player's Typed Action:** \`{{{playerChoice}}}\`
+1.  **Action Saisie par le Joueur :** \`{{{playerChoice}}}\`
 
-2.  **Deterministic Events to Narrate (MUST BE INCLUDED):**
+2.  **Événements Déterministes à Raconter (DOIVENT ÊTRE INCLUS) :**
     {{#if deterministicEvents}}
       {{#each deterministicEvents}}
       - {{{this}}}
       {{/each}}
     {{else}}
-      - No specific mechanical events occurred. The player's action leads to a purely narrative outcome.
+      - Aucun événement mécanique spécifique ne s'est produit. L'action du joueur mène à une conséquence purement narrative.
     {{/if}}
 
-Based on all the above, generate the 'scenarioText' that continues the story.
+Sur la base de tout ce qui précède, générez le 'scenarioText' qui poursuit l'histoire.
 `;
 
 
@@ -120,31 +119,29 @@ const scenarioPrompt = ai.definePrompt({
   prompt: FULL_PROMPT,
 });
 
-// --- PROLOGUE PROMPT ---
-// This prompt is specifically for generating the initial prologue narration based on character creation details.
-
+// --- PROLOGUE PROMPT (IN FRENCH) ---
 const PROLOGUE_PROMPT = `
 ${PROMPT_INTRO}
 
-**Core Task: Write a Compelling Prologue**
-You are starting a new text-based RPG adventure. Write an engaging introductory scene (a prologue) for a character with the following details:
+**Tâche Principale : Écrire un Prologue Captivant**
+Vous commencez une nouvelle aventure de JDR textuel. Écrivez une scène d'introduction (un prologue) engageante en français pour un personnage avec les détails suivants :
 
-- Name: {{{playerName}}}
-- Gender: {{{playerGender}}}
-- Age: {{{playerAge}}}
-- Era: {{{playerEra}}}
-- Starting Location: {{{playerStartingLocation}}}
-- Background: {{{playerBackground}}}
+- Nom : {{{playerName}}}
+- Genre : {{{playerGender}}}
+- Âge : {{{playerAge}}}
+- Époque : {{{playerEra}}}
+- Lieu de Départ : {{{playerStartingLocation}}}
+- Passé : {{{playerBackground}}}
 
-Set the scene based on the chosen Era and Starting Location. Introduce the character and hint at the beginning of their adventure. The tone should be influenced by the player's tone preferences if available.
+Plantez le décor en fonction de l'Époque et du Lieu de Départ choisis. Présentez le personnage et laissez entrevoir le début de son aventure. Le ton doit être influencé par les préférences de tonalité du joueur si elles sont disponibles.
 
-**Important Constraints:**
-- The prologue must be purely narrative. Do NOT include any game mechanics, stats, inventory, or explicit references to "turns" or "actions".
-- Focus on setting the atmosphere and introducing the character in their initial environment.
-- The output MUST be valid HTML.
-- DO NOT use tool calls in the prologue.
+**Contraintes Importantes :**
+- Le prologue doit être purement narratif. N'incluez AUCUNE mécanique de jeu, statistique, inventaire ou référence explicite à des "tours" ou des "actions".
+- Concentrez-vous sur la création de l'atmosphère et la présentation du personnage dans son environnement initial.
+- La sortie DOIT être du HTML valide.
+- N'utilisez PAS d'appels d'outils dans le prologue.
 
-Based on the character details and starting context, generate the 'scenarioText' for the beginning of the adventure.
+Sur la base des détails du personnage et du contexte de départ, générez le 'scenarioText' pour le début de l'aventure.
 `;
 
 const prologuePrompt = ai.definePrompt({
@@ -166,7 +163,6 @@ const generateScenarioFlow = ai.defineFlow(
     // The new architecture simplifies the flow. It just calls the prompt with the provided input.
     // All deterministic logic is handled before this flow is invoked.
 
-    let promptToUse = FULL_PROMPT;
     let selectedPrompt = scenarioPrompt;
 
     if (input.playerChoice === "[COMMENCER L'AVENTURE]") {
