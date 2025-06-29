@@ -60,7 +60,7 @@ const GamePlay: React.FC = () => {
       const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice, weatherData);
       notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
       
-      const tempGameStateForAI: GameState = { ...gameState, player: updatedPlayer };
+      const tempGameStateForAI = { ...gameState, player: updatedPlayer };
       const inputForAI = prepareAIInput(tempGameStateForAI, choice.text, eventsForAI);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
@@ -110,18 +110,20 @@ const GamePlay: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden">
-      <main className="flex-grow flex flex-col p-2 space-y-2">
-        <ScrollArea className="flex-grow rounded-md border shadow-inner bg-muted/20 p-2">
-          <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+      <main className="flex-grow flex flex-col p-2 bg-muted/20">
+        <ScrollArea className="h-full rounded-lg">
+          <div className="p-4 md:p-6 space-y-6">
+            <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+            {!isLoading && (
+              <ChoiceSelectionDisplay
+                choices={currentChoices}
+                onSelectChoice={handleChoiceSelected}
+                isLoading={isLoading}
+                aiRecommendation={currentScenario.aiRecommendation || null}
+              />
+            )}
+          </div>
         </ScrollArea>
-        <div className="shrink-0 pt-2">
-          <ChoiceSelectionDisplay
-            choices={currentChoices}
-            onSelectChoice={handleChoiceSelected}
-            isLoading={isLoading}
-            aiRecommendation={currentScenario.aiRecommendation || null}
-          />
-        </div>
         {isMobile && <GameSidebar />}
       </main>
 

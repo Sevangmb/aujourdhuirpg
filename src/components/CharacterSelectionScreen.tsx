@@ -107,8 +107,8 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
                 />
               </CardHeader>
               <CardContent className="p-4 flex-grow">
-                <CardTitle className="text-lg font-headline">{char.name}</CardTitle>
-                <CardDescription>Niveau {char.level}</CardDescription>
+                <h3 className="text-lg font-headline">{char.name}</h3>
+                <p className="text-sm text-muted-foreground">Niveau {char.level}</p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Dernière partie : {new Date(char.lastPlayed).toLocaleString('fr-FR')}
                 </p>

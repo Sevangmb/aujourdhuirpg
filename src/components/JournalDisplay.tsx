@@ -2,34 +2,27 @@
 "use client";
 
 import React from 'react';
-import type { JournalEntry } from '@/lib/types'; // Assuming JournalEntry is exported from @/lib/types
+import type { JournalEntry } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { formatGameTime } from '@/lib/utils/time-utils'; // Assuming a time formatting utility
+import { formatGameTime } from '@/lib/utils/time-utils';
+import { MapPin, Sparkles, User, Drama, MessageSquare, BookOpen, AlertCircle, FileText } from 'lucide-react';
 
 interface JournalDisplayProps {
   journal: JournalEntry[];
 }
 
-// Helper to get a representative icon or emoji for entry types
-const getEntryIcon = (type: JournalEntry['type']): string => {
-  switch (type) {
-    case 'location_change':
-      return '🗺️'; // Map icon
-    case 'event':
-      return '✨'; // Sparkles for general events
-    case 'player_action':
-      return '🚶'; // Person walking for player actions
-    case 'quest_update':
-      return '📜'; // Scroll for quests
-    case 'npc_interaction':
-      return '💬'; // Speech bubble for NPC interactions
-    case 'misc':
-      return '📎'; // Paperclip for miscellaneous
-    default:
-      return '🔹'; // Default bullet
-  }
+const getEntryIcon = (type: JournalEntry['type']): React.ReactElement => {
+    const props = { className: "w-4 h-4 text-muted-foreground" };
+    switch (type) {
+        case 'location_change': return <MapPin {...props} />;
+        case 'event': return <Sparkles {...props} />;
+        case 'player_action': return <User {...props} />;
+        case 'quest_update': return <Drama {...props} />;
+        case 'npc_interaction': return <MessageSquare {...props} />;
+        default: return <FileText {...props} />;
+    }
 };
 
 const JournalDisplay: React.FC<JournalDisplayProps> = ({ journal }) => {
@@ -46,36 +39,38 @@ const JournalDisplay: React.FC<JournalDisplayProps> = ({ journal }) => {
     );
   }
 
-  // Sort journal entries, newest first by timestamp
   const sortedJournal = [...journal].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
-    <div className="h-full flex flex-col">
-      <Card className="flex-grow flex flex-col">
-        <CardHeader>
-          <CardTitle>Journal de Bord</CardTitle>
-          <CardDescription>Les événements récents de votre aventure.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow overflow-hidden p-0">
-          <ScrollArea className="h-full px-6">
+    <Card className="flex-grow flex flex-col h-full">
+      <CardHeader>
+        <CardTitle>Journal de Bord</CardTitle>
+        <CardDescription>Les événements récents de votre aventure.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-grow overflow-hidden p-0">
+        <ScrollArea className="h-full px-2 md:px-4">
+          <div className="relative pl-6">
+            <div className="absolute left-[11px] h-full w-0.5 bg-border -z-10"></div>
             {sortedJournal.map((entry, index) => (
-              <React.Fragment key={entry.id}>
-                <div className="py-3">
-                  <p className="text-xs text-muted-foreground mb-0.5">
-                    {getEntryIcon(entry.type)} {formatGameTime ? formatGameTime(entry.timestamp) : `Temps: ${entry.timestamp}`} - {entry.type === 'player_action' ? 'Action' : 'Événement'}
-                  </p>
-                  <p className="text-sm leading-relaxed">{entry.text}</p>
-                  {entry.location && (
-                    <p className="text-xs text-primary/80 mt-0.5">Lieu: {entry.location.name}</p>
-                  )}
+              <div key={entry.id} className="relative py-4">
+                <div className="absolute left-[-1.2rem] top-4 h-6 w-6 bg-background flex items-center justify-center rounded-full border-2 border-border">
+                  {getEntryIcon(entry.type)}
                 </div>
-                {index < sortedJournal.length - 1 && <Separator />}
-              </React.Fragment>
+                <p className="text-xs text-muted-foreground mb-1">
+                  {formatGameTime ? formatGameTime(entry.timestamp) : `Temps: ${entry.timestamp}`}
+                </p>
+                <p className="text-sm font-medium leading-relaxed">{entry.text}</p>
+                {entry.location && (
+                  <p className="text-xs text-primary/80 mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3"/> {entry.location.name}
+                  </p>
+                )}
+              </div>
             ))}
-          </ScrollArea>
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 };
 
