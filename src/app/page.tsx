@@ -21,20 +21,18 @@ export default function HomePage() {
     return <LoadingState loadingAuth={true} isLoadingState={false} />;
   }
 
+  if (user) {
+    return <AuthenticatedAppView user={user} signOutUser={signOutUser} />;
+  }
+
   return (
-    <div className="h-full">
-      {user ? (
-        <AuthenticatedAppView user={user} signOutUser={signOutUser} />
-      ) : (
-        <main className="flex min-h-full flex-col items-center justify-center p-4 md:p-8 bg-muted/40">
-           <AuthScreen
-            loadingAuth={loadingAuth}
-            signUp={signUpWithEmailPassword}
-            signIn={signInWithEmailPassword}
-            signInAnon={signInAnonymously}
-          />
-        </main>
-      )}
-    </div>
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8 bg-muted/40">
+        <AuthScreen
+        loadingAuth={loadingAuth}
+        signUp={signUpWithEmailPassword}
+        signIn={signInWithEmailPassword}
+        signInAnon={signInAnonymously}
+        />
+    </main>
   );
 }
