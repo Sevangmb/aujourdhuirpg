@@ -74,6 +74,11 @@ export const StoryChoiceSchema = z.object({
   energyCost: z.number().describe("The estimated energy cost for the player (1-20)."),
   timeCost: z.number().describe("The estimated time cost in minutes for the action (5-60)."),
   consequences: z.array(z.string()).describe("A list of 2-3 likely outcomes or keywords, e.g., ['Révélation', 'Danger potentiel']."),
+  skillCheck: z.object({
+      skill: z.string().describe("The skill path to check (e.g., 'cognitive.observation')."),
+      difficulty: z.number().describe("The difficulty target for the check (e.g., 60)."),
+  }).optional().describe("An optional skill check associated with this action."),
+  skillGains: z.record(z.number()).optional().describe("XP de compétence gagnée lors de la réussite de cette action. Ex: {'cognitive.observation': 5, 'physical.stealth': 2}"),
 }).describe("A rich, guided choice for the player.");
 
 // --- Main Output Schema ---

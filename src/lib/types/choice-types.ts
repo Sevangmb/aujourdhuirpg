@@ -2,7 +2,7 @@ import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem } from './player-types';
 
-export const ACTION_TYPES = ["observation", "exploration", "social", "action", "reflection"] as const;
+export const ACTION_TYPES = ["observation", "exploration", "social", "action", "reflection", "job"] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 export const MOOD_TYPES = ["contemplative", "adventurous", "social", "artistic", "mysterious"] as const;
@@ -32,5 +32,6 @@ export interface StoryChoice {
     skill: string; // e.g., "cognitive.observation", "physical.stealth". A path in AdvancedSkillSystem
     difficulty: number; // e.g., 60
   };
+  skillGains?: Record<string, number>;
   successProbability?: number;
 }

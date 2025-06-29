@@ -1,5 +1,5 @@
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -282,6 +282,17 @@ export async function calculateDeterministicEffects(
     eventsForAI.push(
       `Résultat du jet de compétence (${skill}) : ${outcomeText} (Jet: ${skillCheckResult.rollValue} + Score: ${skillCheckResult.effectiveScore} = ${skillCheckResult.totalAchieved} vs Difficulté: ${skillCheckResult.difficultyTarget})`
     );
+
+    // --- APPLY SKILL GAINS ON SUCCESS ---
+    if (skillCheckResult.success && choice.skillGains) {
+        const { updatedSkills, notifications: skillGainNotifications } = applySkillGains(newPlayerState.skills, choice.skillGains);
+        newPlayerState.skills = updatedSkills;
+        
+        skillGainNotifications.forEach(notif => {
+            notifications.push({ type: 'info', title: 'Compétence Améliorée', description: notif });
+        });
+        eventsForAI.push(...skillGainNotifications.map(n => `Effet de la réussite: ${n}`));
+    }
   }
   
   // Specific hardcoded effects for certain choices can be added here

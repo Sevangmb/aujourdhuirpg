@@ -1,4 +1,4 @@
-import type { PlayerStats, InventoryItem, Progression } from './types';
+import type { PlayerStats, InventoryItem, Progression, AdvancedSkillSystem } from './types';
 import { getMasterItemById } from '@/data/items'; // Assuming getMasterItemById is needed
 
 export function calculateXpToNextLevel(level: number): number {
@@ -110,4 +110,25 @@ export function addXP(currentProgression: Progression, xpGained: number): { newP
   if (newProgression.xp < 0) newProgression.xp = 0;
 
   return { newProgression, leveledUp };
+}
+
+export function applySkillGains(currentSkills: AdvancedSkillSystem, gains: Record<string, number>): { updatedSkills: AdvancedSkillSystem, notifications: string[] } {
+    const newSkills = JSON.parse(JSON.stringify(currentSkills)); // Deep copy
+    const notifications: string[] = [];
+
+    for (const skillPath in gains) {
+        if (Object.prototype.hasOwnProperty.call(gains, skillPath)) {
+            const pathParts = skillPath.split('.');
+            if (pathParts.length === 2) {
+                const [category, subSkill] = pathParts as [keyof AdvancedSkillSystem, string];
+                const categorySkills = newSkills[category];
+                if (categorySkills && typeof (categorySkills as any)[subSkill] === 'number') {
+                    (categorySkills as any)[subSkill] += gains[skillPath];
+                    const skillName = subSkill.charAt(0).toUpperCase() + subSkill.slice(1).replace(/_/g, ' ');
+                    notifications.push(`${skillName} a augmenté de +${gains[skillPath]}.`);
+                }
+            }
+        }
+    }
+    return { updatedSkills: newSkills, notifications };
 }

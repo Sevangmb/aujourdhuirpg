@@ -4,7 +4,7 @@ import type { StoryChoice } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, Zap, HelpCircle, Target } from 'lucide-react';
+import { Clock, Zap, HelpCircle, Target, TrendingUp } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 
@@ -20,7 +20,16 @@ const choiceTypeStyles: Record<string, string> = {
   social: 'choice-card-social',
   action: 'choice-card-action',
   reflection: 'choice-card-reflection',
+  job: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700'
 };
+
+const skillPathToLabel = (path: string): string => {
+    const parts = path.split('.');
+    if (parts.length < 2) return path;
+    const skillName = parts[1];
+    return skillName.charAt(0).toUpperCase() + skillName.slice(1).replace(/_/g, ' ');
+};
+
 
 const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) => {
   const Icon = (LucideIcons as any)[choice.iconName] || HelpCircle;
@@ -55,6 +64,14 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) =
           {choice.consequences.map((consequence) => (
             <Badge key={consequence} variant="secondary" className="text-xs">
               {consequence}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1 mt-2">
+          {choice.skillGains && Object.entries(choice.skillGains).map(([skillPath, gain]) => (
+            <Badge key={skillPath} variant="outline" className="text-xs font-normal border-green-200 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/50 dark:text-green-300">
+              <TrendingUp className="w-3 h-3 mr-1" />
+              {skillPathToLabel(skillPath)} +{gain}
             </Badge>
           ))}
         </div>
