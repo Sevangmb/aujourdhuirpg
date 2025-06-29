@@ -19,6 +19,7 @@ import { generateLocationImage as generateLocationImageService } from '@/ai/flow
 import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow'; // Import new flow
 import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
 import { fetchWikipediaSummary } from '@/services/wikipedia-service';
+import GameScreen from '@/components/GameScreen';
 
 
 interface AuthenticatedAppViewProps {
