@@ -5,7 +5,7 @@ import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generat
 // Corrected import path for game logic types
 import { aiService } from '@/services/aiService';
 import type { GameState, Player, ToneSettings, Position, GeoIntelligence } from '@/lib/types';
-import { getInitialScenario, prepareAIInput } from '@/lib/game-logic';
+import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
 import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/services/firestore-service'; // Corrected import path
@@ -46,13 +46,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
   const { toast } = useToast();
 
-  // Functions will be moved here
-
-  // useEffect for performInitialLoad
-  useEffect(() => {
-    performInitialLoad();
-  }, [user]); // Depends on user prop
-
   const performInitialLoad = useCallback(async () => {
     if (!user) {
       setGameState(null);
@@ -90,23 +83,28 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     setIsLoadingState(false);
   }, [user]);
 
-
-  // useEffect for fetchWeatherForLocation
-  useEffect(() => {
-    if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
-      const location = gameState.player.currentLocation;
-      fetchWeatherForLocation(location);
-      fetchLocationImage(location.name);
-      fetchGeoIntelligence(location);
-    } else {
-      setWeatherData(null);
-      setWeatherError(null);
-      setLocationImageUrl(null);
-      setLocationImageError(null);
-      setGeoIntelligenceData(null);
-      setGeoIntelligenceError(null);
+  const fetchPoisForLocation = useCallback(async (location: Position) => {
+    if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME) {
+      setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
+      return;
     }
-  }, [gameState?.player?.currentLocation]);
+    console.log(`Fetching POIs for ${location.name}`);
+    try {
+      const pois = await fetchPoisForCurrentLocation(location);
+      setGameState(prevState => {
+        if (!prevState) return null;
+        return { ...prevState, nearbyPois: pois };
+      });
+    } catch (error) {
+      console.error("Failed to fetch POIs:", error);
+      setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
+      toast({
+        title: "Erreur de réseau",
+        description: "Impossible de charger les lieux d'intérêt proches.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   const fetchWeatherForLocation = useCallback(async (location: Position) => {
     if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
@@ -194,6 +192,27 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
   }, []);
 
+  useEffect(() => {
+    performInitialLoad();
+  }, [user, performInitialLoad]);
+
+  useEffect(() => {
+    if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
+      const location = gameState.player.currentLocation;
+      fetchWeatherForLocation(location);
+      fetchLocationImage(location.name);
+      fetchGeoIntelligence(location);
+      fetchPoisForLocation(location);
+    } else {
+      setWeatherData(null);
+      setWeatherError(null);
+      setLocationImageUrl(null);
+      setLocationImageError(null);
+      setGeoIntelligenceData(null);
+      setGeoIntelligenceError(null);
+      setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
+    }
+  }, [gameState?.player?.currentLocation, fetchWeatherForLocation, fetchLocationImage, fetchGeoIntelligence, fetchPoisForLocation]);
 
   const handleCharacterCreate = useCallback(async (playerData: {
       name: string;

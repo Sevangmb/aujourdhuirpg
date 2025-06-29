@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GameState, Player, Position, JournalEntry, GameNotification } from '@/lib/types';
-import { gameReducer, GameAction, fetchPoisForCurrentLocation, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
+import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
@@ -55,22 +55,12 @@ const GamePlay: React.FC<GamePlayProps> = ({
 
   const handleGameAction = useCallback(async (action: GameAction) => {
     if (!initialGameState.player) return;
-    let newState = gameReducer(initialGameState, action);
-    if (action.type === 'MOVE_TO_LOCATION') {
-      newState = gameReducer(newState, { type: 'ADD_GAME_TIME', payload: 30 });
-      try {
-        setIsLoading(true);
-        const newNearbyPois = await fetchPoisForCurrentLocation(action.payload);
-        newState = gameReducer(newState, { type: 'SET_NEARBY_POIS', payload: newNearbyPois });
-      } catch (error) {
-        toast({ title: "Erreur réseau", description: "Impossible de charger les lieux proches.", variant: "destructive"});
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    
+    const newState = gameReducer(initialGameState, action);
+    
     onStateUpdate(newState);
     await saveGameState(newState);
-  }, [initialGameState, onStateUpdate, toast]);
+  }, [initialGameState, onStateUpdate]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     const { player, currentScenario } = initialGameState;

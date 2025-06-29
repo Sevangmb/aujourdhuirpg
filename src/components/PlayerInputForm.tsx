@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Send, Brain, Navigation } from 'lucide-react';
 import type { GameState, Position } from '@/lib/types';
 import type { GameAction } from '@/lib/game-logic';
-import { fetchPoisForCurrentLocation, checkForLocationBasedEvents } from '@/lib/game-logic'; // Import the async POI fetcher and event checker
+import { checkForLocationBasedEvents } from '@/lib/game-logic';
 
 interface PlayerInputFormProps {
   playerInput: string;
@@ -70,29 +69,17 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
     onSubmit(PLAYER_ACTION_REFLECT);
   };
 
-  const handleMoveToPoi = async () => {
+  const handleMoveToPoi = () => {
     if (!selectedPoiId) return;
     const selectedPosition = gameState.nearbyPois?.find(
       (poi) => `${poi.latitude},${poi.longitude}` === selectedPoiId
     );
 
     if (selectedPosition) {
-      // Dispatch action to update location & game time
-      // Event triggering will be handled by useEffect watching player.currentLocation
+      // Dispatch actions to update location & game time.
+      // The parent component will handle the side-effect of fetching new data.
       dispatch({ type: 'MOVE_TO_LOCATION', payload: selectedPosition });
       dispatch({ type: 'ADD_GAME_TIME', payload: MOVE_TIME_MINUTES });
-
-      // Fetch new POIs for the new location
-      // Note: This uses selectedPosition, which is where the player is moving TO.
-      // The game state (gameState.player.currentLocation) will update after the dispatch.
-      // For fetching POIs, we need the coordinates of the *new* location.
-      try {
-        const newNearbyPois = await fetchPoisForCurrentLocation(selectedPosition);
-        dispatch({ type: 'SET_NEARBY_POIS', payload: newNearbyPois });
-      } catch (error) {
-        console.error("PlayerInputForm: Error fetching new POIs after move:", error);
-        dispatch({ type: 'SET_NEARBY_POIS', payload: null }); // Clear POIs on error
-      }
       setSelectedPoiId(""); // Reset selection
     }
   };
