@@ -1,51 +1,105 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, Palette } from 'lucide-react';
 import Image from 'next/image';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
+import type { GameTone, ToneSettings } from '@/lib/types';
+import { AVAILABLE_TONES } from '@/lib/types';
+import { Slider } from '@/components/ui/slider';
+import { useToast } from '@/hooks/use-toast';
+import { generatePlayerAvatar } from '@/ai/flows/generate-player-avatar-flow';
+import { predefinedLocationsByCountry, countries } from '@/data/locations';
+import { ScrollArea } from './ui/scroll-area';
 
-// Simplified data structure passed up
-export interface SimpleCharacterFormData {
+// The full data structure passed up on form submission
+export interface FullCharacterFormData {
   name: string;
   age: number;
+  gender: string;
+  origin: string; // This will be the country
   startingLocation: string;
   background: string;
+  avatarUrl: string;
+  toneSettings: ToneSettings;
 }
 
 interface CharacterCreationFormProps {
-  onCharacterCreate: (playerData: SimpleCharacterFormData) => void;
+  onCharacterCreate: (playerData: FullCharacterFormData) => void;
   isSubmitting: boolean;
 }
 
-const predefinedLocations = [
-    "Montmartre, Paris",
-    "Le Quartier Latin, Paris",
-    "Le Marais, Paris",
-    "La Tour Eiffel, Paris",
-    "Le Vieux-Port, Marseille",
-    "La Place Bellecour, Lyon"
-];
-
 const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharacterCreate, isSubmitting }) => {
+  // Form state
   const [name, setName] = useState('');
   const [age, setAge] = useState<number | string>(25);
-  const [startingLocation, setStartingLocation] = useState(predefinedLocations[0]);
+  const [gender, setGender] = useState('Préfère ne pas préciser');
+  const [origin, setOrigin] = useState(countries[0]); // Default to the first country
+  const [startingLocation, setStartingLocation] = useState(predefinedLocationsByCountry[countries[0]][0]);
   const [background, setBackground] = useState('');
   const [error, setError] = useState('');
+  const [toneSettings, setToneSettings] = useState<ToneSettings>(
+    AVAILABLE_TONES.reduce((acc, tone) => ({ ...acc, [tone]: 50 }), {})
+  );
+
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const { toast } = useToast();
+
+  // Update city options when country changes
+  useEffect(() => {
+    setStartingLocation(predefinedLocationsByCountry[origin][0]);
+  }, [origin]);
+
+  const handleToneSliderChange = (tone: GameTone, value: number[]) => {
+    setToneSettings(prev => ({ ...prev, [tone]: value[0] }));
+  };
+
+  const handleGenerateAvatar = async () => {
+    if (!name || !background) {
+        toast({
+            variant: 'destructive',
+            title: "Informations manquantes",
+            description: "Veuillez renseigner le nom et l'historique du personnage avant de générer l'avatar.",
+        });
+        return;
+    }
+    setIsGeneratingAvatar(true);
+    try {
+        const result = await generatePlayerAvatar({
+            name,
+            gender,
+            age: Number(age),
+            origin,
+            playerBackground: background,
+            era: 'Époque Contemporaine',
+        });
+        if (result.imageUrl) {
+            setAvatarUrl(result.imageUrl);
+            toast({ title: "Avatar généré avec succès !" });
+        } else {
+            throw new Error(result.error || "L'IA n'a pas pu générer l'image.");
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Erreur de génération d'avatar", description: e.message });
+    } finally {
+        setIsGeneratingAvatar(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!name || !age || !startingLocation || !background) {
+    if (!name || !age || !origin || !startingLocation || !background) {
       setError('Veuillez remplir tous les champs.');
       return;
     }
@@ -58,64 +112,96 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
     onCharacterCreate({
       name,
       age: Number(age),
+      gender,
+      origin,
       startingLocation,
       background,
+      avatarUrl,
+      toneSettings,
     });
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto shadow-2xl">
+    <Card className="w-full max-w-2xl mx-auto shadow-2xl">
       <CardHeader className="text-center">
-        <div className="flex justify-center items-center mb-4">
-           <Image src={defaultAvatarUrl} alt="Avatar par défaut" width={100} height={100} className="rounded-full border-2 border-primary" data-ai-hint="avatar placeholder" />
-        </div>
         <CardTitle className="font-headline text-3xl text-primary">Créez Votre Personnage</CardTitle>
         <CardDescription>Donnez vie à votre avatar pour commencer votre aventure.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="name">Nom du Personnage</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Alex Dubois" disabled={isSubmitting} />
-          </div>
-
-          <div>
-            <Label htmlFor="age">Âge</Label>
-            <Input id="age" type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Ex: 28" disabled={isSubmitting} />
-          </div>
-
-          <div>
-             <Label htmlFor="startingLocation">Lieu de Départ</Label>
-             <Select value={startingLocation} onValueChange={setStartingLocation} disabled={isSubmitting}>
-                <SelectTrigger id="startingLocation">
-                    <SelectValue placeholder="Choisissez un lieu..." />
-                </SelectTrigger>
-                <SelectContent>
-                    {predefinedLocations.map(loc => (
-                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                    ))}
-                </SelectContent>
-             </Select>
-          </div>
-          
-          <div>
-            <Label htmlFor="background">Historique du Personnage</Label>
-            <Textarea id="background" value={background} onChange={(e) => setBackground(e.target.value)} placeholder="Décrivez qui est votre personnage, son passé, ses aspirations..." rows={4} disabled={isSubmitting} />
-          </div>
-          
-          {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-
+        <ScrollArea className="max-h-[70vh] p-1">
+        <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            {/* Left Column: Avatar and Basic Info */}
+            <div className="space-y-4 md:col-span-1">
+                <div className="flex flex-col items-center mb-4">
+                    <Image src={avatarUrl} alt="Avatar du personnage" width={128} height={128} className="rounded-full border-2 border-primary aspect-square object-cover" data-ai-hint="character portrait" unoptimized={avatarUrl.startsWith('data:')}/>
+                    <Button type="button" size="sm" onClick={handleGenerateAvatar} disabled={isGeneratingAvatar || isSubmitting} className="mt-3">
+                        {isGeneratingAvatar ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        Générer Avatar IA
+                    </Button>
+                </div>
+                 <div>
+                    <Label htmlFor="name">Nom du Personnage</Label>
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Alex Dubois" disabled={isSubmitting} />
+                </div>
+                 <div>
+                    <Label htmlFor="age">Âge</Label>
+                    <Input id="age" type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Ex: 28" disabled={isSubmitting} />
+                </div>
+                 <div>
+                    <Label htmlFor="gender">Genre</Label>
+                    <Select value={gender} onValueChange={setGender} disabled={isSubmitting}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Homme">Homme</SelectItem>
+                            <SelectItem value="Femme">Femme</SelectItem>
+                            <SelectItem value="Non-binaire">Non-binaire</SelectItem>
+                            <SelectItem value="Préfère ne pas préciser">Préfère ne pas préciser</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+            </div>
+            
+            {/* Right Column: Location, Background, Tones */}
+            <div className="space-y-4 md:col-span-1">
+                <div>
+                    <Label htmlFor="origin">Pays d'Origine</Label>
+                    <Select value={origin} onValueChange={setOrigin} disabled={isSubmitting}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent><ScrollArea className="h-48">{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</ScrollArea></SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label htmlFor="startingLocation">Lieu de Départ</Label>
+                    <Select value={startingLocation} onValueChange={setStartingLocation} disabled={isSubmitting}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent><ScrollArea className="h-48">{predefinedLocationsByCountry[origin].map(loc => <SelectItem key={loc} value={loc}>{loc.split(',')[0]}</SelectItem>)}</ScrollArea></SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label htmlFor="background">Historique du Personnage</Label>
+                    <Textarea id="background" value={background} onChange={(e) => setBackground(e.target.value)} placeholder="Décrivez qui est votre personnage, son passé, ses aspirations..." rows={4} disabled={isSubmitting} />
+                </div>
+                 <div className="pt-2">
+                    <Label className="flex items-center text-md mb-2"><Palette className="mr-2 h-4 w-4" /> Tonalité Narrative</Label>
+                    <div className="space-y-3">
+                        {AVAILABLE_TONES.map(tone => (
+                            <div key={tone} className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <Label htmlFor={`slider-${tone}`} className="text-xs">{tone}</Label>
+                                    <span className="text-xs text-muted-foreground w-8 text-right">{toneSettings[tone] ?? 50}%</span>
+                                </div>
+                                <Slider id={`slider-${tone}`} min={0} max={100} step={1} value={[toneSettings[tone] ?? 50]} onValueChange={(v) => handleToneSliderChange(tone, v)} disabled={isSubmitting} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+          {error && <p className="md:col-span-2 text-sm font-medium text-destructive text-center">{error}</p>}
         </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full" variant="default" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Création en cours...
-              </>
-            ) : (
-              "Commencer l'Aventure"
-            )}
+        </ScrollArea>
+        <CardFooter className="p-5">
+          <Button type="submit" className="w-full" variant="default" size="lg" disabled={isSubmitting || isGeneratingAvatar}>
+            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Création en cours...</> : "Commencer l'Aventure"}
           </Button>
         </CardFooter>
       </form>

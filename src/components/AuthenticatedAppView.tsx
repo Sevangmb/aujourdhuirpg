@@ -7,7 +7,7 @@ import { aiService } from '@/services/aiService';
 import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact, GameEra } from '@/lib/types';
 import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation, gameReducer } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
-import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
+import { initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
 import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
@@ -23,7 +23,7 @@ import LoadingState from './LoadingState';
 import { findAndAdaptHistoricalContactsForLocation, type AdaptedContact } from '@/services/historical-contact-service';
 import { HistoricalEncounterModal } from './HistoricalEncounterModal';
 import { v4 as uuidv4 } from 'uuid';
-import type { SimpleCharacterFormData } from './CharacterCreationForm';
+import type { FullCharacterFormData } from './CharacterCreationForm';
 
 
 interface AuthenticatedAppViewProps {
@@ -265,17 +265,14 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
   }, [user.uid, toast, fetchCharacterList]);
 
-  const handleCharacterCreate = useCallback(async (simplePlayerData: SimpleCharacterFormData) => {
+  const handleCharacterCreate = useCallback(async (playerData: FullCharacterFormData) => {
     setAppMode('loading');
     try {
-      const locationData = await getPositionData(simplePlayerData.startingLocation);
+      const locationData = await getPositionData(playerData.startingLocation);
 
       const fullPlayerData = {
-        ...simplePlayerData,
-        gender: 'Préfère ne pas préciser',
-        origin: 'Origine non spécifiée',
+        ...playerData,
         era: 'Époque Contemporaine' as GameEra,
-        avatarUrl: defaultAvatarUrl,
       };
 
       let hydratedPlayer = hydratePlayer({

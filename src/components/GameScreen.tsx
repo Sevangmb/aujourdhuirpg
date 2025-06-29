@@ -7,14 +7,14 @@ import type { GameState } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 
 import CharacterCreationForm from '@/components/CharacterCreationForm';
-import type { SimpleCharacterFormData } from '@/components/CharacterCreationForm';
+import type { FullCharacterFormData } from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
 
 interface GameScreenProps {
   user: User; // User is now guaranteed to be non-null when this component is rendered
   gameState: GameState | null;
   isGameActive: boolean;
-  onCharacterCreate: (playerData: SimpleCharacterFormData) => void;
+  onCharacterCreate: (playerData: FullCharacterFormData) => void;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
   weatherData: WeatherData | null;
   weatherLoading: boolean;
@@ -40,7 +40,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleCreate = async (data: SimpleCharacterFormData) => {
+  const handleCreate = async (data: FullCharacterFormData) => {
     setIsSubmitting(true);
     try {
       await onCharacterCreate(data);
