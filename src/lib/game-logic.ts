@@ -80,7 +80,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const newQuest = { ...action.payload, dateAdded: nowISO, status: 'active' as const };
         return {
             ...state,
-            player: { ...state.player, questLog: [...state.player.questLog, newQuest] },
+            player: { ...state.player, questLog: [...(state.player.questLog || []), newQuest] },
         };
     }
     case 'UPDATE_QUEST': {
@@ -106,7 +106,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const newPNJ = { ...action.payload, firstEncountered: state.player.currentLocation.name, lastSeen: nowISO, interactionHistory: [action.payload.newInteractionLogEntry || "Rencontre initiale."] };
         return {
             ...state,
-            player: { ...state.player, encounteredPNJs: [...state.player.encounteredPNJs, newPNJ] },
+            player: { ...state.player, encounteredPNJs: [...(state.player.encounteredPNJs || []), newPNJ] },
         };
     }
     case 'ADD_ITEM_TO_INVENTORY': {
@@ -128,14 +128,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const newClue = { ...action.payload, dateFound: nowISO };
         return {
             ...state,
-            player: { ...state.player, clues: [...state.player.clues, newClue] },
+            player: { ...state.player, clues: [...(state.player.clues || []), newClue] },
         };
     }
     case 'ADD_DOCUMENT': {
         const newDocument = { ...action.payload, dateAcquired: nowISO };
         return {
             ...state,
-            player: { ...state.player, documents: [...state.player.documents, newDocument] },
+            player: { ...state.player, documents: [...(state.player.documents || []), newDocument] },
         };
     }
     default:

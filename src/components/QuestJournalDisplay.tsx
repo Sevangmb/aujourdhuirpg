@@ -38,7 +38,7 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
           <div>
             <CardTitle className="text-md font-headline text-primary/90">{quest.title}</CardTitle>
             <CardDescription className="text-xs">
-              {quest.type === 'main' ? 'Principale' : 'Secondaire'} - {format(new Date(quest.dateAdded), 'dd/MM/yy', { locale: fr })}
+              {quest.type === 'main' ? 'Principale' : 'Secondaire'} - {quest.dateAdded ? format(new Date(quest.dateAdded), 'dd/MM/yy', { locale: fr }) : ''}
             </CardDescription>
           </div>
            <Badge variant={statusBadgeVariant} className="flex items-center gap-1 text-xs px-1.5 py-0.5">
@@ -100,7 +100,8 @@ const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
       <CardHeader className="p-2.5 pb-1.5">
         <CardTitle className="text-md font-headline text-primary/90">{pnj.name}</CardTitle>
         <CardDescription className="text-xs flex flex-wrap gap-x-2">
-          {pnj.importance} {pnj.firstEncountered && `- Rencontré: ${pnj.firstEncountered}`}
+          {pnj.importance}
+          {pnj.firstEncountered && ` - Rencontré: ${pnj.firstEncountered}`}
           {pnj.lastSeen && ` - Vu: ${format(new Date(pnj.lastSeen), 'dd/MM/yy HH:mm', { locale: fr })}`}
         </CardDescription>
       </CardHeader>
@@ -160,7 +161,7 @@ const DecisionCard: React.FC<{ decision: MajorDecision }> = ({ decision }) => (
     <CardHeader className="p-2.5 pb-1.5">
       <CardTitle className="text-md font-headline text-primary/90">{decision.summary}</CardTitle>
       <CardDescription className="text-xs flex flex-wrap">
-        Date: {format(new Date(decision.dateMade), 'dd/MM/yy HH:mm', { locale: fr })}
+        Date: {decision.dateMade ? format(new Date(decision.dateMade), 'dd/MM/yy HH:mm', { locale: fr }) : ''}
       </CardDescription>
     </CardHeader>
     <CardContent className="text-xs p-2.5 space-y-1">
@@ -182,10 +183,10 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
   return (
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
-            <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4" /></TabsTrigger>
-            <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4" /></TabsTrigger>
+            <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4 mr-1" />Principales</TabsTrigger>
+            <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4 mr-1" />Secondaires</TabsTrigger>
+            <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4 mr-1" />Décisions</TabsTrigger>
+            <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4 mr-1" />PNJ</TabsTrigger>
         </TabsList>
         
         <TabsContent value="main" className="mt-0 pt-1 flex-1 min-h-0"> 
