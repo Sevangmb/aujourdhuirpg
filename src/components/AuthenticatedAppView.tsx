@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
@@ -12,7 +12,6 @@ import { loadGameStateFromFirestore, deletePlayerStateFromFirestore } from '@/se
 import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
-import GameScreen from '@/components/GameScreen';
 // Corrected path for getCurrentWeather based on ls output
 import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
 // Corrected paths for AI flows to match original page.tsx
@@ -45,6 +44,8 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const [geoIntelligenceError, setGeoIntelligenceError] = useState<string | null>(null);
 
   const { toast } = useToast();
+  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const performInitialLoad = useCallback(async () => {
     if (!user) {
@@ -337,11 +338,14 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     toast({ title: "Game Restarted", description: "Create a new character to begin your adventure." });
   }, [user, toast]);
 
-  const handleSaveGame = useCallback(async () => {
+  const handleSaveGame = useCallback(async (isAutoSave: boolean = false) => {
     if (!gameState || !user || !gameState.player) {
-      toast({ title: "Error", description: "No game state to save or user not authenticated.", variant: "destructive" });
+      if (!isAutoSave) {
+        toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder ou utilisateur non authentifié.", variant: "destructive" });
+      }
       return;
     }
+
     const stateToSave: GameState = {
       ...gameState,
       player: {
@@ -350,12 +354,21 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       },
     };
 
-    console.log("Saving game state for user:", user.uid, stateToSave);
+    if (!isAutoSave) {
+      console.log("Saving game state manually for user:", user.uid);
+    }
     const result = await saveGameState(stateToSave);
+
     if (result.localSaveSuccess || result.cloudSaveSuccess) {
-      toast({ title: "Game Saved", description: `Local: ${result.localSaveSuccess ? 'Oui' : 'Non'}. Cloud: ${result.cloudSaveSuccess === null ? 'N/A' : (result.cloudSaveSuccess ? 'Oui' : 'Non')}.` });
+      if (!isAutoSave) {
+        toast({ title: "Partie Sauvegardée", description: `Local: ${result.localSaveSuccess ? 'Oui' : 'Non'}. Cloud: ${result.cloudSaveSuccess === null ? 'N/A' : (result.cloudSaveSuccess ? 'Oui' : 'Non')}.` });
+      } else {
+        console.log(`Autosave successful. Local: ${result.localSaveSuccess}, Cloud: ${result.cloudSaveSuccess}`);
+      }
     } else {
-      toast({ title: "Save Failed", description: "Could not save locally or to cloud.", variant: "destructive" });
+      if (!isAutoSave) {
+        toast({ title: "Échec de la sauvegarde", description: "Impossible de sauvegarder localement ou sur le cloud.", variant: "destructive" });
+      }
     }
   }, [gameState, user, toast]);
 
@@ -378,6 +391,27 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
     setIsToneSettingsDialogOpen(false);
   };
+  
+  // Debounced Autosave Effect
+  useEffect(() => {
+    if (isCharacterCreationMode || !gameState || isLoadingState) {
+      return;
+    }
+
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    autosaveTimeoutRef.current = setTimeout(() => {
+      handleSaveGame(true);
+    }, 5000); // 5 seconds after the last gameState change
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+    };
+  }, [gameState, isCharacterCreationMode, isLoadingState, handleSaveGame]);
 
 
   if (isLoadingState && !isCharacterCreationMode) {
@@ -413,7 +447,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         geoIntelligenceLoading={geoIntelligenceLoading}
         geoIntelligenceError={geoIntelligenceError}
         onRestartGame={handleRestartGame}
-        onSaveGame={handleSaveGame}
+        onSaveGame={() => handleSaveGame(false)}
         onSignOut={signOutUser}
         onToggleFullScreen={handleToggleFullScreen}
         onOpenToneSettings={() => setIsToneSettingsDialogOpen(true)}
