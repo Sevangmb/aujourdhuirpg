@@ -19,7 +19,7 @@ function HomePageContent() {
   } = useAuth();
 
   if (loadingAuth) {
-    return <div>Chargement de l'application...</div>;
+    return <div className="flex h-screen w-full items-center justify-center">Chargement de l'application...</div>;
   }
 
   return (

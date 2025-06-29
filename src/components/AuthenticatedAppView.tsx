@@ -415,7 +415,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, [gameState, isCharacterCreationMode, isLoadingState, handleSaveGame]);
 
 
-  if (isLoadingState && !isCharacterCreationMode) {
+  if (isLoadingState) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
         <p>Chargement de votre aventure...</p>
@@ -461,7 +461,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       />
       <div className="flex-grow overflow-auto">
         <GameScreen
-          user={user}
+          user={user!}
           gameState={gameState}
           isGameActive={isGameActive}
           onCharacterCreate={handleCharacterCreate}
