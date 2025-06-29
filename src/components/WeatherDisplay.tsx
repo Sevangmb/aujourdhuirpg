@@ -1,18 +1,19 @@
-
 "use client";
 
 import React from 'react';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import * as LucideIcons from 'lucide-react';
+import { formatGameTime } from '@/lib/utils/time-utils';
 
 interface WeatherDisplayProps {
   weatherData: WeatherData | null;
   isLoading: boolean;
   error: string | null;
   placeName: string;
+  gameTimeInMinutes?: number;
 }
 
-const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading, error, placeName }) => {
+const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading, error, placeName, gameTimeInMinutes }) => {
   const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
 
   if (isLoading) {
@@ -57,6 +58,9 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ weatherData, isLoading,
         <IconComponent className="w-10 h-10 md:w-12 md:h-12 text-primary mb-0.5 md:mb-1 opacity-80" />
         <p className="text-lg md:text-xl font-semibold">{weatherData.temperature}°C</p>
         <p className="text-xs text-foreground/80 capitalize">{weatherData.description}</p>
+        {typeof gameTimeInMinutes === 'number' && (
+            <p className="text-xs text-muted-foreground mt-2">{formatGameTime(gameTimeInMinutes)}</p>
+        )}
       </div>
     </div>
   );

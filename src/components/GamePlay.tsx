@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -218,7 +217,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     <div className="flex flex-col p-2 md:p-4 space-y-2 md:space-y-4 h-full">
       {!isMobile && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 shrink-0">
-          <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} />
+          <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} gameTimeInMinutes={initialGameState.gameTimeInMinutes} />
           <MapDisplay
             currentLocation={displayLocation}
             nearbyPois={nearbyPois || []}

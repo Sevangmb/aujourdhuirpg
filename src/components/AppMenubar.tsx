@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -58,6 +57,7 @@ interface AppMenubarProps {
   isGameActive: boolean;
   player: Player | null;
   journal: JournalEntry[]; // Added journal prop
+  gameTimeInMinutes: number | null;
   onRestartGame: () => void; // This will now be "Change Character"
   onSaveGame: () => void;
   onToggleFullScreen: () => void;
@@ -81,6 +81,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
   isGameActive,
   player,
   journal, // Destructure journal
+  gameTimeInMinutes,
   onRestartGame,
   onSaveGame,
   onToggleFullScreen,
@@ -254,7 +255,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                   <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
                     <DialogHeader><DialogTitle>Météo Actuelle</DialogTitle></DialogHeader>
                     <ScrollArea className="max-h-[70vh] p-1">
-                      <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={currentLocation?.name || 'Lieu Actuel'} />
+                      <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={currentLocation?.name || 'Lieu Actuel'} gameTimeInMinutes={gameTimeInMinutes ?? undefined}/>
                     </ScrollArea>
                   </DialogContent>
                 </Dialog>

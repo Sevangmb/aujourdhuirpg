@@ -355,6 +355,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         isGameActive={isGameActive}
         player={gameState?.player || null}
         journal={gameState?.journal || []}
+        gameTimeInMinutes={gameState?.gameTimeInMinutes || null}
         onRestartGame={handleExitToSelection}
         onSaveGame={() => handleSaveGame('manual')}
         onSignOut={signOutUser}
