@@ -1,4 +1,3 @@
-
 import type { InventoryItem } from './item-types';
 import type { Quest } from './quest-types';
 import type { PNJ } from './pnj-types';
@@ -19,6 +18,9 @@ export type PlayerStats = {
   Stress: number; // Nouvelle stat: Niveau de tension psychologique
   Volonte: number; // Nouvelle stat: Résistance mentale
   Reputation: number; // Nouvelle stat: Opinion générale des PNJ
+  Humeur: number;
+  Curiosite: number;
+  Inspiration: number;
   [key: string]: number; // Allows for dynamic stats if needed
 };
 

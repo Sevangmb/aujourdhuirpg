@@ -1,9 +1,8 @@
-
 "use client";
 
 import type { PlayerStats } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Heart, Smile, Brain, Dumbbell, Zap, CloudFog, Anchor, Users } from 'lucide-react'; 
+import { Heart, Smile, Brain, Dumbbell, Zap, CloudFog, Anchor, Users, Lightbulb, Sparkles } from 'lucide-react'; 
 import React from 'react';
 
 interface StatDisplayProps {
@@ -20,6 +19,9 @@ const statIcons: Record<string, React.ElementType> = {
   Stress: CloudFog,
   Volonte: Anchor,
   Reputation: Users,
+  Humeur: Smile,
+  Curiosite: Lightbulb,
+  Inspiration: Sparkles,
 };
 
 const StatDisplay: React.FC<StatDisplayProps> = ({ stats, previousStats }) => {
@@ -46,6 +48,8 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats, previousStats }) => {
         <div className="grid grid-cols-2 gap-2">
           {stats && Object.entries(stats).map(([key, value]) => {
             const IconComponent = statIcons[key] || Zap; // Default to Zap if no icon
+            if (!IconComponent) return null; // Don't render if icon not found
+            
             const isPulsing = pulseKey === key;
             return (
               <div key={key} className="flex flex-col items-center p-1.5 rounded-lg bg-background shadow-sm border border-border">
@@ -67,4 +71,3 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats, previousStats }) => {
 };
 
 export default StatDisplay;
-

@@ -1,11 +1,12 @@
-
 import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
+import type { StoryChoice } from './choice-types';
 
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {
   scenarioText: string; // HTML content from AI
   suggestedActions?: string[]; // Optional array of AI-suggested actions
+  choices?: StoryChoice[]; // Optional array of rich, guided choices
 };
 
 export type JournalEntry = {

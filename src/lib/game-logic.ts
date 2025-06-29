@@ -1,15 +1,16 @@
-
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact, StoryChoice } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
+import { montmartreInitialChoices } from '@/data/choices';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
   return {
     scenarioText: `<p>Bienvenue, ${player.name}. L'aventure commence... Que faites-vous ?</p>`,
+    choices: montmartreInitialChoices,
   };
 }
 
@@ -234,20 +235,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
 export async function calculateDeterministicEffects(
   player: Player,
-  actionText: string
+  choice: StoryChoice
 ): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[] }> {
-  // Use a deep copy to avoid direct mutation of the original state.
   const newPlayerState = JSON.parse(JSON.stringify(player));
   const notifications: GameNotification[] = [];
   const eventsForAI: string[] = [];
 
-  const parsedAction = await parsePlayerAction(actionText);
-  
-  // New skill check logic for specific actions
-  if (parsedAction.actionType === 'EXAMINE' || (parsedAction.actionType === 'UNKNOWN' && /chercher|fouiller|observer/i.test(actionText))) {
-    const skillToCheck = 'Perception';
-    const difficulty = 50; // Base difficulty, can be adjusted based on context
-    const checkResult = performSkillCheck(player.skills, player.stats, skillToCheck, difficulty);
+  // Apply energy cost
+  newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - choice.energyCost);
+  notifications.push({
+    type: 'stat_changed',
+    title: 'Énergie',
+    description: `Vous avez dépensé ${choice.energyCost} points d'énergie.`
+  });
+  eventsForAI.push(`Le joueur a dépensé ${choice.energyCost} énergie.`);
+
+  // Perform skill check if applicable
+  if (choice.type === 'observation' || choice.type === 'exploration') {
+    const skillToCheck = 'Perception'; // This could be part of the choice object for more variety
+    const difficulty = 50; // This could also be part of the choice object
+    const checkResult = performSkillCheck(newPlayerState.skills, newPlayerState.stats, skillToCheck, difficulty);
     
     eventsForAI.push(
       `Résultat du jet de compétence (${checkResult.skillUsed}): ${checkResult.degreeOfSuccess}. ` +
@@ -260,84 +267,6 @@ export async function calculateDeterministicEffects(
     });
   }
 
-
-  if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed) {
-    const itemIndex = newPlayerState.inventory.findIndex(
-      (i: InventoryItem) => i.name.toLowerCase() === parsedAction.itemUsed!.toLowerCase()
-    );
-
-    if (itemIndex > -1) {
-      const itemToUpdate = newPlayerState.inventory[itemIndex];
-
-      // Block usage if item is broken
-      if (itemToUpdate.condition <= 0) {
-        notifications.push({
-          type: 'warning',
-          title: 'Objet Cassé',
-          description: `Vous ne pouvez pas utiliser ${itemToUpdate.name}, il est cassé.`,
-        });
-        // Return the copied state with only the notification, no actual change
-        return { updatedPlayer: newPlayerState, notifications, eventsForAI };
-      }
-      
-      // Update usage stats on the item instance
-      itemToUpdate.usageCount = (itemToUpdate.usageCount || 0) + 1;
-      itemToUpdate.experience = (itemToUpdate.experience || 0) + 5; // Grant 5 XP per use
-      itemToUpdate.lastUsed = new Date().toISOString();
-
-      if (itemToUpdate.type === 'consumable' && itemToUpdate.effects) {
-        // Apply stat changes from the consumable
-        newPlayerState.stats = applyStatChanges(newPlayerState.stats, itemToUpdate.effects);
-        
-        eventsForAI.push(`Le joueur a consommé '${itemToUpdate.name}'.`);
-        notifications.push({
-          type: 'item_removed',
-          title: 'Objet Consommé',
-          description: `Vous avez consommé : ${itemToUpdate.name}.`,
-        });
-
-        // Create notifications for each stat change
-        for (const [stat, change] of Object.entries(itemToUpdate.effects as Partial<PlayerStats>)) {
-          if (typeof change === 'number') {
-            notifications.push({
-              type: 'stat_changed',
-              title: `Statistique modifiée`,
-              description: `${stat} a changé de ${change > 0 ? '+' : ''}${change}.`,
-            });
-            eventsForAI.push(`Effet : ${stat} a changé de ${change}.`);
-          }
-        }
-        
-        // Decrement quantity or remove the item
-        if (itemToUpdate.stackable && itemToUpdate.quantity > 1) {
-          itemToUpdate.quantity -= 1;
-        } else {
-          newPlayerState.inventory.splice(itemIndex, 1);
-        }
-
-      } else { // Handle non-consumable item usage (e.g., tools)
-        itemToUpdate.condition -= 2; // Example: degrade by 2% per use
-        if (itemToUpdate.condition < 0) itemToUpdate.condition = 0;
-        
-        eventsForAI.push(`Le joueur a utilisé '${itemToUpdate.name}'. Sa condition est maintenant de ${itemToUpdate.condition}%.`);
-        notifications.push({ type: 'info', title: 'Objet Utilisé', description: `${itemToUpdate.name} utilisé. Condition: ${itemToUpdate.condition}%.` });
-
-        if (itemToUpdate.condition === 0) {
-          notifications.push({ type: 'warning', title: 'Objet Cassé!', description: `${itemToUpdate.name} vient de se casser.` });
-          eventsForAI.push(`L'objet '${itemToUpdate.name}' s'est cassé.`);
-        }
-      }
-
-    } else { // Item not found
-      notifications.push({
-        type: 'warning',
-        title: 'Action impossible',
-        description: `Vous n'avez pas d'objet nommé '${parsedAction.itemUsed}'.`,
-      });
-    }
-  }
-
-  // If no deterministic effects were calculated, still return the copied state.
   return { updatedPlayer: newPlayerState, notifications, eventsForAI };
 }
 

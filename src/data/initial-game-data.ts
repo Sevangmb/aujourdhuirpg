@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Centralized initial game data constants.
  */
@@ -16,6 +15,9 @@ export const initialPlayerStats: PlayerStats = {
   Stress: 10, // Max 100 (bas = bien)
   Volonte: 50, // Max 100
   Reputation: 0, // Peut être négatif ou positif
+  Humeur: 50,
+  Curiosite: 20,
+  Inspiration: 10,
 };
 
 export const initialSkills: Skills = {

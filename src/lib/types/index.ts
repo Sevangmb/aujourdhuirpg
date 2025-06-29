@@ -1,4 +1,3 @@
-
 export * from './player-types';
 export * from './item-types';
 export * from './quest-types';
@@ -11,4 +10,5 @@ export * from './geo-intelligence-types';
 export * from './finance-types';
 export * from './historical-contact-types';
 export * from './era-types';
+export * from './choice-types';
 export type { CharacterSummary, SaveSummary } from '@/services/firestore-service';
