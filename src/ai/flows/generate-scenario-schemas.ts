@@ -95,7 +95,7 @@ export const GenerateScenarioOutputSchema = z.object({
   newDocuments: z.array(DocumentInputSchema).optional().describe("Nouveaux documents que le joueur obtient."),
   
   /** Optional: The AI can update the player's investigation notes with new summaries or hypotheses. */
-  updatedInvestigationNotes: z.string().optional().describe("Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA."),
+  updatedInvestigationNotes: z.string().nullable().optional().describe("Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA."),
 
   /** A list of items to add directly to the player's inventory. */
   itemsToAddToInventory: z.array(z.object({
