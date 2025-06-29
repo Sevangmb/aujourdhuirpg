@@ -10,6 +10,7 @@ import { montmartreInitialChoices } from '@/data/choices';
 export function getInitialScenario(player: Player): Scenario {
   return {
     scenarioText: `<p>Bienvenue, ${player.name}. L'aventure commence... Que faites-vous ?</p>`,
+    choices: montmartreInitialChoices,
   };
 }
 
@@ -86,7 +87,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           money: newMoney,
           transactionLog: transactionLog || [],
         },
-        currentScenario: { scenarioText: newScenarioText },
+        currentScenario: { scenarioText: newScenarioText, choices: montmartreInitialChoices /* TODO: Make dynamic */ },
         nearbyPois: null, // Clear POIs since we moved
         journal: [...(state.journal || []), newJournalEntry],
       };
@@ -234,88 +235,36 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
 export async function calculateDeterministicEffects(
   player: Player,
-  actionText: string
-): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[], timeCost: number }> {
+  choice: StoryChoice
+): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[]}> {
   const newPlayerState = JSON.parse(JSON.stringify(player));
   const notifications: GameNotification[] = [];
   const eventsForAI: string[] = [];
 
-  const parsedAction = await parsePlayerAction(actionText);
-
-  let energyCost = 0;
-  let timeCost = 0;
-  let skillToCheck: string | null = null;
-  let difficulty = 50; // Default difficulty
-
-  // Define costs and effects for simple actions
-  switch (parsedAction.actionType) {
-    case 'EXAMINE':
-      energyCost = 2;
-      timeCost = 5;
-      skillToCheck = 'Perception';
-      difficulty = 40;
-      eventsForAI.push("Le joueur examine les alentours.");
-      break;
-    
-    // In the future, other actions like 'TALK_TO_PNJ' could have costs
-    // case 'TALK_TO_PNJ':
-    //   energyCost = 1;
-    //   timeCost = 10;
-    //   skillToCheck = 'Dialogue';
-    //   break;
-
-    case 'USE_ITEM':
-        if(parsedAction.itemUsed) {
-            const { updatedInventory, removedItemEffects, removedItemName } = removeItemFromInventory(newPlayerState.inventory, parsedAction.itemUsed, 1);
-            if (removedItemName) { // Check if an item was actually removed
-                newPlayerState.inventory = updatedInventory;
-                notifications.push({ type: 'item_removed', title: 'Objet Utilisé', description: `Vous avez utilisé : ${removedItemName}.` });
-                eventsForAI.push(`Le joueur a utilisé '${removedItemName}'.`);
-
-                if(removedItemEffects) {
-                    const originalStats = { ...newPlayerState.stats };
-                    newPlayerState.stats = applyStatChanges(newPlayerState.stats, removedItemEffects);
-
-                    for (const key in removedItemEffects) {
-                        const statKey = key as keyof PlayerStats;
-                        const change = newPlayerState.stats[statKey] - originalStats[statKey];
-                        if (change !== 0) {
-                            notifications.push({ type: 'stat_changed', title: 'Statistique modifiée', description: `${statKey} a changé de ${change > 0 ? '+' : ''}${change}.` });
-                            eventsForAI.push(`Effet : ${statKey} a changé de ${change}.`);
-                        }
-                    }
-                }
-            } else {
-                 notifications.push({ type: 'warning', title: 'Action impossible', description: `Vous n'avez pas d'objet nommé '${parsedAction.itemUsed}'.` });
-            }
-        }
-        break;
+  // Apply energy cost from the choice
+  if (choice.energyCost > 0) {
+    newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - choice.energyCost);
+    notifications.push({ type: 'stat_changed', title: 'Énergie', description: `Vous avez dépensé ${choice.energyCost} points d'énergie.` });
+    eventsForAI.push(`Le joueur a dépensé ${choice.energyCost} énergie.`);
   }
   
-  // Apply energy cost
-  if (energyCost > 0) {
-    newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - energyCost);
-    notifications.push({ type: 'stat_changed', title: 'Énergie', description: `Vous avez dépensé ${energyCost} points d'énergie.` });
-    eventsForAI.push(`Le joueur a dépensé ${energyCost} énergie.`);
-  }
-
-  // Perform skill check if applicable
-  if (skillToCheck) {
-    const checkResult = performSkillCheck(newPlayerState.skills, newPlayerState.stats, skillToCheck, difficulty);
-    
-    eventsForAI.push(
-      `Résultat du jet de compétence (${checkResult.skillUsed}): ${checkResult.degreeOfSuccess}. ` +
-      `Détails: (Jet: ${checkResult.rollValue} + Score: ${checkResult.effectiveScore} = ${checkResult.totalAchieved} vs Difficulté: ${checkResult.difficultyTarget})`
-    );
-    notifications.push({
-      type: 'skill_check',
-      title: `Jet de ${checkResult.skillUsed}`,
-      description: `Résultat: ${checkResult.degreeOfSuccess} (Total: ${checkResult.totalAchieved} vs DC: ${checkResult.difficultyTarget})`,
-    });
+  // Specific hardcoded effects for certain choices can be added here
+  if (choice.id === 'montmartre_buy_crepe') {
+       const crepeCost = 4.5;
+       if (newPlayerState.money >= crepeCost) {
+            newPlayerState.money -= crepeCost;
+            newPlayerState.stats.Energie = Math.min(100, newPlayerState.stats.Energie + 5);
+            notifications.push({ type: 'money_changed', title: 'Achat', description: `Vous avez acheté une crêpe pour ${crepeCost}€.`});
+            notifications.push({ type: 'stat_changed', title: 'Énergie', description: `La crêpe vous redonne 5 points d'énergie.`});
+            eventsForAI.push(`Le joueur a acheté une crêpe pour ${crepeCost}€ et a regagné 5 énergie.`);
+       } else {
+           notifications.push({ type: 'warning', title: 'Fonds insuffisants', description: "Vous n'avez pas assez d'argent pour une crêpe."});
+           eventsForAI.push("Le joueur a tenté d'acheter une crêpe mais n'avait pas assez d'argent.");
+       }
   }
 
 
-  return { updatedPlayer: newPlayerState, notifications, eventsForAI, timeCost };
+  return { updatedPlayer: newPlayerState, notifications, eventsForAI };
 }
 
 

@@ -15,9 +15,10 @@ import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from '@/lib/skill-check';
 
-// Import simplified forms
-import SimplePlayerInputForm from './SimplePlayerInputForm';
+import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
+import { montmartreInitialChoices } from '@/data/choices';
+
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -45,31 +46,39 @@ const GamePlay: React.FC<GamePlayProps> = ({
   handleGameAction,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [currentChoices, setCurrentChoices] = useState<StoryChoice[]>(initialGameState.currentScenario?.choices || montmartreInitialChoices);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  
+  useEffect(() => {
+    // This effect ensures that whenever the scenario from the global state changes,
+    // the choices displayed to the user are updated accordingly.
+    setCurrentChoices(initialGameState.currentScenario?.choices || []);
+  }, [initialGameState.currentScenario]);
 
-  const handleActionSubmit = useCallback(async (actionText: string) => {
+
+  const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
     const { player } = initialGameState;
-    if (!player) return;
+    if (!player || !choice) return;
 
     setIsLoading(true);
 
     try {
-      const { updatedPlayer, notifications, eventsForAI, timeCost } = await calculateDeterministicEffects(player, actionText);
+      const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice);
       notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
       
       const tempGameStateForAI: GameState = { ...initialGameState, player: updatedPlayer };
-      const inputForAI = prepareAIInput(tempGameStateForAI, actionText, eventsForAI);
+      const inputForAI = prepareAIInput(tempGameStateForAI, choice.text, eventsForAI);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
       const allActions: GameAction[] = [];
       allActions.push({ type: 'UPDATE_PLAYER_DATA', payload: updatedPlayer });
-      if (timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: timeCost });
+      if (choice.timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
 
       allActions.push({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, suggestedActions: aiOutput.suggestedActions } });
-      allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: actionText, location: updatedPlayer.currentLocation } });
+      allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: updatedPlayer.currentLocation } });
       
       // Translate AI output to game actions
       if (aiOutput.newQuests) aiOutput.newQuests.forEach(q => allActions.push({ type: 'ADD_QUEST', payload: q as any }));
@@ -93,6 +102,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     }
   }, [initialGameState, handleGameAction, toast]);
 
+
   const { player, currentScenario, nearbyPois, gameTimeInMinutes } = initialGameState;
 
   if (!player || !currentScenario) {
@@ -107,19 +117,23 @@ const GamePlay: React.FC<GamePlayProps> = ({
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden">
       {/* Main Content */}
-      <main className="flex-grow flex flex-col p-2">
+      <main className="flex-grow flex flex-col p-2 space-y-2">
         <ScrollArea className="flex-grow rounded-md border shadow-inner bg-muted/20 p-2">
           <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
         </ScrollArea>
         <div className="shrink-0 pt-2">
-          <SimplePlayerInputForm onSubmit={handleActionSubmit} isLoading={isLoading} />
+          <ChoiceSelectionDisplay
+            choices={currentChoices}
+            onSelectChoice={handleChoiceSelected}
+            isLoading={isLoading}
+          />
         </div>
         {isMobile && (
           <GameSidebar
             player={player}
             currentLocation={player.currentLocation}
             nearbyPois={nearbyPois}
-            gameTimeInMinutes={gameTimeInMinutes}
+            gameTimeInMinutes={gameTimeInMinutes || 0}
             weatherData={weatherData}
             weatherLoading={weatherLoading}
             weatherError={weatherError}
@@ -137,7 +151,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
           player={player}
           currentLocation={player.currentLocation}
           nearbyPois={nearbyPois}
-          gameTimeInMinutes={gameTimeInMinutes}
+          gameTimeInMinutes={gameTimeInMinutes || 0}
           weatherData={weatherData}
           weatherLoading={weatherLoading}
           weatherError={weatherError}
