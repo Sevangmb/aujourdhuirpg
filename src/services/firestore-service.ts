@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview Service for all Firestore interactions related to player characters and their save data.
  *
@@ -33,6 +32,12 @@ import {
   documentId,
 } from 'firebase/firestore';
 import { generateSaveSummary } from '@/ai/flows/generate-save-summary-flow';
+
+// --- Firestore Collection Names ---
+const USERS_COLLECTION = 'users';
+const CHARACTERS_SUBCOLLECTION = 'characters';
+const SAVES_SUBCOLLECTION = 'saves';
+
 
 // A summary of a character for the selection screen
 export interface CharacterSummary {
@@ -239,7 +244,7 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
     return [];
   }
   try {
-    const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
+    const savesCollectionRef = collection(db, USERS_COLlection, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
     const q = query(savesCollectionRef, orderBy("lastPlayed", "desc"));
     const querySnapshot = await getDocs(q);
 
@@ -286,9 +291,6 @@ export async function deleteCharacter(uid: string, characterId: string): Promise
     console.error("Firestore Error: Firestore service is not initialized.");
     throw new Error("Firestore not available.");
   }
-  // Hardcoded collection names for consistency
-  const USERS_COLLECTION = 'users';
-  const CHARACTERS_SUBCOLLECTION = 'characters';
   try {
     const characterDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId);
     await deleteDoc(characterDocRef);
@@ -298,5 +300,3 @@ export async function deleteCharacter(uid: string, characterId: string): Promise
     throw error;
   }
 }
-
-    
