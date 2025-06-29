@@ -4,7 +4,7 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 import { aiService } from '@/services/aiService';
-import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact } from '@/lib/types';
+import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact, GameEra } from '@/lib/types';
 import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation, gameReducer } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
@@ -73,14 +73,14 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     fetchCharacterList();
   }, [user, fetchCharacterList]);
 
-  const triggerHistoricalEncounter = useCallback(async (placeName: string) => {
+  const triggerHistoricalEncounter = useCallback(async (placeName: string, playerEra: GameEra) => {
     if (Math.random() > 0.15) { // 15% chance
         console.log("Historical encounter check failed (random chance).");
         return;
     }
 
     try {
-        const potentialContacts = await findAndAdaptHistoricalContactsForLocation(placeName);
+        const potentialContacts = await findAndAdaptHistoricalContactsForLocation(placeName, playerEra);
         if (potentialContacts && potentialContacts.length > 0) {
             const knownContactHistoricalNames = new Set(gameState?.player?.historicalContacts?.map(c => c.historical.name));
             const newPotentialContacts = potentialContacts.filter(p => !knownContactHistoricalNames.has(p.historical.name));
@@ -98,16 +98,16 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
   // Combined data fetching hook
   useEffect(() => {
-    const fetchContextualData = async (location: Position) => {
+    const fetchContextualData = async (location: Position, era: GameEra) => {
         fetchWeatherForLocation(location);
-        fetchLocationImage(location.name, gameState?.player?.era);
+        fetchLocationImage(location.name, era);
         fetchGeoIntelligence(location);
         fetchPoisForLocation(location);
-        triggerHistoricalEncounter(location.name);
+        triggerHistoricalEncounter(location.name, era);
     };
 
     if (appMode === 'playing' && gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
-      fetchContextualData(gameState.player.currentLocation);
+      fetchContextualData(gameState.player.currentLocation, gameState.player.era);
     } else {
       // Clear data when not in playing mode or location is unknown
       setWeatherData(null);
@@ -116,7 +116,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appMode, gameState?.player?.currentLocation?.name]);
+  }, [appMode, gameState?.player?.currentLocation?.name, gameState?.player?.era]);
   
   const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto' | 'checkpoint') => {
     if (!gameState || !user || !gameState.player || !selectedCharacterId) {
@@ -265,7 +265,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, [user.uid, toast, fetchCharacterList]);
 
   const handleCharacterCreate = useCallback(async (playerData: {
-      name: string; gender: string; age: number; origin: string; background: string; era: string; startingLocation: string; avatarUrl: string;
+      name: string; gender: string; age: number; origin: string; background: string; era: GameEra; startingLocation: string; avatarUrl: string;
     }) => {
     setAppMode('loading');
     try {

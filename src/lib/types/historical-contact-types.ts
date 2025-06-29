@@ -2,6 +2,7 @@
  * @fileOverview Zod schemas and TypeScript types for the Historical Contacts feature.
  */
 import { z } from 'zod';
+import { AVAILABLE_ERAS } from './era-types';
 
 // Data structure for the raw historical information fetched from Wikipedia
 export const HistoricalPersonalitySchema = z.object({
@@ -26,7 +27,7 @@ export const ModernIdentitySchema = z.object({
   name: z.string().describe("Nom du contact moderne généré."),
   age: z.number().describe("Âge approximatif du contact moderne."),
   profession: z.string().describe("Profession moderne, souvent liée à l'héritage historique."),
-  connectionType: z.enum(["descendant", "expert", "guardian", "contemporary", "other"]).describe("Type de lien avec la figure historique."),
+  connectionType: z.enum(["descendant", "expert", "guardian", "contemporary", "other", "self"]).describe("Type de lien avec la figure historique."),
   greeting: z.string().describe("Phrase d'accroche pour la rencontre."),
   personality: z.array(z.string()).describe("Quelques traits de personnalité (ex: 'cultivée', 'discrète')."),
 });
@@ -59,3 +60,14 @@ export const HistoricalContactSchema = z.object({
   knowledge: ContactKnowledgeSchema,
 });
 export type HistoricalContact = z.infer<typeof HistoricalContactSchema>;
+
+export const GenerateHistoricalContactInputSchema = z.object({
+    historical: HistoricalPersonalitySchema.describe("Les détails sur la personnalité historique réelle."),
+    modern: ModernIdentitySchema.describe("L'identité moderne générée pour cette personnalité."),
+    location: z.string().describe("Le nom du lieu de la rencontre (ex: Montmartre)."),
+    playerEra: z.enum(AVAILABLE_ERAS).describe("L'époque dans laquelle le joueur se trouve."),
+});
+export type GenerateHistoricalContactInput = z.infer<typeof GenerateHistoricalContactInputSchema>;
+
+export const GenerateHistoricalContactOutputSchema = ContactKnowledgeSchema;
+export type GenerateHistoricalContactOutput = z.infer<typeof GenerateHistoricalContactOutputSchema>;

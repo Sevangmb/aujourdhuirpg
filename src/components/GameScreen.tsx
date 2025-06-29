@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState } from '@/lib/types';
+import type { GameState, GameEra } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 
 import CharacterCreationForm from '@/components/CharacterCreationForm';
@@ -19,7 +19,7 @@ interface GameScreenProps {
     age: number;
     origin: string;
     background: string;
-    era: string;
+    era: GameEra;
     startingLocation: string;
     avatarUrl: string;
   }) => void;

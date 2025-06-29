@@ -30,25 +30,28 @@ const generateHistoricalContactPrompt = ai.definePrompt({
     input: { schema: GenerateHistoricalContactInputSchema },
     output: { schema: GenerateHistoricalContactOutputSchema },
     prompt: `
-        Vous êtes un maître de jeu et un scénariste pour un RPG textuel se déroulant dans la France contemporaine.
+        Vous êtes un maître de jeu et un scénariste pour un RPG textuel se déroulant à l'époque : **{{playerEra}}**.
         Votre tâche est d'enrichir un contact non-joueur (PNJ) en générant des informations fascinantes et des pistes de jeu.
 
-        CONTEXTE :
-        Le joueur a rencontré un PNJ moderne qui a un lien avec une personnalité historique.
-        - Personnalité Historique : {{{historical.name}}}, {{{historical.occupation.[0]}}} ({{{historical.birth.year}}}-{{{historical.death.year}}}). Résumé : {{{historical.extract}}}
-        - Contact Moderne : {{{modern.name}}}, {{{modern.age}}} ans, {{{modern.profession}}}.
-        - Type de lien : {{{modern.connectionType}}}
-        - Lieu de la rencontre : {{{location}}}
+        Le joueur a rencontré le contact suivant :
+        - **Nom du Contact** : {{{modern.name}}} ({{{modern.age}}} ans)
+        - **Profession** : {{{modern.profession}}}
+        - **Lieu de la rencontre** : {{{location}}}
+
+        Ce contact est lié à l'histoire de la manière suivante :
+        - **Type de lien** : {{modern.connectionType}}
+        - **Personnalité Historique Associée** : {{{historical.name}}} ({{{historical.occupation.[0]}}})
+        - **Extrait biographique de référence** : {{{historical.extract}}}
 
         VOTRE MISSION :
-        En vous basant sur ce contexte, générez une sortie JSON contenant les champs suivants :
-        1.  **secrets (array of strings)** : Inventez 2 ou 3 secrets intrigants et peu connus que ce contact pourrait connaître. Ils doivent être liés à la personnalité historique mais avec une touche de mystère RPG. (ex: "Renoir avait caché un carnet de croquis secret dans le grenier de cet atelier.")
-        2.  **historicalFacts (array of strings)** : Extrayez ou reformulez 2 faits historiques intéressants et vérifiables à partir du résumé fourni, que le contact pourrait partager. (ex: "Saviez-vous que Renoir a vécu ici pendant près de 15 ans ?")
-        3.  **availableQuests (array of strings)** : Proposez 2 pistes de quêtes ou de "mini-mystères" que le contact pourrait donner au joueur. Elles doivent être concises et exploitables dans un RPG. (ex: "Retrouver le carnet de croquis perdu de Renoir.", "Découvrir l'identité du modèle d'un de ses tableaux inconnus.")
+        En vous basant sur ce contexte, et en tenant compte que si le type de lien est "self", le contact EST la personnalité historique, générez une sortie JSON contenant :
+        1.  **secrets (array of strings)** : Inventez 2 ou 3 secrets intrigants et peu connus que ce contact pourrait connaître.
+        2.  **historicalFacts (array of strings)** : Extrayez ou reformulez 2 faits historiques intéressants et vérifiables que le contact pourrait partager.
+        3.  **availableQuests (array of strings)** : Proposez 2 pistes de quêtes ou de "mini-mystères" que le contact pourrait donner au joueur.
 
         RÈGLES :
         - Le ton doit être immersif et mystérieux.
-        - Les secrets et les quêtes doivent être des créations originales basées sur le contexte, pas de simples répétitions du résumé.
+        - Si le contact est la personnalité historique elle-même (lien "self"), les secrets et faits doivent sonner comme des souvenirs personnels. Sinon, ils doivent être présentés comme des connaissances héritées ou découvertes.
         - Assurez-vous que la sortie est un objet JSON valide qui correspond parfaitement au schéma de sortie.
     `,
 });

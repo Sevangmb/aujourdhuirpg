@@ -1,11 +1,12 @@
 
 import type { HistoricalPersonality, ModernIdentity } from '@/lib/types';
+import { ERA_YEARS, type GameEra } from '@/lib/types';
 
 /**
  * Service to adapt historical personality data into a modern context for the RPG.
  */
 
-const CURRENT_YEAR = new Date().getFullYear();
+const CONTEMPORARY_YEAR = ERA_YEARS['Époque Contemporaine'].end;
 
 /**
  * Determines the type of connection a modern character might have to a historical figure.
@@ -13,12 +14,12 @@ const CURRENT_YEAR = new Date().getFullYear();
  * @returns A connection type string.
  */
 function determineConnectionType(p: HistoricalPersonality): ModernIdentity['connectionType'] {
-  const deathYear = p.death?.year; // Use optional chaining to safely access nested property
-  if (!deathYear) return 'other'; // Person might still be alive or data is missing
+  const deathYear = p.death?.year;
+  if (!deathYear) return 'other';
 
-  const yearsSinceDeath = CURRENT_YEAR - deathYear;
+  const yearsSinceDeath = CONTEMPORARY_YEAR - deathYear;
 
-  if (deathYear > CURRENT_YEAR) return 'contemporary'; // From the future? Or still alive.
+  if (deathYear > CONTEMPORARY_YEAR) return 'contemporary'; // Still alive in our time
   if (yearsSinceDeath <= 60) return 'contemporary'; // e.g., friend, colleague, direct witness
   if (yearsSinceDeath > 60 && yearsSinceDeath <= 120) return 'descendant'; // e.g., grandchild
   if (yearsSinceDeath > 120) return 'expert'; // More likely an expert or guardian of legacy
@@ -92,11 +93,36 @@ function generateGreeting(modernName: string, historicalName: string): string {
 
 
 /**
- * Adapts a historical personality into a modern-day contact for the RPG.
+ * Adapts a historical personality into a character for the RPG, considering the player's era.
  * @param historical The historical personality data from Wikipedia.
- * @returns A ModernIdentity object.
+ * @param playerEra The era the player is currently in.
+ * @returns A ModernIdentity object representing the character to be met.
  */
-export function adaptToModernEra(historical: HistoricalPersonality): ModernIdentity {
+export function adaptHistoricalFigure(historical: HistoricalPersonality, playerEra: GameEra): ModernIdentity {
+    const playerEraYears = ERA_YEARS[playerEra];
+    const historicalBirthYear = historical.birth?.year;
+    const historicalDeathYear = historical.death?.year;
+
+    // Case 1: Player is in a historical era, and the figure might be contemporary to them.
+    if (playerEra !== 'Époque Contemporaine' && historicalBirthYear && historicalDeathYear) {
+        const isAlive = historicalBirthYear <= playerEraYears.end && historicalDeathYear >= playerEraYears.start;
+        
+        if (isAlive) {
+            // Player meets the figure themselves!
+            const ageInEra = Math.floor(Math.random() * (historicalDeathYear - historicalBirthYear) * 0.5 + (historicalDeathYear - historicalBirthYear) * 0.25);
+            return {
+                name: historical.name,
+                age: Math.max(20, Math.min(80, ageInEra)), // A plausible age within the era
+                profession: historical.occupation?.join(', ') || 'Figure publique',
+                connectionType: 'self',
+                greeting: `Bonjour, je suis ${historical.name}. Que me vaut l'honneur de votre visite en cette année de grâce ?`,
+                personality: ["authentique", "historique"],
+            };
+        }
+    }
+
+    // Case 2: Player is in contemporary era, or the figure is not from the player's historical era.
+    // Fallback to the original "modern adaptation" logic.
     const connectionType = determineConnectionType(historical);
     const modernName = generateModernName(historical.name, connectionType);
     
@@ -112,6 +138,6 @@ export function adaptToModernEra(historical: HistoricalPersonality): ModernIdent
         profession: generateModernProfession(historical, connectionType),
         connectionType: connectionType,
         greeting: generateGreeting(modernName, historical.name),
-        personality: ["cultivée", "discrète", "passionnée"], // Placeholder personality
+        personality: ["cultivée", "discrète", "passionnée"],
     };
 }

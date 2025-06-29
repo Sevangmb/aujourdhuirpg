@@ -8,6 +8,7 @@ import type { ToneSettings } from './tone-types';
 import type { Position } from './game-types'; // Corrected path
 import type { Transaction } from './finance-types';
 import type { HistoricalContact } from './historical-contact-types';
+import type { GameEra } from './era-types';
 
 export type PlayerStats = {
   Sante: number;
@@ -46,7 +47,7 @@ export type Player = {
   age: number;
   avatarUrl: string;
   origin: string; // Origine géographique, sociale, etc.
-  era?: string; // New field for the character's starting era
+  era: GameEra; // New field for the character's starting era
   background: string; // Historique plus détaillé du personnage, style RP
   startingLocationName?: string; // Added for character creation context
   stats: PlayerStats;

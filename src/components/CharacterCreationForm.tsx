@@ -28,6 +28,8 @@ import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiService } from '@/services/aiService';
+import { AVAILABLE_ERAS, GameEra } from '@/lib/types';
+
 
 // Define the Zod schema for the form data
 const characterSchema = z.object({
@@ -36,7 +38,7 @@ const characterSchema = z.object({
   age: z.coerce.number().min(15, { message: "L'âge doit être d'au moins 15 ans." }).max(99, { message: "L'âge ne peut pas dépasser 99 ans." }).int({ message: "L'âge doit être un nombre entier." }),
   origin: z.string().min(5, { message: "L'origine doit contenir au moins 5 caractères." }).max(200, {message: "L'origine ne peut pas dépasser 200 caractères."}),
   background: z.string().min(10, { message: "L'historique doit contenir au moins 10 caractères." }).max(500, { message: "L'historique ne peut pas dépasser 500 caractères." }),
-  era: z.string().min(1, { message: "Veuillez sélectionner une époque." }),
+  era: z.enum(AVAILABLE_ERAS, { required_error: "Veuillez sélectionner une époque." }),
   startingLocation: z.string().min(2, { message: "Veuillez sélectionner un lieu de départ ou en saisir un." }).max(200, { message: "Le lieu de départ ne peut pas dépasser 200 caractères." }),
 });
 
@@ -207,11 +209,9 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                     <SelectItem value="Antiquité">Antiquité</SelectItem>
-                     <SelectItem value="Moyen-Âge">Moyen-Âge</SelectItem>
-                     <SelectItem value="Renaissance">Renaissance</SelectItem>
-                     <SelectItem value="Époque Moderne">Époque Moderne</SelectItem>
-                     <SelectItem value="Époque Contemporaine">Époque Contemporaine</SelectItem>
+                      {AVAILABLE_ERAS.map(era => (
+                        <SelectItem key={era} value={era}>{era}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -2,8 +2,8 @@
 'use server';
 
 import { searchWikipedia, fetchPersonDetails } from './wikipedia-service';
-import { adaptToModernEra } from './historical-adapter-service';
-import type { HistoricalPersonality, ModernIdentity, ContactKnowledge } from '@/lib/types';
+import { adaptHistoricalFigure } from './historical-adapter-service';
+import type { HistoricalPersonality, ModernIdentity, ContactKnowledge, GameEra } from '@/lib/types';
 import { generateHistoricalContact } from '@/ai/flows/generate-historical-contact-flow';
 
 // Simple in-memory cache for this serverless function's lifecycle
@@ -19,19 +19,21 @@ export type AdaptedContact = {
  * Finds historical personalities related to a specific location, adapts them, enriches them with AI,
  * and uses a cache to avoid repeated lookups.
  * @param placeName The name of the location (e.g., "Montmartre").
+ * @param playerEra The era the player is in.
  * @returns A promise that resolves to an array of fully adapted and enriched historical contacts.
  */
 export async function findAndAdaptHistoricalContactsForLocation(
-  placeName: string
+  placeName: string,
+  playerEra: GameEra
 ): Promise<AdaptedContact[]> {
 
-  const cacheKey = `contacts_enriched_${placeName.toLowerCase().replace(/\s+/g, '_')}`;
+  const cacheKey = `contacts_enriched_${placeName.toLowerCase().replace(/\s+/g, '_')}_${playerEra}`;
   if (locationCache.has(cacheKey)) {
-    console.log(`Cache hit for enriched historical contacts at: ${placeName}`);
+    console.log(`Cache hit for enriched historical contacts at: ${placeName} for era ${playerEra}`);
     return locationCache.get(cacheKey)!;
   }
 
-  console.log(`Cache miss. Searching and enriching historical contacts for: ${placeName}`);
+  console.log(`Cache miss. Searching and enriching historical contacts for: ${placeName} in era ${playerEra}`);
   
   const searchResults = await searchWikipedia(`personnalités liées à ${placeName}`, 5);
 
@@ -51,13 +53,14 @@ export async function findAndAdaptHistoricalContactsForLocation(
         thumbnail: details.thumbnail,
       };
 
-      const modernIdentity = adaptToModernEra(historicalPersonality);
+      const modernIdentity = adaptHistoricalFigure(historicalPersonality, playerEra);
 
       // --- AI ENRICHMENT STEP ---
       const knowledge = await generateHistoricalContact({
           historical: historicalPersonality,
           modern: modernIdentity,
-          location: placeName
+          location: placeName,
+          playerEra: playerEra,
       });
       
       adaptedContacts.push({
