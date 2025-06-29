@@ -1,3 +1,4 @@
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact, StoryChoice } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
@@ -132,6 +133,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                         const update = updatedObjectives.find(u => u.objectiveId === obj.id);
                         return update ? { ...obj, isCompleted: update.isCompleted } : obj;
                     });
+                }
+                // Check if all objectives are completed to auto-complete the quest
+                if (newQuest.objectives.every(obj => obj.isCompleted)) {
+                    newQuest.status = 'completed';
+                    if (!newQuest.dateCompleted) {
+                        newQuest.dateCompleted = nowISO;
+                    }
                 }
                 return newQuest;
             }
@@ -280,7 +288,7 @@ export function checkForLocationBasedEvents(newLocation: Position, gameState: Ga
   if (newLocation.name === "Old Observatory") {
     triggeredActions.push({
       type: 'SET_CURRENT_SCENARIO',
-      payload: { scenarioText: `<p>Vous êtes arrivé à l'Ancien Observatoire. La porte est entrouverte et une faible lumière filtre de l'intérieur.</p>` }
+      payload: { scenarioText: `<p>Vous êtes arrivé à l'Ancien Observatoire. La porte est entrouverte et une faible lumière filtre de l'intérieur.</p>`, choices: [] }
     });
   }
   return triggeredActions;
