@@ -1,48 +1,17 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression } from './types';
-import type { InventoryItem } from './types/item-types'; // Import InventoryItem if needed here
-import type { GenerateScenarioInput } from '@/ai/flows/generate-scenario'; // Import AI input type
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate } from './types';
+import type { InventoryItem } from './types/item-types';
+import type { GenerateScenarioInput } from '@/ai/flows/generate-scenario';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
-import { initialPlayerMoney } from '@/data/initial-game-data';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
-import {
-  initialSkills,
-  initialTraitsMentalStates,
-  initialProgression,
-  initialAlignment,
-  initialInventory,
-  initialPlayerLocation,
-  defaultAvatarUrl,
-  initialQuestLog,
-  initialEncounteredPNJs,
-  initialDecisionLog,
-  initialClues,
-  initialDocuments,
-  initialInvestigationNotes,
-  initialToneSettings,
-  UNKNOWN_STARTING_PLACE_NAME,
-  initialPlayerStats
-} from '@/data/initial-game-data';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
-  if (player.currentLocation && player.currentLocation.name === UNKNOWN_STARTING_PLACE_NAME) {
-    return {
-      scenarioText: `
-        <p>Initialisation du point de départ aléatoire...</p>
-        <p>L'IA détermine votre environnement initial.</p>
-      `,
-    };
-  }
   return {
-    scenarioText: `
-      <p>Bienvenue, ${player.name}. Que l'aventure commence !</p>
-      <p>Vous vous trouvez à ${player.currentLocation?.name || 'un endroit non spécifié'}.</p>
-      <p>Que faites-vous ?</p>
-    `,
+    scenarioText: `<p>Bienvenue, ${player.name}. L'aventure commence... Que faites-vous ?</p>`,
   };
 }
 
@@ -54,11 +23,23 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_DATA'; payload: Partial<Player> }
   | { type: 'ADD_GAME_TIME'; payload: number }
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
-  | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] };
+  | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
+  // AI-driven actions
+  | { type: 'ADD_QUEST'; payload: Quest }
+  | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
+  | { type: 'ADD_PNJ'; payload: PNJ }
+  | { type: 'UPDATE_PNJ'; payload: { id: string, updatedDispositionScore?: number, newInteractionLogEntry?: string } }
+  | { type: 'ADD_CLUE'; payload: Clue }
+  | { type: 'ADD_DOCUMENT'; payload: GameDocument }
+  | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
+  | { type: 'CHANGE_MONEY'; payload: number }
+  | { type: 'ADD_XP'; payload: number };
+
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (!state.player) return state;
   const now = state.gameTimeInMinutes || 0;
+  const nowISO = new Date().toISOString(); // For dating new entries
 
   switch (action.type) {
     case 'MOVE_TO_LOCATION': {
@@ -93,6 +74,70 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, player: { ...state.player, ...action.payload } };
     case 'ADD_GAME_TIME':
       return { ...state, gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload };
+    
+    // --- AI-Driven Reducers ---
+    case 'ADD_QUEST': {
+        const newQuest = { ...action.payload, dateAdded: nowISO };
+        return {
+            ...state,
+            player: { ...state.player, questLog: [...state.player.questLog, newQuest] },
+        };
+    }
+    case 'UPDATE_QUEST': {
+        const { questId, newStatus, updatedObjectives } = action.payload;
+        const updatedQuestLog = state.player.questLog.map(quest => {
+            if (quest.id === questId) {
+                const newQuest = { ...quest };
+                if (newStatus) newQuest.status = newStatus;
+                if (newStatus === 'completed' && !newQuest.dateCompleted) newQuest.dateCompleted = nowISO;
+                if (updatedObjectives) {
+                    newQuest.objectives = newQuest.objectives.map(obj => {
+                        const update = updatedObjectives.find(u => u.objectiveId === obj.id);
+                        return update ? { ...obj, isCompleted: update.isCompleted } : obj;
+                    });
+                }
+                return newQuest;
+            }
+            return quest;
+        });
+        return { ...state, player: { ...state.player, questLog: updatedQuestLog } };
+    }
+    case 'ADD_PNJ': {
+        const newPNJ = { ...action.payload, firstEncountered: state.player.currentLocation.name, lastSeen: nowISO, interactionHistory: [action.payload.newInteractionLogEntry || "Rencontre initiale."] };
+        return {
+            ...state,
+            player: { ...state.player, encounteredPNJs: [...state.player.encounteredPNJs, newPNJ] },
+        };
+    }
+    case 'ADD_ITEM_TO_INVENTORY': {
+        const { itemId, quantity } = action.payload;
+        const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity);
+        return { ...state, player: { ...state.player, inventory: updatedInventory } };
+    }
+    case 'CHANGE_MONEY': {
+        return { ...state, player: { ...state.player, money: state.player.money + action.payload } };
+    }
+    case 'ADD_XP': {
+        const { newProgression, leveledUp } = addXP(state.player.progression, action.payload);
+        if (leveledUp) {
+            // Can add a notification here later if needed
+        }
+        return { ...state, player: { ...state.player, progression: newProgression } };
+    }
+     case 'ADD_CLUE': {
+        const newClue = { ...action.payload, dateFound: nowISO };
+        return {
+            ...state,
+            player: { ...state.player, clues: [...state.player.clues, newClue] },
+        };
+    }
+    case 'ADD_DOCUMENT': {
+        const newDocument = { ...action.payload, dateAcquired: nowISO };
+        return {
+            ...state,
+            player: { ...state.player, documents: [...state.player.documents, newDocument] },
+        };
+    }
     default:
       return state;
   }
@@ -100,12 +145,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
 // --- Deterministic Logic ---
 
-/**
- * Calculates all deterministic effects of a player's action, updating the player state.
- * @param player The current player object.
- * @param actionText The text of the action the player took.
- * @returns An object containing the updated player, UI notifications, and events for the AI to narrate.
- */
 export async function calculateDeterministicEffects(
   player: Player,
   actionText: string
@@ -114,20 +153,16 @@ export async function calculateDeterministicEffects(
   const notifications: GameNotification[] = [];
   const eventsForAI: string[] = [];
 
-  const parsedAction = await parsePlayerAction(actionText, /* gameState */);
+  const parsedAction = await parsePlayerAction(actionText);
 
   if (parsedAction.actionType === 'USE_ITEM' && parsedAction.itemUsed) {
     const itemInInventory = updatedPlayer.inventory.find(i => i.name.toLowerCase() === parsedAction.itemUsed!.toLowerCase());
 
     if (itemInInventory && itemInInventory.type === 'consumable' && itemInInventory.effects) {
-      // 1. Apply effects
       updatedPlayer.stats = applyStatChanges(updatedPlayer.stats, itemInInventory.effects);
-
-      // 2. Remove item
       const removalResult = removeItemFromInventory(updatedPlayer.inventory, itemInInventory.id, 1);
       updatedPlayer.inventory = removalResult.updatedInventory;
 
-      // 3. Create notifications & AI events
       eventsForAI.push(`Le joueur a utilisé '${itemInInventory.name}'.`);
       notifications.push({
         type: 'item_removed',
@@ -150,8 +185,6 @@ export async function calculateDeterministicEffects(
         notifications.push({type: 'warning', title: "Action impossible", description: `Vous n'avez pas d'objet nommé '${parsedAction.itemUsed}'.`});
     }
   }
-
-  // Future: Add handlers for other parsedAction.actionType like 'APPLY_SKILL', etc.
 
   return { updatedPlayer, notifications, eventsForAI };
 }
@@ -203,13 +236,6 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 }
 
 // --- AI Input Preparation ---
-/**
- * Prepares the input object for the AI's generateScenario flow based on the current game state.
- * @param gameState The current state of the game.
- * @param playerChoice The action text the player entered (or a system action).
- * @param deterministicEvents A list of events that have already been calculated by the game engine.
- * @returns An object formatted for the GenerateScenarioInput schema.
- */
 export function prepareAIInput(gameState: GameState, playerChoice: string, deterministicEvents: string[] = []): GenerateScenarioInput | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");

@@ -1,11 +1,11 @@
 
 /**
  * @fileOverview Zod schema definitions for the generateScenario flow input and output.
- * This file reflects the new architecture where the AI's role is primarily narrative generation.
+ * This file outlines the contract between the game engine and the AI narrator.
  */
 import {z} from 'genkit';
 
-// Schemas for player data, quests, etc., remain largely the same as they are part of the INPUT to the AI.
+// Schemas for player data, quests, etc., are imported to define the AI's potential outputs.
 import {
   LocationSchema,
   SkillsSchema,
@@ -15,14 +15,14 @@ import {
   InventoryItemInputSchema,
   ToneSettingsSchema
 } from './schemas/player-common-schemas';
-import { QuestInputSchema } from './schemas/quest-schemas';
+import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas';
 import { PNJInteractionSchema } from './schemas/pnj-schemas';
 import { MajorDecisionSchema } from './schemas/decision-schemas';
 import { ClueInputSchema, DocumentInputSchema } from './schemas/evidence-schemas';
 
 
 // --- Main Input Schema ---
-// This schema now includes a field for deterministic events calculated by the game engine.
+// This schema describes all the information the game provides to the AI for context.
 export const GenerateScenarioInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
   playerGender: z.string().describe("The player character's gender."),
@@ -44,10 +44,10 @@ export const GenerateScenarioInputSchema = z.object({
   playerLocation: LocationSchema.describe("The player's current location."),
   toneSettings: ToneSettingsSchema.optional(),
 
-  // NEW FIELD for deterministic events
+  // This field is for events calculated by the game engine BEFORE calling the AI.
   deterministicEvents: z.array(z.string()).optional().describe("A summary of deterministic events calculated by the game engine. The AI MUST narrate these events as having already occurred."),
 
-  // Contextual summaries remain useful for the AI's narration
+  // Contextual summaries for the AI's narration
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
   encounteredPNJsSummary: z.array(z.object({
     name: z.string(),
@@ -62,15 +62,47 @@ export const GenerateScenarioInputSchema = z.object({
 
 
 // --- Main Output Schema ---
-// This schema is now drastically simplified. The AI's primary job is to generate the narrative.
-// Mechanical changes are no longer part of the AI's output.
+// This schema describes the AI's response, which now includes both narration and game-state-changing events.
 export const GenerateScenarioOutputSchema = z.object({
-  /** The generated scenario text, formatted in HTML. This text describes the outcome of the player action, incorporating any deterministic events provided in the input, and sets the scene for the next player input. It should NOT contain interactive elements like buttons. */
-  scenarioText: z.string().describe('The generated scenario text, formatted in HTML, narrating the outcome of the player action and any provided deterministic events.'),
+  /** The generated scenario text, formatted in HTML. This text describes the outcome of the player action and sets the scene for the next player input. */
+  scenarioText: z.string().describe('The generated scenario text, formatted in HTML.'),
   
-  /** The AI can still suggest a location change, as this is a narrative-heavy event. */
+  /** If the AI's narrative causes a significant location change, it can specify the new location details here. */
   newLocationDetails: LocationSchema.extend({
     reasonForMove: z.string().optional()
   }).nullable().optional().describe("Details of a new location if the player's action caused them to move significantly."),
 
-}).describe("Simplified output schema for the generateScenario flow, focusing on narrative generation.");
+  // --- NEW AI-DRIVEN GAME EVENTS ---
+  // The AI can now populate these fields to directly influence the game state.
+
+  /** A list of new quests the AI wants to add to the player's journal. */
+  newQuests: z.array(QuestInputSchema).optional().describe("Liste de nouvelles quêtes à ajouter au journal du joueur. L'IA crée ces quêtes lorsque l'histoire le justifie."),
+  
+  /** A list of updates to existing quests (e.g., completing an objective). */
+  updatedQuests: z.array(QuestUpdateSchema).optional().describe("Liste des mises à jour des quêtes existantes (ex: marquer un objectif comme complété)."),
+
+  /** A list of new Non-Player Characters (PNJ) introduced in the narrative. */
+  newPNJs: z.array(PNJInteractionSchema).optional().describe("Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde."),
+
+  /** A list of updates to existing PNJ's dispositions or relationships. */
+  updatedPNJs: z.array(PNJInteractionSchema.pick({ id: true, updatedDispositionScore: true, newInteractionLogEntry: true })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
+
+  /** A list of new clues for the player's investigation log. */
+  newClues: z.array(ClueInputSchema).optional().describe("Nouveaux indices découverts par le joueur."),
+  
+  /** A list of new documents obtained by the player. */
+  newDocuments: z.array(DocumentInputSchema).optional().describe("Nouveaux documents que le joueur obtient."),
+  
+  /** A list of items to add directly to the player's inventory. */
+  itemsToAddToInventory: z.array(z.object({
+    itemId: z.string().describe("The ID of the item from the master item list (e.g., 'medkit_basic_01')."),
+    quantity: z.number().min(1).describe("The quantity of the item to add.")
+  })).optional().describe("Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés)."),
+  
+  /** A positive or negative amount of money to give to the player. */
+  moneyChange: z.number().optional().describe("Montant d'argent (positif ou négatif) à ajouter ou retirer au joueur."),
+  
+  /** The amount of experience points (XP) the player has gained. */
+  xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
+
+}).describe("Output schema for the generateScenario flow, now including AI-driven game events.");
