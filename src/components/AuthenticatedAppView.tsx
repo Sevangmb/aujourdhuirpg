@@ -8,7 +8,7 @@ import type { GameState, Player, ToneSettings, Position, GeoIntelligence, Charac
 import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
-import { listCharacters, loadSpecificSave, createNewCharacter, saveCharacter, deleteCharacter } from '@/services/firestore-service';
+import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
 import ToneSettingsDialog from '@/components/ToneSettingsDialog';
 import AppMenubar from '@/components/AppMenubar';
@@ -87,7 +87,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appMode, gameState?.player?.currentLocation, gameState?.player?.era]);
+  }, [appMode, gameState?.player?.currentLocation?.name]);
   
   const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto' | 'checkpoint') => {
     if (!gameState || !user || !gameState.player || !selectedCharacterId) {

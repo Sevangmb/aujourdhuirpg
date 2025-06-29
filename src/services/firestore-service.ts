@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import type { GameState } from '@/lib/types';
+import type { GameState, SaveSummary } from '@/lib/types';
 import {
   collection,
   doc,
@@ -30,16 +30,6 @@ export interface CharacterSummary {
   avatarUrl: string;
   level: number;
   lastPlayed: string; // ISO string
-}
-
-// A summary of a single save file for the loading screen, now with more metadata
-export interface SaveSummary {
-  id: string; // Document ID of the save file
-  type: 'auto' | 'manual' | 'checkpoint';
-  timestamp: string; // ISO string of when it was saved
-  level: number;
-  locationName: string;
-  playTimeInMinutes: number;
 }
 
 
