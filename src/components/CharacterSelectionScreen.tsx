@@ -6,8 +6,9 @@ import type { CharacterSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { defaultAvatarUrl } from '@/data/initial-game-data';
 
 interface CharacterSelectionScreenProps {
   characters: CharacterSummary[];
@@ -32,10 +33,10 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl w-full">
         {characters.map(char => (
-          <Card key={char.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300">
+          <Card key={char.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all duration-300 bg-card">
             <CardHeader className="p-0 relative">
               <Image
-                src={char.avatarUrl}
+                src={char.avatarUrl || defaultAvatarUrl}
                 alt={`Avatar de ${char.name}`}
                 width={300}
                 height={300}
@@ -56,14 +57,14 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="icon" disabled={isDeleting === char.id}>
-                    {isDeleting === char.id ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Trash2 className="h-4 w-4" />}
+                    {isDeleting === char.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Cette action est irréversible. Le personnage "{char.name}" sera supprimé définitivement.
+                      Cette action est irréversible. Le personnage "{char.name}" et toutes ses sauvegardes seront supprimés définitivement.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -79,7 +80,7 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
         ))}
         <Card
           onClick={onCreateNew}
-          className="flex flex-col items-center justify-center border-2 border-dashed hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200 min-h-[340px]"
+          className="flex flex-col items-center justify-center border-2 border-dashed hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200 min-h-[340px] bg-card/50"
         >
           <PlusCircle className="w-16 h-16 text-muted-foreground group-hover:text-primary" />
           <p className="mt-4 font-semibold">Nouveau Personnage</p>

@@ -91,9 +91,8 @@ export async function createNewCharacter(uid: string, gameState: GameState): Pro
     const newCharacterDocRef = await addDoc(charactersCollectionRef, metadata);
     const characterId = newCharacterDocRef.id;
 
-    // 2. Create the initial save state in the 'saves' subcollection
-    const initialSaveDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, 'initial');
-    await setDoc(initialSaveDocRef, { ...gameState, lastPlayed: serverTimestamp() });
+    // 2. Create the initial save state in the 'saves' subcollection using the 'auto' slot
+    await saveCharacter(uid, characterId, gameState, 'auto');
 
     return characterId;
   } catch (error) {
@@ -190,6 +189,7 @@ export async function deleteCharacter(uid: string, characterId: string): Promise
   try {
     const characterDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId);
     await deleteDoc(characterDocRef);
+    // Note: A Cloud Function would be needed here to delete the 'saves' subcollection.
   } catch (error) {
     console.error(`Firestore Error: deleting character ${characterId} for user ${uid}:`, error);
     throw error;

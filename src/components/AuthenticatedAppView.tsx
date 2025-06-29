@@ -19,6 +19,7 @@ import { clearGameState as clearLocalGameState } from '@/services/localStorageSe
 import { fetchWikipediaSummary } from '@/services/wikipedia-service';
 import GameScreen from '@/components/GameScreen';
 import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen';
+import LoadingState from './LoadingState';
 
 interface AuthenticatedAppViewProps {
   user: User;
@@ -84,6 +85,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setGeoIntelligenceData(null);
       setGameState(prevState => prevState ? { ...prevState, nearbyPois: null } : null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appMode, gameState?.player?.currentLocation, gameState?.player?.era]);
   
   // Debounced Autosave Effect
@@ -99,6 +101,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     return () => {
       if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, appMode]);
 
   const fetchPoisForLocation = useCallback(async (location: Position) => {
@@ -173,7 +176,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       toast({ title: "Erreur de chargement", description: "Impossible de charger ce personnage.", variant: "destructive" });
       fetchCharacterList(); // Refresh list in case of error
     }
-  }, [user, toast, fetchCharacterList]);
+  }, [user.uid, toast, fetchCharacterList]);
 
   const handleCharacterCreate = useCallback(async (playerData: {
       name: string; gender: string; age: number; origin: string; background: string; era: string; startingLocation: string; avatarUrl: string;
@@ -182,7 +185,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     try {
       const locationData = await fetchWikipediaSummary(playerData.startingLocation);
       if (!locationData || typeof locationData.latitude !== 'number') {
-        toast({ title: "Lieu de départ introuvable", variant: "destructive" });
+        toast({ title: "Lieu de départ introuvable", variant: "destructive", description: "Veuillez choisir un lieu plus connu ou vérifier l'orthographe." });
         setAppMode('creating_character');
         return;
       }
@@ -193,6 +196,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       hydratedPlayer.currentLocation = {
           latitude: locationData.latitude, longitude: locationData.longitude, name: locationData.title,
       };
+       hydratedPlayer.startingLocationName = locationData.title;
 
       const tempStateForPrologue: GameState = {
         currentScenario: { scenarioText: "<p>Création du monde en cours...</p>" },
@@ -214,7 +218,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setSelectedCharacterId(newCharacterId); // Set the new character as active
 
       toast({ title: "Personnage créé !", description: `${playerData.name} est prêt(e) pour l'aventure.` });
-      fetchCharacterList(); // This will switch the mode to 'selecting_character'
       setAppMode('playing'); // Manually switch to playing mode with the new character
       setGameState(finalGameState);
 
@@ -223,7 +226,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       toast({ title: "Erreur de création", description: "Impossible de commencer l'aventure.", variant: "destructive" });
       setAppMode('creating_character');
     }
-  }, [user, toast, fetchCharacterList]);
+  }, [user, toast]);
 
   const handleDeleteCharacter = useCallback(async (characterId: string) => {
     setIsDeletingCharacter(characterId);
@@ -241,14 +244,16 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     } finally {
       setIsDeletingCharacter(null);
     }
-  }, [user, toast, fetchCharacterList, selectedCharacterId]);
+  }, [user.uid, toast, fetchCharacterList, selectedCharacterId]);
 
   const handleExitToSelection = () => {
-    handleSaveGame('auto'); // Save before exiting
+    if (appMode === 'playing') {
+      handleSaveGame('auto'); // Save before exiting
+    }
     setGameState(null);
     setSelectedCharacterId(null);
     clearLocalGameState();
-    setAppMode('selecting_character');
+    fetchCharacterList(); // This will fetch the list and set the mode to 'selecting_character' or 'creating_character'
   };
 
   const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto') => {
@@ -259,7 +264,8 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     const result = await saveGameState(user.uid, selectedCharacterId, gameState, saveType);
     if (saveType === 'manual') {
         if (result.cloudSaveSuccess) toast({ title: "Partie Sauvegardée" });
-        else toast({ title: "Échec de la sauvegarde", variant: "destructive" });
+        else if (result.cloudSaveSuccess === false) toast({ title: "Échec de la sauvegarde Cloud", variant: "destructive" });
+        else if(result.localSaveSuccess) toast({ title: "Partie Sauvegardée (localement)" }); // For anonymous users
     }
   }, [gameState, user, selectedCharacterId, toast]);
 
@@ -278,7 +284,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   };
   
   if (appMode === 'loading') {
-    return <div className="flex h-screen w-full items-center justify-center">Chargement...</div>;
+    return <LoadingState loadingAuth={false} isLoadingState={true} />;
   }
   
   if (appMode === 'selecting_character') {
@@ -296,7 +302,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const isGameActive = appMode === 'playing' && !!gameState?.player;
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background">
       <AppMenubar
         user={user}
         isGameActive={isGameActive}
@@ -331,7 +337,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
           gameState={gameState}
           isGameActive={isGameActive}
           onCharacterCreate={handleCharacterCreate}
-          onRestartGame={handleExitToSelection}
           setGameState={setGameState}
           weatherData={weatherData}
           weatherLoading={weatherLoading}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -5,7 +6,6 @@ import type { User } from 'firebase/auth';
 import type { GameState } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 
-// Removed LoadingState import as HomePageContent handles the primary loading states
 import CharacterCreationForm from '@/components/CharacterCreationForm';
 import GamePlay from '@/components/GamePlay';
 
@@ -23,7 +23,6 @@ interface GameScreenProps {
     startingLocation: string;
     avatarUrl: string;
   }) => void;
-  onRestartGame: () => void; // Kept for potential future use or pass-through
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
   weatherData: WeatherData | null;
   weatherLoading: boolean;
@@ -35,11 +34,9 @@ interface GameScreenProps {
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
-  // user, // user prop is received but not directly used for conditional rendering here anymore
   gameState,
   isGameActive,
   onCharacterCreate,
-  onRestartGame,
   setGameState,
   weatherData,
   weatherLoading,
@@ -49,7 +46,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   locationImageError,
   isCreatingCharacter,
 }) => {
-  // Primary loading states (auth and initial game data) are handled by HomePageContent.
+  // Primary loading states (auth and initial game data) are handled by AuthenticatedAppView.
   // GameScreen now assumes that if it's rendered, the user is authenticated,
   // and initial game data loading attempt has completed.
 
@@ -58,7 +55,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
     return (
       <GamePlay
         initialGameState={gameState}
-        onRestart={onRestartGame} // Pass down if GamePlay needs it
         onStateUpdate={setGameState as any} // Cast to any to handle complex state updates
         weatherData={weatherData}
         weatherLoading={weatherLoading}

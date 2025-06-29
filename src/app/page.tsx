@@ -1,14 +1,13 @@
+
 "use client";
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthScreen from '@/components/AuthScreen';
 import AuthenticatedAppView from '@/components/AuthenticatedAppView';
+import LoadingState from '@/components/LoadingState';
 
-// UI Components (if any were intended here)
-
-// Define HomePageContent which was previously empty and causing issues
-function HomePageContent() {
+export default function HomePage() {
   const {
     user,
     loadingAuth,
@@ -19,25 +18,23 @@ function HomePageContent() {
   } = useAuth();
 
   if (loadingAuth) {
-    return <div className="flex h-screen w-full items-center justify-center">Chargement de l'application...</div>;
+    return <LoadingState loadingAuth={true} isLoadingState={false} />;
   }
 
   return (
-    <div>
+    <div className="h-full">
       {user ? (
         <AuthenticatedAppView user={user} signOutUser={signOutUser} />
       ) : (
-        <AuthScreen
-          loadingAuth={loadingAuth}
-          signUp={signUpWithEmailPassword}
-          signIn={signInWithEmailPassword}
-          signInAnon={signInAnonymously}
-        />
+        <main className="flex min-h-full flex-col items-center justify-center p-4 md:p-8 bg-muted/40">
+           <AuthScreen
+            loadingAuth={loadingAuth}
+            signUp={signUpWithEmailPassword}
+            signIn={signInWithEmailPassword}
+            signInAnon={signInAnonymously}
+          />
+        </main>
       )}
     </div>
   );
-}
-
-export default function HomePage() {
-  return <HomePageContent />;
 }

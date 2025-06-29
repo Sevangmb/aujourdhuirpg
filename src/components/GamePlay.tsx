@@ -55,7 +55,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     }
   }, [initialGameState, onStateUpdate]);
 
-  const handleGameAction = useCallback(async (action: GameAction) => {
+  const handleGameAction = useCallback((action: GameAction) => {
     onStateUpdate(prevState => {
       if (!prevState) return null;
       const newState = gameReducer(prevState, action);
