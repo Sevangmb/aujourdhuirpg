@@ -56,7 +56,7 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
               <p className="text-center text-muted-foreground py-4">Votre inventaire est vide.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-1">
-                {inventory.map(item => <InventoryItemCard key={item.id + '-' + item.quantity} item={item} />)}
+                {inventory.map(item => <InventoryItemCard key={item.instanceId} item={item} />)}
               </div>
             )}
           </TabsContent>
@@ -67,7 +67,7 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory }) => {
                 <p className="text-center text-muted-foreground py-4">Aucun objet de type "{categoryLabels[catType]}".</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-1">
-                  {itemsByType(catType).map(item => <InventoryItemCard key={item.id + '-' + item.quantity} item={item} />)}
+                  {itemsByType(catType).map(item => <InventoryItemCard key={item.instanceId} item={item} />)}
                 </div>
               )}
             </TabsContent>

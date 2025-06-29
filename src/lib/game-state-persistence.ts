@@ -30,7 +30,7 @@ export interface SaveGameResult {
   cloudSaveSuccess: boolean | null;
 }
 
-export async function saveGameState(uid: string, characterId: string, state: GameState, saveType: 'auto' | 'manual'): Promise<SaveGameResult> {
+export async function saveGameState(uid: string, characterId: string, state: GameState, saveType: 'auto' | 'manual' | 'checkpoint'): Promise<SaveGameResult> {
   const result: SaveGameResult = { localSaveSuccess: false, cloudSaveSuccess: null };
   if (!state || !state.player) {
     console.warn("Save Game Warning: Attempted to save invalid or incomplete game state.", state);
@@ -94,9 +94,13 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       console.warn(`Could not find master item for id ${item.id} during hydration.`);
       return null;
     }
+    // Ensure new dynamic fields exist for items from old saves
     return {
       ...masterItem,
-      ...item // This ensures quantity and any other instance-specific data is preserved
+      ...item, 
+      instanceId: item.instanceId || `${item.id}_${Math.random().toString(36).substring(2)}`,
+      condition: typeof item.condition === 'number' ? item.condition : 100,
+      acquiredAt: item.acquiredAt || new Date(0).toISOString(),
     };
   }).filter((item): item is InventoryItem => item !== null);
 

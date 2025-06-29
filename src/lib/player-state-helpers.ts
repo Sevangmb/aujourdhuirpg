@@ -25,19 +25,32 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
   }
 
   const newInventory = [...currentInventory];
-  const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
 
-  if (existingItemIndex > -1) {
-    if (masterItem.stackable) {
+  if (masterItem.stackable) {
+    const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
+    if (existingItemIndex > -1) {
       newInventory[existingItemIndex].quantity += quantityToAdd;
     } else {
-      console.warn(`Inventory Info: Item '${masterItem.name}' (ID: ${itemId}) is not stackable and player already possesses one. Quantity not changed.`);
+      // Add new stackable item instance
+      newInventory.push({
+        ...masterItem,
+        instanceId: `stack_${itemId}_${Math.random().toString(36).substring(2)}`,
+        quantity: quantityToAdd,
+        condition: 100,
+        acquiredAt: new Date().toISOString(),
+      });
     }
   } else {
-    newInventory.push({
-      ...masterItem,
-      quantity: masterItem.stackable ? quantityToAdd : 1
-    });
+    // Add one new instance for each quantity of a non-stackable item
+    for (let i = 0; i < quantityToAdd; i++) {
+      newInventory.push({
+        ...masterItem,
+        instanceId: `${itemId}_${Math.random().toString(36).substring(2)}`,
+        quantity: 1,
+        condition: 100,
+        acquiredAt: new Date().toISOString(),
+      });
+    }
   }
   return newInventory;
 }
@@ -45,10 +58,7 @@ export function addItemToInventory(currentInventory: InventoryItem[], itemId: st
 
 export function removeItemFromInventory(currentInventory: InventoryItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: InventoryItem[], removedItemEffects?: Partial<PlayerStats>, removedItemName?: string } {
   const newInventory = [...currentInventory];
-  let itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName);
-  if (itemIndex === -1) {
-    itemIndex = newInventory.findIndex(item => item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
-  }
+  const itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName || item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
 
   let removedItemEffects: Partial<PlayerStats> | undefined = undefined;
   let removedItemName: string | undefined = undefined;
@@ -58,10 +68,17 @@ export function removeItemFromInventory(currentInventory: InventoryItem[], itemI
     removedItemEffects = itemBeingRemoved.effects;
     removedItemName = itemBeingRemoved.name;
 
-    if (itemBeingRemoved.quantity <= quantityToRemove) {
-      newInventory.splice(itemIndex, 1);
+    if (itemBeingRemoved.stackable) {
+        if (itemBeingRemoved.quantity <= quantityToRemove) {
+          // Remove the entire stack if quantity is not enough
+          newInventory.splice(itemIndex, 1);
+        } else {
+          // Otherwise, just decrease the quantity
+          newInventory[itemIndex].quantity -= quantityToRemove;
+        }
     } else {
-      newInventory[itemIndex].quantity -= quantityToRemove;
+        // For non-stackable items, always remove the instance
+        newInventory.splice(itemIndex, 1);
     }
   } else {
     console.warn(`Inventory Warning: Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);

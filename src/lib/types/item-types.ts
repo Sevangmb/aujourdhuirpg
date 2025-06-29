@@ -4,18 +4,22 @@ import type { PlayerStats } from './player-types';
 export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'tool' | 'misc' | 'quest';
 
 export interface InventoryItem {
-  id: string; // Unique ID for the item
+  instanceId: string; // Unique ID for THIS SPECIFIC instance of the item.
+  id: string; // ID of the master item template.
   name: string;
   description: string;
   type: InventoryItemType;
-  iconName: string; // Preferably a keyof typeof LucideIcons, or a generic one
+  iconName: string; 
   quantity: number;
-  stackable: boolean; // Changed from optional to mandatory
-  value?: number; // Optional monetary value of the item
-  effects?: Partial<PlayerStats>; // Effects the item has when used/consumed
+  stackable: boolean; 
+  value?: number; 
+  effects?: Partial<PlayerStats>;
+  // Dynamic properties
+  condition: number; // Durability from 0 to 100.
+  acquiredAt: string; // ISO string date of when the item was acquired.
 }
 
 // Master definition for an item, used in the item database
-export interface MasterInventoryItem extends Omit<InventoryItem, 'quantity'> {
-  // Quantity is not part of master def, it's instance-specific
+export interface MasterInventoryItem extends Omit<InventoryItem, 'quantity' | 'instanceId' | 'condition' | 'acquiredAt'> {
+  // These properties are instance-specific
 }

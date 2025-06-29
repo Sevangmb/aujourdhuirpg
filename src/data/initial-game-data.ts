@@ -54,9 +54,13 @@ export const initialInventory: InventoryItem[] = [
 .filter(item => item !== undefined)
 .map(masterItem => {
   if (!masterItem) throw new Error("Unreachable: masterItem is undefined after filter");
+  // Create a full InventoryItem instance
   return {
     ...masterItem,
-    quantity: masterItem.id === 'energy_bar_01' ? 2 : 1
+    instanceId: Math.random().toString(36).substring(2), // Simple unique ID for initial items
+    quantity: masterItem.id === 'energy_bar_01' ? 2 : 1,
+    condition: 100,
+    acquiredAt: new Date().toISOString(),
   };
 });
 
@@ -86,4 +90,3 @@ export const initialInvestigationNotes: string = "Aucune note d'enquête pour le
 
 // --- Other Game Constants ---
 export const UNKNOWN_STARTING_PLACE_NAME = "Lieu de Départ Inconnu";
-
