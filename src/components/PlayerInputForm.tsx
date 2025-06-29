@@ -9,6 +9,8 @@ import { Loader2, Send, Brain, Navigation } from 'lucide-react';
 import type { GameState, Position } from '@/lib/types';
 import type { GameAction } from '@/lib/game-logic';
 import { checkForLocationBasedEvents } from '@/lib/game-logic';
+import { getDistanceInKm } from '@/lib/utils/geo-utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface PlayerInputFormProps {
   playerInput: string;
@@ -20,7 +22,6 @@ interface PlayerInputFormProps {
 }
 
 const PLAYER_ACTION_REFLECT = "[PLAYER_ACTION_REFLECT_INTERNAL_THOUGHTS]";
-const MOVE_TIME_MINUTES = 30; // Fixed time for moving to a POI
 
 const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
   playerInput,
@@ -32,6 +33,7 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
 }) => {
   const [selectedPoiId, setSelectedPoiId] = useState<string>("");
   const previousLocationRef = useRef<Position | null | undefined>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const currentLocation = gameState.player?.currentLocation;
@@ -72,16 +74,47 @@ const PlayerInputForm: React.FC<PlayerInputFormProps> = ({
 
   const handleMoveToPoi = () => {
     if (!selectedPoiId) return;
-    const selectedPosition = gameState.nearbyPois?.find(
+    const destination = gameState.nearbyPois?.find(
       (poi) => `${poi.latitude},${poi.longitude}` === selectedPoiId
     );
+    const origin = gameState.player?.currentLocation;
 
-    if (selectedPosition) {
-      // Dispatch actions to update location & game time.
-      // The parent component will handle the side-effect of fetching new data.
-      dispatch({ type: 'MOVE_TO_LOCATION', payload: selectedPosition });
-      dispatch({ type: 'ADD_GAME_TIME', payload: MOVE_TIME_MINUTES });
-      setSelectedPoiId(""); // Reset selection
+    if (destination && origin && gameState.player) {
+      const distanceKm = getDistanceInKm(origin.latitude, origin.longitude, destination.latitude, destination.longitude);
+      
+      // Assuming average speed of 10km/h in a city for mixed transport/walking
+      const travelTimeMinutes = Math.round(distanceKm * 6); // (distance / 10) * 60
+      
+      // Assuming cost of 1.5€ per km for transport
+      const travelCost = parseFloat((distanceKm * 1.5).toFixed(2));
+
+      if (gameState.player.money < travelCost) {
+        toast({
+          variant: "destructive",
+          title: "Fonds insuffisants",
+          description: `Il vous faut ${travelCost.toFixed(2)}€ pour ce trajet, mais vous n'avez que ${gameState.player.money.toFixed(2)}€.`,
+        });
+        return;
+      }
+
+      dispatch({ type: 'MOVE_TO_LOCATION', payload: destination });
+      dispatch({ type: 'ADD_GAME_TIME', payload: travelTimeMinutes });
+      dispatch({ 
+        type: 'ADD_TRANSACTION', 
+        payload: {
+          amount: -travelCost,
+          type: 'expense',
+          category: 'transport',
+          description: `Déplacement vers ${destination.name}`
+        } 
+      });
+
+      toast({
+        title: "Déplacement en cours...",
+        description: `Trajet vers ${destination.name}. Durée: ~${travelTimeMinutes} min. Coût: ${travelCost.toFixed(2)}€.`
+      });
+
+      setSelectedPoiId("");
     }
   };
 
