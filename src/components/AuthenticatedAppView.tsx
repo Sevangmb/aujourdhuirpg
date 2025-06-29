@@ -293,7 +293,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
        hydratedPlayer.startingLocationName = locationData.name;
 
       const tempStateForPrologue: GameState = {
-        currentScenario: { scenarioText: "<p>Création du monde en cours...</p>" },
+        currentScenario: { scenarioText: "<p>Création du monde en cours...</p>", choices: [] },
         player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null, toneSettings: hydratedPlayer.toneSettings,
       };
       
@@ -455,13 +455,19 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     
     setTravelDestination(null); // Close modal immediately
 
-    const travelEventInput: GenerateScenarioInput = prepareAIInput(gameState, `Voyage vers ${travelDestination.name} en ${mode}`)!;
+    const travelEventInput = prepareAIInput(gameState, `Voyage vers ${travelDestination.name} en ${mode}`);
+    if (!travelEventInput) {
+        toast({ variant: "destructive", title: "Erreur", description: "Impossible de préparer les données pour le voyage." });
+        return;
+    }
+    
     const travelNarrative = (await generateTravelEvent({
-      ...travelEventInput,
       travelMode: mode,
       origin: origin,
       destination: travelDestination,
       gameTimeInMinutes: gameState.gameTimeInMinutes,
+      playerStats: gameState.player.stats,
+      playerSkills: gameState.player.skills,
     })).narrative;
 
     handleGameAction({
