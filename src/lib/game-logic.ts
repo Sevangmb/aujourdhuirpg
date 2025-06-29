@@ -26,7 +26,7 @@ export type GameAction =
   | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded' | 'status'> }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
   | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> }
-  | { type: 'UPDATE_PNJ'; payload: { id: string, updatedDispositionScore?: number, newInteractionLogEntry?: string } }
+  | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
   | { type: 'ADD_CLUE'; payload: Omit<Clue, 'dateFound'> }
   | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
@@ -116,6 +116,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             ...state,
             player: { ...state.player, encounteredPNJs: [...(state.player.encounteredPNJs || []), newPNJ] },
         };
+    }
+    case 'UPDATE_PNJ': {
+        const { id, dispositionScore, newInteractionLogEntry } = action.payload;
+        const updatedPNJLog = (state.player.encounteredPNJs || []).map(pnj => {
+            if (pnj.id === id) {
+                const newPnj = { ...pnj };
+                if (typeof dispositionScore === 'number') {
+                    newPnj.dispositionScore = dispositionScore;
+                }
+                if (newInteractionLogEntry) {
+                    newPnj.interactionHistory = [...(newPnj.interactionHistory || []), newInteractionLogEntry];
+                }
+                newPnj.lastSeen = nowISO;
+                return newPnj;
+            }
+            return pnj;
+        });
+        return { ...state, player: { ...state.player, encounteredPNJs: updatedPNJLog } };
     }
     case 'ADD_ITEM_TO_INVENTORY': {
         const { itemId, quantity } = action.payload;

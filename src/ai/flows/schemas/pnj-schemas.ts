@@ -13,6 +13,6 @@ export const PNJInteractionSchema = z.object({
   trustLevel: z.number().min(0).max(100).optional().describe("Niveau de confiance du PNJ envers le joueur (0-100)."),
   firstEncountered: z.string().optional().describe("Contexte de la première rencontre (si c'est la première fois)."),
   notes: z.array(z.string()).optional().describe("Notes à ajouter sur ce PNJ (actions mémorables, informations clés données)."),
-  updatedDispositionScore: z.number().optional().describe("Nouveau score de disposition du PNJ envers le joueur après l'interaction."),
+  dispositionScore: z.number().optional().describe("Score de disposition du PNJ envers le joueur après l'interaction. Peut être un score initial ou une mise à jour."),
   newInteractionLogEntry: z.string().optional().describe("Nouvelle entrée à ajouter à l'historique des interactions avec le PNJ.")
 }).describe("Structure pour enregistrer ou mettre à jour une interaction avec un PNJ.");

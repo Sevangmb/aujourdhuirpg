@@ -86,7 +86,7 @@ export const GenerateScenarioOutputSchema = z.object({
   newPNJs: z.array(PNJInteractionSchema).optional().describe("Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde."),
 
   /** A list of updates to existing PNJ's dispositions or relationships. */
-  updatedPNJs: z.array(PNJInteractionSchema.pick({ id: true, updatedDispositionScore: true, newInteractionLogEntry: true })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
+  updatedPNJs: z.array(PNJInteractionSchema.pick({ id: true, dispositionScore: true, newInteractionLogEntry: true })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
 
   /** A list of new clues for the player's investigation log. */
   newClues: z.array(ClueInputSchema).optional().describe("Nouveaux indices découverts par le joueur."),

@@ -14,7 +14,4 @@ export interface PNJ {
   lastSeen?: string; // ISO string date
   dispositionScore: number;
   interactionHistory: string[];
-  // New fields for AI output processing
-  updatedDispositionScore?: number;
-  newInteractionLogEntry?: string;
 }
