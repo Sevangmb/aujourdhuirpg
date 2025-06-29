@@ -219,7 +219,21 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: false,
     economics: { base_value: 80, rarity_multiplier: 1.8 },
     xpToNextItemLevel: 100, // This item can evolve!
-  }
+    evolution: {
+      levelRequired: 2,
+      targetItemId: 'chronicler_camera_01',
+    },
+  },
+  {
+    id: 'chronicler_camera_01',
+    name: "Appareil Photo du Chroniqueur",
+    description: "Cet appareil photo semble maintenant capturer plus que de simples images. Il révèle des détails que l'œil nu ne peut voir.",
+    type: 'tool',
+    iconName: 'Camera',
+    stackable: false,
+    economics: { base_value: 250, rarity_multiplier: 2.5 },
+    xpToNextItemLevel: 250,
+  },
 ];
 
 export function getMasterItemById(itemId: string): MasterIntelligentItem | undefined {

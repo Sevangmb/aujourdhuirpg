@@ -1,6 +1,6 @@
 
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, addXpToItem } from './player-state-helpers';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -30,6 +30,7 @@ export type GameAction =
   | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'UPDATE_PLAYER_DATA'; payload: Partial<Player> }
+  | { type: 'SET_INVENTORY'; payload: IntelligentItem[] }
   | { type: 'ADD_GAME_TIME'; payload: number }
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
@@ -42,7 +43,6 @@ export type GameAction =
   | { type: 'ADD_DOCUMENT'; payload: AddDocumentPayload }
   | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
-  | { type: 'ADD_XP_TO_ITEM'; payload: { instanceId: string; xpGained: number } }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
   | { type: 'ADD_XP'; payload: number }
   | { type: 'ADD_HISTORICAL_CONTACT'; payload: HistoricalContact };
@@ -116,6 +116,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, currentScenario: action.payload };
     case 'UPDATE_PLAYER_DATA':
       return { ...state, player: { ...state.player, ...action.payload } };
+    case 'SET_INVENTORY':
+        return { ...state, player: { ...state.player, inventory: action.payload } };
     case 'ADD_GAME_TIME':
       return { ...state, gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload };
     
@@ -214,12 +216,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const { itemId, quantity } = action.payload;
         const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity);
         return { ...state, player: { ...state.player, inventory: updatedInventory } };
-    }
-    case 'ADD_XP_TO_ITEM': {
-      const { instanceId, xpGained } = action.payload;
-      const { updatedInventory, leveledUp, itemName } = addXpToItem(state.player.inventory, instanceId, xpGained);
-      // Future: Could dispatch a notification here if leveledUp is true.
-      return { ...state, player: { ...state.player, inventory: updatedInventory } };
     }
     case 'ADD_TRANSACTION': {
         const newTransaction: Transaction = {

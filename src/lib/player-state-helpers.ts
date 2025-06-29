@@ -1,5 +1,5 @@
 
-import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem } from './types';
+import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem, GameNotification } from './types';
 import { getMasterItemById } from '@/data/items';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -157,21 +157,28 @@ export function applySkillGains(currentSkills: AdvancedSkillSystem, gains: Recor
     return { updatedSkills: newSkills, notifications };
 }
 
-export function addXpToItem(
-  currentInventory: IntelligentItem[],
+// Internal function to handle XP and evolution for a single item.
+function addXpAndEvolveItem(
+  inventory: IntelligentItem[],
   instanceId: string,
   xpToAdd: number
-): { updatedInventory: IntelligentItem[]; leveledUp: boolean; itemName: string | undefined } {
-  const newInventory = JSON.parse(JSON.stringify(currentInventory));
+): { updatedInventory: IntelligentItem[]; notifications: GameNotification[] } {
+  const newInventory = JSON.parse(JSON.stringify(inventory));
+  const notifications: GameNotification[] = [];
   const itemIndex = newInventory.findIndex((item: IntelligentItem) => item.instanceId === instanceId);
 
   if (itemIndex === -1) {
     console.warn(`Item XP Warning: Item with instanceId ${instanceId} not found.`);
-    return { updatedInventory: currentInventory, leveledUp: false, itemName: undefined };
+    return { updatedInventory: inventory, notifications: [] };
   }
 
   const item = newInventory[itemIndex];
-  let leveledUp = false;
+  const masterItem = getMasterItemById(item.id);
+
+  if (!masterItem) {
+    console.warn(`Master item with id ${item.id} not found.`);
+    return { updatedInventory: inventory, notifications: [] };
+  }
 
   // Only add XP if the item can evolve
   if (item.xpToNextItemLevel > 0) {
@@ -181,12 +188,80 @@ export function addXpToItem(
       item.itemLevel += 1;
       item.itemXp -= item.xpToNextItemLevel;
       // For now, let's just double the XP requirement for the next level.
-      // Later, this could be a more complex calculation or a lookup table.
-      item.xpToNextItemLevel *= 2; 
-      leveledUp = true;
-      // Here is where item transformation logic would go in the future.
+      item.xpToNextItemLevel *= 2;
+
+      notifications.push({
+        type: 'info',
+        title: 'Niveau d\'objet supérieur !',
+        description: `${item.name} a atteint le niveau ${item.itemLevel}.`,
+      });
+
+      // Check for evolution
+      if (masterItem.evolution && item.itemLevel >= masterItem.evolution.levelRequired) {
+        const evolvedMasterItem = getMasterItemById(masterItem.evolution.targetItemId);
+        if (evolvedMasterItem) {
+          const originalItemName = item.name;
+          const evolvedItem: IntelligentItem = {
+            ...evolvedMasterItem,
+            instanceId: item.instanceId, // Keep the same instance ID for tracking
+            quantity: 1,
+            condition: { durability: 100 }, // Restore condition on evolution
+            itemLevel: 1, // Reset level for the new form
+            itemXp: 0,
+            xpToNextItemLevel: evolvedMasterItem.xpToNextItemLevel,
+            memory: {
+              ...item.memory,
+              acquisitionStory: item.memory.acquisitionStory, // Preserve original story
+              evolution_history: [
+                ...(item.memory.evolution_history || []),
+                {
+                  fromItemId: item.id,
+                  toItemId: evolvedMasterItem.id,
+                  atLevel: item.itemLevel,
+                  timestamp: new Date().toISOString(),
+                }
+              ]
+            },
+            contextual_properties: {
+              local_value: evolvedMasterItem.economics.base_value,
+              legal_status: 'legal',
+              social_perception: 'normal',
+              utility_rating: 50,
+            },
+          };
+          newInventory[itemIndex] = evolvedItem;
+          notifications.push({
+            type: 'leveled_up', // A more impactful type for UI
+            title: 'Objet Évolué !',
+            description: `Votre ${originalItemName} est devenu : ${evolvedItem.name} !`,
+          });
+          // Break the loop after evolution to prevent multiple evolutions in one go
+          break;
+        }
+      }
     }
   }
 
-  return { updatedInventory: newInventory, leveledUp, itemName: item.name };
+  return { updatedInventory: newInventory, notifications };
+}
+
+// New exported function to process all item updates from an AI response.
+export function processItemUpdates(
+  currentInventory: IntelligentItem[],
+  updates: { instanceId: string; xpGained: number }[]
+): { newInventory: IntelligentItem[]; notifications: GameNotification[] } {
+  let processedInventory = JSON.parse(JSON.stringify(currentInventory));
+  const allNotifications: GameNotification[] = [];
+
+  for (const update of updates) {
+    const { updatedInventory, notifications: singleItemNotifications } = addXpAndEvolveItem(
+      processedInventory,
+      update.instanceId,
+      update.xpGained
+    );
+    processedInventory = updatedInventory;
+    allNotifications.push(...singleItemNotifications);
+  }
+
+  return { newInventory: processedInventory, notifications: allNotifications };
 }

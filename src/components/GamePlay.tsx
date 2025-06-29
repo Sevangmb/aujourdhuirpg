@@ -14,6 +14,7 @@ import { calculateSuccessProbability } from '@/lib/skill-check';
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
+import { processItemUpdates } from '@/lib/player-state-helpers';
 
 
 const GamePlay: React.FC = () => {
@@ -83,8 +84,23 @@ const GamePlay: React.FC = () => {
       if (aiOutput.newClues) aiOutput.newClues.forEach(c => allActions.push({ type: 'ADD_CLUE', payload: c as any }));
       if (aiOutput.newDocuments) aiOutput.newDocuments.forEach(d => allActions.push({ type: 'ADD_DOCUMENT', payload: d as any }));
       if (aiOutput.updatedInvestigationNotes) allActions.push({ type: 'UPDATE_INVESTIGATION_NOTES', payload: aiOutput.updatedInvestigationNotes });
-      if (aiOutput.itemUpdates) {
-          aiOutput.itemUpdates.forEach(update => allActions.push({ type: 'ADD_XP_TO_ITEM', payload: update }));
+
+      // Process item updates and evolutions
+      if (aiOutput.itemUpdates && aiOutput.itemUpdates.length > 0) {
+        const { newInventory, notifications: itemNotifications } = processItemUpdates(
+          updatedPlayer.inventory,
+          aiOutput.itemUpdates
+        );
+
+        itemNotifications.forEach(notification => {
+          toast({
+            title: notification.title,
+            description: notification.description,
+            duration: 5000,
+          });
+        });
+
+        allActions.push({ type: 'SET_INVENTORY', payload: newInventory });
       }
       
       dispatch({ type: 'TRIGGER_EVENT_ACTIONS', payload: allActions });

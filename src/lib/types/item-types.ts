@@ -15,6 +15,14 @@ export interface ItemUsageRecord {
   locationName: string; // Name of the location where it was used.
 }
 
+// History of an item's transformations.
+export interface ItemEvolutionRecord {
+  fromItemId: string;
+  toItemId: string;
+  atLevel: number;
+  timestamp: string; // ISO string date
+}
+
 // This represents an actual item instance in the player's inventory, with its own history and state.
 export interface IntelligentItem {
   instanceId: string; // Unique ID for THIS SPECIFIC instance of the item.
@@ -43,6 +51,7 @@ export interface IntelligentItem {
     acquisitionStory: string; // A short, potentially AI-generated story about how the item was found.
     usageHistory: ItemUsageRecord[]; // A log of how the item has been used.
     lastUsed?: string; // ISO string date of last use.
+    evolution_history?: ItemEvolutionRecord[]; // Log of transformations.
   };
 
   // Value and economic properties
@@ -71,5 +80,8 @@ export interface MasterIntelligentItem extends Omit<IntelligentItem,
   'itemXp'
 > {
   // All properties here are static and define the item's base state.
-  // We can add base evolution properties here if needed in the future.
+  evolution?: {
+    levelRequired: number;
+    targetItemId: string;
+  };
 }
