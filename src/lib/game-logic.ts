@@ -23,7 +23,7 @@ export type GameAction =
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
   // AI-driven actions
-  | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded' | 'status'> }
+  | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded'> }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
   | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> }
   | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
@@ -108,7 +108,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     
     // --- AI-Driven Reducers ---
     case 'ADD_QUEST': {
-        const newQuest: Quest = { ...action.payload, dateAdded: nowISO, status: action.payload.type === 'job' ? 'inactive' : 'active' };
+        const newQuest: Quest = { ...action.payload, dateAdded: nowISO, status: action.payload.status || (action.payload.type === 'job' ? 'inactive' : 'active') };
         return {
             ...state,
             player: { ...state.player, questLog: [...(state.player.questLog || []), newQuest] },
