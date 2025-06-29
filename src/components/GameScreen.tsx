@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -11,9 +12,9 @@ const GameScreen: React.FC = () => {
 
   if (isGameActive) {
     return (
-      <div className="flex flex-col h-screen bg-background">
+      <div className="flex flex-col min-h-screen bg-background">
         <AppMenubar />
-        <div className="flex-grow overflow-hidden">
+        <div className="flex-grow">
           <GamePlay />
         </div>
       </div>

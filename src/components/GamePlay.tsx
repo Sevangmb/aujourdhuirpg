@@ -8,7 +8,6 @@ import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { calculateSuccessProbability } from '@/lib/skill-check';
 
@@ -109,21 +108,19 @@ const GamePlay: React.FC = () => {
   const { currentScenario } = gameState;
 
   return (
-    <div className="flex flex-col md:flex-row h-full overflow-hidden">
-      <main className="flex-grow flex flex-col bg-muted/20">
-        <ScrollArea className="flex-grow">
-          <div className="p-4 md:p-6 space-y-6">
-            <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
-            {!isLoading && (
-              <ChoiceSelectionDisplay
-                choices={currentChoices}
-                onSelectChoice={handleChoiceSelected}
-                isLoading={isLoading}
-                aiRecommendation={currentScenario.aiRecommendation || null}
-              />
-            )}
-          </div>
-        </ScrollArea>
+    <div className="flex flex-col md:flex-row">
+      <main className="flex-grow bg-muted/20">
+        <div className="p-4 md:p-6 space-y-6">
+          <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+          {!isLoading && (
+            <ChoiceSelectionDisplay
+              choices={currentChoices}
+              onSelectChoice={handleChoiceSelected}
+              isLoading={isLoading}
+              aiRecommendation={currentScenario.aiRecommendation || null}
+            />
+          )}
+        </div>
         {isMobile && <GameSidebar />}
       </main>
 
