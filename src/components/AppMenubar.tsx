@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { User as FirebaseUser } from 'firebase/auth'; // Correct type for Firebase user
-import type { Player, Position, WeatherData, JournalEntry } from '@/lib/types';
+import type { Player, Position, WeatherData, JournalEntry, GeoIntelligence } from '@/lib/types';
 
 import {
     Menubar,
@@ -32,7 +32,8 @@ import {
     Briefcase,
     BookOpen,
     Search,
-    BookText
+    BookText,
+    BrainCircuit // Icon for Geo-Intelligence
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
@@ -44,6 +45,7 @@ import WeatherDisplay from '@/components/WeatherDisplay';
 import MapDisplay from '@/components/MapDisplay';
 import LocationImageDisplay from '@/components/LocationImageDisplay';
 import JournalDisplay from '@/components/JournalDisplay';
+import GeoIntelligenceDisplay from './GeoIntelligenceDisplay'; // Import new component
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 
@@ -66,6 +68,9 @@ interface AppMenubarProps {
   locationImageUrl: string | null;
   locationImageLoading: boolean;
   locationImageError: string | null;
+  geoIntelligenceData: GeoIntelligence | null;
+  geoIntelligenceLoading: boolean;
+  geoIntelligenceError: string | null;
 }
 
 const AppMenubar: React.FC<AppMenubarProps> = ({
@@ -86,6 +91,9 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
   locationImageUrl,
   locationImageLoading,
   locationImageError,
+  geoIntelligenceData,
+  geoIntelligenceLoading,
+  geoIntelligenceError,
 }) => {
   const isMobile = useIsMobile();
 
@@ -136,6 +144,37 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                 </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
+          
+          {/* New Geo-Intelligence Menu */}
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 sm:px-3">
+                <BrainCircuit className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:ml-1">Analyse</span>
+            </MenubarTrigger>
+            <MenubarContent>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}>
+                            <BrainCircuit className="mr-2 h-4 w-4" /> Analyse Géospatiale
+                        </MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                        <DialogHeader>
+                            <DialogTitle>Analyse Géospatiale du Lieu</DialogTitle>
+                        </DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">
+                           <GeoIntelligenceDisplay
+                                data={geoIntelligenceData}
+                                isLoading={geoIntelligenceLoading}
+                                error={geoIntelligenceError}
+                                placeName={currentLocation?.name || UNKNOWN_STARTING_PLACE_NAME}
+                           />
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+            </MenubarContent>
+          </MenubarMenu>
+
 
           {isMobile && currentLocation && (
             <MenubarMenu>

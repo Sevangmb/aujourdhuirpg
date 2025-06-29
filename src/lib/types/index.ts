@@ -7,3 +7,4 @@ export * from './decision-types';
 export * from './evidence-types';
 export * from './tone-types';
 export * from './game-types';
+export * from './geo-intelligence-types'; // Export new geo-intelligence types

@@ -4,7 +4,7 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 // Corrected import path for game logic types
 import { aiService } from '@/services/aiService';
-import type { GameState, Player, ToneSettings, Position } from '@/lib/types';
+import type { GameState, Player, ToneSettings, Position, GeoIntelligence } from '@/lib/types';
 import { getInitialScenario, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
@@ -17,6 +17,7 @@ import GameScreen from '@/components/GameScreen';
 import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-weather';
 // Corrected paths for AI flows to match original page.tsx
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
+import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow'; // Import new flow
 import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
 import { fetchWikipediaSummary } from '@/services/wikipedia-service';
 
@@ -39,6 +40,9 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const [locationImageLoading, setLocationImageLoading] = useState(false);
   const [locationImageError, setLocationImageError] = useState<string | null>(null);
   const [isCreatingCharacter, setIsCreatingCharacter] = useState(false);
+  const [geoIntelligenceData, setGeoIntelligenceData] = useState<GeoIntelligence | null>(null);
+  const [geoIntelligenceLoading, setGeoIntelligenceLoading] = useState(false);
+  const [geoIntelligenceError, setGeoIntelligenceError] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -90,12 +94,19 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   // useEffect for fetchWeatherForLocation
   useEffect(() => {
     if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
-      fetchWeatherForLocation(gameState.player.currentLocation);
+      const location = gameState.player.currentLocation;
+      fetchWeatherForLocation(location);
+      fetchLocationImage(location.name);
+      fetchGeoIntelligence(location);
     } else {
-      setWeatherData(null); // Clear weather data if location is unknown or not set
+      setWeatherData(null);
       setWeatherError(null);
+      setLocationImageUrl(null);
+      setLocationImageError(null);
+      setGeoIntelligenceData(null);
+      setGeoIntelligenceError(null);
     }
-  }, [gameState?.player?.currentLocation]); // Dependency on the player's current location object
+  }, [gameState?.player?.currentLocation]);
 
   const fetchWeatherForLocation = useCallback(async (location: Position) => {
     if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
@@ -107,7 +118,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     setWeatherError(null);
     console.log(`Fetching weather for ${location.name} at ${location.latitude}, ${location.longitude}`);
     try {
-      // getCurrentWeather from actions now expects lat/lon, not name
       const data = await getCurrentWeather(location.latitude, location.longitude);
       if ('error' in data) {
         setWeatherData(null);
@@ -125,16 +135,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setWeatherLoading(false);
     }
   }, []);
-
-  // useEffect for fetchLocationImage
-  useEffect(() => {
-    if (gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
-      fetchLocationImage(gameState.player.currentLocation.name); // Pass only name
-    } else {
-      setLocationImageUrl(null); // Clear image if location is unknown
-      setLocationImageError(null);
-    }
-  }, [gameState?.player?.currentLocation?.name]); // Depend on location name for image
 
   const fetchLocationImage = useCallback(async (placeName: string) => {
     if (!placeName || placeName === UNKNOWN_STARTING_PLACE_NAME) {
@@ -160,6 +160,37 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setLocationImageUrl(null);
     } finally {
       setLocationImageLoading(false);
+    }
+  }, []);
+
+  const fetchGeoIntelligence = useCallback(async (location: Position) => {
+    if (!location || !location.name || location.name === UNKNOWN_STARTING_PLACE_NAME) {
+      setGeoIntelligenceData(null);
+      setGeoIntelligenceError(null);
+      return;
+    }
+    setGeoIntelligenceLoading(true);
+    setGeoIntelligenceError(null);
+    console.log(`Fetching geo-intelligence for ${location.name}`);
+    try {
+      const result = await generateGeoIntelligence({
+        placeName: location.name,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      if (result) {
+        setGeoIntelligenceData(result);
+      } else {
+        setGeoIntelligenceError("L'IA n'a pas pu analyser ce lieu.");
+        setGeoIntelligenceData(null);
+      }
+    } catch (error) {
+      const errorMessage = (error as Error).message || "Une erreur inattendue est survenue lors de l'analyse du lieu.";
+      console.error("Failed to fetch geo-intelligence:", error);
+      setGeoIntelligenceError(errorMessage);
+      setGeoIntelligenceData(null);
+    } finally {
+      setGeoIntelligenceLoading(false);
     }
   }, []);
 
@@ -353,6 +384,9 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         locationImageUrl={locationImageUrl}
         locationImageLoading={locationImageLoading}
         locationImageError={locationImageError}
+        geoIntelligenceData={geoIntelligenceData}
+        geoIntelligenceLoading={geoIntelligenceLoading}
+        geoIntelligenceError={geoIntelligenceError}
         onRestartGame={handleRestartGame}
         onSaveGame={handleSaveGame}
         onSignOut={signOutUser}
