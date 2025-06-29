@@ -27,28 +27,28 @@ import { NewTransactionSchema } from './schemas/finance-schemas';
 // --- Main Input Schema ---
 // This schema describes all the information the game provides to the AI for context.
 export const GenerateScenarioInputSchema = z.object({
-  playerName: z.string().describe('The name of the player character.'),
-  playerGender: z.string().describe("The player character's gender."),
-  playerAge: z.number().describe("The player character's age."),
-  playerOrigin: z.string().describe("The player character's origin (social, geographical)."),
-  playerBackground: z.string().describe('The background or history of the player character.'),
-  playerStats: z.record(z.number()).describe('A record of the player character stats (e.g., {"Sante": 100, "Charisme": 50}).'),
-  playerEra: z.string().describe('The era the game is set in.'),
-  playerStartingLocation: z.string().describe('The initial location chosen by the player.'),
+  playerName: z.string().describe('Le nom du personnage du joueur.'),
+  playerGender: z.string().describe("Le genre du personnage du joueur."),
+  playerAge: z.number().describe("L'âge du personnage du joueur."),
+  playerOrigin: z.string().describe("L'origine (sociale, géographique) du personnage du joueur."),
+  playerBackground: z.string().describe("L'historique ou le passé du personnage du joueur."),
+  playerStats: z.record(z.number()).describe('Un enregistrement des statistiques du personnage (ex: {"Sante": 100, "Charisme": 50}).'),
+  playerEra: z.string().describe('L\'époque dans laquelle se déroule le jeu.'),
+  playerStartingLocation: z.string().describe('Le lieu de départ initial choisi par le joueur.'),
   playerSkills: SkillsSchema,
   playerTraitsMentalStates: TraitsMentalStatesSchema,
   playerProgression: ProgressionInputSchema,
   playerAlignment: AlignmentSchema,
-  playerInventory: z.array(InventoryItemInputSchema).describe("A list of items the player currently possesses, with their names and quantities."),
-  playerMoney: z.number().describe("The player's current amount of money (in euros)."),
+  playerInventory: z.array(InventoryItemInputSchema).describe("Une liste des objets que le joueur possède actuellement, avec leur nom et quantité."),
+  playerMoney: z.number().describe("La quantité d'argent actuelle du joueur (en euros)."),
   
-  playerChoice: z.string().describe('The free-form text action the player typed.'),
-  currentScenario: z.string().describe('The current scenario context (the HTML text of the previous scenario).'),
-  playerLocation: LocationSchema.describe("The player's current location."),
+  playerChoice: z.string().describe('L\'action textuelle que le joueur a saisie.'),
+  currentScenario: z.string().describe('Le contexte du scénario actuel (le texte HTML du scénario précédent).'),
+  playerLocation: LocationSchema.describe("La position actuelle du joueur."),
   toneSettings: ToneSettingsSchema.optional(),
 
   // This field is for events calculated by the game engine BEFORE calling the AI.
-  deterministicEvents: z.array(z.string()).optional().describe("A summary of deterministic events calculated by the game engine. The AI MUST narrate these events as having already occurred."),
+  deterministicEvents: z.array(z.string()).optional().describe("Un résumé des événements déterministes calculés par le moteur de jeu. L'IA DOIT raconter ces événements comme s'étant déjà produits."),
 
   // Contextual summaries for the AI's narration
   activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
@@ -61,36 +61,36 @@ export const GenerateScenarioInputSchema = z.object({
   currentCluesSummary: z.array(z.object({ title: z.string(), summary: z.string() })).optional().describe("Résumé des indices importants déjà découverts par le joueur."),
   currentDocumentsSummary: z.array(z.object({title: z.string(), summary: z.string()})).optional().describe("Résumé des documents importants déjà obtenus par le joueur."),
   currentInvestigationNotes: z.string().optional().describe("Les notes d'enquête actuelles du joueur (hypothèses, suspects, etc.). L'IA peut mettre à jour ce champ dans sa réponse.")
-}).describe("Input schema for the generateScenario flow.");
+}).describe("Schéma d'entrée pour le flux generateScenario.");
 
 
 export const StoryChoiceSchema = z.object({
-  id: z.string().describe("A unique identifier for the choice, e.g., 'explore_crypt'."),
-  text: z.string().describe("The short, actionable text for the choice button, e.g., 'Explorer la crypte'."),
-  description: z.string().describe("A slightly longer description of what the action entails, for the card content."),
-  iconName: z.enum(CHOICE_ICON_NAMES).describe("The name of a valid Lucide-React icon to represent the choice."),
-  type: z.enum(ACTION_TYPES).describe("The category of the action."),
-  mood: z.enum(MOOD_TYPES).describe("The general mood or vibe of this choice."),
-  energyCost: z.number().describe("The estimated energy cost for the player (1-20)."),
-  timeCost: z.number().describe("The estimated time cost in minutes for the action (5-60)."),
-  consequences: z.array(z.string()).describe("A list of 2-3 likely outcomes or keywords, e.g., ['Révélation', 'Danger potentiel']."),
+  id: z.string().describe("Un identifiant unique pour le choix (ex: 'explorer_crypte')."),
+  text: z.string().describe("Le texte court et actionnable pour le bouton du choix (ex: 'Explorer la crypte')."),
+  description: z.string().describe("Une description un peu plus longue de l'action, pour le contenu de la carte."),
+  iconName: z.enum(CHOICE_ICON_NAMES).describe("Le nom d'une icône Lucide-React valide pour représenter le choix."),
+  type: z.enum(ACTION_TYPES).describe("La catégorie de l'action."),
+  mood: z.enum(MOOD_TYPES).describe("L'ambiance générale de ce choix."),
+  energyCost: z.number().describe("Le coût en énergie estimé pour le joueur (1-20)."),
+  timeCost: z.number().describe("Le coût en temps estimé en minutes pour l'action (5-60)."),
+  consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
   skillCheck: z.object({
-      skill: z.string().describe("The skill path to check (e.g., 'cognitive.observation')."),
-      difficulty: z.number().describe("The difficulty target for the check (e.g., 60)."),
-  }).optional().describe("An optional skill check associated with this action."),
+      skill: z.string().describe("Le chemin de la compétence à tester (ex: 'cognitive.observation')."),
+      difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
+  }).optional().describe("Un test de compétence optionnel associé à cette action."),
   skillGains: z.record(z.number()).optional().describe("XP de compétence gagnée lors de la réussite de cette action. Ex: {'cognitive.observation': 5, 'physical.stealth': 2}"),
-}).describe("A rich, guided choice for the player.");
+}).describe("Un choix guidé et riche pour le joueur.");
 
 // --- Main Output Schema ---
 // This schema describes the AI's response, which now includes both narration and game-state-changing events.
 export const GenerateScenarioOutputSchema = z.object({
   /** The generated scenario text, formatted in HTML. This text describes the outcome of the player action and sets the scene for the next player input. */
-  scenarioText: z.string().describe('The generated scenario text, formatted in HTML.'),
+  scenarioText: z.string().describe('Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l\'action du joueur et prépare la scène pour la prochaine action.'),
   
   /** If the AI's narrative causes a significant location change, it can specify the new location details here. */
   newLocationDetails: LocationSchema.extend({
     reasonForMove: z.string().optional()
-  }).nullable().optional().describe("Details of a new location if the player's action caused them to move significantly."),
+  }).nullable().optional().describe("Détails d'un nouveau lieu si l'action du joueur l'a fait se déplacer de manière significative."),
 
   // --- NEW AI-DRIVEN GAME EVENTS ---
   // The AI can now populate these fields to directly influence the game state.
@@ -136,9 +136,9 @@ export const GenerateScenarioOutputSchema = z.object({
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
   /** A list of 3-4 rich, context-aware choices for the player to take next. This field is required. */
-  choices: z.array(StoryChoiceSchema).min(1).describe("A list of 3-4 rich, context-aware guided choices for the player to take next. Must not be empty."),
+  choices: z.array(StoryChoiceSchema).min(1).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ne doit pas être vide."),
 
   /** The amount of experience points (XP) the player has gained. */
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
 
-}).describe("Output schema for the generateScenario flow, now including AI-driven game events.");
+}).describe("Schéma de sortie pour le flux generateScenario, incluant maintenant les événements de jeu pilotés par l'IA.");
