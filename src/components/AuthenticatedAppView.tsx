@@ -18,6 +18,7 @@ import { type WeatherData, getCurrentWeather } from '@/app/actions/get-current-w
 // Corrected paths for AI flows to match original page.tsx
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
 import { loadGameStateFromLocal, clearGameState } from '@/services/localStorageService';
+import { fetchWikipediaSummary } from '@/services/wikipedia-service';
 
 
 interface AuthenticatedAppViewProps {
@@ -181,6 +182,18 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     setIsCreatingCharacter(true);
 
     try {
+      const locationData = await fetchWikipediaSummary(playerData.startingLocation);
+
+      if (!locationData || typeof locationData.latitude !== 'number' || typeof locationData.longitude !== 'number') {
+        toast({
+          title: "Lieu de départ introuvable",
+          description: `Impossible de trouver les coordonnées pour "${playerData.startingLocation}". Veuillez essayer un nom plus précis.`,
+          variant: "destructive",
+        });
+        setIsCreatingCharacter(false);
+        return;
+      }
+
       const hydratedPlayer = hydratePlayer({
           ...playerData,
           uid: user.uid,
@@ -189,10 +202,11 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       });
 
       hydratedPlayer.currentLocation = {
-          latitude: Math.random() * 180 - 90,
-          longitude: Math.random() * 360 - 180,
-          name: UNKNOWN_STARTING_PLACE_NAME,
-          summary: "Début de l'aventure...",
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          name: locationData.title, // Use the official title from Wikipedia for consistency
+          summary: locationData.summary,
+          imageUrl: locationData.imageUrl,
       };
 
       const tempStateForPrologue = {
@@ -213,6 +227,10 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
 
       const prologueResult = await generateScenario(aiInput);
+      
+      // After prologue, set location image from the fetched data if available
+      setLocationImageUrl(hydratedPlayer.currentLocation.imageUrl || null);
+      
       setGameState(prevState => prevState ? { ...prevState, currentScenario: { scenarioText: prologueResult.scenarioText } } : null);
     
     } catch (error) {

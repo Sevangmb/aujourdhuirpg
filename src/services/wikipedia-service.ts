@@ -5,12 +5,13 @@
  */
 import { z } from 'genkit'; // For type consistency
 
-// Re-using schema definitions from the tool for consistency in data structure.
-// These are not exported from the service itself.
 const WikipediaInfoOutputSchemaInternal = z.object({
   title: z.string().describe('The title of the Wikipedia page found.'),
   summary: z.string().describe('A short summary extracted from the Wikipedia page.'),
   pageUrl: z.string().url().describe('The URL of the Wikipedia page.'),
+  latitude: z.number().optional().describe('Latitude of the location.'),
+  longitude: z.number().optional().describe('Longitude of the location.'),
+  imageUrl: z.string().url().optional().describe('URL of a representative image.'),
 });
 export type WikipediaInfoServiceOutput = z.infer<typeof WikipediaInfoOutputSchemaInternal> | null;
 
@@ -34,7 +35,7 @@ export async function fetchWikipediaSummary(searchTerm: string): Promise<Wikiped
 
     const bestResultTitle = searchData.query.search[0].title;
 
-    const extractUrl = `https://fr.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&redirects=1&format=json&origin=*&titles=${encodeURIComponent(bestResultTitle)}`;
+    const extractUrl = `https://fr.wikipedia.org/w/api.php?action=query&prop=extracts|coordinates|pageimages&exintro&explaintext&redirects=1&format=json&origin=*&pithumbsize=600&titles=${encodeURIComponent(bestResultTitle)}`;
     const extractResponse = await fetch(extractUrl, { headers: { 'User-Agent': USER_AGENT_WIKIPEDIA } });
 
     if (!extractResponse.ok) {
@@ -53,10 +54,16 @@ export async function fetchWikipediaSummary(searchTerm: string): Promise<Wikiped
 
     if (page && page.extract) {
       const pageUrl = `https://fr.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, '_'))}`;
+      const coordinates = page.coordinates?.[0];
+      const imageUrl = page.thumbnail?.source;
+      
       return {
         title: page.title,
         summary: page.extract,
         pageUrl: pageUrl,
+        latitude: coordinates?.lat,
+        longitude: coordinates?.lon,
+        imageUrl: imageUrl,
       };
     } else {
       console.log(`No extract found for page (wikipedia-service) "${bestResultTitle}".`);
