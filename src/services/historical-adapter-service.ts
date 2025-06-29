@@ -1,6 +1,4 @@
 
-'use server';
-
 import type { HistoricalPersonality, ModernIdentity } from '@/lib/types';
 
 /**
