@@ -9,16 +9,15 @@ import { getInitialScenario } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import MapDisplay from './MapDisplay';
-import WeatherDisplay from './WeatherDisplay';
-import LocationImageDisplay from './LocationImageDisplay';
-import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
-import { montmartreInitialChoices } from '@/data/choices';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { getMasterItemById } from '@/data/items';
-import { Skeleton } from './ui/skeleton';
+import { performSkillCheck } from '@/lib/skill-check';
+
+// Import simplified forms
+import SimplePlayerInputForm from './SimplePlayerInputForm';
+import GameSidebar from './GameSidebar';
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -46,43 +45,31 @@ const GamePlay: React.FC<GamePlayProps> = ({
   handleGameAction,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [currentChoices, setCurrentChoices] = useState<StoryChoice[]>(initialGameState.currentScenario?.choices || montmartreInitialChoices);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    if (initialGameState.player && !initialGameState.currentScenario) {
-      const firstScenario = getInitialScenario(initialGameState.player);
-      handleGameAction({ type: 'SET_CURRENT_SCENARIO', payload: firstScenario });
-    }
-  }, [initialGameState, handleGameAction]);
-
-  useEffect(() => {
-    setCurrentChoices(initialGameState.currentScenario?.choices || montmartreInitialChoices);
-  }, [initialGameState.currentScenario]);
-
-  const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
+  const handleActionSubmit = useCallback(async (actionText: string) => {
     const { player } = initialGameState;
-    if (!player || !choice) return;
+    if (!player) return;
 
     setIsLoading(true);
 
     try {
-      const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice);
+      const { updatedPlayer, notifications, eventsForAI, timeCost } = await calculateDeterministicEffects(player, actionText);
       notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
-
+      
       const tempGameStateForAI: GameState = { ...initialGameState, player: updatedPlayer };
-      const inputForAI = prepareAIInput(tempGameStateForAI, choice.text, eventsForAI);
+      const inputForAI = prepareAIInput(tempGameStateForAI, actionText, eventsForAI);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
-
+      
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
       const allActions: GameAction[] = [];
       allActions.push({ type: 'UPDATE_PLAYER_DATA', payload: updatedPlayer });
-      if (choice.timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
+      if (timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: timeCost });
 
       allActions.push({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, suggestedActions: aiOutput.suggestedActions } });
-      allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: updatedPlayer.currentLocation } });
+      allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: actionText, location: updatedPlayer.currentLocation } });
       
       // Translate AI output to game actions
       if (aiOutput.newQuests) aiOutput.newQuests.forEach(q => allActions.push({ type: 'ADD_QUEST', payload: q as any }));
@@ -94,7 +81,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
       if (aiOutput.newClues) aiOutput.newClues.forEach(c => allActions.push({ type: 'ADD_CLUE', payload: c as any }));
       if (aiOutput.newDocuments) aiOutput.newDocuments.forEach(d => allActions.push({ type: 'ADD_DOCUMENT', payload: d as any }));
       if (aiOutput.updatedInvestigationNotes) allActions.push({ type: 'UPDATE_INVESTIGATION_NOTES', payload: aiOutput.updatedInvestigationNotes });
-
+      
       handleGameAction({ type: 'TRIGGER_EVENT_ACTIONS', payload: allActions });
 
     } catch (error) {
@@ -106,7 +93,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     }
   }, [initialGameState, handleGameAction, toast]);
 
-  const { player, currentScenario, nearbyPois } = initialGameState;
+  const { player, currentScenario, nearbyPois, gameTimeInMinutes } = initialGameState;
 
   if (!player || !currentScenario) {
     return (
@@ -117,38 +104,49 @@ const GamePlay: React.FC<GamePlayProps> = ({
     );
   }
 
-  const displayLocation = player.currentLocation;
-
   return (
-    <div className="flex flex-col p-2 md:p-4 space-y-2 md:space-y-4 h-full">
-      {!isMobile && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 shrink-0">
-          <WeatherDisplay weatherData={weatherData} isLoading={weatherLoading} error={weatherError} placeName={displayLocation.name} gameTimeInMinutes={initialGameState.gameTimeInMinutes} />
-          <MapDisplay
-            currentLocation={displayLocation}
-            nearbyPois={nearbyPois || []}
+    <div className="flex flex-col md:flex-row h-full overflow-hidden">
+      {/* Main Content */}
+      <main className="flex-grow flex flex-col p-2">
+        <ScrollArea className="flex-grow rounded-md border shadow-inner bg-muted/20 p-2">
+          <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+        </ScrollArea>
+        <div className="shrink-0 pt-2">
+          <SimplePlayerInputForm onSubmit={handleActionSubmit} isLoading={isLoading} />
+        </div>
+        {isMobile && (
+          <GameSidebar
+            player={player}
+            currentLocation={player.currentLocation}
+            nearbyPois={nearbyPois}
+            gameTimeInMinutes={gameTimeInMinutes}
+            weatherData={weatherData}
+            weatherLoading={weatherLoading}
+            weatherError={weatherError}
+            locationImageUrl={locationImageUrl}
+            locationImageLoading={locationImageLoading}
+            locationImageError={locationImageError}
             onPoiClick={onPoiClick}
           />
-          <LocationImageDisplay
-            imageUrl={locationImageUrl}
-            placeName={displayLocation.name || UNKNOWN_STARTING_PLACE_NAME}
-            isLoading={locationImageLoading}
-            error={locationImageError}
-          />
-        </div>
-      )}
-      <ScrollArea className="flex-grow rounded-md border shadow-inner bg-muted/20">
-        <div className="p-3">
-          <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
-        </div>
-      </ScrollArea>
-      <div className="shrink-0">
-        <ChoiceSelectionDisplay
-          choices={currentChoices}
-          onSelectChoice={handleChoiceSelected}
-          isLoading={isLoading}
+        )}
+      </main>
+
+      {/* Sidebar */}
+      {!isMobile && (
+        <GameSidebar
+          player={player}
+          currentLocation={player.currentLocation}
+          nearbyPois={nearbyPois}
+          gameTimeInMinutes={gameTimeInMinutes}
+          weatherData={weatherData}
+          weatherLoading={weatherLoading}
+          weatherError={weatherError}
+          locationImageUrl={locationImageUrl}
+          locationImageLoading={locationImageLoading}
+          locationImageError={locationImageError}
+          onPoiClick={onPoiClick}
         />
-      </div>
+      )}
     </div>
   );
 };

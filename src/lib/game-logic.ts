@@ -10,7 +10,6 @@ import { montmartreInitialChoices } from '@/data/choices';
 export function getInitialScenario(player: Player): Scenario {
   return {
     scenarioText: `<p>Bienvenue, ${player.name}. L'aventure commence... Que faites-vous ?</p>`,
-    choices: montmartreInitialChoices,
   };
 }
 
@@ -235,25 +234,73 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
 export async function calculateDeterministicEffects(
   player: Player,
-  choice: StoryChoice
-): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[] }> {
+  actionText: string
+): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[], timeCost: number }> {
   const newPlayerState = JSON.parse(JSON.stringify(player));
   const notifications: GameNotification[] = [];
   const eventsForAI: string[] = [];
 
+  const parsedAction = await parsePlayerAction(actionText);
+
+  let energyCost = 0;
+  let timeCost = 0;
+  let skillToCheck: string | null = null;
+  let difficulty = 50; // Default difficulty
+
+  // Define costs and effects for simple actions
+  switch (parsedAction.actionType) {
+    case 'EXAMINE':
+      energyCost = 2;
+      timeCost = 5;
+      skillToCheck = 'Perception';
+      difficulty = 40;
+      eventsForAI.push("Le joueur examine les alentours.");
+      break;
+    
+    // In the future, other actions like 'TALK_TO_PNJ' could have costs
+    // case 'TALK_TO_PNJ':
+    //   energyCost = 1;
+    //   timeCost = 10;
+    //   skillToCheck = 'Dialogue';
+    //   break;
+
+    case 'USE_ITEM':
+        if(parsedAction.itemUsed) {
+            const { updatedInventory, removedItemEffects, removedItemName } = removeItemFromInventory(newPlayerState.inventory, parsedAction.itemUsed, 1);
+            if (removedItemName) { // Check if an item was actually removed
+                newPlayerState.inventory = updatedInventory;
+                notifications.push({ type: 'item_removed', title: 'Objet Utilisé', description: `Vous avez utilisé : ${removedItemName}.` });
+                eventsForAI.push(`Le joueur a utilisé '${removedItemName}'.`);
+
+                if(removedItemEffects) {
+                    const originalStats = { ...newPlayerState.stats };
+                    newPlayerState.stats = applyStatChanges(newPlayerState.stats, removedItemEffects);
+
+                    for (const key in removedItemEffects) {
+                        const statKey = key as keyof PlayerStats;
+                        const change = newPlayerState.stats[statKey] - originalStats[statKey];
+                        if (change !== 0) {
+                            notifications.push({ type: 'stat_changed', title: 'Statistique modifiée', description: `${statKey} a changé de ${change > 0 ? '+' : ''}${change}.` });
+                            eventsForAI.push(`Effet : ${statKey} a changé de ${change}.`);
+                        }
+                    }
+                }
+            } else {
+                 notifications.push({ type: 'warning', title: 'Action impossible', description: `Vous n'avez pas d'objet nommé '${parsedAction.itemUsed}'.` });
+            }
+        }
+        break;
+  }
+  
   // Apply energy cost
-  newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - choice.energyCost);
-  notifications.push({
-    type: 'stat_changed',
-    title: 'Énergie',
-    description: `Vous avez dépensé ${choice.energyCost} points d'énergie.`
-  });
-  eventsForAI.push(`Le joueur a dépensé ${choice.energyCost} énergie.`);
+  if (energyCost > 0) {
+    newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - energyCost);
+    notifications.push({ type: 'stat_changed', title: 'Énergie', description: `Vous avez dépensé ${energyCost} points d'énergie.` });
+    eventsForAI.push(`Le joueur a dépensé ${energyCost} énergie.`);
+  }
 
   // Perform skill check if applicable
-  if (choice.type === 'observation' || choice.type === 'exploration') {
-    const skillToCheck = 'Perception'; // This could be part of the choice object for more variety
-    const difficulty = 50; // This could also be part of the choice object
+  if (skillToCheck) {
     const checkResult = performSkillCheck(newPlayerState.skills, newPlayerState.stats, skillToCheck, difficulty);
     
     eventsForAI.push(
@@ -267,7 +314,8 @@ export async function calculateDeterministicEffects(
     });
   }
 
-  return { updatedPlayer: newPlayerState, notifications, eventsForAI };
+
+  return { updatedPlayer: newPlayerState, notifications, eventsForAI, timeCost };
 }
 
 

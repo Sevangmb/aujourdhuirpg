@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Basic player action parser.
  * This module will be responsible for interpreting the player's textual input
@@ -42,7 +41,7 @@ export async function parsePlayerAction(
   const result: ParsedAction = { actionType: 'UNKNOWN', fullInput: playerChoice };
 
   // Pattern: EXAMINE
-  const examineKeywords = ["examine", "look at", "inspect", "regarder", "observer", "inspecter"];
+  const examineKeywords = ["examine", "look at", "inspect", "regarder", "observer", "inspecter", "chercher"];
   for (const keyword of examineKeywords) {
     if (normalizedInput.startsWith(keyword + " ")) {
       result.actionType = 'EXAMINE';
