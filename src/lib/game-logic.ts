@@ -1,4 +1,4 @@
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -442,7 +442,18 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     playerTraitsMentalStates: player.traitsMentalStates,
     playerProgression: player.progression,
     playerAlignment: player.alignment,
-    playerInventory: player.inventory.map(item => ({ name: item.name, quantity: item.quantity })),
+    playerInventory: player.inventory.map(item => ({
+      instanceId: item.instanceId,
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      type: item.type,
+      quantity: item.quantity,
+      condition: item.condition,
+      memory: {
+        acquisitionStory: item.memory.acquisitionStory
+      },
+    })),
     playerMoney: player.money,
     playerChoice: playerChoice,
     currentScenario: gameState.currentScenario?.scenarioText || '',

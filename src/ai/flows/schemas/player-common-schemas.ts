@@ -47,30 +47,39 @@ export const SkillsSchema = z.object({
     navigation: z.number(),
     adaptation: z.number(),
   }),
-}).describe("Compétences granulaires du joueur, par catégorie.");
+}).describe("Les compétences granulaires du joueur, classées par catégorie.");
 
-export const TraitsMentalStatesSchema = z.array(z.string()).describe("États mentaux ou traits actuels du joueur (ex: [\"Stressé\", \"Observateur\"]).");
+export const TraitsMentalStatesSchema = z.array(z.string()).describe("Les états mentaux ou traits de caractère actuels du joueur (ex: [\"Stressé\", \"Observateur\"]).");
 
 export const ProgressionInputSchema = z.object({
-  level: z.number().describe("Niveau actuel du joueur."),
-  xp: z.number().describe("Points d'expérience actuels du joueur."),
-  xpToNextLevel: z.number().describe("XP requis pour atteindre le prochain niveau."),
-  perks: z.array(z.string()).describe("Avantages ou capacités passives débloqués par le joueur."),
+  level: z.number().describe("Le niveau actuel du joueur."),
+  xp: z.number().describe("Les points d'expérience actuels du joueur."),
+  xpToNextLevel: z.number().describe("L'XP requis pour atteindre le prochain niveau."),
+  perks: z.array(z.string()).describe("Les avantages ou capacités passives débloqués par le joueur."),
 });
 
 export const AlignmentSchema = z.object({
-  chaosLawful: z.number().describe("Alignement du joueur sur l'axe Chaos/Loi (-100 à 100)."),
-  goodEvil: z.number().describe("Alignement du joueur sur l'axe Bien/Mal (-100 à 100)."),
+  chaosLawful: z.number().describe("L'alignement du joueur sur l'axe Chaos/Loi (-100 à 100)."),
+  goodEvil: z.number().describe("L'alignement du joueur sur l'axe Bien/Mal (-100 à 100)."),
 });
 
-export const InventoryItemInputSchema = z.object({
-    name: z.string().describe("Le nom de l'objet."),
-    quantity: z.number().describe("La quantité de l'objet."),
-});
+export const IntelligentItemInputSchema = z.object({
+  instanceId: z.string().describe("L'identifiant unique de cette instance d'objet."),
+  id: z.string().describe("L'identifiant de base de l'objet (le modèle)."),
+  name: z.string().describe("Le nom de l'objet."),
+  description: z.string().describe("La description de l'objet."),
+  type: z.enum(['wearable', 'consumable', 'key', 'electronic', 'tool', 'misc', 'quest']).describe("La catégorie de l'objet."),
+  quantity: z.number().describe("La quantité de cet objet."),
+  condition: z.object({ durability: z.number() }).describe("L'état actuel de l'objet (100 = parfait)."),
+  memory: z.object({
+    acquisitionStory: z.string().describe("Comment et où cet objet a été obtenu."),
+  }).describe("La 'mémoire' de l'objet, son histoire."),
+}).describe("Un objet intelligent et détaillé dans l'inventaire du joueur.");
+
 
 export const ToneSettingsSchema = z.object(
   AVAILABLE_TONES.reduce((acc, tone) => {
     acc[tone] = z.number().min(0).max(100);
     return acc;
   }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
-).partial().describe('Préférences de tonalité définies par le joueur (ex: {"Horreur": 75, "Humour": 30}). Valeurs de 0 à 100. Neutre est à 50.');
+).partial().describe('Les préférences de tonalité définies par le joueur (ex: {"Horreur": 75, "Humour": 30}). Les valeurs vont de 0 à 100. Neutre est à 50.');

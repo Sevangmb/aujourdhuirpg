@@ -60,6 +60,7 @@ Votre mission a quatre volets :
 const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
+- **INVENTAIRE INTELLIGENT :** Analysez l'inventaire détaillé du joueur (\`playerInventory\`). Créez des choix qui permettent d'utiliser des objets spécifiques. La narration peut faire référence à l'histoire d'un objet (\`memory.acquisitionStory\`) pour plus de cohérence. Par exemple, si le joueur a une clé trouvée au Louvre, proposez un choix pour l'essayer sur une serrure ancienne.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une \`newTransactions\` avec un montant négatif. C'est crucial pour l'immersion.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles (\`getWeatherTool\`, \`getNearbyPoisTool\`, \`getWikipediaInfoTool\`, \`getNewsTool\`) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante (un musée à proximité, un fait historique sur le lieu), créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
@@ -74,6 +75,7 @@ const PROMPT_PLAYER_CONTEXT = `
 - Joueur : {{{playerName}}}, {{{playerGender}}}, {{{playerAge}}} ans. Passé : {{{playerBackground}}}.
 - Lieu : {{{playerLocation.name}}}
 - Argent : {{{playerMoney}}}€
+- Inventaire : {{#each playerInventory}}{{{this.name}}} (x{{{this.quantity}}}); {{/each}}
 - Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
 - Compétences :
   - Cognitives: {{#each playerSkills.cognitive}}{{{@key}}}: {{{this}}}, {{/each}}

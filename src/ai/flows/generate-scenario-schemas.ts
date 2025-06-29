@@ -14,7 +14,7 @@ import {
   TraitsMentalStatesSchema,
   ProgressionInputSchema,
   AlignmentSchema,
-  InventoryItemInputSchema,
+  IntelligentItemInputSchema,
   ToneSettingsSchema
 } from './schemas/player-common-schemas';
 import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas';
@@ -33,16 +33,16 @@ export const GenerateScenarioInputSchema = z.object({
   playerOrigin: z.string().describe("L'origine (sociale, géographique) du personnage du joueur."),
   playerBackground: z.string().describe("L'historique ou le passé du personnage du joueur."),
   playerStats: z.record(z.number()).describe('Un enregistrement des statistiques du personnage (ex: {"Sante": 100, "Charisme": 50}).'),
-  playerEra: z.string().describe('L\'époque dans laquelle se déroule le jeu.'),
+  playerEra: z.string().describe("L'époque dans laquelle se déroule le jeu."),
   playerStartingLocation: z.string().describe('Le lieu de départ initial choisi par le joueur.'),
   playerSkills: SkillsSchema,
   playerTraitsMentalStates: TraitsMentalStatesSchema,
   playerProgression: ProgressionInputSchema,
   playerAlignment: AlignmentSchema,
-  playerInventory: z.array(InventoryItemInputSchema).describe("Une liste des objets que le joueur possède actuellement, avec leur nom et quantité."),
+  playerInventory: z.array(IntelligentItemInputSchema).describe("Une liste des objets intelligents que le joueur possède, avec leurs détails, leur état et leur histoire."),
   playerMoney: z.number().describe("La quantité d'argent actuelle du joueur (en euros)."),
   
-  playerChoice: z.string().describe('L\'action textuelle que le joueur a saisie.'),
+  playerChoice: z.string().describe("L'action textuelle que le joueur a saisie."),
   currentScenario: z.string().describe('Le contexte du scénario actuel (le texte HTML du scénario précédent).'),
   playerLocation: LocationSchema.describe("La position actuelle du joueur."),
   toneSettings: ToneSettingsSchema.optional(),
@@ -131,8 +131,8 @@ export const GenerateScenarioOutputSchema = z.object({
   
   /** AI's strategic recommendation for the player's next move. */
   aiRecommendation: z.object({
-    focus: z.string().describe("A one or two-word summary of the recommended focus, e.g., 'Gagner de l'argent' or 'Enquêter sur la piste'."),
-    reasoning: z.string().describe("A brief, one-sentence explanation for the recommendation, e.g., 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
+    focus: z.string().describe("Un ou deux mots résumant l'axe recommandé, ex: 'Gagner de l'argent' ou 'Enquêter sur la piste'."),
+    reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
   /** A list of 3-4 rich, context-aware choices for the player to take next. This field is required. */
