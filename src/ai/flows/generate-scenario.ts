@@ -43,7 +43,7 @@ const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif po
 
 const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire ET Diriger le Jeu**
-Votre mission a trois volets :
+Votre mission a quatre volets :
 1.  **Générer le 'scenarioText' :** Rédigez une description narrative captivante en HTML de ce qui se passe après l'action du joueur. Intégrez de manière transparente les 'deterministicEvents' fournis (conséquences déjà calculées par le moteur de jeu). **NE répétez PAS** les calculs de stats dans votre narration. Racontez le *ressenti*.
 2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés (\`newQuests\`, \`newPNJs\`, \`itemsToAddToInventory\`, \`newTransactions\`, etc.) pour créer ces éléments.
     - **Mise à jour du Dossier d'Enquête :** Si le joueur fait une découverte majeure ou tire une conclusion, mettez à jour le champ \`updatedInvestigationNotes\` pour refléter cette nouvelle synthèse.
@@ -54,6 +54,7 @@ Votre mission a trois volets :
         - **Gérer l'acceptation de Jobs :** Si l'action du joueur indique qu'il accepte un job (ex: "j'accepte la mission de livraison"), générez un événement \`updatedQuests\` pour passer le statut de la quête correspondante à \`'active'\`.
     - **Variété d'Approches :** Proposez un mélange d'actions couvrant différents types (observation, action, social, etc.) et qui ouvrent des pistes narratives intéressantes. Évitez les choix génériques comme "Continuer" ou "Regarder autour".
     - **Structure Complète :** Chaque choix doit être un objet JSON avec les champs: id (unique, ex: 'chercher_indices'), text, description, iconName (choisir parmi: ${CHOICE_ICON_NAMES.join(', ')}), type (choisir parmi: ${ACTION_TYPES.join(', ')}), mood (choisir parmi: ${MOOD_TYPES.join(', ')}), energyCost (1-20), timeCost (5-60), consequences (2-3 mots-clés), et le \`skillCheck\` si applicable. Pour les choix qui font progresser une compétence (surtout ceux avec un skillCheck), spécifiez les gains d'expérience de compétence potentiels dans 'skillGains' (ex: {'cognitive.observation': 5}).
+4.  **Générer une Recommandation Stratégique :** En tant que MJ, analysez la situation globale du joueur (quêtes, argent, compétences) et remplissez le champ optionnel \`aiRecommendation\` avec un conseil stratégique. Par exemple, si le joueur est à court d'argent, recommandez de se concentrer sur un job. Si un indice clé vient d'être trouvé, suggérez de poursuivre cette piste.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `

@@ -124,6 +124,12 @@ export const GenerateScenarioOutputSchema = z.object({
   
   /** A list of financial transactions that occurred as a result of the narrative. Use this for any monetary changes. */
   newTransactions: z.array(NewTransactionSchema).optional().describe("A list of financial transactions that occurred. Use this for any monetary changes (income or expenses)."),
+  
+  /** AI's strategic recommendation for the player's next move. */
+  aiRecommendation: z.object({
+    focus: z.string().describe("A one or two-word summary of the recommended focus, e.g., 'Gagner de l'argent' or 'Enquêter sur la piste'."),
+    reasoning: z.string().describe("A brief, one-sentence explanation for the recommendation, e.g., 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
+  }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
   /** A list of 3-4 rich, context-aware choices for the player to take next. This field is required. */
   choices: z.array(StoryChoiceSchema).min(1).describe("A list of 3-4 rich, context-aware guided choices for the player to take next. Must not be empty."),
