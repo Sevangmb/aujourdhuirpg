@@ -28,6 +28,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     console.warn("Genkit API key is not set. AI scenario generation is disabled.");
     return {
       scenarioText: `<p><strong>Fonctionnalité IA Indisponible</strong></p><p>La génération de scénario par l'IA est désactivée car la clé API nécessaire n'est pas configurée.</p>`,
+      suggestedActions: ["Observer les alentours", "Explorer le quartier", "Parler à un passant"],
     };
   }
   return generateScenarioFlow(input);
@@ -135,8 +136,9 @@ Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le 
 **Contraintes Importantes :**
 - Le prologue doit être purement narratif. N'incluez AUCUNE mécanique de jeu. Ne générez pas de quêtes, d'objets ou de PNJ dans la sortie JSON pour le prologue.
 - La sortie DOIT être du HTML valide.
+- Fournissez 3 suggestions d'actions initiales dans le champ \`suggestedActions\`.
 
-Générez uniquement le 'scenarioText' pour le début de l'aventure.
+Générez uniquement le 'scenarioText' et 'suggestedActions' pour le début de l'aventure.
 `;
 
 const prologuePrompt = ai.definePrompt({
@@ -165,6 +167,7 @@ const generateScenarioFlow = ai.defineFlow(
       console.error('AI model did not return output for generateScenarioPrompt.');
       return {
         scenarioText: "<p>Erreur: L'IA n'a pas retourné de réponse. Veuillez réessayer.</p>",
+        suggestedActions: ["Observer les alentours", "Explorer le quartier", "Parler à un passant"],
       };
     }
     return output;

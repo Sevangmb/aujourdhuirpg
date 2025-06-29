@@ -24,7 +24,7 @@ export type GameAction =
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
   // AI-driven actions
-  | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded'> }
+  | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded' | 'dateCompleted'> }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
   | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> }
   | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
