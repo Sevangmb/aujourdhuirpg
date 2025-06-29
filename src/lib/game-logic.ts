@@ -20,7 +20,7 @@ export function getInitialScenario(player: Player): Scenario {
 // --- Game Actions & Reducer ---
 // Types for simplified AI payloads
 type AddQuestPayload = Omit<Quest, 'id' | 'dateAdded' | 'dateCompleted' | 'status' | 'objectives'> & { objectives: string[] };
-type AddPnjPayload = Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'dispositionScore' | 'trustLevel' | 'notes'> & { dispositionScore?: number };
+type AddPnjPayload = Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'notes'>;
 type AddCluePayload = Omit<Clue, 'id' | 'dateFound'>;
 type AddDocumentPayload = Omit<GameDocument, 'id' | 'dateAcquired'>;
 
@@ -467,6 +467,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
       type: item.type,
       quantity: item.quantity,
       condition: item.condition,
+      economics: item.economics,
       memory: {
         acquisitionStory: item.memory.acquisitionStory
       },
