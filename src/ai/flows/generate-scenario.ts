@@ -61,10 +61,11 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une \`newTransactions\` avec un montant négatif. C'est crucial pour l'immersion.
+- **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles (\`getWeatherTool\`, \`getNearbyPoisTool\`, \`getWikipediaInfoTool\`, \`getNewsTool\`) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante (un musée à proximité, un fait historique sur le lieu), créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
 - **STRICTEMENT INTERDIT dans 'scenarioText' :**
     - NE MENTIONNEZ PAS "changement de stats", "gain d'XP", "gain d'argent", etc.
     - N'INCLUEZ PAS de syntaxe d'appel d'outil ou de termes techniques.
-- Les informations des outils (météo, POIs, etc.) doivent être intégrées naturellement dans la description du monde.
+- Les informations des outils (météo, POIs, etc.) doivent être intégrées naturellement dans la description du monde, mais leurs résultats doivent inspirer les **choix interactifs**.
 `;
 
 const PROMPT_PLAYER_CONTEXT = `
