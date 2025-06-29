@@ -44,7 +44,13 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
           acquiredAt: new Date().toISOString(),
           acquisitionStory: `Acquis dans des circonstances normales.`,
           usageHistory: [],
-        }
+        },
+        contextual_properties: {
+          local_value: masterItem.economics.base_value,
+          legal_status: 'legal',
+          social_perception: 'normal',
+          utility_rating: 50,
+        },
       });
     }
   } else {
@@ -60,7 +66,13 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
           acquiredAt: new Date().toISOString(),
           acquisitionStory: `Acquis dans des circonstances normales.`,
           usageHistory: [],
-        }
+        },
+        contextual_properties: {
+          local_value: masterItem.economics.base_value,
+          legal_status: 'legal',
+          social_perception: 'normal',
+          utility_rating: 50,
+        },
       });
     }
   }

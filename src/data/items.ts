@@ -13,7 +13,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Smartphone',
     stackable: false,
-    value: 150, // Potential resale value
+    economics: { base_value: 150, rarity_multiplier: 1.0 },
   },
   {
     id: 'wallet_01',
@@ -22,7 +22,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'Wallet',
     stackable: false,
-    value: 5, // Value of wallet itself if found/sold empty
+    economics: { base_value: 5, rarity_multiplier: 0.8 },
   },
   {
     id: 'keys_apartment_01',
@@ -31,7 +31,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'key',
     iconName: 'KeyRound',
     stackable: false,
-    // No monetary value typically
+    economics: { base_value: 0, rarity_multiplier: 1.0 },
   },
   {
     id: 'energy_bar_01',
@@ -40,8 +40,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'consumable',
     iconName: 'Cookie',
     stackable: true,
-    value: 3, // Purchase/sell price per bar
-    effects: { Sante: 10 } // Restores 10 Sante points
+    effects: { Sante: 10 },
+    economics: { base_value: 3, rarity_multiplier: 0.5 },
   },
   {
     id: 'water_bottle_01',
@@ -50,8 +50,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'consumable',
     iconName: 'GlassWater',
     stackable: true,
-    value: 1, // Purchase/sell price
-    effects: { Sante: 2 } // Small health boost for hydration
+    effects: { Sante: 2 },
+    economics: { base_value: 1, rarity_multiplier: 0.2 },
   },
   {
     id: 'notebook_pen_01',
@@ -60,7 +60,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'NotebookPen',
     stackable: false,
-    value: 4, // Purchase/sell price
+    economics: { base_value: 4, rarity_multiplier: 0.7 },
   },
    {
     id: 'map_paris_01',
@@ -69,7 +69,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'Map',
     stackable: false,
-    value: 7, // Purchase/sell price
+    economics: { base_value: 7, rarity_multiplier: 1.1 },
   },
   {
     id: 'medkit_basic_01',
@@ -78,8 +78,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'consumable',
     iconName: 'BriefcaseMedical',
     stackable: true, 
-    value: 15, // Purchase/sell price
-    effects: { Sante: 25 } // Restores 25 Sante points
+    effects: { Sante: 25 },
+    economics: { base_value: 15, rarity_multiplier: 1.2 },
   },
   {
     id: 'mysterious_key_01',
@@ -88,6 +88,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'key',
     iconName: 'Key',
     stackable: false,
+    economics: { base_value: 10, rarity_multiplier: 2.5 },
   },
   {
     id: 'data_stick_01',
@@ -96,7 +97,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Usb',
     stackable: false,
-    value: 25, 
+    economics: { base_value: 25, rarity_multiplier: 1.8 },
   },
   {
     id: 'ancient_coin_01',
@@ -105,7 +106,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'CircleDollarSign',
     stackable: true,
-    value: 50, 
+    economics: { base_value: 50, rarity_multiplier: 3.0 },
   },
   {
     id: 'encrypted_laptop_01',
@@ -114,6 +115,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Laptop',
     stackable: false,
+    economics: { base_value: 200, rarity_multiplier: 2.2 },
   },
   {
     id: 'worn_leather_jacket_01',
@@ -122,7 +124,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'wearable',
     iconName: 'Shirt', 
     stackable: false,
-    value: 40, 
+    economics: { base_value: 40, rarity_multiplier: 1.5 },
   },
   {
     id: 'research_notes_quest_01',
@@ -131,6 +133,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'quest',
     iconName: 'FileText',
     stackable: false,
+    economics: { base_value: 0, rarity_multiplier: 1.0 },
   },
   {
     id: 'painkillers_01',
@@ -139,8 +142,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'consumable',
     iconName: 'Pill',
     stackable: true,
-    value: 10,
-    effects: { Sante: 5 } 
+    effects: { Sante: 5 },
+    economics: { base_value: 10, rarity_multiplier: 1.3 },
   },
   {
     id: 'flashlight_01',
@@ -149,7 +152,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'Torus', // Using Torus as a stand-in for Flashlight if not available
     stackable: false,
-    value: 12,
+    economics: { base_value: 12, rarity_multiplier: 1.0 },
   },
   {
     id: 'multitool_01',
@@ -158,7 +161,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'Wrench',
     stackable: false,
-    value: 20,
+    economics: { base_value: 20, rarity_multiplier: 1.4 },
   },
   {
     id: 'sim_card_01',
@@ -167,7 +170,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Router', // Placeholder icon
     stackable: false,
-    value: 10,
+    economics: { base_value: 10, rarity_multiplier: 1.0 },
   },
   {
     id: 'lighter_01',
@@ -176,7 +179,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool', // Could also be misc
     iconName: 'Flame',
     stackable: false,
-    value: 2,
+    economics: { base_value: 2, rarity_multiplier: 0.6 },
   },
   {
     id: 'lockpicks_01',
@@ -185,7 +188,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'KeySquare',
     stackable: false,
-    value: 30,
+    economics: { base_value: 30, rarity_multiplier: 2.0 },
   }
 ];
 

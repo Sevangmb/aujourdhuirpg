@@ -1,4 +1,5 @@
 
+
 import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
@@ -116,9 +117,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   // Handle inventory hydration, converting old item formats to the new IntelligentItem structure
   const inventoryToHydrate = savedPlayer?.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : initialInventory;
   player.inventory = inventoryToHydrate.map((item: any) => { // Use 'any' to handle old format
-    const masterItem = getMasterItemById(item.id);
+    const masterItem = getMasterItemById(item.id || item.itemId); // Handle old itemId property
     if (!masterItem) {
-      console.warn(`Could not find master item for id ${item.id} during hydration.`);
+      console.warn(`Could not find master item for id ${item.id || item.itemId} during hydration.`);
       return null;
     }
     
@@ -128,17 +129,26 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       instanceId: item.instanceId || uuidv4(),
       quantity: typeof item.quantity === 'number' ? item.quantity : 1,
       experience: typeof item.experience === 'number' ? item.experience : 0,
-      
       condition: {
         durability: typeof item.condition === 'number' ? item.condition : (item.condition?.durability ?? 100),
       },
-      
       memory: {
         acquiredAt: item.acquiredAt || item.memory?.acquiredAt || new Date(0).toISOString(),
-        acquisitionStory: item.memory?.acquisitionStory || "Trouvé dans des circonstances oubliées.",
+        acquisitionStory: item.memory?.acquisitionStory || "Fait partie de votre équipement de départ.",
         usageHistory: item.memory?.usageHistory || [],
         lastUsed: item.lastUsed || item.memory?.lastUsed,
       },
+      economics: {
+        ...masterItem.economics,
+        ...(item.economics || {})
+      },
+       // Initialize contextual properties - these will be updated by game logic
+      contextual_properties: {
+        local_value: item.contextual_properties?.local_value || masterItem.economics.base_value,
+        legal_status: item.contextual_properties?.legal_status || 'legal',
+        social_perception: item.contextual_properties?.social_perception || 'normal',
+        utility_rating: item.contextual_properties?.utility_rating || 50,
+      }
     };
 
     return newIntelligentItem;
