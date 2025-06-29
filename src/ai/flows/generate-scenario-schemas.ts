@@ -106,6 +106,9 @@ export const GenerateScenarioOutputSchema = z.object({
   /** A list of financial transactions that occurred as a result of the narrative. Use this for any monetary changes. */
   newTransactions: z.array(NewTransactionSchema).optional().describe("A list of financial transactions that occurred. Use this for any monetary changes (income or expenses)."),
 
+  /** A list of 3-4 short, context-aware suggested actions for the player to take next. */
+  suggestedActions: z.array(z.string()).optional().describe("A list of 3-4 short, context-aware suggested actions for the player to take next."),
+
   /** The amount of experience points (XP) the player has gained. */
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
 

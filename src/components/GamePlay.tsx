@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { getMasterItemById } from '@/data/items';
+import { Skeleton } from './ui/skeleton';
 
 
 interface GamePlayProps {
@@ -44,6 +45,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
 
   const [playerInput, setPlayerInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -71,6 +73,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
       return;
     }
     setIsLoading(true);
+    setSuggestedActions([]);
 
     try {
       const { updatedPlayer, notifications: deterministicNotifications, eventsForAI } = await calculateDeterministicEffects(player, actionText);
@@ -86,6 +89,8 @@ const GamePlay: React.FC<GamePlayProps> = ({
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
 
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
+
+      setSuggestedActions(aiOutput.suggestedActions || []);
 
       // Collect all state updates and notifications from AI output
       const aiActions: GameAction[] = [];
@@ -247,6 +252,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
           onPlayerInputChange={setPlayerInput}
           onSubmit={handlePlayerActionSubmit}
           isLoading={isLoading}
+          suggestions={suggestedActions}
         />
       </div>
     </div>

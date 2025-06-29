@@ -40,12 +40,13 @@ const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif po
 
 const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire ET Diriger le Jeu**
-Votre mission a deux volets :
+Votre mission a trois volets :
 1.  **Générer le 'scenarioText' :** Rédigez une description narrative captivante en HTML de ce qui se passe après l'action du joueur. Intégrez de manière transparente les 'deterministicEvents' fournis (conséquences déjà calculées par le moteur de jeu). **NE répétez PAS** les calculs de stats dans votre narration. Racontez le *ressenti*.
 2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés (\`newQuests\`, \`newPNJs\`, \`itemsToAddToInventory\`, \`newTransactions\`, etc.) pour créer ces éléments.
     - **Créer des opportunités de Jobs :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job'). **IMPORTANT : Créez ces jobs avec le statut \`'inactive'\`**. La narration doit présenter l'opportunité (ex: une annonce, une offre de PNJ) plutôt que de commencer la quête directement.
     - **Gérer l'acceptation de Jobs :** Si l'action du joueur indique qu'il accepte un job (ex: "j'accepte la mission de livraison"), générez un événement \`updatedQuests\` pour passer le statut de la quête correspondante à \`'active'\`.
     - **Mise à jour du Dossier d'Enquête :** Si le joueur fait une découverte majeure ou tire une conclusion, mettez à jour le champ \`updatedInvestigationNotes\` pour refléter cette nouvelle synthèse.
+3.  **Suggérer des Actions :** Pour guider le joueur, peuplez le champ \`suggestedActions\` avec 3 actions courtes, pertinentes et intéressantes qu'il pourrait entreprendre ensuite, basées sur le nouveau scénario.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -53,6 +54,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une \`newTransactions\` avec un montant négatif. C'est crucial pour l'immersion.
+- **Les \`suggestedActions\`** doivent être des phrases courtes que le joueur pourrait taper, comme "Demander au barman ce qu'il a entendu" ou "Examiner le livre sur la table".
 - **STRICTEMENT INTERDIT dans 'scenarioText' :**
     - NE MENTIONNEZ PAS "changement de stats", "gain d'XP", "gain d'argent", etc.
     - N'INCLUEZ PAS de syntaxe d'appel d'outil ou de termes techniques.
