@@ -19,6 +19,8 @@ import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
 } from './generate-scenario-schemas';
+import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
+
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
 export type GenerateScenarioOutput = z.infer<typeof GenerateScenarioOutputSchema>;
@@ -28,7 +30,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     console.warn("Genkit API key is not set. AI scenario generation is disabled.");
     return {
       scenarioText: `<p><strong>Fonctionnalité IA Indisponible</strong></p><p>La génération de scénario par l'IA est désactivée car la clé API nécessaire n'est pas configurée.</p>`,
-      suggestedActions: ["Observer les alentours", "Explorer le quartier", "Parler à un passant"],
+      choices: [],
     };
   }
   return generateScenarioFlow(input);
@@ -47,7 +49,7 @@ Votre mission a trois volets :
     - **Créer des opportunités de Jobs :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job'). **IMPORTANT : Créez ces jobs avec le statut \`'inactive'\`**. La narration doit présenter l'opportunité (ex: une annonce, une offre de PNJ) plutôt que de commencer la quête directement.
     - **Gérer l'acceptation de Jobs :** Si l'action du joueur indique qu'il accepte un job (ex: "j'accepte la mission de livraison"), générez un événement \`updatedQuests\` pour passer le statut de la quête correspondante à \`'active'\`.
     - **Mise à jour du Dossier d'Enquête :** Si le joueur fait une découverte majeure ou tire une conclusion, mettez à jour le champ \`updatedInvestigationNotes\` pour refléter cette nouvelle synthèse.
-3.  **Suggérer des Actions :** Pour guider le joueur, peuplez le champ \`suggestedActions\` avec 3 actions courtes, pertinentes et intéressantes qu'il pourrait entreprendre ensuite, basées sur le nouveau scénario.
+3.  **Générer des Choix Guidés :** Pour guider le joueur, peuplez le champ \`choices\` avec 3 ou 4 objets 'StoryChoice' riches, variés et pertinents. Chaque choix est un objet JSON avec les champs: id (unique, ex: 'chercher_indices'), text, description, iconName (choisir parmi: ${CHOICE_ICON_NAMES.join(', ')}), type (choisir parmi: ${ACTION_TYPES.join(', ')}), mood (choisir parmi: ${MOOD_TYPES.join(', ')}), energyCost (1-20), timeCost (5-60), consequences (2-3 mots-clés).
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -55,7 +57,6 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une \`newTransactions\` avec un montant négatif. C'est crucial pour l'immersion.
-- **Les \`suggestedActions\`** doivent être des phrases courtes que le joueur pourrait taper, comme "Demander au barman ce qu'il a entendu" ou "Examiner le livre sur la table".
 - **STRICTEMENT INTERDIT dans 'scenarioText' :**
     - NE MENTIONNEZ PAS "changement de stats", "gain d'XP", "gain d'argent", etc.
     - N'INCLUEZ PAS de syntaxe d'appel d'outil ou de termes techniques.
@@ -136,9 +137,9 @@ Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le 
 **Contraintes Importantes :**
 - Le prologue doit être purement narratif. N'incluez AUCUNE mécanique de jeu. Ne générez pas de quêtes, d'objets ou de PNJ dans la sortie JSON pour le prologue.
 - La sortie DOIT être du HTML valide.
-- Fournissez 3 suggestions d'actions initiales dans le champ \`suggestedActions\`.
+- Fournissez 3 suggestions d'actions initiales dans le champ \`choices\` en respectant la structure complète de l'objet 'StoryChoice'.
 
-Générez uniquement le 'scenarioText' et 'suggestedActions' pour le début de l'aventure.
+Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure.
 `;
 
 const prologuePrompt = ai.definePrompt({
@@ -167,7 +168,7 @@ const generateScenarioFlow = ai.defineFlow(
       console.error('AI model did not return output for generateScenarioPrompt.');
       return {
         scenarioText: "<p>Erreur: L'IA n'a pas retourné de réponse. Veuillez réessayer.</p>",
-        suggestedActions: ["Observer les alentours", "Explorer le quartier", "Parler à un passant"],
+        choices: [],
       };
     }
     return output;

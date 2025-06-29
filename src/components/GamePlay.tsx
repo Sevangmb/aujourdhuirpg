@@ -77,7 +77,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
       allActions.push({ type: 'UPDATE_PLAYER_DATA', payload: updatedPlayer });
       if (choice.timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
 
-      allActions.push({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, suggestedActions: aiOutput.suggestedActions } });
+      allActions.push({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices } });
       allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: updatedPlayer.currentLocation } });
       
       // Translate AI output to game actions

@@ -4,6 +4,8 @@
  * This file outlines the contract between the game engine and the AI narrator.
  */
 import {z} from 'genkit';
+import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
+
 
 // Schemas for player data, quests, etc., are imported to define the AI's potential outputs.
 import {
@@ -62,6 +64,18 @@ export const GenerateScenarioInputSchema = z.object({
 }).describe("Input schema for the generateScenario flow.");
 
 
+export const StoryChoiceSchema = z.object({
+  id: z.string().describe("A unique identifier for the choice, e.g., 'explore_crypt'."),
+  text: z.string().describe("The short, actionable text for the choice button, e.g., 'Explorer la crypte'."),
+  description: z.string().describe("A slightly longer description of what the action entails, for the card content."),
+  iconName: z.enum(CHOICE_ICON_NAMES).describe("The name of a valid Lucide-React icon to represent the choice."),
+  type: z.enum(ACTION_TYPES).describe("The category of the action."),
+  mood: z.enum(MOOD_TYPES).describe("The general mood or vibe of this choice."),
+  energyCost: z.number().describe("The estimated energy cost for the player (1-20)."),
+  timeCost: z.number().describe("The estimated time cost in minutes for the action (5-60)."),
+  consequences: z.array(z.string()).describe("A list of 2-3 likely outcomes or keywords, e.g., ['Révélation', 'Danger potentiel']."),
+}).describe("A rich, guided choice for the player.");
+
 // --- Main Output Schema ---
 // This schema describes the AI's response, which now includes both narration and game-state-changing events.
 export const GenerateScenarioOutputSchema = z.object({
@@ -106,8 +120,8 @@ export const GenerateScenarioOutputSchema = z.object({
   /** A list of financial transactions that occurred as a result of the narrative. Use this for any monetary changes. */
   newTransactions: z.array(NewTransactionSchema).optional().describe("A list of financial transactions that occurred. Use this for any monetary changes (income or expenses)."),
 
-  /** A list of 3-4 short, context-aware suggested actions for the player to take next. */
-  suggestedActions: z.array(z.string()).optional().describe("A list of 3-4 short, context-aware suggested actions for the player to take next."),
+  /** A list of 3-4 rich, context-aware choices for the player to take next. */
+  choices: z.array(StoryChoiceSchema).optional().describe("A list of 3-4 rich, context-aware guided choices for the player to take next."),
 
   /** The amount of experience points (XP) the player has gained. */
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),

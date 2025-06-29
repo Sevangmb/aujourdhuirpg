@@ -4,7 +4,9 @@ import type { StoryChoice } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, Zap } from 'lucide-react';
+import { Clock, Zap, HelpCircle } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+
 
 interface ChoiceCardProps {
   choice: StoryChoice;
@@ -21,7 +23,7 @@ const choiceTypeStyles: Record<string, string> = {
 };
 
 const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) => {
-  const Icon = choice.icon;
+  const Icon = (LucideIcons as any)[choice.iconName] || HelpCircle;
 
   return (
     <Card

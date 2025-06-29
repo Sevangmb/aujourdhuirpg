@@ -4,7 +4,7 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 import { aiService } from '@/services/aiService';
-import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact, GameEra } from '@/lib/types';
+import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact, GameEra, StoryChoice } from '@/lib/types';
 import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation, gameReducer, GameAction } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
@@ -304,7 +304,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       
       const finalGameState: GameState = {
         ...tempStateForPrologue,
-        currentScenario: { scenarioText: prologueResult.scenarioText, suggestedActions: prologueResult.suggestedActions }
+        currentScenario: { scenarioText: prologueResult.scenarioText, choices: prologueResult.choices }
       };
 
       const newCharacterId = await createNewCharacter(user.uid, finalGameState);
