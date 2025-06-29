@@ -78,7 +78,7 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
                   width={300}
                   height={300}
                   className="w-full h-48 object-cover"
-                  unoptimized={char.avatarUrl.startsWith('data:')}
+                  unoptimized={!!char.avatarUrl && char.avatarUrl.startsWith('data:')}
                   data-ai-hint="character portrait"
                 />
               </CardHeader>
