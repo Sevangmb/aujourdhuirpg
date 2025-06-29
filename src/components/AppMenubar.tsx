@@ -46,6 +46,7 @@ import FinancialsDisplay from './FinancialsDisplay'; // Import new component
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import HistoricalContactsBook from './HistoricalContactsBook';
 import ToneSettingsDialog from './ToneSettingsDialog'; // Import ToneSettingsDialog
+import JournalDisplay from './JournalDisplay';
 
 
 const AppMenubar: React.FC = () => {
