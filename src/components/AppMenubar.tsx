@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -34,7 +35,8 @@ import {
     BookText,
     BrainCircuit, // Icon for Geo-Intelligence
     Users,
-    Euro
+    Euro,
+    BookUser
 } from 'lucide-react';
 
 import PlayerSheet from '@/components/PlayerSheet';
@@ -50,6 +52,7 @@ import GeoIntelligenceDisplay from './GeoIntelligenceDisplay'; // Import new com
 import FinancialsDisplay from './FinancialsDisplay'; // Import new component
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
+import HistoricalContactsBook from './HistoricalContactsBook';
 
 
 interface AppMenubarProps {
@@ -209,6 +212,17 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                     <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
                         <DialogHeader><DialogTitle>Relevé Financier</DialogTitle></DialogHeader>
                         <ScrollArea className="max-h-[70vh] p-1">{player ? <FinancialsDisplay transactions={player.transactionLog || []} currentBalance={player.money} /> : <p>Données financières non disponibles.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><BookUser className="mr-2 h-4 w-4" />Carnet de Contacts</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-4xl max-h-[90vh]">
+                        <DialogHeader><DialogTitle>Carnet de Contacts Historiques</DialogTitle></DialogHeader>
+                        <div className="p-1">
+                            {player ? <HistoricalContactsBook contacts={player.historicalContacts || []} /> : <p>Carnet non disponible.</p>}
+                        </div>
                     </DialogContent>
                 </Dialog>
             </MenubarContent>

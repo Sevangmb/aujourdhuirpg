@@ -2,7 +2,7 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone, Transaction } from '@/lib/types';
+import type { PlayerStats, Position, Skills, TraitsMentalStates, Progression, Alignment, InventoryItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, GameTone, Transaction, HistoricalContact } from '@/lib/types';
 import { getMasterItemById } from './items'; // Assuming items.ts is in the same data directory or adjust path
 import { AVAILABLE_TONES } from '@/lib/types';
 
@@ -88,6 +88,7 @@ export const initialEncounteredPNJs: PNJ[] = [];
 export const initialDecisionLog: MajorDecision[] = [];
 export const initialClues: Clue[] = [];
 export const initialDocuments: GameDocument[] = [];
+export const initialHistoricalContacts: HistoricalContact[] = [];
 export const initialInvestigationNotes: string = "Aucune note d'enquête pour le moment.";
 // --- End Initial Player Data ---
 

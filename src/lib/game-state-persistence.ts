@@ -1,5 +1,5 @@
 
-import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction } from './types';
+import type { GameState, Player, InventoryItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -20,6 +20,7 @@ import {
   initialInvestigationNotes,
   initialToneSettings,
   initialTransactionLog,
+  initialHistoricalContacts,
 } from '@/data/initial-game-data';
 import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
@@ -82,6 +83,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     investigationNotes: savedPlayer?.investigationNotes || initialInvestigationNotes,
     lastPlayed: savedPlayer?.lastPlayed,
     transactionLog: savedPlayer?.transactionLog || [...initialTransactionLog],
+    historicalContacts: savedPlayer?.historicalContacts || [...initialHistoricalContacts],
   };
 
   if (!player.progression.xpToNextLevel) {

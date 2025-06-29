@@ -7,6 +7,7 @@ import type { Clue, GameDocument } from './evidence-types';
 import type { ToneSettings } from './tone-types';
 import type { Position } from './game-types'; // Corrected path
 import type { Transaction } from './finance-types';
+import type { HistoricalContact } from './historical-contact-types';
 
 export type PlayerStats = {
   Sante: number;
@@ -66,5 +67,6 @@ export type Player = {
   clues: Clue[];
   documents: GameDocument[];
   investigationNotes: string; // Un texte libre pour les hypothèses, suspects, lieux
+  historicalContacts?: HistoricalContact[]; // Carnet d'adresses pour les contacts historiques
   lastPlayed?: string; // Added to track last played timestamp, hydrated from save file
 };
