@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
@@ -231,7 +230,7 @@ export const GameProvider: React.FC<{
     contextualData: { weather, locationImage, geoIntelligence, pois },
     handleManualSave: () => handleSaveGame('manual'),
     handleExitToSelection: onExitToSelection,
-    handleSignOut,
+    handleSignOut: onSignOut,
     handleInitiateTravel,
   };
 
