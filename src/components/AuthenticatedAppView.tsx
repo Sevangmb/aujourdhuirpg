@@ -50,6 +50,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
   const { toast } = useToast();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const previousGameStateRef = useRef<GameState | null>(null);
 
   const fetchCharacterList = useCallback(async () => {
     if (!user) return;
@@ -88,16 +89,16 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appMode, gameState?.player?.currentLocation, gameState?.player?.era]);
   
-  const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto') => {
+  const handleSaveGame = useCallback(async (saveType: 'manual' | 'auto' | 'checkpoint') => {
     if (!gameState || !user || !gameState.player || !selectedCharacterId) {
-      if (saveType === 'manual') toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
+      if (saveType !== 'auto') toast({ title: "Erreur", description: "Aucun état de jeu à sauvegarder.", variant: "destructive" });
       return;
     }
     const result = await saveGameState(user.uid, selectedCharacterId, gameState, saveType);
     if (saveType === 'manual') {
         if (result.cloudSaveSuccess) toast({ title: "Partie Sauvegardée" });
         else if (result.cloudSaveSuccess === false) toast({ title: "Échec de la sauvegarde Cloud", variant: "destructive" });
-        else if(result.localSaveSuccess) toast({ title: "Partie Sauvegardée (localement)" }); // For anonymous users
+        else if(result.localSaveSuccess) toast({ title: "Partie Sauvegardée (localement)" });
     }
   }, [gameState, user, selectedCharacterId, toast]);
 
@@ -115,6 +116,32 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
     };
   }, [gameState, appMode, handleSaveGame]);
+
+  // Checkpoint creation on main quest completion
+  useEffect(() => {
+    const previousPlayer = previousGameStateRef.current?.player;
+    const currentPlayer = gameState?.player;
+
+    if (previousPlayer && currentPlayer && Array.isArray(currentPlayer.questLog) && Array.isArray(previousPlayer.questLog)) {
+        const completedMainQuests = currentPlayer.questLog.filter(currentQuest => {
+            const prevQuest = previousPlayer.questLog.find(pq => pq.id === currentQuest.id);
+            return prevQuest && 
+                   prevQuest.status !== 'completed' && 
+                   currentQuest.status === 'completed' && 
+                   currentQuest.type === 'main';
+        });
+
+        if (completedMainQuests.length > 0) {
+            const firstCompletedQuest = completedMainQuests[0];
+            console.log(`Main quest completed: ${firstCompletedQuest.title}. Creating checkpoint...`);
+            handleSaveGame('checkpoint');
+            toast({ title: "Point de contrôle atteint", description: `"${firstCompletedQuest.title}" terminé. Progression sauvegardée.` });
+        }
+    }
+
+    // Update the ref for the next render AFTER comparison
+    previousGameStateRef.current = gameState;
+  }, [gameState, handleSaveGame, toast]);
 
   // Fail-safe Autosave on Page Exit/Hide
   useEffect(() => {

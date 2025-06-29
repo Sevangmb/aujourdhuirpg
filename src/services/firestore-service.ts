@@ -35,7 +35,7 @@ export interface CharacterSummary {
 // A summary of a single save file for the loading screen, now with more metadata
 export interface SaveSummary {
   id: string; // Document ID of the save file
-  type: 'auto' | 'manual';
+  type: 'auto' | 'manual' | 'checkpoint';
   timestamp: string; // ISO string of when it was saved
   level: number;
   locationName: string;
@@ -82,20 +82,20 @@ export async function listCharacters(uid: string): Promise<CharacterSummary[]> {
  * @param uid The user's Firebase UID.
  * @param characterId The unique ID for the character.
  * @param gameState The game state to save.
- * @param saveType The type of save ('auto' or 'manual').
+ * @param saveType The type of save ('auto', 'manual', or 'checkpoint').
  */
-export async function saveCharacter(uid: string, characterId: string, gameState: GameState, saveType: 'auto' | 'manual'): Promise<void> {
+export async function saveCharacter(uid: string, characterId: string, gameState: GameState, saveType: 'auto' | 'manual' | 'checkpoint'): Promise<void> {
   if (!db) throw new Error("Firestore not available.");
   if (!uid || !characterId) throw new Error("UID and CharacterID are required to save.");
   if (!gameState.player) throw new Error("Cannot save a game state without a player.");
 
   const characterDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId);
   
-  // For manual saves, create a new document with a timestamped ID.
+  // For manual/checkpoint saves, create a new document with a timestamped ID.
   // For auto saves, overwrite the same document to avoid clutter.
-  const docName = saveType === 'manual' 
-    ? `manual_${new Date().toISOString()}` 
-    : 'auto';
+  const docName = saveType === 'auto' 
+    ? 'auto' 
+    : `${saveType}_${new Date().toISOString()}`;
   const saveDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, docName);
 
 
@@ -212,9 +212,16 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
       const timestamp = (data.lastPlayed as Timestamp)?.toDate()?.toISOString() || new Date(0).toISOString();
       const docId = docSnap.id;
       
+      let saveType: SaveSummary['type'] = 'auto';
+      if (docId.startsWith('manual_')) {
+          saveType = 'manual';
+      } else if (docId.startsWith('checkpoint_')) {
+          saveType = 'checkpoint';
+      }
+
       return {
         id: docId,
-        type: docId.startsWith('manual_') ? 'manual' : 'auto',
+        type: saveType,
         timestamp: timestamp,
         level: data.player?.progression.level || 1,
         locationName: data.player?.currentLocation.name || 'Lieu inconnu',

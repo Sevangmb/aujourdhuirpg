@@ -7,7 +7,7 @@ import type { CharacterSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { PlusCircle, Trash2, Loader2, Save, User, MapPin, Clock } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Save, User, MapPin, Clock, Star, History } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
@@ -140,27 +140,43 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : saves.length > 0 ? (
-                  saves.map(save => (
-                      <Button
-                        key={save.id}
-                        variant="outline"
-                        className="w-full flex justify-between items-center h-auto p-3 text-left"
-                        onClick={() => handleLoadSave(save.id)}
-                      >
-                        <div className="flex items-center gap-4">
-                            <Save className="w-8 h-8 text-primary shrink-0" />
-                            <div className="flex-grow">
-                                <p className="font-semibold capitalize">{save.type === 'manual' ? 'Sauvegarde Manuelle' : 'Sauvegarde Auto'}</p>
-                                <p className="text-xs text-muted-foreground">{new Date(save.timestamp).toLocaleString('fr-FR')}</p>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-2 text-muted-foreground">
-                                    <span className="flex items-center gap-1"><User className="w-3 h-3"/>Niv. {save.level}</span>
-                                    <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3"/>{save.locationName}</span>
-                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3"/>{formatGameTime(save.playTimeInMinutes)}</span>
-                                </div>
-                            </div>
-                        </div>
-                      </Button>
-                  ))
+                  saves.map(save => {
+                      let Icon = Save;
+                      let label = 'Sauvegarde Manuelle';
+                      let iconColor = 'text-primary';
+
+                      if (save.type === 'auto') {
+                          Icon = History;
+                          label = 'Sauvegarde Auto';
+                          iconColor = 'text-muted-foreground';
+                      } else if (save.type === 'checkpoint') {
+                          Icon = Star;
+                          label = 'Point de Contrôle';
+                          iconColor = 'text-yellow-500';
+                      }
+
+                      return (
+                        <Button
+                          key={save.id}
+                          variant="outline"
+                          className="w-full flex justify-between items-center h-auto p-3 text-left"
+                          onClick={() => handleLoadSave(save.id)}
+                        >
+                          <div className="flex items-center gap-4">
+                              <Icon className={`w-8 h-8 ${iconColor} shrink-0`} />
+                              <div className="flex-grow">
+                                  <p className="font-semibold capitalize">{label}</p>
+                                  <p className="text-xs text-muted-foreground">{new Date(save.timestamp).toLocaleString('fr-FR')}</p>
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-2 text-muted-foreground">
+                                      <span className="flex items-center gap-1"><User className="w-3 h-3"/>Niv. {save.level}</span>
+                                      <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3"/>{save.locationName}</span>
+                                      <span className="flex items-center gap-1"><Clock className="w-3 h-3"/>{formatGameTime(save.playTimeInMinutes)}</span>
+                                  </div>
+                              </div>
+                          </div>
+                        </Button>
+                      );
+                  })
                 ) : (
                   <p className="text-center text-muted-foreground p-8">Aucune sauvegarde trouvée pour ce personnage.</p>
                 )}
