@@ -5,7 +5,7 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 import { aiService } from '@/services/aiService';
 import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact, GameEra } from '@/lib/types';
-import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation, gameReducer } from '@/lib/game-logic';
+import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation, gameReducer, GameAction } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
 import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
@@ -24,6 +24,9 @@ import { findAndAdaptHistoricalContactsForLocation, type AdaptedContact } from '
 import { HistoricalEncounterModal } from './HistoricalEncounterModal';
 import { v4 as uuidv4 } from 'uuid';
 import type { FullCharacterFormData } from './CharacterCreationForm';
+import { TravelModal } from './TravelModal';
+import { getDistanceInKm } from '@/lib/utils/geo-utils';
+import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 
 
 interface AuthenticatedAppViewProps {
@@ -53,6 +56,8 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const [geoIntelligenceLoading, setGeoIntelligenceLoading] = useState(false);
   const [geoIntelligenceError, setGeoIntelligenceError] = useState<string | null>(null);
   const [encounter, setEncounter] = useState<AdaptedContact | null>(null);
+  const [travelDestination, setTravelDestination] = useState<Position | null>(null);
+
 
   const { toast } = useToast();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,6 +74,13 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setAppMode('selecting_character');
     }
   }, [user]);
+
+  const handleGameAction = useCallback((action: GameAction) => {
+    setGameState(prevState => {
+      if (!prevState) return null;
+      return gameReducer(prevState, action);
+    });
+  }, []);
 
   useEffect(() => {
     fetchCharacterList();
@@ -198,12 +210,12 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
     try {
       const pois = await fetchPoisForCurrentLocation(location);
-      setGameState(prevState => prevState ? { ...prevState, nearbyPois: pois } : null);
+      handleGameAction({ type: 'SET_NEARBY_POIS', payload: pois });
     } catch (error) {
       console.error("Failed to fetch POIs:", error);
       toast({ variant: "destructive", title: "Erreur de réseau", description: "Impossible de charger les lieux d'intérêt proches." });
     }
-  }, [toast]);
+  }, [toast, handleGameAction]);
 
   const fetchWeatherForLocation = useCallback(async (location: Position) => {
     setWeatherLoading(true);
@@ -297,7 +309,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       
       const finalGameState: GameState = {
         ...tempStateForPrologue,
-        currentScenario: { scenarioText: prologueResult.scenarioText }
+        currentScenario: { scenarioText: prologueResult.scenarioText, suggestedActions: prologueResult.suggestedActions }
       };
 
       const newCharacterId = await createNewCharacter(user.uid, finalGameState);
@@ -387,12 +399,9 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         location: gameState.player.currentLocation,
     };
 
-    setGameState(currentState => {
-        if (!currentState) return null;
-        let nextState = gameReducer(currentState, { type: 'ADD_HISTORICAL_CONTACT', payload: newContact });
-        nextState = gameReducer(nextState, { type: 'ADD_JOURNAL_ENTRY', payload: newJournalEntry });
-        return nextState;
-    });
+    handleGameAction({ type: 'ADD_HISTORICAL_CONTACT', payload: newContact });
+    handleGameAction({ type: 'ADD_JOURNAL_ENTRY', payload: newJournalEntry });
+
 
     toast({
         title: "Nouvelle rencontre !",
@@ -411,6 +420,60 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setEncounter(null); // Close the modal
   };
 
+  const handleInitiateTravel = (destination: Position) => {
+    if (!gameState?.player) return;
+    if (destination.latitude === gameState.player.currentLocation.latitude && destination.longitude === gameState.player.currentLocation.longitude) {
+        toast({ title: "Déjà sur place", description: "Vous êtes déjà à cette destination." });
+        return;
+    }
+    setTravelDestination(destination);
+  };
+
+  const handleConfirmTravel = async (mode: 'walk' | 'metro' | 'taxi') => {
+    if (!travelDestination || !gameState || !gameState.player) return;
+
+    const origin = gameState.player.currentLocation;
+    const distance = getDistanceInKm(origin.latitude, origin.longitude, travelDestination.latitude, travelDestination.longitude);
+    
+    let time = 0, cost = 0, energy = 0;
+    if (mode === 'walk') {
+        time = Math.round(distance * 12);
+        energy = Math.round(distance * 5) + 1;
+    } else if (mode === 'metro') {
+        time = Math.round(distance * 4 + 10);
+        cost = 1.90;
+        energy = Math.round(distance * 1) + 1;
+    } else { // taxi
+        time = Math.round(distance * 2 + 5);
+        cost = parseFloat((5 + distance * 1.5).toFixed(2));
+        energy = Math.round(distance * 0.5);
+    }
+
+    if (gameState.player.money < cost) {
+        toast({ variant: "destructive", title: "Fonds insuffisants", description: "Vous n'avez pas assez d'argent pour ce trajet." });
+        return;
+    }
+    if (gameState.player.stats.Energie < energy) {
+        toast({ variant: "destructive", title: "Trop fatigué", description: "Vous n'avez pas assez d'énergie pour ce trajet." });
+        return;
+    }
+    
+    setTravelDestination(null); // Close modal immediately
+
+    const travelEventInput: GenerateScenarioInput = prepareAIInput(gameState, `Voyage vers ${travelDestination.name} en ${mode}`)!;
+    const travelNarrative = (await generateTravelEvent({
+      ...travelEventInput,
+      travelMode: mode,
+      origin: origin,
+      destination: travelDestination,
+      gameTimeInMinutes: gameState.gameTimeInMinutes,
+    })).narrative;
+
+    handleGameAction({
+      type: 'EXECUTE_TRAVEL',
+      payload: { destination: travelDestination, travelNarrative, time, cost, energy }
+    });
+  };
 
   if (appMode === 'loading') {
     return <LoadingState loadingAuth={false} isLoadingState={true} />;
@@ -455,6 +518,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         geoIntelligenceData={geoIntelligenceData}
         geoIntelligenceLoading={geoIntelligenceLoading}
         geoIntelligenceError={geoIntelligenceError}
+        onPoiClick={handleInitiateTravel}
       />
       <ToneSettingsDialog
         isOpen={isToneSettingsDialogOpen}
@@ -467,6 +531,17 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
             onApproach={handleApproachContact}
             onIgnore={handleIgnoreContact}
         />
+       {travelDestination && gameState?.player && (
+          <TravelModal
+            isOpen={!!travelDestination}
+            onClose={() => setTravelDestination(null)}
+            origin={gameState.player.currentLocation}
+            destination={travelDestination}
+            onConfirmTravel={handleConfirmTravel}
+            playerMoney={gameState.player.money}
+            playerEnergy={gameState.player.stats.Energie}
+          />
+        )}
       <div className="flex-grow overflow-auto">
         <GameScreen
           user={user}
@@ -481,6 +556,8 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
           locationImageLoading={locationImageLoading}
           locationImageError={locationImageError}
           isCreatingCharacter={appMode === 'creating_character'}
+          onPoiClick={handleInitiateTravel}
+          handleGameAction={handleGameAction}
         />
       </div>
     </div>

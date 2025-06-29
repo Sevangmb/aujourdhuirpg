@@ -77,6 +77,7 @@ interface AppMenubarProps {
   geoIntelligenceData: GeoIntelligence | null;
   geoIntelligenceLoading: boolean;
   geoIntelligenceError: string | null;
+  onPoiClick?: (poi: Position) => void;
 }
 
 const AppMenubar: React.FC<AppMenubarProps> = ({
@@ -101,6 +102,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
   geoIntelligenceData,
   geoIntelligenceLoading,
   geoIntelligenceError,
+  onPoiClick,
 }) => {
   const isMobile = useIsMobile();
 
@@ -280,7 +282,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                   <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
                     <DialogHeader><DialogTitle>Carte Locale</DialogTitle></DialogHeader>
                     <ScrollArea className="max-h-[70vh] p-1">
-                      <MapDisplay currentLocation={currentLocation} nearbyPois={nearbyPois || []} zoom={14} />
+                      <MapDisplay currentLocation={currentLocation} nearbyPois={nearbyPois || []} onPoiClick={onPoiClick} zoom={14} />
                     </ScrollArea>
                   </DialogContent>
                 </Dialog>

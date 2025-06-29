@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState } from '@/lib/types';
+import type { GameState, GameAction, Position } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 
 import CharacterCreationForm from '@/components/CharacterCreationForm';
@@ -23,6 +23,8 @@ interface GameScreenProps {
   locationImageLoading: boolean;
   locationImageError: string | null;
   isCreatingCharacter: boolean;
+  onPoiClick?: (poi: Position) => void;
+  handleGameAction: (action: GameAction) => void;
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
@@ -37,6 +39,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
   locationImageLoading,
   locationImageError,
   isCreatingCharacter,
+  onPoiClick,
+  handleGameAction,
 }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -65,6 +69,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
         locationImageUrl={locationImageUrl}
         locationImageLoading={locationImageLoading}
         locationImageError={locationImageError}
+        onPoiClick={onPoiClick}
+        handleGameAction={handleGameAction}
       />
     );
   }

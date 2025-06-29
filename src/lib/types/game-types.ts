@@ -5,6 +5,7 @@ import type { ToneSettings } from './tone-types';
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {
   scenarioText: string; // HTML content from AI
+  suggestedActions?: string[]; // Optional array of AI-suggested actions
 };
 
 export type JournalEntry = {

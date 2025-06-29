@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, GameNotification, Quest, PNJ, JournalEntry, Transaction } from '@/lib/types';
+import type { GameState, GameNotification, Quest, PNJ, JournalEntry, Transaction, Position } from '@/lib/types';
 import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioInput, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
@@ -30,6 +30,8 @@ interface GamePlayProps {
   locationImageUrl: string | null;
   locationImageLoading: boolean;
   locationImageError: string | null;
+  onPoiClick?: (poi: Position) => void;
+  handleGameAction: (action: GameAction) => void;
 }
 
 const GamePlay: React.FC<GamePlayProps> = ({
@@ -41,33 +43,29 @@ const GamePlay: React.FC<GamePlayProps> = ({
   locationImageUrl,
   locationImageLoading,
   locationImageError,
+  onPoiClick,
+  handleGameAction,
 }) => {
 
   const [playerInput, setPlayerInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
+  const [suggestedActions, setSuggestedActions] = useState<string[]>(initialGameState.currentScenario?.suggestedActions || []);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
   useEffect(() => {
     if (initialGameState.player && !initialGameState.currentScenario) {
       const firstScenario = getInitialScenario(initialGameState.player);
-      onStateUpdate(gameReducer(initialGameState, { type: 'SET_CURRENT_SCENARIO', payload: firstScenario }));
+      handleGameAction({ type: 'SET_CURRENT_SCENARIO', payload: firstScenario });
     }
-  }, [initialGameState, onStateUpdate]);
+  }, [initialGameState, handleGameAction]);
 
-  const handleGameAction = useCallback((action: GameAction) => {
-    onStateUpdate(prevState => {
-      if (!prevState) return null;
-      const newState = gameReducer(prevState, action);
-      // Save is handled by the main view's autosave effect
-      return newState;
-    });
-  }, [onStateUpdate]);
-  
+  useEffect(() => {
+    setSuggestedActions(initialGameState.currentScenario?.suggestedActions || []);
+  }, [initialGameState.currentScenario]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
-    const { player, currentScenario, gameTimeInMinutes } = initialGameState;
+    const { player, currentScenario } = initialGameState;
     if (!player || !currentScenario || !actionText.trim()) {
       if (!actionText.trim()) toast({ variant: "destructive", title: "Action vide", description: "Veuillez entrer une action." });
       return;
@@ -90,9 +88,6 @@ const GamePlay: React.FC<GamePlayProps> = ({
 
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      setSuggestedActions(aiOutput.suggestedActions || []);
-
-      // Collect all state updates and notifications from AI output
       const aiActions: GameAction[] = [];
       const aiNotifications: GameNotification[] = [];
 
@@ -163,38 +158,36 @@ const GamePlay: React.FC<GamePlayProps> = ({
         if (!prevState) return null;
 
         // Start with the state after deterministic effects
-        const intermediateState: GameState = { ...prevState, player: updatedPlayer };
+        let intermediateState: GameState = { ...prevState, player: updatedPlayer };
 
         // Apply new scenario text and log the player's action
-        const stateWithScenarioAndJournal = gameReducer(
-          gameReducer(intermediateState, {
+        intermediateState = gameReducer(intermediateState, {
             type: 'SET_CURRENT_SCENARIO',
-            payload: { scenarioText: aiOutput.scenarioText },
-          }),
-          {
+            payload: { scenarioText: aiOutput.scenarioText, suggestedActions: aiOutput.suggestedActions },
+        });
+
+        intermediateState = gameReducer(intermediateState, {
             type: 'ADD_JOURNAL_ENTRY',
             payload: {
               type: 'player_action',
               text: actionText,
               location: updatedPlayer.currentLocation,
             },
-          }
-        );
+        });
 
         // Apply new location if any
-        let stateWithLocation = stateWithScenarioAndJournal;
-        if (aiOutput.newLocationDetails && stateWithLocation.player) {
-          stateWithLocation.player = {
-            ...stateWithLocation.player,
+        if (aiOutput.newLocationDetails && intermediateState.player) {
+          intermediateState.player = {
+            ...intermediateState.player,
             currentLocation: {
-              ...stateWithLocation.player.currentLocation,
+              ...intermediateState.player.currentLocation,
               ...aiOutput.newLocationDetails,
             },
           };
         }
 
         // Reduce all AI-driven actions onto the new state
-        return aiActions.reduce(gameReducer, stateWithLocation);
+        return aiActions.reduce(gameReducer, intermediateState);
       });
 
       // Show all notifications AFTER the state update has been dispatched
@@ -209,7 +202,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [initialGameState, onStateUpdate, toast]);
+  }, [initialGameState, onStateUpdate, toast, handleGameAction]);
 
   const { player, currentScenario, nearbyPois } = initialGameState;
 
@@ -232,6 +225,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
           <MapDisplay
             currentLocation={displayLocation}
             nearbyPois={nearbyPois || []}
+            onPoiClick={onPoiClick}
           />
           <LocationImageDisplay
             imageUrl={locationImageUrl}
