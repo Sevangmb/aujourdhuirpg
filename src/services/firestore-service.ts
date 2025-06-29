@@ -15,6 +15,8 @@ import {
   orderBy,
   limit,
   type DocumentSnapshot,
+  where,
+  documentId,
 } from 'firebase/firestore';
 
 const USERS_COLLECTION = 'users';
@@ -46,7 +48,14 @@ export async function saveCharacter(uid: string, characterId: string, gameState:
   if (!gameState.player) throw new Error("Cannot save a game state without a player.");
 
   const characterDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId);
-  const saveDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, saveType);
+  
+  // For manual saves, create a new document with a timestamped ID.
+  // For auto saves, overwrite the same document to avoid clutter.
+  const docName = saveType === 'manual' 
+    ? `manual_${new Date().toISOString()}` 
+    : 'auto';
+  const saveDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, docName);
+
 
   try {
     // 1. Save the full game state to the specific save slot in the subcollection
@@ -104,8 +113,8 @@ export async function createNewCharacter(uid: string, gameState: GameState): Pro
 
 
 /**
- * Loads the game state for a character, prioritizing manual saves.
- * It first attempts to load the 'manual' save. If it doesn't exist, it falls back to 'auto'.
+ * Loads the game state for a character, prioritizing the latest manual save.
+ * It first attempts to load the latest 'manual' save. If it doesn't exist, it falls back to 'auto'.
  * @param uid The user's Firebase UID.
  * @param characterId The ID of the character to load.
  * @returns The game state if found, otherwise null.
@@ -132,15 +141,26 @@ export async function loadCharacter(uid: string, characterId: string): Promise<G
   };
 
   try {
-    // 1. Prioritize loading the manual save.
-    const manualSaveRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, 'manual');
-    const manualDocSnap = await getDoc(manualSaveRef);
-    const manualSaveData = processDoc(manualDocSnap);
+    // 1. Prioritize loading the latest manual save.
+    const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
+    const q = query(
+        savesCollectionRef,
+        where(documentId(), '>=', 'manual_'),
+        where(documentId(), '<', 'manual`'), // ` is the character after _ in ASCII
+        orderBy(documentId(), "desc"),
+        limit(1)
+    );
+    const manualSaveSnapshot = await getDocs(q);
 
-    if (manualSaveData) {
-      console.log(`Firestore Info: Loaded 'manual' save for character ${characterId}.`);
-      return manualSaveData;
+    if (!manualSaveSnapshot.empty) {
+      const latestManualDoc = manualSaveSnapshot.docs[0];
+      const manualSaveData = processDoc(latestManualDoc);
+       if (manualSaveData) {
+        console.log(`Firestore Info: Loaded latest manual save for character ${characterId}.`);
+        return manualSaveData;
+      }
     }
+
 
     // 2. If no manual save, fall back to the auto save.
     const autoSaveRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, 'auto');
