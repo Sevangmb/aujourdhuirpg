@@ -62,6 +62,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **INVENTAIRE INTELLIGENT :** Analysez l'inventaire détaillé du joueur (\`playerInventory\`). Créez des choix qui permettent d'utiliser des objets spécifiques. La narration peut faire référence à l'histoire d'un objet (\`memory.acquisitionStory\`) pour plus de cohérence. Par exemple, si le joueur a une clé trouvée au Louvre, proposez un choix pour l'essayer sur une serrure ancienne.
 - **ÉVOLUTION DES OBJETS :** Certains objets, comme l'Appareil Photo Vintage, peuvent évoluer. Si le joueur utilise un tel objet de manière pertinente ou réussit une action avec, accordez-lui de l'expérience via le champ \`itemUpdates\`. Spécifiez l'instanceId de l'objet et le montant d'XP gagné. Si un objet gagne assez d'expérience, il peut évoluer et se transformer. N'oubliez pas de décrire cet événement passionnant dans votre narration !
+- **MÉMOIRE DES OBJETS :** Si votre narration décrit l'utilisation d'un objet spécifique de l'inventaire du joueur, vous DEVEZ le consigner dans le champ de sortie \`itemsUsed\`. Fournissez l'\`instanceId\` de l'objet et une brève \`usageDescription\` (ex: 'Utilisé pour prendre la photo du document'). C'est crucial pour que les objets accumulent une histoire.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une \`newTransactions\` avec un montant négatif. C'est crucial pour l'immersion.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles (\`getWeatherTool\`, \`getNearbyPoisTool\`, \`getWikipediaInfoTool\`, \`getNewsTool\`) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante (un musée à proximité, un fait historique sur le lieu), créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
@@ -76,7 +77,7 @@ const PROMPT_PLAYER_CONTEXT = `
 - Joueur : {{{playerName}}}, {{{playerGender}}}, {{{playerAge}}} ans. Passé : {{{playerBackground}}}.
 - Lieu : {{{playerLocation.name}}}
 - Argent : {{{playerMoney}}}€
-- Inventaire : {{#each playerInventory}}{{{this.name}}} (valeur: {{{this.economics.base_value}}}€, état: {{{this.condition.durability}}}%) x{{{this.quantity}}}; {{/each}}
+- Inventaire : {{#each playerInventory}}{{{this.name}}} (ID: {{{this.instanceId}}}, valeur: {{{this.economics.base_value}}}€, état: {{{this.condition.durability}}}%) x{{{this.quantity}}}; {{/each}}
 - Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}}
 - Compétences :
   - Cognitives: {{#each playerSkills.cognitive}}{{{@key}}}: {{{this}}}, {{/each}}

@@ -132,6 +132,12 @@ export const GenerateScenarioOutputSchema = z.object({
     xpGained: z.number().describe("La quantité de points d'expérience que l'objet a gagné.")
   })).optional().describe("Mises à jour des objets dans l'inventaire du joueur, comme un gain d'expérience."),
 
+  /** Objets de l'inventaire utilisés durant cette action. L'IA doit spécifier quel(s) objet(s) ont été utilisés pour que leur historique soit mis à jour. */
+  itemsUsed: z.array(z.object({
+    instanceId: z.string().describe("L'ID d'instance unique de l'objet à mettre à jour."),
+    usageDescription: z.string().describe("Très brève description de l'utilisation (ex: 'Pour crocheter la serrure', 'Pour prendre une photo du suspect').")
+  })).optional().describe("Liste des objets de l'inventaire utilisés durant cette action."),
+
   /** Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense). */
   newTransactions: z.array(NewTransactionSchema).optional().describe("Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense)."),
   

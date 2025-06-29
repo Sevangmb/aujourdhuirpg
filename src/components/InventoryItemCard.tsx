@@ -38,7 +38,14 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
                     <CardTitle className="text-md font-semibold cursor-help">{item.name}</CardTitle>
                   </TooltipTrigger>
                   <TooltipContent side="top" align="start">
-                    <p className="max-w-xs text-xs">{item.memory.acquisitionStory}</p>
+                    <div className="max-w-xs text-xs space-y-1">
+                        <p><strong>Acquis :</strong> {item.memory.acquisitionStory}</p>
+                        {item.memory.usageHistory.length > 0 && (
+                            <p>
+                                <strong>Dernier usage :</strong> {item.memory.usageHistory[item.memory.usageHistory.length - 1].event}
+                            </p>
+                        )}
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -104,6 +104,15 @@ const GamePlay: React.FC = () => {
         allActions.push({ type: 'SET_INVENTORY', payload: newInventory });
       }
       
+      // Process item usage logs
+      if (aiOutput.itemsUsed && aiOutput.itemsUsed.length > 0) {
+        aiOutput.itemsUsed.forEach(usage => {
+          allActions.push({ 
+            type: 'LOG_ITEM_USAGE', 
+            payload: { instanceId: usage.instanceId, usageDescription: usage.usageDescription } 
+          });
+        });
+      }
       dispatch({ type: 'TRIGGER_EVENT_ACTIONS', payload: allActions });
 
     } catch (error) {

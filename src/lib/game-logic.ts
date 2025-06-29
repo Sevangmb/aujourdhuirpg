@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -33,6 +33,7 @@ export type GameAction =
   | { type: 'SET_INVENTORY'; payload: IntelligentItem[] }
   | { type: 'ADD_GAME_TIME'; payload: number }
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
+  | { type: 'LOG_ITEM_USAGE'; payload: { instanceId: string; usageDescription: string; } }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
   // AI-driven actions from simplified schemas
   | { type: 'ADD_QUEST'; payload: AddQuestPayload }
@@ -119,6 +120,28 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, player: { ...state.player, ...action.payload } };
     case 'SET_INVENTORY':
         return { ...state, player: { ...state.player, inventory: action.payload } };
+    case 'LOG_ITEM_USAGE': {
+        const { instanceId, usageDescription } = action.payload;
+        const updatedInventory = (state.player.inventory || []).map(item => {
+            if (item.instanceId === instanceId) {
+                const newUsageRecord: ItemUsageRecord = {
+                    timestamp: new Date().toISOString(), // Use real-world time for this log
+                    event: usageDescription,
+                    locationName: state.player.currentLocation.name,
+                };
+                return {
+                    ...item,
+                    memory: {
+                        ...item.memory,
+                        usageHistory: [...item.memory.usageHistory, newUsageRecord],
+                        lastUsed: new Date().toISOString(),
+                    },
+                };
+            }
+            return item;
+        });
+        return { ...state, player: { ...state.player, inventory: updatedInventory } };
+    }
     case 'ADD_GAME_TIME':
       return { ...state, gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload };
     
