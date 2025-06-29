@@ -134,6 +134,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       condition: {
         durability: typeof item.condition === 'number' ? item.condition : (item.condition?.durability ?? 100),
       },
+      skillModifiers: item.skillModifiers || masterItem.skillModifiers,
       memory: {
         acquiredAt: item.acquiredAt || item.memory?.acquiredAt || new Date(0).toISOString(),
         acquisitionStory: item.memory?.acquisitionStory || "Fait partie de votre équipement de départ.",

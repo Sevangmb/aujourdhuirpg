@@ -37,7 +37,8 @@ const GamePlay: React.FC = () => {
             player.skills,
             player.stats,
             choice.skillCheck.skill,
-            choice.skillCheck.difficulty
+            choice.skillCheck.difficulty,
+            player.inventory, // Pass inventory for accurate calculation
           );
           return { ...choice, successProbability: probability };
         }
@@ -58,7 +59,7 @@ const GamePlay: React.FC = () => {
 
     try {
       const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice, weatherData);
-      notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
+      notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 4000 }));
       
       const tempGameStateForAI = { ...gameState, player: updatedPlayer };
       const inputForAI = prepareAIInput(tempGameStateForAI, choice.text, eventsForAI);
@@ -128,7 +129,7 @@ const GamePlay: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
-      <main className="flex-grow bg-muted/20 p-4 md:p-6 space-y-6">
+      <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6">
         <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
         {!isLoading && (
           <ChoiceSelectionDisplay
@@ -138,7 +139,7 @@ const GamePlay: React.FC = () => {
             aiRecommendation={currentScenario.aiRecommendation || null}
           />
         )}
-      </main>
+      </div>
 
       {!isMobile && <GameSidebar />}
       {isMobile && (

@@ -34,6 +34,7 @@ export interface IntelligentItem {
   quantity: number;
   stackable: boolean; 
   effects?: Partial<PlayerStats>;
+  skillModifiers?: Partial<Record<string, number>>;
   
   // State that evolves with gameplay
   condition: {

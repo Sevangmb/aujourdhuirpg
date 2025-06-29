@@ -67,6 +67,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: false,
     economics: { base_value: 4, rarity_multiplier: 0.7 },
     xpToNextItemLevel: 50,
+    skillModifiers: { 'cognitive.memory': 5 },
   },
    {
     id: 'map_paris_01',
@@ -178,6 +179,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Wrench',
     stackable: false,
     economics: { base_value: 20, rarity_multiplier: 1.4 },
+    skillModifiers: { 'technical.crafting': 5 },
     xpToNextItemLevel: 0,
   },
   {
@@ -208,6 +210,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'KeySquare',
     stackable: false,
     economics: { base_value: 30, rarity_multiplier: 2.0 },
+    skillModifiers: { 'physical.dexterity': 10 },
     xpToNextItemLevel: 0,
   },
   {

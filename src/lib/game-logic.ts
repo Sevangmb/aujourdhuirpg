@@ -20,7 +20,7 @@ export function getInitialScenario(player: Player): Scenario {
 // --- Game Actions & Reducer ---
 // Types for simplified AI payloads
 type AddQuestPayload = Omit<Quest, 'id' | 'dateAdded' | 'dateCompleted' | 'status' | 'objectives'> & { objectives: string[] };
-type AddPnjPayload = Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'notes'>;
+type AddPnjPayload = Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'notes' | 'trustLevel'>;
 type AddCluePayload = Omit<Clue, 'id' | 'dateFound'>;
 type AddDocumentPayload = Omit<GameDocument, 'id' | 'dateAcquired'>;
 
@@ -177,7 +177,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'ADD_PNJ': {
         const newPNJ: PNJ = { 
-            id: action.payload.id || uuidv4(),
+            id: uuidv4(),
             name: action.payload.name,
             description: action.payload.description,
             relationStatus: action.payload.relationStatus,
@@ -335,6 +335,7 @@ export async function calculateDeterministicEffects(
       newPlayerState.stats,
       skill,
       difficulty,
+      newPlayerState.inventory,
       weatherModifier
     );
 
@@ -346,14 +347,22 @@ export async function calculateDeterministicEffects(
     };
     const outcomeText = outcomeTextMap[skillCheckResult.degreeOfSuccess];
 
+    let itemBonusText = "";
+    if (skillCheckResult.itemContributions.length > 0) {
+        const itemDetails = skillCheckResult.itemContributions
+            .map(c => `${c.name} (${c.bonus > 0 ? '+' : ''}${c.bonus})`)
+            .join(', ');
+        itemBonusText = ` | Objets: ${itemDetails}`;
+    }
+
     notifications.push({
       type: 'skill_check',
       title: `Jet de ${skill}`,
-      description: `${outcomeText} (Jet: ${skillCheckResult.rollValue} + Mod: ${skillCheckResult.effectiveScore} = ${skillCheckResult.totalAchieved} vs Diff: ${skillCheckResult.difficultyTarget})`
+      description: `${outcomeText} (Jet: ${skillCheckResult.rollValue} + Mod: ${skillCheckResult.effectiveScore}${itemBonusText} = ${skillCheckResult.totalAchieved} vs Diff: ${skillCheckResult.difficultyTarget})`
     });
 
     eventsForAI.push(
-      `Résultat du jet de compétence (${skill}) : ${outcomeText} (Jet: ${skillCheckResult.rollValue} + Score: ${skillCheckResult.effectiveScore} = ${skillCheckResult.totalAchieved} vs Difficulté: ${skillCheckResult.difficultyTarget})`
+      `Résultat du jet de compétence (${skill}) : ${outcomeText} (Jet: ${skillCheckResult.rollValue} + Score: ${skillCheckResult.effectiveScore} vs Difficulté: ${skillCheckResult.difficultyTarget})`
     );
 
     // --- APPLY SKILL GAINS ON SUCCESS ---
