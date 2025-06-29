@@ -27,7 +27,7 @@ export type GameAction =
   // AI-driven actions
   | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded' | 'dateCompleted'> }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
-  | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> }
+  | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'dispositionScore'> & { dispositionScore?: number } }
   | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
   | { type: 'ADD_CLUE'; payload: Omit<Clue, 'dateFound'> }
   | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
@@ -152,8 +152,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             ...action.payload, 
             firstEncountered: state.player.currentLocation.name, 
             lastSeen: nowISO, 
-            interactionHistory: [action.payload.newInteractionLogEntry || "Rencontre initiale."],
+            interactionHistory: ["Rencontre initiale."],
             dispositionScore: action.payload.dispositionScore || 0,
+            trustLevel: 50, // Initialize with default trust
+            notes: [], // Initialize with empty notes
         };
         return {
             ...state,

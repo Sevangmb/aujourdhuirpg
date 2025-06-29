@@ -5,14 +5,10 @@
 import { z } from 'genkit';
 
 export const PNJInteractionSchema = z.object({
-  id: z.string().describe("Identifiant unique du PNJ (ex: 'pnj_marie_cafe', 'pnj_detective_dupont'). Doit être unique et mémorable."),
-  name: z.string().describe("Nom du PNJ."),
-  description: z.string().describe("Brève description du PNJ ou de son rôle actuel."),
-  relationStatus: z.enum(['friendly', 'neutral', 'hostile', 'allied', 'rival', 'unknown']).default('neutral').describe("Relation actuelle du joueur avec ce PNJ."),
+  id: z.string().describe("Identifiant unique et mémorable du PNJ (ex: 'pnj_marie_cafe', 'pnj_detective_dupont')."),
+  name: z.string().describe("Nom complet du PNJ."),
+  description: z.string().describe("Brève description du PNJ (apparence, rôle)."),
+  relationStatus: z.enum(['friendly', 'neutral', 'hostile', 'allied', 'rival', 'unknown']).default('neutral').describe("Relation initiale du PNJ avec le joueur."),
   importance: z.enum(['major', 'minor', 'recurring']).default('minor').describe("Importance du PNJ dans l'histoire."),
-  trustLevel: z.number().min(0).max(100).optional().describe("Niveau de confiance du PNJ envers le joueur (0-100)."),
-  firstEncountered: z.string().optional().describe("Contexte de la première rencontre (si c'est la première fois)."),
-  notes: z.array(z.string()).optional().describe("Notes à ajouter sur ce PNJ (actions mémorables, informations clés données)."),
-  dispositionScore: z.number().optional().describe("Score de disposition du PNJ envers le joueur après l'interaction. Peut être un score initial ou une mise à jour."),
-  newInteractionLogEntry: z.string().optional().describe("Nouvelle entrée à ajouter à l'historique des interactions avec le PNJ.")
-}).describe("Structure pour enregistrer ou mettre à jour une interaction avec un PNJ.");
+  dispositionScore: z.number().optional().describe("Score initial de disposition du PNJ envers le joueur (ex: -50 pour hostile, 50 pour amical).")
+}).describe("Structure pour un nouveau PNJ rencontré par le joueur.");
