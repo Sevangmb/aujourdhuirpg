@@ -39,7 +39,7 @@ export async function saveGameState(state: GameState): Promise<SaveGameResult> {
   
   result.localSaveSuccess = saveGameStateToLocal(state);
 
-  if (state.player && state.player.uid) {
+  if (state.player && state.player.uid && !state.player.isAnonymous) {
     try {
       await saveGameStateToFirestore(state.player.uid, state);
       result.cloudSaveSuccess = true;
@@ -54,6 +54,7 @@ export async function saveGameState(state: GameState): Promise<SaveGameResult> {
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   const player: Player = {
     uid: savedPlayer?.uid,
+    isAnonymous: savedPlayer?.isAnonymous,
     name: savedPlayer?.name || '',
     gender: savedPlayer?.gender || "Préfère ne pas préciser",
     age: savedPlayer?.age || 25,
@@ -84,9 +85,16 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   }
 
   if (savedPlayer?.inventory && savedPlayer.inventory.length > 0) {
-    player.inventory = savedPlayer.inventory.map(item => ({
-      ...getMasterItemById(item.id)!, ...item
-    })).filter(Boolean) as InventoryItem[];
+    player.inventory = savedPlayer.inventory.map(item => {
+      const masterItem = getMasterItemById(item.id);
+      if (!masterItem) {
+        console.warn(`Could not find master item for id ${item.id} during hydration.`);
+        return null;
+      }
+      return {
+        ...masterItem, ...item
+      }
+    }).filter(Boolean) as InventoryItem[];
   } else {
     player.inventory = initialInventory.map(item => ({...item}));
   }

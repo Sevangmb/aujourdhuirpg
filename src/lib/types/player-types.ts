@@ -38,6 +38,7 @@ export type Alignment = {
 
 export type Player = {
   uid?: string; // Firebase Auth UID, optional for anonymous or pre-auth states
+  isAnonymous?: boolean;
   name: string;
   gender: string;
   age: number;

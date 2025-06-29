@@ -54,20 +54,24 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
     setIsLoadingState(true);
     console.log("AuthenticatedAppView: Performing initial load for user:", user.uid);
-    let loadedState = await loadGameStateFromFirestore(user.uid);
+    let loadedState: GameState | null = null;
+    
+    if (!user.isAnonymous) {
+        loadedState = await loadGameStateFromFirestore(user.uid);
+    }
+
+    if (!loadedState) {
+        loadedState = loadGameStateFromLocal();
+    }
+    
     if (loadedState && loadedState.player) { // Check if player exists to consider it a valid loaded state
-      console.log("AuthenticatedAppView: Game state loaded from Firestore:", loadedState);
-      setGameState(loadedState);
+      console.log("AuthenticatedAppView: Game state loaded:", loadedState);
+      const hydratedPlayer = hydratePlayer(loadedState.player);
+      setGameState({ ...loadedState, player: hydratedPlayer });
       setIsCharacterCreationMode(false);
     } else {
-      loadedState = loadGameStateFromLocal();
-      if (loadedState && loadedState.player) { // Check if player exists
-        console.log("AuthenticatedAppView: Game state loaded from local storage:", loadedState);
-        setGameState(loadedState);
-        setIsCharacterCreationMode(false);
-      } else {
         console.log("AuthenticatedAppView: No saved game state found or invalid state, initializing new game shell for character creation.");
-        const initialPlayer = hydratePlayer({uid: user.uid}); // Pass UID for hydration
+        const initialPlayer = hydratePlayer({uid: user.uid, isAnonymous: user.isAnonymous }); // Pass UID for hydration
         const initialScenario = getInitialScenario(initialPlayer);
         setGameState({
           currentScenario: initialScenario,
@@ -78,7 +82,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
           toneSettings: initialPlayer.toneSettings,
         });
         setIsCharacterCreationMode(true);
-      }
     }
     setIsLoadingState(false);
   }, [user]);
@@ -247,6 +250,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       const hydratedPlayer = hydratePlayer({
           ...playerData,
           uid: user.uid,
+          isAnonymous: user.isAnonymous,
           avatarUrl: playerData.avatarUrl,
           startingLocationName: playerData.startingLocation,
       });
@@ -305,10 +309,12 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     }
     console.log("Restarting game for user:", user.uid);
     setIsLoadingState(true);
-    await deletePlayerStateFromFirestore(user.uid);
+    if (!user.isAnonymous) {
+        await deletePlayerStateFromFirestore(user.uid);
+    }
     clearGameState();
     
-    const newPlayerBase = hydratePlayer({ uid: user.uid });
+    const newPlayerBase = hydratePlayer({ uid: user.uid, isAnonymous: user.isAnonymous });
     newPlayerBase.currentLocation = {
         latitude: Math.random() * 180 - 90,
         longitude: Math.random() * 360 - 180,

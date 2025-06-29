@@ -22,7 +22,7 @@ import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 interface GamePlayProps {
   initialGameState: GameState;
   onRestart: () => void;
-  onStateUpdate: (newState: GameState) => void;
+  onStateUpdate: (newState: GameState | ((prevState: GameState) => GameState)) => void;
   weatherData: WeatherData | null;
   weatherLoading: boolean;
   weatherError: string | null;
@@ -62,6 +62,15 @@ const GamePlay: React.FC<GamePlayProps> = ({
     onStateUpdate(newState);
     await saveGameState(newState);
   }, [initialGameState, onStateUpdate]);
+  
+  const dispatchGameActions = useCallback((actions: GameAction[]) => {
+      onStateUpdate(prevState => {
+        const nextState = actions.reduce(gameReducer, prevState);
+        saveGameState(nextState); // Save state after all actions are reduced
+        return nextState;
+      });
+  }, [onStateUpdate]);
+
 
   const processAIEvents = useCallback((aiOutput: GenerateScenarioOutput) => {
     const actions: GameAction[] = [];
@@ -69,7 +78,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
 
     if (aiOutput.newQuests) {
       aiOutput.newQuests.forEach(quest => {
-        actions.push({ type: 'ADD_QUEST', payload: quest as Quest }); // Cast because AI returns input type
+        actions.push({ type: 'ADD_QUEST', payload: quest as Omit<Quest, 'dateAdded'> });
         notifications.push({ type: 'quest_added', title: 'Nouvelle Quête', description: `Vous avez commencé la quête : "${quest.title}".` });
       });
     }
@@ -81,7 +90,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     }
     if (aiOutput.newPNJs) {
         aiOutput.newPNJs.forEach(pnj => {
-          actions.push({ type: 'ADD_PNJ', payload: pnj as PNJ });
+          actions.push({ type: 'ADD_PNJ', payload: pnj as Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> });
           notifications.push({ type: 'pnj_encountered', title: 'Nouvelle Rencontre', description: `Vous avez rencontré ${pnj.name}.` });
         });
     }
@@ -101,13 +110,13 @@ const GamePlay: React.FC<GamePlayProps> = ({
     }
     if (aiOutput.newClues) {
       aiOutput.newClues.forEach(clue => {
-        actions.push({ type: 'ADD_CLUE', payload: clue });
+        actions.push({ type: 'ADD_CLUE', payload: clue as any });
         notifications.push({ type: 'clue_added', title: 'Nouvel Indice', description: `Indice ajouté : "${clue.title}".` });
       });
     }
      if (aiOutput.newDocuments) {
       aiOutput.newDocuments.forEach(doc => {
-        actions.push({ type: 'ADD_DOCUMENT', payload: doc });
+        actions.push({ type: 'ADD_DOCUMENT', payload: doc as any });
         notifications.push({ type: 'document_added', title: 'Nouveau Document', description: `Document obtenu : "${doc.title}".` });
       });
     }
@@ -119,11 +128,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
     // Show all notifications
     notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 3000 }));
 
-  }, [onStateUpdate]);
-
-  const dispatchGameActions = useCallback((actions: GameAction[]) => {
-      onStateUpdate(prevState => actions.reduce(gameReducer, prevState));
-  }, [onStateUpdate]);
+  }, [dispatchGameActions, toast]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
     const { player, currentScenario } = initialGameState;
@@ -162,17 +167,8 @@ const GamePlay: React.FC<GamePlayProps> = ({
       }
 
       onStateUpdate(finalGameState);
-      processAIEvents(aiOutput); // This will dispatch further state updates from AI
+      processAIEvents(aiOutput);
 
-      // Final save after all updates
-      // The state might be stale here, so we get the latest from a state update callback if possible
-      // For now, let's save the deterministically updated state, AI events will save in their own cycle
-      // A better approach would be to batch all updates and save once.
-      // Let's rely on the onStateUpdate hook to eventually save the final state.
-      // We need to re-fetch the state after processAIEvents to save the most recent version.
-      // This is getting complex, so let's simplify: save happens inside dispatchGameActions
-      await saveGameState(finalGameState); // Save the initial part of the state
-      
       setPlayerInput('');
 
     } catch (error) {

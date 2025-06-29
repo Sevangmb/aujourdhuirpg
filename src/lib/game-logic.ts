@@ -77,7 +77,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     
     // --- AI-Driven Reducers ---
     case 'ADD_QUEST': {
-        const newQuest = { ...action.payload, dateAdded: nowISO };
+        const newQuest = { ...action.payload, dateAdded: nowISO, status: 'active' as const };
         return {
             ...state,
             player: { ...state.player, questLog: [...state.player.questLog, newQuest] },

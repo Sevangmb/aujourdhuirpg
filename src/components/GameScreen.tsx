@@ -60,7 +60,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       <GamePlay
         initialGameState={gameState}
         onRestart={onRestartGame} // Pass down if GamePlay needs it
-        onStateUpdate={setGameState}
+        onStateUpdate={setGameState as any} // Cast to any to handle complex state updates
         weatherData={weatherData}
         weatherLoading={weatherLoading}
         weatherError={weatherError}
