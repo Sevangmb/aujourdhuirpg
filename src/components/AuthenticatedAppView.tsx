@@ -4,8 +4,8 @@ import { User } from 'firebase/auth'; // Assuming User type from firebase/auth
 
 import { type GenerateScenarioInput, generateScenario } from '@/ai/flows/generate-scenario';
 import { aiService } from '@/services/aiService';
-import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary } from '@/lib/types';
-import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation } from '@/lib/game-logic';
+import type { GameState, Player, ToneSettings, Position, GeoIntelligence, CharacterSummary, JournalEntry, HistoricalContact } from '@/lib/types';
+import { getInitialScenario, prepareAIInput, fetchPoisForCurrentLocation, gameReducer } from '@/lib/game-logic';
 import { saveGameState, type SaveGameResult, hydratePlayer } from '@/lib/game-state-persistence';
 import { defaultAvatarUrl, initialPlayerLocation, UNKNOWN_STARTING_PLACE_NAME, initialToneSettings } from '@/data/initial-game-data';
 import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
@@ -20,6 +20,10 @@ import { fetchWikipediaSummary } from '@/services/wikipedia-service';
 import GameScreen from '@/components/GameScreen';
 import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen';
 import LoadingState from './LoadingState';
+import { findAndAdaptHistoricalContactsForLocation, type AdaptedContact } from '@/services/historical-contact-service';
+import { HistoricalEncounterModal } from './HistoricalEncounterModal';
+import { v4 as uuidv4 } from 'uuid';
+
 
 interface AuthenticatedAppViewProps {
   user: User;
@@ -47,6 +51,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const [geoIntelligenceData, setGeoIntelligenceData] = useState<GeoIntelligence | null>(null);
   const [geoIntelligenceLoading, setGeoIntelligenceLoading] = useState(false);
   const [geoIntelligenceError, setGeoIntelligenceError] = useState<string | null>(null);
+  const [encounter, setEncounter] = useState<AdaptedContact | null>(null);
 
   const { toast } = useToast();
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -68,6 +73,29 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     fetchCharacterList();
   }, [user, fetchCharacterList]);
 
+  const triggerHistoricalEncounter = useCallback(async (placeName: string) => {
+    if (Math.random() > 0.15) { // 15% chance
+        console.log("Historical encounter check failed (random chance).");
+        return;
+    }
+
+    try {
+        const potentialContacts = await findAndAdaptHistoricalContactsForLocation(placeName);
+        if (potentialContacts && potentialContacts.length > 0) {
+            const knownContactHistoricalNames = new Set(gameState?.player?.historicalContacts?.map(c => c.historical.name));
+            const newPotentialContacts = potentialContacts.filter(p => !knownContactHistoricalNames.has(p.historical.name));
+
+            if (newPotentialContacts.length > 0) {
+                const randomContact = newPotentialContacts[Math.floor(Math.random() * newPotentialContacts.length)];
+                console.log(`Historical encounter triggered for: ${randomContact.historical.name}`);
+                setEncounter(randomContact);
+            }
+        }
+    } catch (error) {
+        console.error("Error triggering historical encounter:", error);
+    }
+  }, [gameState?.player?.historicalContacts]);
+
   // Combined data fetching hook
   useEffect(() => {
     const fetchContextualData = async (location: Position) => {
@@ -75,6 +103,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         fetchLocationImage(location.name, gameState?.player?.era);
         fetchGeoIntelligence(location);
         fetchPoisForLocation(location);
+        triggerHistoricalEncounter(location.name);
     };
 
     if (appMode === 'playing' && gameState?.player?.currentLocation && gameState.player.currentLocation.name !== UNKNOWN_STARTING_PLACE_NAME) {
@@ -329,6 +358,60 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     setIsToneSettingsDialogOpen(false);
   };
   
+  const handleApproachContact = (contactToApproach: AdaptedContact) => {
+    if (!gameState || !gameState.player) return;
+
+    const newContact: HistoricalContact = {
+        id: uuidv4(),
+        historical: contactToApproach.historical,
+        modern: contactToApproach.modern,
+        metAt: {
+            placeName: gameState.player.currentLocation.name,
+            coordinates: {
+                lat: gameState.player.currentLocation.latitude,
+                lng: gameState.player.currentLocation.longitude
+            },
+            date: new Date().toISOString()
+        },
+        relationship: {
+            trustLevel: 50, // Initial trust
+            interactionCount: 1,
+            lastInteraction: new Date().toISOString(),
+        },
+        knowledge: contactToApproach.knowledge,
+    };
+
+    const newJournalEntry: Omit<JournalEntry, 'id' | 'timestamp'> = {
+        type: 'npc_interaction',
+        text: `Vous avez abordé ${newContact.modern.name}, qui a un lien avec ${newContact.historical.name}.`,
+        location: gameState.player.currentLocation,
+    };
+
+    setGameState(currentState => {
+        if (!currentState) return null;
+        let nextState = gameReducer(currentState, { type: 'ADD_HISTORICAL_CONTACT', payload: newContact });
+        nextState = gameReducer(nextState, { type: 'ADD_JOURNAL_ENTRY', payload: newJournalEntry });
+        return nextState;
+    });
+
+    toast({
+        title: "Nouvelle rencontre !",
+        description: `${newContact.modern.name} a été ajouté à votre carnet de contacts.`,
+    });
+
+    setEncounter(null); // Close the modal
+  };
+
+  const handleIgnoreContact = () => {
+      toast({
+          title: "Occasion manquée...",
+          description: "Vous décidez de ne pas aborder la personne. Qui sait ce que vous avez raté ?",
+          duration: 4000
+      });
+      setEncounter(null); // Close the modal
+  };
+
+
   if (appMode === 'loading') {
     return <LoadingState loadingAuth={false} isLoadingState={true} />;
   }
@@ -379,6 +462,11 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         currentSettings={gameState?.toneSettings || initialToneSettings}
         onSave={handleSaveToneSettings}
       />
+       <HistoricalEncounterModal 
+            encounter={encounter}
+            onApproach={handleApproachContact}
+            onIgnore={handleIgnoreContact}
+        />
       <div className="flex-grow overflow-auto">
         <GameScreen
           user={user}

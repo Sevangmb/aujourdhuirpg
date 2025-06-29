@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, InventoryItem, Transaction, HistoricalContact } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -31,7 +31,8 @@ export type GameAction =
   | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
-  | { type: 'ADD_XP'; payload: number };
+  | { type: 'ADD_XP'; payload: number }
+  | { type: 'ADD_HISTORICAL_CONTACT'; payload: HistoricalContact };
 
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -208,6 +209,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return {
             ...state,
             player: { ...state.player, documents: [...(state.player.documents || []), newDocument] },
+        };
+    }
+    case 'ADD_HISTORICAL_CONTACT': {
+        const newContacts = [...(state.player.historicalContacts || []), action.payload];
+        return {
+            ...state,
+            player: { ...state.player, historicalContacts: newContacts },
         };
     }
     default:
