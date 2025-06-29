@@ -14,6 +14,7 @@ import {
   query,
   orderBy,
   limit,
+  type DocumentSnapshot,
 } from 'firebase/firestore';
 
 const USERS_COLLECTION = 'users';
@@ -103,7 +104,8 @@ export async function createNewCharacter(uid: string, gameState: GameState): Pro
 
 
 /**
- * Loads the most recent game state for a character from its 'saves' subcollection.
+ * Loads the game state for a character, prioritizing manual saves.
+ * It first attempts to load the 'manual' save. If it doesn't exist, it falls back to 'auto'.
  * @param uid The user's Firebase UID.
  * @param characterId The ID of the character to load.
  * @returns The game state if found, otherwise null.
@@ -113,26 +115,47 @@ export async function loadCharacter(uid: string, characterId: string): Promise<G
     console.error("Firestore Error: Firestore service is not initialized.");
     return null;
   }
-  try {
-    // Load from the 'saves' subcollection, getting the most recent one.
-    const savesCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION);
-    const q = query(savesCollectionRef, orderBy("lastPlayed", "desc"), limit(1));
-    const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const docSnap = querySnapshot.docs[0];
+  // Helper function to process a document snapshot
+  const processDoc = (docSnap: DocumentSnapshot): GameState | null => {
+    if (docSnap.exists()) {
       const data = docSnap.data();
       // Convert Firestore Timestamp to a serializable format (ISO string)
       if (data.lastPlayed && data.lastPlayed instanceof Timestamp) {
         if (data.player) {
-            data.player.lastPlayed = data.lastPlayed.toDate().toISOString();
+          data.player.lastPlayed = data.lastPlayed.toDate().toISOString();
         }
       }
       return data as GameState;
-    } else {
-      console.log(`Firestore Info: No saves found for character ID ${characterId} for user ${uid}.`);
-      return null;
     }
+    return null;
+  };
+
+  try {
+    // 1. Prioritize loading the manual save.
+    const manualSaveRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, 'manual');
+    const manualDocSnap = await getDoc(manualSaveRef);
+    const manualSaveData = processDoc(manualDocSnap);
+
+    if (manualSaveData) {
+      console.log(`Firestore Info: Loaded 'manual' save for character ${characterId}.`);
+      return manualSaveData;
+    }
+
+    // 2. If no manual save, fall back to the auto save.
+    const autoSaveRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, 'auto');
+    const autoDocSnap = await getDoc(autoSaveRef);
+    const autoSaveData = processDoc(autoDocSnap);
+
+    if (autoSaveData) {
+      console.log(`Firestore Info: No manual save found. Loaded 'auto' save for character ${characterId}.`);
+      return autoSaveData;
+    }
+
+    // 3. If neither save exists.
+    console.log(`Firestore Info: No manual or auto saves found for character ID ${characterId} for user ${uid}.`);
+    return null;
+
   } catch (error) {
     console.error(`Firestore Error: loading character ${characterId} for user ${uid}:`, error);
     return null;
