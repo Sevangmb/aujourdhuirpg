@@ -166,6 +166,7 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
                               <Icon className={`w-8 h-8 ${iconColor} shrink-0`} />
                               <div className="flex-grow">
                                   <p className="font-semibold capitalize">{label}</p>
+                                  {save.aiSummary && <p className="text-sm font-normal text-foreground italic my-1">"{save.aiSummary}"</p>}
                                   <p className="text-xs text-muted-foreground">{new Date(save.timestamp).toLocaleString('fr-FR')}</p>
                                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-2 text-muted-foreground">
                                       <span className="flex items-center gap-1"><User className="w-3 h-3"/>Niv. {save.level}</span>

@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import type { GameState, SaveSummary } from '@/lib/types';
+import type { GameState } from '@/lib/types';
 import {
   collection,
   doc,
@@ -18,10 +18,7 @@ import {
   where,
   documentId,
 } from 'firebase/firestore';
-
-const USERS_COLLECTION = 'users';
-const CHARACTERS_SUBCOLLECTION = 'characters';
-const SAVES_SUBCOLLECTION = 'saves';
+import { generateSaveSummary } from '@/ai/flows/generate-save-summary-flow';
 
 // A summary of a character for the selection screen
 export interface CharacterSummary {
@@ -30,6 +27,17 @@ export interface CharacterSummary {
   avatarUrl: string;
   level: number;
   lastPlayed: string; // ISO string
+}
+
+// A summary of a specific save file for a character
+export interface SaveSummary {
+  id: string;
+  type: 'auto' | 'manual' | 'checkpoint';
+  timestamp: string; // ISO string
+  level: number;
+  locationName: string;
+  playTimeInMinutes: number;
+  aiSummary?: string; // AI-generated summary of the save state
 }
 
 
@@ -79,29 +87,42 @@ export async function saveCharacter(uid: string, characterId: string, gameState:
   if (!uid || !characterId) throw new Error("UID and CharacterID are required to save.");
   if (!gameState.player) throw new Error("Cannot save a game state without a player.");
 
+  // Generate AI Summary
+  let aiSummary = "Le joueur continue son aventure.";
+  try {
+    const summaryInput = {
+      playerName: gameState.player.name,
+      level: gameState.player.progression.level,
+      locationName: gameState.player.currentLocation.name,
+      lastJournalEntries: (gameState.journal || []).slice(-5).map(j => j.text),
+      questLogSummary: (gameState.player.questLog || []).filter(q => q.status === 'active').map(q => q.title),
+    };
+    const summaryResult = await generateSaveSummary(summaryInput);
+    aiSummary = summaryResult.summary;
+  } catch (e) {
+    console.error("Failed to generate AI save summary, using default.", e);
+  }
+
   const characterDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId);
   
-  // For manual/checkpoint saves, create a new document with a timestamped ID.
-  // For auto saves, overwrite the same document to avoid clutter.
+  // Auto-saves overwrite a single 'auto' slot. Manual and Checkpoint saves create new versioned documents.
   const docName = saveType === 'auto' 
     ? 'auto' 
     : `${saveType}_${new Date().toISOString()}`;
+    
   const saveDocRef = doc(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION, characterId, SAVES_SUBCOLLECTION, docName);
 
-
   try {
-    // 1. Save the full game state to the specific save slot in the subcollection
-    const stateToSave = { ...gameState, lastPlayed: serverTimestamp() };
+    const stateToSave = { ...gameState, lastPlayed: serverTimestamp(), aiSummary };
     await setDoc(saveDocRef, stateToSave);
 
-    // 2. Update the parent character document with summary metadata for quick listing
     const metadata = {
       name: gameState.player.name,
       avatarUrl: gameState.player.avatarUrl,
       level: gameState.player.progression.level,
       lastPlayed: serverTimestamp(),
     };
-    await setDoc(characterDocRef, metadata, { merge: true }); // Use merge to not overwrite other fields like createdAt
+    await setDoc(characterDocRef, metadata, { merge: true });
   } catch (error) {
     console.error(`Firestore Error: saving character ${characterId} (type: ${saveType}) for user ${uid}:`, error);
     throw error;
@@ -198,15 +219,17 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map(docSnap => {
-      const data = docSnap.data() as GameState;
+      const data = docSnap.data() as GameState & { aiSummary?: string };
       const timestamp = (data.lastPlayed as Timestamp)?.toDate()?.toISOString() || new Date(0).toISOString();
       const docId = docSnap.id;
       
-      let saveType: SaveSummary['type'] = 'auto';
+      let saveType: SaveSummary['type'] = 'manual'; // Default to manual for any unknown format
       if (docId.startsWith('manual_')) {
           saveType = 'manual';
       } else if (docId.startsWith('checkpoint_')) {
           saveType = 'checkpoint';
+      } else if (docId === 'auto') {
+          saveType = 'auto';
       }
 
       return {
@@ -216,6 +239,7 @@ export async function listSavesForCharacter(uid: string, characterId: string): P
         level: data.player?.progression.level || 1,
         locationName: data.player?.currentLocation.name || 'Lieu inconnu',
         playTimeInMinutes: data.gameTimeInMinutes || 0,
+        aiSummary: data.aiSummary || ``,
       };
     });
   } catch (error) {
