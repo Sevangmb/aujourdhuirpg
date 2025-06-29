@@ -22,3 +22,13 @@ export interface Quest {
   dateAdded: string; // ISO string date
   dateCompleted?: string; // ISO string date
 }
+
+export interface QuestUpdate {
+  questId: string;
+  newStatus?: 'active' | 'completed' | 'failed';
+  updatedObjectives?: Array<{
+    objectiveId: string;
+    isCompleted: boolean;
+  }>;
+  newObjectiveDescription?: string;
+}

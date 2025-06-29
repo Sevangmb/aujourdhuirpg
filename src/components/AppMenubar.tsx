@@ -145,7 +145,61 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
             </MenubarContent>
           </MenubarMenu>
           
-          {/* New Geo-Intelligence Menu */}
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 sm:px-3">
+                <UserIcon className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:ml-1">Joueur</span>
+            </MenubarTrigger>
+            <MenubarContent>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><UserIcon className="mr-2 h-4 w-4" />Fiche Personnage</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                        <DialogHeader><DialogTitle>Fiche Personnage</DialogTitle></DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-2">{player ? <PlayerSheet player={player} /> : <p>Aucune donnée.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><Activity className="mr-2 h-4 w-4" />Statistiques</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
+                        <DialogHeader><DialogTitle>Statistiques du Personnage</DialogTitle></DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">{player ? <StatDisplay stats={player.stats} /> : <p>Stats non disponibles.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                <MenubarSeparator />
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><Briefcase className="mr-2 h-4 w-4" />Inventaire</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
+                        <DialogHeader><DialogTitle>Inventaire</DialogTitle></DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">{player ? <InventoryDisplay inventory={player.inventory} /> : <p>Inventaire non disponible.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                        <DialogHeader><DialogTitle>Journal de Quêtes</DialogTitle></DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">{player ? <QuestJournalDisplay player={player} /> : <p>Journal de quêtes non disponible.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <MenubarItem onSelect={(e) => e.preventDefault()}><Search className="mr-2 h-4 w-4" />Dossier d'Enquête</MenubarItem>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                        <DialogHeader><DialogTitle>Dossier d'Enquête</DialogTitle></DialogHeader>
+                        <ScrollArea className="max-h-[70vh] p-1">{player ? <EvidenceLogDisplay player={player} /> : <p>Dossier d'enquête non disponible.</p>}</ScrollArea>
+                    </DialogContent>
+                </Dialog>
+            </MenubarContent>
+          </MenubarMenu>
+          
           <MenubarMenu>
             <MenubarTrigger className="px-2 sm:px-3">
                 <BrainCircuit className="h-4 w-4" />
@@ -159,9 +213,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                         </MenubarItem>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                        <DialogHeader>
-                            <DialogTitle>Analyse Géospatiale du Lieu</DialogTitle>
-                        </DialogHeader>
+                        <DialogHeader><DialogTitle>Analyse Géospatiale du Lieu</DialogTitle></DialogHeader>
                         <ScrollArea className="max-h-[70vh] p-1">
                            <GeoIntelligenceDisplay
                                 data={geoIntelligenceData}
@@ -174,7 +226,6 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                 </Dialog>
             </MenubarContent>
           </MenubarMenu>
-
 
           {isMobile && currentLocation && (
             <MenubarMenu>
@@ -222,83 +273,6 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
 
           <MenubarMenu>
             <MenubarTrigger className="px-2 sm:px-3">
-                <Activity className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">Stats</span>
-            </MenubarTrigger>
-            <MenubarContent>
-                 <Dialog>
-                    <DialogTrigger asChild>
-                        <MenubarItem onSelect={(e) => e.preventDefault()}><Activity className="mr-2 h-4 w-4" />Voir les Statistiques</MenubarItem>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-xs md:max-w-sm max-h-[80vh]">
-                        <DialogHeader>
-                        <DialogTitle>Statistiques du Personnage</DialogTitle>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[70vh] p-1">
-                          {player ? <StatDisplay stats={player.stats} /> : <p>Statistiques non disponibles.</p>}
-                        </ScrollArea>
-                    </DialogContent>
-                </Dialog>
-            </MenubarContent>
-          </MenubarMenu>
-
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 sm:px-3">
-                <UserIcon className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">Joueur</span>
-            </MenubarTrigger>
-            <MenubarContent>
-                <Dialog>
-                <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><UserIcon className="mr-2 h-4 w-4" />Fiche Personnage</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                    <DialogHeader>
-                    <DialogTitle>Fiche Personnage</DialogTitle>
-                    </DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-2">
-                    {player ? <PlayerSheet player={player} /> : <p>Aucune donnée de personnage.</p>}
-                    </ScrollArea>
-                </DialogContent>
-                </Dialog>
-                <Dialog>
-                <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><Briefcase className="mr-2 h-4 w-4" />Inventaire</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-2xl max-h-[80vh]">
-                    <DialogHeader><DialogTitle>Inventaire</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-1">
-                    {player ? <InventoryDisplay inventory={player.inventory} /> : <p>Inventaire non disponible.</p>}
-                    </ScrollArea>
-                </DialogContent>
-                </Dialog>
-                <Dialog>
-                <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                    <DialogHeader><DialogTitle>Journal de Quêtes</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-1">
-                    {player ? <QuestJournalDisplay player={player} /> : <p>Journal de quêtes non disponible.</p>}
-                    </ScrollArea>
-                </DialogContent>
-                </Dialog>
-                <Dialog>
-                <DialogTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}><Search className="mr-2 h-4 w-4" />Dossier d'Enquête</MenubarItem>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
-                    <DialogHeader><DialogTitle>Dossier d'Enquête</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[70vh] p-1">
-                    {player ? <EvidenceLogDisplay player={player} /> : <p>Dossier d'enquête non disponible.</p>}
-                    </ScrollArea>
-                </DialogContent>
-                </Dialog>
-            </MenubarContent>
-          </MenubarMenu>
-
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 sm:px-3">
                 <BookText className="h-4 w-4" />
                 <span className="sr-only sm:not-sr-only sm:ml-1">Journal</span>
             </MenubarTrigger>
@@ -306,7 +280,7 @@ const AppMenubar: React.FC<AppMenubarProps> = ({
                 <Dialog>
                     <DialogTrigger asChild>
                         <MenubarItem onSelect={(e) => e.preventDefault()}>
-                            <BookText className="mr-2 h-4 w-4" /> Ouvrir le Journal
+                            <BookText className="mr-2 h-4 w-4" /> Ouvrir le Journal de Bord
                         </MenubarItem>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">

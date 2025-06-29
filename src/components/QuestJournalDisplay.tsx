@@ -79,9 +79,9 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
             Terminée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
         </CardFooter>
       )}
-       {quest.status === 'failed' && (
+       {quest.status === 'failed' && quest.dateCompleted && (
         <CardFooter className="text-xs p-2.5 pt-0 text-red-600">
-            Échouée
+            Échouée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
         </CardFooter>
       )}
     </Card>
@@ -207,7 +207,7 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
 
         <TabsContent value="decisions" className="mt-0 pt-1 flex-1 min-h-0"> 
             {decisions.length > 0 ? (
-              decisions.map(decision => <DecisionCard key={decision.id} decision={decision} />)
+              [...decisions].sort((a,b) => new Date(b.dateMade).getTime() - new Date(a.dateMade).getTime()).map(decision => <DecisionCard key={decision.id} decision={decision} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune décision majeure.</CardContent></Card>
             )}
@@ -215,7 +215,7 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
 
         <TabsContent value="pnj" className="mt-0 pt-1 flex-1 min-h-0"> 
             {pnjs.length > 0 ? (
-              pnjs.map(pnj => <PNJCard key={pnj.id} pnj={pnj} />)
+              [...pnjs].sort((a,b) => new Date(b.lastSeen || 0).getTime() - new Date(a.lastSeen || 0).getTime()).map(pnj => <PNJCard key={pnj.id} pnj={pnj} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucun PNJ rencontré.</CardContent></Card>
             )}

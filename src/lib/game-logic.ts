@@ -25,12 +25,12 @@ export type GameAction =
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
   // AI-driven actions
-  | { type: 'ADD_QUEST'; payload: Quest }
+  | { type: 'ADD_QUEST'; payload: Omit<Quest, 'dateAdded' | 'status'> }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
-  | { type: 'ADD_PNJ'; payload: PNJ }
+  | { type: 'ADD_PNJ'; payload: Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> }
   | { type: 'UPDATE_PNJ'; payload: { id: string, updatedDispositionScore?: number, newInteractionLogEntry?: string } }
-  | { type: 'ADD_CLUE'; payload: Clue }
-  | { type: 'ADD_DOCUMENT'; payload: GameDocument }
+  | { type: 'ADD_CLUE'; payload: Omit<Clue, 'dateFound'> }
+  | { type: 'ADD_DOCUMENT'; payload: Omit<GameDocument, 'dateAcquired'> }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
   | { type: 'CHANGE_MONEY'; payload: number }
   | { type: 'ADD_XP'; payload: number };
@@ -77,7 +77,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     
     // --- AI-Driven Reducers ---
     case 'ADD_QUEST': {
-        const newQuest = { ...action.payload, dateAdded: nowISO, status: 'active' as const };
+        const newQuest: Quest = { ...action.payload, dateAdded: nowISO, status: 'active' };
         return {
             ...state,
             player: { ...state.player, questLog: [...(state.player.questLog || []), newQuest] },
@@ -88,8 +88,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const updatedQuestLog = state.player.questLog.map(quest => {
             if (quest.id === questId) {
                 const newQuest = { ...quest };
-                if (newStatus) newQuest.status = newStatus;
-                if (newStatus === 'completed' && !newQuest.dateCompleted) newQuest.dateCompleted = nowISO;
+                if (newStatus) {
+                    newQuest.status = newStatus;
+                    if (['completed', 'failed'].includes(newStatus) && !newQuest.dateCompleted) {
+                        newQuest.dateCompleted = nowISO;
+                    }
+                }
                 if (updatedObjectives) {
                     newQuest.objectives = newQuest.objectives.map(obj => {
                         const update = updatedObjectives.find(u => u.objectiveId === obj.id);
@@ -103,7 +107,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...state, player: { ...state.player, questLog: updatedQuestLog } };
     }
     case 'ADD_PNJ': {
-        const newPNJ = { ...action.payload, firstEncountered: state.player.currentLocation.name, lastSeen: nowISO, interactionHistory: [action.payload.newInteractionLogEntry || "Rencontre initiale."] };
+        const newPNJ: PNJ = { 
+            ...action.payload, 
+            firstEncountered: state.player.currentLocation.name, 
+            lastSeen: nowISO, 
+            interactionHistory: [action.payload.newInteractionLogEntry || "Rencontre initiale."],
+            dispositionScore: action.payload.dispositionScore || 0,
+        };
         return {
             ...state,
             player: { ...state.player, encounteredPNJs: [...(state.player.encounteredPNJs || []), newPNJ] },
@@ -125,14 +135,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...state, player: { ...state.player, progression: newProgression } };
     }
      case 'ADD_CLUE': {
-        const newClue = { ...action.payload, dateFound: nowISO };
+        const newClue: Clue = { ...action.payload, dateFound: nowISO };
         return {
             ...state,
             player: { ...state.player, clues: [...(state.player.clues || []), newClue] },
         };
     }
     case 'ADD_DOCUMENT': {
-        const newDocument = { ...action.payload, dateAcquired: nowISO };
+        const newDocument: GameDocument = { ...action.payload, dateAcquired: nowISO };
         return {
             ...state,
             player: { ...state.player, documents: [...(state.player.documents || []), newDocument] },
