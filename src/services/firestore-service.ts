@@ -12,7 +12,8 @@
  *     - saveId can be 'auto', 'manual_timestamp', or 'checkpoint_timestamp'.
  *     - The document contains the full GameState object.
  */
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import type { GameState } from '@/lib/types';
 import {
   collection,
@@ -201,25 +202,46 @@ export async function saveCharacter(uid: string, characterId: string, gameState:
  * @returns A promise that resolves to the ID of the newly created character document.
  */
 export async function createNewCharacter(uid: string, gameState: GameState): Promise<string> {
-   if (!db) throw new Error("Firestore not available.");
+   if (!db || !storage) throw new Error("Firestore or Storage not available.");
    if (!uid) throw new Error("User UID is required to create a new character.");
    if (!gameState.player) throw new Error("Cannot create a character from a game state without a player.");
+  
+   const mutableGameState = JSON.parse(JSON.stringify(gameState)); // Deep copy to allow mutation
+   const player = mutableGameState.player;
 
   try {
-    // 1. Create the main character document with metadata
+    // 1. Create a reference for the new character first to get an ID
     const charactersCollectionRef = collection(db, USERS_COLLECTION, uid, CHARACTERS_SUBCOLLECTION);
+    const newCharacterDocRef = doc(charactersCollectionRef); // Create a reference with a new unique ID
+    const characterId = newCharacterDocRef.id;
+
+    // 2. Handle avatar upload if it's a data URI
+    if (player.avatarUrl && player.avatarUrl.startsWith('data:image')) {
+        const storageRef = ref(storage, `avatars/${uid}/${characterId}.png`);
+        // The data URI is in the format 'data:image/png;base64,iVBORw0KGgoAAA...'. We need to extract the base64 part.
+        const base64Data = player.avatarUrl.split(',')[1];
+        
+        // Upload the base64 string
+        const snapshot = await uploadString(storageRef, base64Data, 'base64', {
+            contentType: 'image/png'
+        });
+        
+        // Get the public URL and update the player object
+        player.avatarUrl = await getDownloadURL(snapshot.ref);
+    }
+    
+    // 3. Create the main character document with metadata, now using the potentially updated avatarUrl
     const metadata = {
-      name: gameState.player.name,
-      avatarUrl: gameState.player.avatarUrl,
-      level: gameState.player.progression.level,
+      name: player.name,
+      avatarUrl: player.avatarUrl,
+      level: player.progression.level,
       createdAt: serverTimestamp(),
       lastPlayed: serverTimestamp(),
     };
-    const newCharacterDocRef = await addDoc(charactersCollectionRef, metadata);
-    const characterId = newCharacterDocRef.id;
+    await setDoc(newCharacterDocRef, metadata); // Use setDoc on the reference we created earlier
 
-    // 2. Create the initial save state in the 'saves' subcollection using the 'auto' slot
-    await saveCharacter(uid, characterId, gameState, 'auto');
+    // 4. Create the initial save state in the 'saves' subcollection using the 'auto' slot
+    await saveCharacter(uid, characterId, mutableGameState, 'auto');
 
     return characterId;
   } catch (error) {
