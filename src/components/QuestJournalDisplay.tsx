@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { CircleDot, CircleCheck, CircleX, BookUser, Landmark, Swords, Users, Speech, Lightbulb, ShieldAlert, History, MapPin, Info } from 'lucide-react';
+import { CircleDot, CircleCheck, CircleX, BookUser, Landmark, Swords, Users, Speech, Lightbulb, ShieldAlert, History, MapPin, Info, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale/fr';
 
@@ -30,6 +30,15 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
   else if (quest.status === 'failed') { statusBadgeVariant = "destructive"; StatusIcon = CircleX; } // Assuming 'failed' is a possible status
   else if (quest.status === 'active') { statusBadgeVariant = "outline"; StatusIcon = Lightbulb; }
 
+  const getQuestTypeLabel = (type: Quest['type']) => {
+    switch(type) {
+      case 'main': return 'Principale';
+      case 'secondary': return 'Secondaire';
+      case 'job': return 'Job';
+      default: return 'Quête';
+    }
+  }
+
 
   return (
     <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow">
@@ -38,7 +47,7 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
           <div>
             <CardTitle className="text-md font-headline text-primary/90">{quest.title}</CardTitle>
             <CardDescription className="text-xs">
-              {quest.type === 'main' ? 'Principale' : 'Secondaire'} - {quest.dateAdded ? format(new Date(quest.dateAdded), 'dd/MM/yy', { locale: fr }) : ''}
+              {getQuestTypeLabel(quest.type)} - {quest.dateAdded ? format(new Date(quest.dateAdded), 'dd/MM/yy', { locale: fr }) : ''}
             </CardDescription>
           </div>
            <Badge variant={statusBadgeVariant} className="flex items-center gap-1 text-xs px-1.5 py-0.5">
@@ -177,14 +186,16 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
 
   const mainQuests = player.questLog?.filter(q => q.type === 'main') || [];
   const secondaryQuests = player.questLog?.filter(q => q.type === 'secondary') || [];
+  const jobs = player.questLog?.filter(q => q.type === 'job') || [];
   const decisions = player.decisionLog || [];
   const pnjs = player.encounteredPNJs || [];
 
   return (
     <Tabs defaultValue="main" className="w-full flex flex-col h-full"> 
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 shrink-0 mb-1">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 shrink-0 mb-1">
             <TabsTrigger value="main" className="text-xs p-1.5" aria-label={`Quêtes Principales actives (${mainQuests.filter(q=>q.status === 'active').length})`}><Landmark className="w-4 h-4 mr-1" />Principales</TabsTrigger>
             <TabsTrigger value="secondary" className="text-xs p-1.5" aria-label={`Quêtes Secondaires actives (${secondaryQuests.filter(q=>q.status === 'active').length})`}><Swords className="w-4 h-4 mr-1" />Secondaires</TabsTrigger>
+            <TabsTrigger value="jobs" className="text-xs p-1.5" aria-label={`Jobs disponibles (${jobs.filter(q=>q.status === 'active').length})`}><Briefcase className="w-4 h-4 mr-1" />Jobs</TabsTrigger>
             <TabsTrigger value="decisions" className="text-xs p-1.5" aria-label={`Décisions prises (${decisions.length})`}><Speech className="w-4 h-4 mr-1" />Décisions</TabsTrigger>
             <TabsTrigger value="pnj" className="text-xs p-1.5" aria-label={`PNJ rencontrés (${pnjs.length})`}><Users className="w-4 h-4 mr-1" />PNJ</TabsTrigger>
         </TabsList>
@@ -202,6 +213,14 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
                 secondaryQuests.map(quest => <QuestCard quest={quest} key={quest.id} />)
             ) : (
               <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucune quête secondaire.</CardContent></Card>
+            )}
+        </TabsContent>
+
+        <TabsContent value="jobs" className="mt-0 pt-1 flex-1 min-h-0"> 
+            {jobs.length > 0 ? (
+                jobs.map(quest => <QuestCard quest={quest} key={quest.id} />)
+            ) : (
+              <Card className="mt-2"><CardContent className="pt-6 text-center text-muted-foreground">Aucun job disponible.</CardContent></Card>
             )}
         </TabsContent>
 

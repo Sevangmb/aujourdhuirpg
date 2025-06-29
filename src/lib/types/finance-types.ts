@@ -3,13 +3,14 @@ import type { Position } from './game-types';
 
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'investment';
 
-// A simplified list of categories for now.
+// A more comprehensive list of categories.
 export type TransactionCategory =
   | 'salary'
   | 'quest_reward'
   | 'investment_gains'
   | 'found_money'
   | 'sold_item'
+  | 'freelance_gig'
   | 'other_income'
   | 'food_drinks'
   | 'transport'
@@ -19,6 +20,7 @@ export type TransactionCategory =
   | 'entertainment'
   | 'quest_expense'
   | 'investment_purchase'
+  | 'bribe'
   | 'other_expense';
 
 export interface Transaction {

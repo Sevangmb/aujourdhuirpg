@@ -1,6 +1,6 @@
 
 export type QuestStatus = 'active' | 'completed' | 'failed' | 'inactive';
-export type QuestType = 'main' | 'secondary';
+export type QuestType = 'main' | 'secondary' | 'job';
 
 export interface QuestObjective {
   id: string; // e.g., "find_document"

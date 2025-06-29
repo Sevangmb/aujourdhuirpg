@@ -43,14 +43,14 @@ const PROMPT_CORE_TASK = `
 Votre mission a deux volets :
 1.  **Générer le 'scenarioText' :** Rédigez une description narrative captivante en HTML de ce qui se passe après l'action du joueur. Intégrez de manière transparente les 'deterministicEvents' fournis (conséquences déjà calculées par le moteur de jeu). **NE répétez PAS** les calculs de stats dans votre narration. Racontez le *ressenti*.
 2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés (\`newQuests\`, \`newPNJs\`, \`itemsToAddToInventory\`, \`newTransactions\`, etc.) pour créer ces éléments. C'est votre principal moyen de rendre le monde interactif.
+    - **Créer des opportunités :** Le joueur a besoin de gagner sa vie. Intégrez des opportunités de "jobs" (type: 'job') qui sont des quêtes simples axées sur le gain d'argent (ex: "Livrer un colis", "Faire des photos pour un touriste").
+    - **Simuler la vie :** Si le joueur achète quelque chose (un café, un ticket de métro), générez une transaction de dépense ('expense') correspondante.
 
 **Exemple de synergie :**
 - **Action Joueur :** "Je vends la vieille montre au prêteur sur gages."
 - **Votre Narration ('scenarioText') :** "<p>Le prêteur sur gages examine la montre à la loupe, puis hoche la tête. 'Je peux vous en donner 50 euros', dit-il en sortant quelques billets de sa caisse.</p>"
 - **Vos Événements de Jeu (Sortie JSON) :**
   - \\\`newTransactions\\\`: [ { "amount": 50, "type": "income", "category": "sold_item", "description": "Vente d'une vieille montre" } ]
-  - \\\`itemsToAddToInventory\\\`: [ { "itemId": "mysterious_key_01", "quantity": 1 } ]
-  - \\\`newQuests\\\`: [ { "id": "enquete_carnet_01", "title": "Le Carnet Mystérieux", "description": "Vous avez trouvé un carnet intriguant. Son contenu pourrait révéler des secrets.", "type": "secondary", "objectives": [...] } ]
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -67,6 +67,7 @@ const PROMPT_PLAYER_CONTEXT = `
 **Contexte du Joueur et du Monde :**
 - Joueur : {{{playerName}}}, {{{playerGender}}}, {{{playerAge}}} ans. Passé : {{{playerBackground}}}.
 - Lieu : {{{playerLocation.name}}}
+- Argent : {{{playerMoney}}}€
 - Stats Actuelles : {{#each playerStats}}{{{@key}}}: {{{this}}} {{/each}} (Utilisez pour colorer la narration)
 - Tonalité : {{#if toneSettings}}{{#each toneSettings}}{{{@key}}}: {{{this}}} {{/each}}{{else}}(Équilibrée){{/if}}
 - Scène Précédente : {{{currentScenario}}}

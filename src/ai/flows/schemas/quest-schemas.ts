@@ -14,7 +14,7 @@ export const QuestInputSchema = z.object({
   id: z.string().describe("Identifiant unique de la quête (ex: 'quete_principale_01', 'secondaire_cafe_mystere'). Doit être unique et mémorable."),
   title: z.string().describe("Titre de la quête."),
   description: z.string().describe("Description générale de la quête."),
-  type: z.enum(['main', 'secondary']).describe("Type de quête (principale ou secondaire)."),
+  type: z.enum(['main', 'secondary', 'job']).describe("Type de quête (principale, secondaire, ou un 'job'/'gig' qui est principalement pour gagner de l'argent)."),
   status: z.enum(['active', 'inactive', 'completed', 'failed']).default('active').describe("Statut de la quête."),
   objectives: z.array(QuestObjectiveInputSchema).describe("Liste des objectifs de la quête."),
   giver: z.string().optional().describe("Nom du PNJ qui a donné la quête. OMITTIR si pas de PNJ donneur spécifique."),
