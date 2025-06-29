@@ -282,13 +282,8 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     try {
       const locationData = await getPositionData(playerData.startingLocation);
 
-      const fullPlayerData = {
-        ...playerData,
-        era: 'Époque Contemporaine' as GameEra,
-      };
-
       let hydratedPlayer = hydratePlayer({
-          ...fullPlayerData, uid: user.uid, isAnonymous: user.isAnonymous,
+          ...playerData, uid: user.uid, isAnonymous: user.isAnonymous,
       });
       hydratedPlayer.currentLocation = {
           latitude: locationData.latitude!,
@@ -319,7 +314,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setGameState(finalGameState);
       setAppMode('playing');
 
-      toast({ title: "Personnage créé !", description: `${fullPlayerData.name} est prêt(e) pour l'aventure.` });
+      toast({ title: "Personnage créé !", description: `${playerData.name} est prêt(e) pour l'aventure.` });
 
     } catch (error) {
       console.error("Error during character creation:", error);

@@ -36,7 +36,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 
 // --- REFACTORED PROMPT (IN FRENCH) ---
 
-const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel dans la France contemporaine. Votre écriture doit être en français.`;
+const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{playerEra}}}**. Votre écriture doit être en français.`;
 
 const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire ET Diriger le Jeu**

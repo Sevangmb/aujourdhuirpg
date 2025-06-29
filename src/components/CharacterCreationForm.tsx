@@ -8,11 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Sparkles, Palette } from 'lucide-react';
+import { Loader2, Sparkles, Palette, History } from 'lucide-react';
 import Image from 'next/image';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
-import type { GameTone, ToneSettings } from '@/lib/types';
-import { AVAILABLE_TONES } from '@/lib/types';
+import type { GameTone, ToneSettings, GameEra } from '@/lib/types';
+import { AVAILABLE_TONES, AVAILABLE_ERAS } from '@/lib/types';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { generatePlayerAvatar } from '@/ai/flows/generate-player-avatar-flow';
@@ -29,6 +29,7 @@ export interface FullCharacterFormData {
   background: string;
   avatarUrl: string;
   toneSettings: ToneSettings;
+  era: GameEra;
 }
 
 interface CharacterCreationFormProps {
@@ -43,6 +44,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   const [gender, setGender] = useState('Préfère ne pas préciser');
   const [origin, setOrigin] = useState(countries[0]); // Default to the first country
   const [startingLocation, setStartingLocation] = useState(predefinedLocationsByCountry[countries[0]][0]);
+  const [era, setEra] = useState<GameEra>('Époque Contemporaine');
   const [background, setBackground] = useState('');
   const [error, setError] = useState('');
   const [toneSettings, setToneSettings] = useState<ToneSettings>(
@@ -80,7 +82,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             age: Number(age),
             origin,
             playerBackground: background,
-            era: 'Époque Contemporaine',
+            era,
         });
         if (result.imageUrl) {
             setAvatarUrl(result.imageUrl);
@@ -118,6 +120,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
       background,
       avatarUrl,
       toneSettings,
+      era,
     });
   };
 
@@ -163,6 +166,15 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
             
             {/* Right Column: Location, Background, Tones */}
             <div className="space-y-4 md:col-span-1">
+                <div>
+                    <Label htmlFor="era" className="flex items-center"><History className="w-4 h-4 mr-2"/> Époque de Départ</Label>
+                    <Select value={era} onValueChange={(value) => setEra(value as GameEra)} disabled={isSubmitting}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {AVAILABLE_ERAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
                 <div>
                     <Label htmlFor="origin">Pays d'Origine</Label>
                     <Select value={origin} onValueChange={setOrigin} disabled={isSubmitting}>
