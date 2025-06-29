@@ -15,11 +15,12 @@ const CURRENT_YEAR = new Date().getFullYear();
  * @returns A connection type string.
  */
 function determineConnectionType(p: HistoricalPersonality): ModernIdentity['connectionType'] {
-  if (!p.deathYear) return 'other'; // Person might still be alive or data is missing
+  const deathYear = p.death?.year; // Use optional chaining to safely access nested property
+  if (!deathYear) return 'other'; // Person might still be alive or data is missing
 
-  const yearsSinceDeath = CURRENT_YEAR - p.deathYear;
+  const yearsSinceDeath = CURRENT_YEAR - deathYear;
 
-  if (p.deathYear > CURRENT_YEAR) return 'contemporary'; // From the future? Or still alive.
+  if (deathYear > CURRENT_YEAR) return 'contemporary'; // From the future? Or still alive.
   if (yearsSinceDeath <= 60) return 'contemporary'; // e.g., friend, colleague, direct witness
   if (yearsSinceDeath > 60 && yearsSinceDeath <= 120) return 'descendant'; // e.g., grandchild
   if (yearsSinceDeath > 120) return 'expert'; // More likely an expert or guardian of legacy

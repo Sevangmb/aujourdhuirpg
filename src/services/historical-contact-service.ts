@@ -1,42 +1,46 @@
 
 'use server';
 
-import { searchWikipedia, fetchPersonDetails, type WikipediaPersonDetails } from './wikipedia-service';
+import { searchWikipedia, fetchPersonDetails } from './wikipedia-service';
 import { adaptToModernEra } from './historical-adapter-service';
-import type { HistoricalContact, HistoricalPersonality, ModernIdentity } from '@/lib/types';
+import type { HistoricalPersonality, ModernIdentity, ContactKnowledge } from '@/lib/types';
+import { generateHistoricalContact } from '@/ai/flows/generate-historical-contact-flow';
 
 // Simple in-memory cache for this serverless function's lifecycle
 const locationCache = new Map<string, any[]>();
 
+export type AdaptedContact = { 
+    historical: HistoricalPersonality; 
+    modern: ModernIdentity; 
+    knowledge: ContactKnowledge; 
+};
+
 /**
- * Finds historical personalities related to a specific location, using a cache to avoid repeated lookups.
+ * Finds historical personalities related to a specific location, adapts them, enriches them with AI,
+ * and uses a cache to avoid repeated lookups.
  * @param placeName The name of the location (e.g., "Montmartre").
- * @returns A promise that resolves to an array of fully adapted modern historical contacts.
+ * @returns A promise that resolves to an array of fully adapted and enriched historical contacts.
  */
 export async function findAndAdaptHistoricalContactsForLocation(
   placeName: string
-): Promise<( { historical: HistoricalPersonality, modern: ModernIdentity } )[]> {
+): Promise<AdaptedContact[]> {
 
-  const cacheKey = `contacts_${placeName.toLowerCase().replace(/\s+/g, '_')}`;
+  const cacheKey = `contacts_enriched_${placeName.toLowerCase().replace(/\s+/g, '_')}`;
   if (locationCache.has(cacheKey)) {
-    console.log(`Cache hit for historical contacts at: ${placeName}`);
+    console.log(`Cache hit for enriched historical contacts at: ${placeName}`);
     return locationCache.get(cacheKey)!;
   }
 
-  console.log(`Cache miss. Searching Wikipedia for historical contacts at: ${placeName}`);
+  console.log(`Cache miss. Searching and enriching historical contacts for: ${placeName}`);
   
-  // 1. Search for potential historical figures related to the location.
-  // This query is a simple example and can be refined for better results.
   const searchResults = await searchWikipedia(`personnalités liées à ${placeName}`, 5);
 
-  const adaptedContacts: ({ historical: HistoricalPersonality, modern: ModernIdentity })[] = [];
+  const adaptedContacts: AdaptedContact[] = [];
 
-  // 2. For each result, fetch detailed information.
   for (const personName of searchResults) {
     const details = await fetchPersonDetails(personName);
 
-    if (details && details.birthYear) { // Ensure we have at least a birth year to work with
-      // 3. Adapt the historical figure into a modern contact.
+    if (details && details.birthYear) {
       const historicalPersonality: HistoricalPersonality = {
         name: details.name,
         birth: { year: details.birthYear, place: details.birthPlace },
@@ -48,17 +52,23 @@ export async function findAndAdaptHistoricalContactsForLocation(
       };
 
       const modernIdentity = adaptToModernEra(historicalPersonality);
+
+      // --- AI ENRICHMENT STEP ---
+      const knowledge = await generateHistoricalContact({
+          historical: historicalPersonality,
+          modern: modernIdentity,
+          location: placeName
+      });
       
       adaptedContacts.push({
           historical: historicalPersonality,
-          modern: modernIdentity
+          modern: modernIdentity,
+          knowledge: knowledge,
       });
     }
   }
 
-  // Cache the results before returning
   locationCache.set(cacheKey, adaptedContacts);
-  // Set a timeout to clear the cache entry after 24 hours
   setTimeout(() => locationCache.delete(cacheKey), 24 * 60 * 60 * 1000);
 
   return adaptedContacts;
