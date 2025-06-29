@@ -1,3 +1,4 @@
+
 /**
  * Formats game time in minutes into a more readable string.
  * Example: 70 minutes -> "Jour 1, 01h10"

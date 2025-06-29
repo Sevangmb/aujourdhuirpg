@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { GameState, GameNotification, QuestUpdate, PNJ, Quest } from '@/lib/types';
+import type { GameState, GameNotification, QuestUpdate, PNJ, Quest, JournalEntry } from '@/lib/types';
 import { gameReducer, GameAction, calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import ScenarioDisplay from './ScenarioDisplay';
@@ -18,6 +18,8 @@ import PlayerInputForm from './PlayerInputForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
+import { getMasterItemById } from '@/data/items';
+
 
 interface GamePlayProps {
   initialGameState: GameState;
@@ -79,44 +81,78 @@ const GamePlay: React.FC<GamePlayProps> = ({
     if (aiOutput.newQuests) {
       aiOutput.newQuests.forEach(quest => {
         actions.push({ type: 'ADD_QUEST', payload: quest as Omit<Quest, 'dateAdded'> });
+        actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'quest_update', text: `Nouvelle quête commencée : "${quest.title}".` }
+        });
         notifications.push({ type: 'quest_added', title: 'Nouvelle Quête', description: `Vous avez commencé la quête : "${quest.title}".` });
       });
     }
     if (aiOutput.updatedQuests) {
       aiOutput.updatedQuests.forEach(update => {
         actions.push({ type: 'UPDATE_QUEST', payload: update });
+        actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'quest_update', text: `La quête "${update.questId}" a progressé.` }
+        });
         notifications.push({ type: 'quest_updated', title: 'Quête Mise à Jour', description: `La quête "${update.questId}" a progressé.` });
       });
     }
     if (aiOutput.newPNJs) {
         aiOutput.newPNJs.forEach(pnj => {
           actions.push({ type: 'ADD_PNJ', payload: pnj as Omit<PNJ, 'firstEncountered' | 'lastSeen' | 'interactionHistory'> });
+          actions.push({
+              type: 'ADD_JOURNAL_ENTRY',
+              payload: { type: 'npc_interaction', text: `Vous avez rencontré ${pnj.name}.` }
+          });
           notifications.push({ type: 'pnj_encountered', title: 'Nouvelle Rencontre', description: `Vous avez rencontré ${pnj.name}.` });
         });
     }
     if (aiOutput.itemsToAddToInventory) {
       aiOutput.itemsToAddToInventory.forEach(item => {
+        const masterItem = getMasterItemById(item.itemId);
+        const itemName = masterItem?.name || item.itemId;
         actions.push({ type: 'ADD_ITEM_TO_INVENTORY', payload: item });
-        notifications.push({ type: 'item_added', title: 'Objet Obtenu', description: `Vous avez obtenu : ${item.itemId} (x${item.quantity}).` });
+        actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'event', text: `Objet obtenu : ${itemName} (x${item.quantity}).` }
+        });
+        notifications.push({ type: 'item_added', title: 'Objet Obtenu', description: `Vous avez obtenu : ${itemName} (x${item.quantity}).` });
       });
     }
     if (aiOutput.moneyChange) {
       actions.push({ type: 'CHANGE_MONEY', payload: aiOutput.moneyChange });
+       actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'event', text: `Argent : ${aiOutput.moneyChange > 0 ? '+' : ''}${aiOutput.moneyChange}€.` }
+      });
       notifications.push({ type: 'money_changed', title: 'Argent Modifié', description: `Argent : ${aiOutput.moneyChange > 0 ? '+' : ''}${aiOutput.moneyChange}€.` });
     }
     if (aiOutput.xpGained) {
       actions.push({ type: 'ADD_XP', payload: aiOutput.xpGained });
+       actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'event', text: `Vous avez gagné ${aiOutput.xpGained} XP.` }
+      });
       notifications.push({ type: 'xp_gained', title: 'Expérience Gagnée', description: `Vous avez gagné ${aiOutput.xpGained} XP.` });
     }
     if (aiOutput.newClues) {
       aiOutput.newClues.forEach(clue => {
         actions.push({ type: 'ADD_CLUE', payload: clue as any });
+        actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'event', text: `Nouvel indice découvert : "${clue.title}".` }
+        });
         notifications.push({ type: 'clue_added', title: 'Nouvel Indice', description: `Indice ajouté : "${clue.title}".` });
       });
     }
      if (aiOutput.newDocuments) {
       aiOutput.newDocuments.forEach(doc => {
         actions.push({ type: 'ADD_DOCUMENT', payload: doc as any });
+        actions.push({
+            type: 'ADD_JOURNAL_ENTRY',
+            payload: { type: 'event', text: `Nouveau document obtenu : "${doc.title}".` }
+        });
         notifications.push({ type: 'document_added', title: 'Nouveau Document', description: `Document obtenu : "${doc.title}".` });
       });
     }
@@ -131,7 +167,7 @@ const GamePlay: React.FC<GamePlayProps> = ({
   }, [dispatchGameActions, toast]);
 
   const handlePlayerActionSubmit = useCallback(async (actionText: string) => {
-    const { player, currentScenario } = initialGameState;
+    const { player, currentScenario, gameTimeInMinutes, journal } = initialGameState;
     if (!player || !currentScenario || !actionText.trim()) {
       if (!actionText.trim()) toast({ variant: "destructive", title: "Action vide", description: "Veuillez entrer une action." });
       return;
@@ -157,6 +193,16 @@ const GamePlay: React.FC<GamePlayProps> = ({
         ...initialGameState,
         player: updatedPlayer,
         currentScenario: { scenarioText: aiOutput.scenarioText },
+        journal: [
+            ...(journal || []),
+            {
+                id: `${gameTimeInMinutes}-${Math.random()}`,
+                timestamp: gameTimeInMinutes,
+                type: 'player_action',
+                text: actionText,
+                location: updatedPlayer.currentLocation
+            }
+        ]
       };
       
       if (aiOutput.newLocationDetails) {

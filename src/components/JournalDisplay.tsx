@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -36,7 +37,7 @@ const JournalDisplay: React.FC<JournalDisplayProps> = ({ journal }) => {
     return (
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Journal</CardTitle>
+          <CardTitle>Journal de Bord</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">Aucune entrée dans le journal pour le moment.</p>
@@ -49,30 +50,32 @@ const JournalDisplay: React.FC<JournalDisplayProps> = ({ journal }) => {
   const sortedJournal = [...journal].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Journal</CardTitle>
-        <CardDescription>Les événements récents de votre aventure.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[200px] sm:h-[250px] md:h-[300px] pr-3">
-          {sortedJournal.map((entry, index) => (
-            <React.Fragment key={entry.id}>
-              <div className="py-3">
-                <p className="text-xs text-muted-foreground mb-0.5">
-                  {getEntryIcon(entry.type)} {formatGameTime ? formatGameTime(entry.timestamp) : `Temps: ${entry.timestamp}`} - {entry.type}
-                </p>
-                <p className="text-sm leading-relaxed">{entry.text}</p>
-                {entry.location && (
-                  <p className="text-xs text-primary/80 mt-0.5">Lieu: {entry.location.name}</p>
-                )}
-              </div>
-              {index < sortedJournal.length - 1 && <Separator />}
-            </React.Fragment>
-          ))}
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div className="h-full flex flex-col">
+      <Card className="flex-grow flex flex-col">
+        <CardHeader>
+          <CardTitle>Journal de Bord</CardTitle>
+          <CardDescription>Les événements récents de votre aventure.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow overflow-hidden p-0">
+          <ScrollArea className="h-full px-6">
+            {sortedJournal.map((entry, index) => (
+              <React.Fragment key={entry.id}>
+                <div className="py-3">
+                  <p className="text-xs text-muted-foreground mb-0.5">
+                    {getEntryIcon(entry.type)} {formatGameTime ? formatGameTime(entry.timestamp) : `Temps: ${entry.timestamp}`} - {entry.type === 'player_action' ? 'Action' : 'Événement'}
+                  </p>
+                  <p className="text-sm leading-relaxed">{entry.text}</p>
+                  {entry.location && (
+                    <p className="text-xs text-primary/80 mt-0.5">Lieu: {entry.location.name}</p>
+                  )}
+                </div>
+                {index < sortedJournal.length - 1 && <Separator />}
+              </React.Fragment>
+            ))}
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
