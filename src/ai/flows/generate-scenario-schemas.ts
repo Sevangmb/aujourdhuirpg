@@ -105,7 +105,11 @@ export const GenerateScenarioOutputSchema = z.object({
   newPNJs: z.array(PNJInteractionSchema).optional().describe("Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde."),
 
   /** A list of updates to existing PNJ's dispositions or relationships. */
-  updatedPNJs: z.array(PNJInteractionSchema.pick({ id: true, dispositionScore: true, newInteractionLogEntry: true })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
+  updatedPNJs: z.array(z.object({
+    id: z.string().describe("ID du PNJ existant à mettre à jour."),
+    dispositionScore: z.number().optional().describe("Nouveau score de disposition du PNJ envers le joueur après l'interaction."),
+    newInteractionLogEntry: z.string().optional().describe("Nouvelle entrée à ajouter à l'historique des interactions du PNJ.")
+  })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
 
   /** A list of new clues for the player's investigation log. */
   newClues: z.array(ClueInputSchema).optional().describe("Nouveaux indices découverts par le joueur."),
@@ -123,7 +127,7 @@ export const GenerateScenarioOutputSchema = z.object({
   })).optional().describe("Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés)."),
   
   /** A list of financial transactions that occurred as a result of the narrative. Use this for any monetary changes. */
-  newTransactions: z.array(NewTransactionSchema).optional().describe("A list of financial transactions that occurred. Use this for any monetary changes (income or expenses)."),
+  newTransactions: z.array(NewTransactionSchema).optional().describe("Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense)."),
   
   /** AI's strategic recommendation for the player's next move. */
   aiRecommendation: z.object({
