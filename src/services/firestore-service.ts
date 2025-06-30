@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Service for all Firestore interactions related to player characters and their save data.
  *
@@ -33,6 +34,7 @@ import {
   documentId,
 } from 'firebase/firestore';
 import { generateSaveSummary } from '@/ai/flows/generate-save-summary-flow';
+import { defaultAvatarUrl } from '@/data/initial-game-data';
 
 // --- Firestore Collection Names ---
 const USERS_COLLECTION = 'users';
@@ -115,7 +117,7 @@ export async function listCharacters(uid: string): Promise<CharacterSummary[]> {
       return {
         id: docSnap.id,
         name: data.name || 'Sans Nom',
-        avatarUrl: data.avatarUrl || '',
+        avatarUrl: data.avatarUrl || defaultAvatarUrl,
         level: data.level || 1,
         lastPlayed: lastPlayedTimestamp ? lastPlayedTimestamp.toDate().toISOString() : new Date(0).toISOString(),
       };

@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Player, AdvancedSkillSystem } from '@/lib/types';
@@ -46,6 +47,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                 height={80} 
                 className="rounded-full border-2 border-primary aspect-square object-cover"
                 data-ai-hint="character portrait"
+                unoptimized={!!player.avatarUrl && player.avatarUrl.startsWith('data:')}
               />
               <div>
                 <CardTitle className="text-xl font-headline text-primary">{player.name}</CardTitle>
