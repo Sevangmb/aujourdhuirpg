@@ -15,6 +15,7 @@ import { getWeatherTool } from '@/ai/tools/get-weather-tool';
 import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool';
 import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
 import { getNewsTool } from '@/ai/tools/get-news-tool';
+import { getRecipesTool } from '@/ai/tools/get-recipes-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
@@ -72,6 +73,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
     - Utilisez les POIs pour identifier des restaurants, cafés ou boulangeries à proximité et créez des choix pour s'y rendre et consommer un produit local.
     - Associez systématiquement ces choix à une transaction financière (\`newTransactions\`) et à un effet physiologique (\`physiologicalEffects\`).
     - Décrivez l'expérience sensorielle (odeurs, goûts, ambiance) dans le \`scenarioText\`.
+- **CUISINE AUTHENTIQUE VIA API :** Le monde est maintenant connecté à une base de données de recettes réelles. Si le joueur exprime le désir de manger, de cuisiner, ou de découvrir la gastronomie locale, utilisez l'outil \`getRecipesTool\` pour trouver des plats authentiques du pays où il se trouve. Décrivez les plats trouvés de manière appétissante dans la narration et proposez des choix pour les déguster ou apprendre à les cuisiner.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles (\`getWeatherTool\`, \`getNearbyPoisTool\`, \`getWikipediaInfoTool\`, \`getNewsTool\`) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante (un musée à proximité, un fait historique sur le lieu), créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
 - **STRICTEMENT INTERDIT dans 'scenarioText' :**
@@ -129,7 +131,7 @@ ${PROMPT_ACTION_AND_EFFECTS}
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   config: {
@@ -170,7 +172,7 @@ Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure
 const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: PROLOGUE_PROMPT,
