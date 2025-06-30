@@ -4,15 +4,23 @@
  * Il établit le contrat que tous les modules d'enrichissement et le gestionnaire de dépendances doivent respecter.
  */
 
-import type { Player } from '@/lib/types';
-import type { GameAction } from '@/lib/game-logic';
+import type { Player, StoryChoice } from '@/lib/types';
+
+/**
+ * A simplified action representation for the cascade context.
+ */
+export interface GameActionForCascade {
+  type: string; // e.g., 'job', 'exploration'
+  payload: StoryChoice | any;
+}
+
 
 /**
  * Le contexte enrichi qui est passé et enrichi par chaque module de la cascade.
  */
 export interface EnrichedContext {
   player: Player; 
-  action: GameAction; 
+  action: GameActionForCascade; 
   
   // Les résultats des dépendances sont injectés ici par le DependencyChainManager
   dependencyResults?: {

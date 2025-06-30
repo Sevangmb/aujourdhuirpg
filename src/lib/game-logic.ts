@@ -8,6 +8,7 @@ import { performSkillCheck } from './skill-check';
 import { montmartreInitialChoices } from '@/data/choices';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
+import type { CascadeResult } from '@/core/cascade/types';
 
 // --- Constants for Game Logic ---
 const HUNGER_DECAY_PER_MINUTE = 0.05;
@@ -414,7 +415,7 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 }
 
 // --- AI Input Preparation ---
-export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents?: GameEvent[]): any | null {
+export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents?: GameEvent[], cascadeResult?: CascadeResult | null): any | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");
     return null;
@@ -457,11 +458,24 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       },
       toneSettings: player.toneSettings,
   };
+  
+  const cascadeData = cascadeResult ? {
+    executionChain: cascadeResult.executionChain,
+    results: Array.from(cascadeResult.results.entries()).reduce((acc, [key, value]) => {
+      (acc as any)[key] = {
+        data: value.data,
+        enrichmentLevel: value.enrichmentLevel,
+        executionTime: value.executionTime,
+      };
+      return acc;
+    }, {}),
+  } : null;
 
   return {
     player: playerInputForAI,
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: JSON.stringify(gameEvents || [], null, 2),
+    cascadeResult: cascadeData ? JSON.stringify(cascadeData, null, 2) : "{}",
   };
 }

@@ -16,6 +16,7 @@ export const GenerateScenarioInputSchema = z.object({
   playerChoiceText: z.string().describe("L'action textuelle que le joueur a saisie."),
   gameEvents: z.string().describe("Une chaîne JSON représentant une liste d'événements de jeu que le moteur a calculés. L'IA DOIT raconter ces événements de manière immersive."),
   previousScenarioText: z.string().describe('Le contexte du scénario précédent (le texte HTML du scénario précédent).'),
+  cascadeResult: z.string().optional().describe("Une chaîne JSON contenant les résultats de la cascade d'enrichissement modulaire. L'IA doit utiliser ce contexte ultra-riche pour sa narration."),
 }).describe("Schéma d'entrée pour le flux generateScenario. L'IA est un narrateur, pas un décideur.");
 
 

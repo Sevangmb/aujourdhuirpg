@@ -16,6 +16,27 @@ import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
 import CombatStatusDisplay from './CombatStatusDisplay';
 
+// Imports for Cascade Architecture
+import { cascadeManager } from '@/core/cascade/cascade-manager';
+import type { EnrichedContext, CascadeResult } from '@/core/cascade/types';
+
+/**
+ * Determines which root module to trigger for the cascade based on the player's choice.
+ * @param choice The player's selected StoryChoice.
+ * @returns The ID of the root module to execute.
+ */
+const determineRelevantModule = (choice: StoryChoice): string => {
+  const choiceText = choice.text.toLowerCase();
+  const choiceType = choice.type;
+
+  if (choiceType === 'job' || choiceText.includes('manger') || choiceText.includes('cuisiner') || choiceText.includes('restaurant')) {
+    return 'cuisine';
+  }
+  
+  // Default to a general cultural analysis for other actions
+  return 'culture_locale';
+};
+
 
 const GamePlay: React.FC = () => {
   const { gameState, dispatch } = useGame();
@@ -65,17 +86,33 @@ const GamePlay: React.FC = () => {
       // 2. Apply events to a temporary state to get the state *after* the action, for the AI's context
       const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: events });
 
-      // 3. Prepare the input for the AI with the calculated events and the future state
-      const inputForAI = prepareAIInput(stateAfterAction, choice, events);
+      // 3. === NEW: CASCADE ENRICHMENT ===
+      let cascadeResult: CascadeResult | null = null;
+      if (stateAfterAction.player) {
+        try {
+          const baseContext: EnrichedContext = { 
+            player: stateAfterAction.player, 
+            action: { type: choice.type, payload: choice } 
+          };
+          const rootModuleId = determineRelevantModule(choice);
+          cascadeResult = await cascadeManager.enrichWithCascade(baseContext, rootModuleId);
+        } catch (cascadeError) {
+          console.error("Cascade enrichment failed:", cascadeError);
+          // Don't block the game, just log the error. The AI will receive null for the cascade result.
+        }
+      }
+      
+      // 4. Prepare the input for the AI with the calculated events, the future state, and cascade results
+      const inputForAI = prepareAIInput(stateAfterAction, choice, events, cascadeResult);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
-      // 4. Get the narration and next choices from the AI
+      // 5. Get the narration and next choices from the AI
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      // 5. Dispatch the game events to *actually* update the state
+      // 6. Dispatch the game events to *actually* update the state
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
       
-      // 6. Set the new scenario from the AI's output
+      // 7. Set the new scenario from the AI's output
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });
 
     } catch (error) {
