@@ -91,4 +91,16 @@ export interface MasterIntelligentItem extends Omit<IntelligentItem,
   };
 }
 
+// Payload for creating a dynamic item, typically from AI output.
+export interface DynamicItemCreationPayload {
+  baseItemId: string; // The ID of the master item to use as a template
+  overrides: {
+    name?: string;
+    description?: string;
+    effects?: Partial<PlayerStats>;
+    skillModifiers?: Partial<Record<string, number>>;
+    // can add more overridable properties here later
+  };
+}
+
     

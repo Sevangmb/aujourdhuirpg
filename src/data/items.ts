@@ -216,6 +216,16 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     xpToNextItemLevel: 0,
   },
   {
+    id: 'generic_book_01',
+    name: 'Livre',
+    description: 'Un livre sur un sujet potentiellement intéressant. Sa lecture pourrait vous apprendre quelque chose.',
+    type: 'misc',
+    iconName: 'BookOpen',
+    stackable: false,
+    economics: { base_value: 15, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
+  },
+  {
     id: 'vintage_camera_01',
     name: 'Appareil Photo Vintage',
     description: 'Un vieil appareil photo argentique. Il semble robuste et a certainement capturé de nombreuses histoires.',
@@ -244,5 +254,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
 export function getMasterItemById(itemId: string): MasterIntelligentItem | undefined {
   return ALL_MASTER_ITEMS.find(item => item.id === itemId);
 }
+
+    
 
     

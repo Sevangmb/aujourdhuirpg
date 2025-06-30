@@ -23,6 +23,7 @@ import { PNJInteractionSchema } from './schemas/pnj-schemas';
 import { MajorDecisionSchema } from './schemas/decision-schemas';
 import { ClueInputSchema, DocumentInputSchema } from './schemas/evidence-schemas';
 import { NewTransactionSchema } from './schemas/finance-schemas';
+import { DynamicItemCreationPayloadSchema } from './schemas/item-schemas';
 
 
 // --- Main Input Schema ---
@@ -128,6 +129,9 @@ export const GenerateScenarioOutputSchema = z.object({
     usageDescription: z.string().describe("Très brève description de l'utilisation (ex: 'Pour crocheter la serrure', 'Pour prendre une photo du suspect').")
   })).optional().describe("Liste des objets de l'inventaire utilisés durant cette action."),
 
+  /** Nouveaux objets uniques ou dynamiques à créer et ajouter à l'inventaire. */
+  newDynamicItems: z.array(DynamicItemCreationPayloadSchema).optional().describe("Liste d'objets uniques ou dynamiques à créer et à ajouter à l'inventaire."),
+  
   /** Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense). */
   newTransactions: z.array(NewTransactionSchema).optional().describe("Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense)."),
   
@@ -144,3 +148,5 @@ export const GenerateScenarioOutputSchema = z.object({
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
 
 }).describe("Schéma de sortie pour le flux generateScenario, incluant maintenant les événements de jeu pilotés par l'IA.");
+
+    

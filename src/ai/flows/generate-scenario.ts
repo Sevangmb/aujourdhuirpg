@@ -16,6 +16,7 @@ import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool';
 import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
 import { getNewsTool } from '@/ai/tools/get-news-tool';
 import { getRecipesTool } from '@/ai/tools/get-recipes-tool';
+import { getBookDetailsTool } from '@/ai/tools/get-book-details-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
@@ -63,6 +64,11 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **ACTIONS CONTEXTUELLES AU LIEU :** Analysez le type de lieu ('player.currentLocation.type') et ses tags ('player.currentLocation.tags'). Si le joueur est dans un 'restaurant', proposez des actions comme "Consulter la carte". S'il est dans un 'museum', proposez "Examiner une exposition". Soyez spécifique en utilisant les tags ; par exemple, si le type est 'restaurant' et que les tags indiquent \`cuisine: "italian"\`, proposez "Commander des pâtes" plutôt que juste "Manger".
 - **GÉNÉRATION D'OBJETS CONTEXTUELS :** Le monde doit sembler vivant. Lorsque vous créez un scénario, pensez aux objets que le joueur pourrait trouver. Si le joueur explore une vieille bibliothèque, il pourrait trouver un 'Carnet et Stylo' ('notebook_pen_01'). Si une quête est terminée, la récompense doit être logique. Une quête de livraison à un médecin pourrait rapporter une 'Petite Trousse de Soins' ('medkit_basic_01'). Utilisez le champ 'itemsToAddToInventory' pour placer ces objets dans le monde.
+- **LIVRES ET SAVOIR :** Lorsque le joueur est dans une librairie ou une bibliothèque, utilisez l'outil 'getBookDetailsTool' pour trouver des livres réels pertinents. Proposez des choix pour acheter ou lire ces livres. Si le joueur acquiert un livre, utilisez le champ de sortie 'newDynamicItems' pour le créer.
+  - Utilisez 'baseItemId: 'generic_book_01''.
+  - Remplissez les 'overrides' avec le 'name' (titre du livre) et la 'description' (résumé du livre) obtenus de l'outil.
+  - Surtout, ajoutez des 'skillModifiers' pertinents. Par exemple, un livre de cuisine augmentera la compétence 'technical.crafting'. Un livre d'histoire augmentera 'cognitive.memory' ou 'technical.investigation'. Soyez créatif et logique pour lier les livres à des gains de compétences.
+  - N'oubliez pas de générer une 'newTransactions' pour le coût du livre si le joueur l'achète.
 - **INVENTAIRE INTELLIGENT :** Analysez l'inventaire détaillé du joueur ('player.inventory'). Créez des choix qui permettent d'utiliser des objets spécifiques. La narration peut faire référence à l'histoire d'un objet ('memory.acquisitionStory') pour plus de cohérence. Par exemple, si le joueur a une clé trouvée au Louvre, proposez un choix pour l'essayer sur une serrure ancienne. Si le joueur possède des consommables (comme une barre énergétique) et que sa physiologie est basse, proposez un choix avec un ID de la forme 'consume_item_ITEM_ID' (ex: 'consume_item_energy_bar_01') pour lui permettre de l'utiliser.
 - **ÉVOLUTION DES OBJETS :** Certains objets, comme l'Appareil Photo Vintage, peuvent évoluer. Si le joueur utilise un tel objet de manière pertinente ou réussit une action avec, accordez-lui de l'expérience via le champ 'itemUpdates'. Spécifiez l'instanceId de l'objet et le montant d'XP gagné. Si un objet gagne assez d'expérience, il peut évoluer et se transformer. N'oubliez pas de décrire cet événement passionnant dans votre narration !
 - **MÉMOIRE DES OBJETS :** Si votre narration décrit l'utilisation d'un objet spécifique de l'inventaire du joueur, vous DEVEZ le consigner dans le champ de sortie 'itemsUsed'. Fournissez l''instanceId' de l'objet et une brève 'usageDescription' (ex: 'Utilisé pour prendre la photo du document'). C'est crucial pour que les objets accumulent une histoire.
@@ -138,7 +144,7 @@ ${PROMPT_ACTION_AND_EFFECTS}
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool],
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   config: {
@@ -179,7 +185,7 @@ Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure
 const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool],
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
   input: {schema: GenerateScenarioInputSchema},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: PROLOGUE_PROMPT,
@@ -208,3 +214,5 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
+
+    

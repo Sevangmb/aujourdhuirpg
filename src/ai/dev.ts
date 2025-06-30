@@ -5,6 +5,7 @@ config();
 import '@/ai/flows/generate-scenario.ts';
 import '@/ai/flows/generate-scenario-schemas.ts'; // Ensure schemas are part of the build context if needed by Genkit CLI
 import '@/ai/flows/schemas/finance-schemas.ts'; // Import new finance schemas
+import '@/ai/flows/schemas/item-schemas.ts'; // Import new item schemas
 import '@/ai/flows/generate-location-image-flow.ts';
 import '@/ai/flows/generate-player-avatar-flow.ts';
 import '@/ai/flows/schemas/generate-player-avatar-schemas.ts'; // Added new schema file
@@ -21,3 +22,7 @@ import '@/ai/tools/get-wikipedia-info-tool.ts';
 import '@/ai/tools/get-nearby-pois-tool.ts';
 import '@/ai/tools/get-news-tool.ts';
 import '@/ai/tools/get-recipes-tool.ts';
+import '@/ai/tools/get-book-details-tool.ts';
+
+
+    

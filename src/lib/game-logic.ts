@@ -1,6 +1,6 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties } from './player-state-helpers';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload } from './types';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -44,6 +44,7 @@ export type GameAction =
   | { type: 'ADD_DOCUMENT'; payload: AddDocumentPayload }
   | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
+  | { type: 'ADD_DYNAMIC_ITEM', payload: DynamicItemCreationPayload }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
   | { type: 'ADD_XP'; payload: number }
   | { type: 'ADD_HISTORICAL_CONTACT'; payload: HistoricalContact };
@@ -243,6 +244,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const { itemId, quantity } = action.payload;
         const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity, state.player.currentLocation);
         return { ...state, player: { ...state.player, inventory: updatedInventory } };
+    }
+    case 'ADD_DYNAMIC_ITEM': {
+      const { baseItemId, overrides } = action.payload;
+      const masterItem = getMasterItemById(baseItemId);
+      if (!masterItem) {
+          console.warn(`Dynamic Item Warning: Base item ID ${baseItemId} not found.`);
+          return state;
+      }
+      const newInstance = createNewInstanceFromMaster(masterItem, state.player.currentLocation);
+      
+      // Apply overrides from the AI payload
+      if(overrides.name) newInstance.name = overrides.name;
+      if(overrides.description) newInstance.description = overrides.description;
+      if(overrides.effects) newInstance.effects = overrides.effects;
+      if(overrides.skillModifiers) newInstance.skillModifiers = overrides.skillModifiers;
+
+      const newInventory = [...state.player.inventory, newInstance];
+      return { ...state, player: { ...state.player, inventory: newInventory } };
     }
     case 'ADD_TRANSACTION': {
         const newTransaction: Transaction = {
@@ -620,3 +639,5 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     currentInvestigationNotes: player.investigationNotes,
   };
 }
+
+    
