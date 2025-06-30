@@ -141,6 +141,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: false,
     economics: { base_value: 40, rarity_multiplier: 1.5 },
     xpToNextItemLevel: 250, // This jacket could become iconic
+    combatStats: { defense: 2 },
   },
   {
     id: 'research_notes_quest_01',
@@ -183,6 +184,17 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     economics: { base_value: 20, rarity_multiplier: 1.4 },
     skillModifiers: { 'technical.crafting': 5 },
     xpToNextItemLevel: 0,
+  },
+  {
+    id: 'opinel_knife_01',
+    name: 'Couteau Opinel',
+    description: 'Un couteau de poche français classique. Simple, fiable et étonnamment tranchant.',
+    type: 'tool',
+    iconName: 'Sword',
+    stackable: false,
+    economics: { base_value: 15, rarity_multiplier: 1.2 },
+    xpToNextItemLevel: 50,
+    combatStats: { damage: 5 },
   },
   {
     id: 'sim_card_01',

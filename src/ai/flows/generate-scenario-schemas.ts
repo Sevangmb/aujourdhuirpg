@@ -17,6 +17,7 @@ import {
   IntelligentItemInputSchema,
   ToneSettingsSchema,
   PlayerInputSchema, // Using a more comprehensive player schema
+  EnemySchema,
 } from './schemas/player-common-schemas';
 import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas';
 import { PNJInteractionSchema } from './schemas/pnj-schemas';
@@ -32,6 +33,7 @@ export const GenerateScenarioInputSchema = z.object({
   player: PlayerInputSchema.describe("L'objet complet contenant toutes les informations sur le joueur."),
   playerChoice: z.string().describe("L'action textuelle que le joueur a saisie."),
   currentScenario: z.string().describe('Le contexte du scénario actuel (le texte HTML du scénario précédent).'),
+  currentEnemy: EnemySchema.optional().nullable().describe("L'ennemi actuel si le joueur est en combat."),
   
   // This field is for events calculated by the game engine BEFORE calling the AI.
   deterministicEvents: z.array(z.string()).optional().describe("Un résumé des événements déterministes calculés par le moteur de jeu. L'IA DOIT raconter ces événements comme s'étant déjà produits."),
@@ -60,6 +62,8 @@ export const StoryChoiceSchema = z.object({
   energyCost: z.number().describe("Le coût en énergie estimé pour le joueur (1-20)."),
   timeCost: z.number().describe("Le coût en temps estimé en minutes pour l'action (5-60)."),
   consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
+  isCombatAction: z.boolean().optional().describe("Indique si ce choix est une action de combat."),
+  combatActionType: z.enum(['attack', 'defend', 'flee', 'special']).optional().describe("Le type spécifique d'action de combat."),
   skillCheck: z.object({
       skill: z.string().describe("Le chemin de la compétence à tester (ex: 'cognitive.observation')."),
       difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
@@ -83,6 +87,11 @@ export const GenerateScenarioOutputSchema = z.object({
 
   // --- NEW AI-DRIVEN GAME EVENTS ---
   // The AI can now populate these fields to directly influence the game state.
+
+  combatEvent: z.object({
+    startCombat: EnemySchema.optional().describe("Si un combat commence, fournit les détails de l'ennemi. Le jeu prend le relais pour l'état du combat."),
+    endCombat: z.boolean().optional().describe("Mettre à true lorsque le combat est terminé (par fuite ou victoire).")
+  }).optional().describe("Événements liés au combat."),
 
   newQuests: z.array(QuestInputSchema).optional().describe("Liste de nouvelles quêtes à ajouter au journal du joueur. L'IA crée ces quêtes lorsque l'histoire le justifie."),
   

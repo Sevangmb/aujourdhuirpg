@@ -65,7 +65,7 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
         instructions.push("Distillez des indices subtils et maintenez une ambiance ambiguë. Privilégiez les non-dits et les questions en suspens. Proposez des choix liés à l'examen de détails, à la déduction et à la recherche d'informations cachées.");
         break;
       case 'Action':
-        instructions.push("Employez un style direct avec des phrases courtes et un rythme dynamique. Décrivez les mouvements et les impacts. Proposez des choix qui incitent à l'action rapide, à la prise de risque et à la confrontation physique.");
+        instructions.push("Employez un style direct avec des phrases courtes et un rythme dynamique. Décrivez les mouvements et les impacts. Proposez des choix qui incitent à l'action rapide, à la prise de risque et à la confrontation physique. Si la situation le justifie, déclenchez un combat via 'combatEvent.startCombat'.");
         break;
       case 'Fantastique':
          instructions.push("Introduisez des éléments surnaturels ou magiques de manière subtile ou grandiose. Décrivez l'émerveillement, l'étrangeté. Proposez des choix qui permettent d'interagir avec le merveilleux, de découvrir des secrets anciens ou d'utiliser des capacités extraordinaires.");
@@ -92,7 +92,7 @@ const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire ET Diriger le Jeu**
 Votre mission a quatre volets :
 1.  **Générer le 'scenarioText' :** Rédigez une description narrative captivante en HTML de ce qui se passe après l'action du joueur. Intégrez de manière transparente les 'deterministicEvents' fournis (conséquences déjà calculées par le moteur de jeu). **NE répétez PAS** les calculs de stats dans votre narration. Racontez le *ressenti*.
-2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, ou un changement financier, utilisez les champs de sortie appropriés ('newQuests', 'newPNJs', 'itemsToAddToInventory', 'newTransactions', etc.) pour créer ces éléments.
+2.  **Générer des Événements de Jeu :** En tant que MJ, vous pouvez maintenant faire avancer le jeu. Si votre narration introduit une nouvelle quête, un nouveau PNJ, un objet à trouver, un changement financier ou un combat, utilisez les champs de sortie appropriés ('newQuests', 'newPNJs', 'itemsToAddToInventory', 'newTransactions', 'combatEvent', etc.) pour créer ces éléments.
     - **Mise à jour du Dossier d'Enquête :** Si le joueur fait une découverte majeure ou tire une conclusion, mettez à jour le champ 'updatedInvestigationNotes' pour refléter cette nouvelle synthèse.
 3.  **Générer des Choix Guidés (Actions Adaptatives - RÈGLE CRITIQUE) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ 'choices' avec 3 ou 4 objets 'StoryChoice' riches et variés.
     - **Basé sur les Compétences ET L'ENVIRONNEMENT :** Analysez attentivement le profil de compétences du joueur ('player.skills') ET son environnement. Votre objectif est de rendre ses compétences utiles et gratifiantes, et de rendre le monde vivant.
@@ -109,7 +109,11 @@ const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous pour façonner votre style d'écriture et les choix que vous proposez.
 {{{toneInstructions}}}
-- **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
+- **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction, ennemi) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
+- **SYSTÈME DE COMBAT :** Vous pouvez désormais initier et gérer des combats.
+    - Pour **DÉMARRER** un combat, remplissez le champ 'combatEvent.startCombat' avec les stats de l'ennemi. Le jeu prendra le relais pour l'afficher.
+    - Si un 'currentEnemy' est fourni en entrée, le combat est **EN COURS**. Proposez des 'StoryChoice' avec 'isCombatAction: true' et 'combatActionType' (ex: 'attack', 'flee'). Décrivez l'état de l'ennemi (blessé, fatigué, etc.).
+    - Pour **TERMINER** un combat (quand la santé de l'ennemi est à 0), remplissez 'combatEvent.endCombat: true'. Décrivez la victoire et les conséquences (loot, etc.).
 - **GÉNÉRATION D'OBJETS CONTEXTUELS :** Le monde doit sembler vivant. Lorsque vous créez un scénario, pensez aux objets que le joueur pourrait trouver. Si le joueur explore une vieille bibliothèque, il pourrait trouver un 'Carnet et Stylo' ('notebook_pen_01'). Si une quête est terminée, la récompense doit être logique. Une quête de livraison à un médecin pourrait rapporter une 'Petite Trousse de Soins' ('medkit_basic_01'). Utilisez le champ 'itemsToAddToInventory' pour placer ces objets dans le monde.
 - **LIVRES ET SAVOIR :** Lorsque le joueur est dans une librairie ou une bibliothèque, utilisez l'outil 'getBookDetailsTool' pour trouver des livres réels pertinents. Proposez des choix pour acheter ou lire ces livres. Si le joueur acquiert un livre, utilisez le champ de sortie 'newDynamicItems' pour le créer.
   - Utilisez 'baseItemId: 'generic_book_01''.
@@ -149,6 +153,7 @@ const PROMPT_PLAYER_CONTEXT = `
 **Contexte du Joueur et du Monde :**
 - Joueur : {{{player.name}}}, {{{player.gender}}}, {{{player.age}}} ans. Passé : {{{player.background}}}.
 - Lieu : {{{player.currentLocation.name}}} (Type: {{player.currentLocation.type}}, Description: {{player.currentLocation.description}})
+- Ennemi Actuel: {{#if currentEnemy}}{{currentEnemy.name}} (Santé: {{currentEnemy.health}}/{{currentEnemy.maxHealth}}){{else}}Aucun{{/if}}
 - Argent : {{{player.money}}}€
 - Physiologie : Faim: {{{player.physiology.basic_needs.hunger.level}}}/100, Soif: {{{player.physiology.basic_needs.thirst.level}}}/100.
 - Inventaire : {{#each player.inventory}}{{{this.name}}} (ID: {{{this.instanceId}}}, valeur: {{{this.economics.base_value}}}€, état: {{{this.condition.durability}}}%) x{{{this.quantity}}}; {{/each}}
@@ -268,5 +273,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-
-    

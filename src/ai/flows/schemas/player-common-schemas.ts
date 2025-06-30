@@ -14,6 +14,15 @@ export const LocationSchema = z.object({
   tags: z.record(z.string()).optional().describe('Tags bruts décrivant le lieu (ex: { "cuisine": "italian" }).'),
 });
 
+export const EnemySchema = z.object({
+  name: z.string().describe("Nom de l'ennemi."),
+  description: z.string().describe("Description de l'ennemi."),
+  health: z.number().describe("Santé actuelle de l'ennemi."),
+  maxHealth: z.number().describe("Santé maximale de l'ennemi."),
+  attack: z.number().describe("Valeur d'attaque de l'ennemi."),
+  defense: z.number().describe("Valeur de défense de l'ennemi."),
+});
+
 // UPDATED to AdvancedSkillSystem structure
 export const SkillsSchema = z.object({
   cognitive: z.object({

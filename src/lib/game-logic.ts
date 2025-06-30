@@ -1,5 +1,6 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload } from './types';
+
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -35,6 +36,10 @@ export type GameAction =
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'LOG_ITEM_USAGE'; payload: { instanceId: string; usageDescription: string; } }
   | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
+  // Combat Actions
+  | { type: 'START_COMBAT'; payload: Enemy }
+  | { type: 'UPDATE_ENEMY'; payload: Partial<Enemy> }
+  | { type: 'END_COMBAT' }
   // AI-driven actions from simplified schemas
   | { type: 'ADD_QUEST'; payload: AddQuestPayload }
   | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
@@ -149,6 +154,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'ADD_GAME_TIME':
       return { ...state, gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload };
     
+    // --- Combat Reducers ---
+    case 'START_COMBAT':
+        return { ...state, currentEnemy: action.payload };
+    case 'UPDATE_ENEMY':
+        if (!state.currentEnemy) return state;
+        return { ...state, currentEnemy: { ...state.currentEnemy, ...action.payload } };
+    case 'END_COMBAT':
+        return { ...state, currentEnemy: null };
+
     // --- AI-Driven Reducers ---
     case 'ADD_QUEST': {
         const newQuest: Quest = {
@@ -356,10 +370,17 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
 
 export async function calculateDeterministicEffects(
   player: Player,
+  currentEnemy: Enemy | null,
   choice: StoryChoice,
   weatherData: WeatherData | null
-): Promise<{ updatedPlayer: Player; notifications: GameNotification[]; eventsForAI: string[]}> {
+): Promise<{ 
+    updatedPlayer: Player; 
+    updatedEnemy: Enemy | null,
+    notifications: GameNotification[]; 
+    eventsForAI: string[]
+}> {
   const newPlayerState = JSON.parse(JSON.stringify(player));
+  let newEnemyState = currentEnemy ? JSON.parse(JSON.stringify(currentEnemy)) : null;
   const notifications: GameNotification[] = [];
   const eventsForAI: string[] = [];
 
@@ -424,6 +445,37 @@ export async function calculateDeterministicEffects(
       description: `Vous ressentez des effets: ${statChanges}.`
     });
     eventsForAI.push(`Le joueur ressent des effets sur ses statistiques: ${statChanges}.`);
+  }
+
+  // --- COMBAT LOGIC ---
+  if (choice.isCombatAction && newEnemyState) {
+    // Player Attacks
+    const bestWeapon = newPlayerState.inventory
+        .filter((i: IntelligentItem) => i.combatStats?.damage)
+        .sort((a: IntelligentItem, b: IntelligentItem) => (b.combatStats!.damage!) - (a.combatStats!.damage!))[0];
+    const weaponDamage = bestWeapon?.combatStats?.damage || 1; // Unarmed damage
+    const strengthBonus = Math.floor(newPlayerState.stats.Force / 20); // Bonus from strength
+    const playerTotalDamage = weaponDamage + strengthBonus;
+    const enemyDamageTaken = Math.max(0, playerTotalDamage - newEnemyState.defense);
+    newEnemyState.health = Math.max(0, newEnemyState.health - enemyDamageTaken);
+
+    eventsForAI.push(`Le joueur attaque ${newEnemyState.name} avec ${bestWeapon?.name || 'ses poings'} et inflige ${enemyDamageTaken} points de dégâts. Santé de l'ennemi: ${newEnemyState.health}.`);
+
+    // Enemy Attacks (if still alive)
+    if (newEnemyState.health > 0) {
+        const bestArmor = newPlayerState.inventory
+            .filter((i: IntelligentItem) => i.combatStats?.defense)
+            .sort((a: IntelligentItem, b: IntelligentItem) => (b.combatStats!.defense!) - (a.combatStats!.defense!))[0];
+        const armorDefense = bestArmor?.combatStats?.defense || 0;
+        const playerDamageTaken = Math.max(0, newEnemyState.attack - armorDefense);
+        newPlayerState.stats.Sante = Math.max(0, newPlayerState.stats.Sante - playerDamageTaken);
+        
+        eventsForAI.push(`${newEnemyState.name} contre-attaque et inflige ${playerDamageTaken} points de dégâts. Santé du joueur: ${newPlayerState.stats.Sante}.`);
+        notifications.push({ type: 'info', title: 'Combat', description: `Vous infligez ${enemyDamageTaken} dégâts. Vous subissez ${playerDamageTaken} dégâts.` });
+    } else {
+        notifications.push({ type: 'info', title: 'Combat', description: `Vous infligez ${enemyDamageTaken} dégâts.` });
+        eventsForAI.push(`${newEnemyState.name} est vaincu !`);
+    }
   }
 
   // Handle skill checks
@@ -512,7 +564,7 @@ export async function calculateDeterministicEffects(
     }
 
 
-  return { updatedPlayer: newPlayerState, notifications, eventsForAI };
+  return { updatedPlayer: newPlayerState, updatedEnemy: newEnemyState, notifications, eventsForAI };
 }
 
 
@@ -569,7 +621,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     return null;
   }
 
-  const { player } = gameState;
+  const { player, currentEnemy } = gameState;
 
   // We are creating a subset of the player object that matches PlayerInputSchema
   const playerInputForAI = {
@@ -614,6 +666,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     player: playerInputForAI,
     playerChoice: playerChoice,
     currentScenario: gameState.currentScenario?.scenarioText || '',
+    currentEnemy: currentEnemy,
     deterministicEvents: deterministicEvents,
     activeQuests: (player.questLog || [])
       .filter(q => ['active', 'inactive'].includes(q.status))

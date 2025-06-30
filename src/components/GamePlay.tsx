@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { StoryChoice, GameAction } from '@/lib/types';
+import type { StoryChoice, GameAction, Enemy } from '@/lib/types';
 import { calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
@@ -15,6 +15,7 @@ import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
 import { processItemUpdates } from '@/lib/player-state-helpers';
+import CombatStatusDisplay from './CombatStatusDisplay';
 
 
 const GamePlay: React.FC = () => {
@@ -53,15 +54,15 @@ const GamePlay: React.FC = () => {
 
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
     if (!gameState || !gameState.player) return;
-    const { player } = gameState;
 
     setIsLoading(true);
 
     try {
-      const { updatedPlayer, notifications, eventsForAI } = await calculateDeterministicEffects(player, choice, weatherData);
+      const { updatedPlayer, updatedEnemy, notifications, eventsForAI } = await calculateDeterministicEffects(gameState.player, gameState.currentEnemy || null, choice, weatherData);
+      
       notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 4000 }));
       
-      const tempGameStateForAI = { ...gameState, player: updatedPlayer };
+      const tempGameStateForAI = { ...gameState, player: updatedPlayer, currentEnemy: updatedEnemy };
       const inputForAI = prepareAIInput(tempGameStateForAI, choice.text, eventsForAI);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
@@ -69,11 +70,25 @@ const GamePlay: React.FC = () => {
 
       const allActions: GameAction[] = [];
       allActions.push({ type: 'UPDATE_PLAYER_DATA', payload: updatedPlayer });
+      if (updatedEnemy) {
+        allActions.push({ type: 'UPDATE_ENEMY', payload: updatedEnemy });
+      }
+
       if (choice.timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
 
       allActions.push({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });
       allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: updatedPlayer.currentLocation } });
       
+      // Handle Combat Events from AI
+      if (aiOutput.combatEvent) {
+          if (aiOutput.combatEvent.startCombat) {
+              allActions.push({ type: 'START_COMBAT', payload: aiOutput.combatEvent.startCombat });
+          }
+          if (aiOutput.combatEvent.endCombat) {
+              allActions.push({ type: 'END_COMBAT' });
+          }
+      }
+
       // Translate AI output to game actions
       if (aiOutput.newQuests) aiOutput.newQuests.forEach(q => allActions.push({ type: 'ADD_QUEST', payload: q as any }));
       if (aiOutput.updatedQuests) aiOutput.updatedQuests.forEach(u => allActions.push({ type: 'UPDATE_QUEST', payload: u }));
@@ -134,11 +149,12 @@ const GamePlay: React.FC = () => {
     );
   }
 
-  const { currentScenario } = gameState;
+  const { currentScenario, currentEnemy } = gameState;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
       <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6">
+        {currentEnemy && <CombatStatusDisplay enemy={currentEnemy} />}
         <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
         {!isLoading && (
           <ChoiceSelectionDisplay

@@ -1,4 +1,5 @@
 
+
 import type { PlayerStats } from './player-types';
 import type { Position } from './game-types';
 import type { GameEra } from './era-types';
@@ -39,6 +40,10 @@ export interface IntelligentItem {
     thirst?: number;
   };
   skillModifiers?: Partial<Record<string, number>>;
+  combatStats?: {
+    damage?: number;
+    defense?: number;
+  };
   
   // State that evolves with gameplay
   condition: {

@@ -2,6 +2,15 @@ import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice } from './choice-types';
 
+export type Enemy = {
+  name: string;
+  description: string;
+  health: number;
+  maxHealth: number;
+  attack: number;
+  defense: number;
+};
+
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {
   scenarioText: string; // HTML content from AI
@@ -20,6 +29,7 @@ export type JournalEntry = {
 export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
+  currentEnemy?: Enemy | null;
   nearbyPois: Position[] | null;
   gameTimeInMinutes: number;
   journal: JournalEntry[];
