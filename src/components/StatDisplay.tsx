@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { PlayerStats } from '@/lib/types';
@@ -30,7 +31,8 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats, previousStats }) => {
   React.useEffect(() => {
     if (previousStats) {
       for (const key in stats) {
-        if (stats[key] !== previousStats[key]) {
+        const statKey = key as keyof PlayerStats;
+        if (stats[statKey].value !== previousStats[statKey].value) {
           setPulseKey(key);
           const timer = setTimeout(() => setPulseKey(null), 500); // Duration of animation
           return () => clearTimeout(timer); 
@@ -46,7 +48,7 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats, previousStats }) => {
       </CardHeader>
       <CardContent className="p-3">
         <div className="grid grid-cols-2 gap-2">
-          {stats && Object.entries(stats).map(([key, value]) => {
+          {stats && Object.entries(stats).map(([key, statObj]) => {
             const IconComponent = statIcons[key] || Zap; // Default to Zap if no icon
             if (!IconComponent) return null; // Don't render if icon not found
             
@@ -57,9 +59,9 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats, previousStats }) => {
                 <span className="font-semibold text-xs">{key}</span>
                 <span 
                   className={`text-md font-bold ${isPulsing ? 'animate-stat-pulse text-accent' : 'text-primary'}`}
-                  key={`${key}-${value}`}
+                  key={`${key}-${statObj.value}`}
                 >
-                  {value}
+                  {statObj.value}
                 </span>
               </div>
             );

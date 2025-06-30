@@ -9,17 +9,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
-  Sante: 100,
-  Charisme: 50,
-  Intelligence: 50,
-  Force: 50,
-  Energie: 100, // Max 100,
-  Stress: 10, // Max 100 (bas = bien)
-  Volonte: 50, // Max 100
-  Reputation: 0, // Peut être négatif ou positif
-  Humeur: 50,
-  Curiosite: 20,
-  Inspiration: 10,
+  Sante: { value: 100, max: 100 },
+  Energie: { value: 100, max: 100 },
+  Stress: { value: 10, max: 100 },
+  Volonte: { value: 50, max: 100 },
+  Humeur: { value: 50, max: 100 },
+  Charisme: { value: 50 },
+  Intelligence: { value: 50 },
+  Force: { value: 50 },
+  Reputation: { value: 0 },
+  Curiosite: { value: 20 },
+  Inspiration: { value: 10 },
 };
 
 // UPDATED to new AdvancedSkillSystem structure

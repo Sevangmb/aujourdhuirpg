@@ -78,6 +78,28 @@ function migrateSkills(oldSkills: any): AdvancedSkillSystem {
     return newSkills;
 }
 
+function migrateStats(savedStats: any): PlayerStats {
+    const newStats = JSON.parse(JSON.stringify(initialPlayerStats)); // Deep copy
+    if (!savedStats || typeof savedStats !== 'object') {
+        return newStats;
+    }
+
+    for (const key in newStats) {
+        if (Object.prototype.hasOwnProperty.call(savedStats, key)) {
+            const savedValue = savedStats[key as keyof PlayerStats];
+            if (typeof savedValue === 'number') {
+                // Old format: Sante: 100
+                (newStats as any)[key].value = savedValue;
+            } else if (typeof savedValue === 'object' && 'value' in savedValue) {
+                // New format: Sante: { value: 100, max: 100 }
+                // Use deepmerge to preserve potential new fields in initialPlayerStats
+                (newStats as any)[key] = deepmerge((newStats as any)[key], savedValue);
+            }
+        }
+    }
+    return newStats;
+}
+
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   const player: Player = {
     uid: savedPlayer?.uid,
@@ -90,7 +112,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     background: savedPlayer?.background || '',
     era: savedPlayer?.era || 'Époque Contemporaine',
     startingLocationName: savedPlayer?.startingLocationName,
-    stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
+    stats: migrateStats(savedPlayer?.stats),
     skills: migrateSkills(savedPlayer?.skills), // Use migration function for skills
     physiology: deepmerge(initialPhysiology, savedPlayer?.physiology || {}), // Hydrate physiology
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],

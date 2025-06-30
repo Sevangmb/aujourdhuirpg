@@ -9,6 +9,7 @@ import { montmartreInitialChoices } from '@/data/choices';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
+import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 
 // --- Constants for Game Logic ---
 const HUNGER_DECAY_PER_MINUTE = 0.05;
@@ -47,8 +48,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             if (!player) return currentState;
 
             switch (event.type) {
-                case 'PLAYER_STAT_CHANGE':
-                    return { ...currentState, player: { ...player, stats: { ...player.stats, [event.stat]: event.finalValue } } };
+                case 'PLAYER_STAT_CHANGE': {
+                    const statToChange = player.stats[event.stat as keyof PlayerStats];
+                    if (statToChange) {
+                        // Clamp the value between 0 and max if max exists
+                        const maxValue = statToChange.max !== undefined ? statToChange.max : event.finalValue;
+                        const clampedValue = Math.max(0, Math.min(event.finalValue, maxValue));
+                        
+                        const newStat = { ...statToChange, value: clampedValue };
+                        const newStats = { ...player.stats, [event.stat]: newStat };
+                        return { ...currentState, player: { ...player, stats: newStats } };
+                    }
+                    return currentState;
+                }
                 
                 case 'PLAYER_PHYSIOLOGY_CHANGE':
                     return { ...currentState, player: { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } } };
@@ -61,6 +73,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 case 'ITEM_ADDED':
                     return { ...currentState, player: { ...player, inventory: addItemToInventory(player.inventory, event.itemId, event.quantity, player.currentLocation) } };
                 
+                case 'DYNAMIC_ITEM_ADDED': {
+                    const { baseItemId, overrides } = event.payload;
+                    return { ...currentState, player: { ...player, inventory: addItemToInventory(player.inventory, baseItemId, 1, player.currentLocation, overrides) } };
+                }
+
                 case 'ITEM_REMOVED': {
                     const { updatedInventory } = removeItemFromInventory(player.inventory, event.itemId, event.quantity);
                     return { ...currentState, player: { ...player, inventory: updatedInventory } };
@@ -137,7 +154,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 
                 case 'MONEY_CHANGED': {
                     const nowISO = new Date().toISOString();
-                    return { ...currentState, player: { ...player, money: event.finalBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
+                    const newBalance = player.money + event.amount;
+                    return { ...currentState, player: { ...player, money: newBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
                 }
                 case 'QUEST_ADDED': {
                   const nowISO = new Date().toISOString();
@@ -192,7 +210,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 
                 case 'COMBAT_ACTION':
                     if (event.target === 'player' && player) {
-                        const newPlayer = { ...player, stats: { ...player.stats, Sante: event.newHealth } };
+                        const newSante = { ...player.stats.Sante, value: event.newHealth };
+                        const newPlayer = { ...player, stats: { ...player.stats, Sante: newSante } };
                         return { ...currentState, player: newPlayer };
                     } else if (event.target === 'enemy' && currentState.currentEnemy) {
                         const newEnemy = { ...currentState.currentEnemy, health: event.newHealth };
@@ -276,7 +295,7 @@ export async function processPlayerAction(
   const events: GameEvent[] = [];
   
   // Create a mutable copy of the player state to track changes within this function
-  const tempPlayerState = JSON.parse(JSON.stringify(player));
+  const tempPlayerState = JSON.parse(JSON.stringify(player)) as Player;
 
   // --- LOG ACTION & TIME ---
   events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost });
@@ -287,8 +306,8 @@ export async function processPlayerAction(
   const hungerDecay = (choice.timeCost * HUNGER_DECAY_PER_MINUTE) + (choice.energyCost * HUNGER_DECAY_PER_ENERGY_POINT);
   const thirstDecay = (choice.timeCost * THIRST_DECAY_PER_MINUTE) + (choice.energyCost * THIRST_DECAY_PER_ENERGY_POINT);
   
-  tempPlayerState.stats.Energie -= choice.energyCost;
-  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: tempPlayerState.stats.Energie });
+  tempPlayerState.stats.Energie.value -= choice.energyCost;
+  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: tempPlayerState.stats.Energie.value });
 
   tempPlayerState.physiology.basic_needs.hunger.level -= hungerDecay;
   events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: tempPlayerState.physiology.basic_needs.hunger.level });
@@ -310,8 +329,9 @@ export async function processPlayerAction(
   
   if (choice.statEffects) {
     for (const [stat, value] of Object.entries(choice.statEffects)) {
-        tempPlayerState.stats[stat] += value;
-        events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: tempPlayerState.stats[stat] });
+        const statKey = stat as keyof PlayerStats;
+        tempPlayerState.stats[statKey].value += value;
+        events.push({ type: 'PLAYER_STAT_CHANGE', stat: statKey, change: value, finalValue: tempPlayerState.stats[statKey].value });
     }
   }
   
@@ -423,6 +443,11 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 
   const { player } = gameState;
 
+  // Flatten stats for AI
+  const flatStats = Object.fromEntries(
+    Object.entries(player.stats).map(([key, statObj]) => [key, statObj.value])
+  );
+
   const playerInputForAI = {
       name: player.name,
       gender: player.gender,
@@ -430,7 +455,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       origin: player.origin,
       era: player.era || 'Époque Contemporaine',
       background: player.background,
-      stats: player.stats,
+      stats: flatStats,
       skills: player.skills,
       physiology: player.physiology,
       traitsMentalStates: player.traitsMentalStates,
@@ -478,4 +503,68 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     gameEvents: JSON.stringify(gameEvents || [], null, 2),
     cascadeResult: cascadeData ? JSON.stringify(cascadeData, null, 2) : "{}",
   };
+}
+
+/**
+ * NEW: Converts AI-generated proposals into a list of concrete GameEvents.
+ * This acts as a security and validation layer between the AI and the game engine.
+ * @param aiOutput The output from the generateScenario AI flow.
+ * @returns An array of GameEvent objects.
+ */
+export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameEvent[] {
+  const events: GameEvent[] = [];
+
+  if (aiOutput.newQuests) {
+    aiOutput.newQuests.forEach(questData => {
+      const questForEvent: Omit<Quest, 'id' | 'dateAdded' | 'status'> = {
+        ...questData,
+        objectives: questData.objectives.map(desc => ({ id: '', description: desc, isCompleted: false }))
+      };
+      events.push({ type: 'QUEST_ADDED', quest: questForEvent });
+    });
+  }
+
+  if (aiOutput.questUpdates) {
+    aiOutput.questUpdates.forEach(update => {
+      if (update.newStatus) {
+        events.push({ type: 'QUEST_STATUS_CHANGED', questId: update.questId, newStatus: update.newStatus });
+      }
+      if (update.updatedObjectives) {
+        update.updatedObjectives.forEach(objUpdate => {
+          events.push({ type: 'QUEST_OBJECTIVE_CHANGED', questId: update.questId, objectiveId: objUpdate.objectiveId, completed: objUpdate.isCompleted });
+        });
+      }
+    });
+  }
+  
+  if (aiOutput.newPNJs) {
+    aiOutput.newPNJs.forEach(pnjData => {
+       const pnjForEvent: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'> = {
+            ...pnjData,
+            interactionHistory: [],
+       };
+       events.push({ type: 'PNJ_ENCOUNTERED', pnj: pnjForEvent });
+    });
+  }
+
+  if (aiOutput.newItems) {
+    aiOutput.newItems.forEach(itemPayload => {
+        const masterItem = getMasterItemById(itemPayload.baseItemId);
+        if (masterItem) {
+            events.push({ 
+                type: 'DYNAMIC_ITEM_ADDED', 
+                payload: itemPayload 
+            });
+        }
+    });
+  }
+
+  if (aiOutput.newTransactions) {
+    aiOutput.newTransactions.forEach(txData => {
+        // The reducer will calculate the finalBalance. We just provide the change.
+        events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description, finalBalance: 0 /* Placeholder */ });
+    });
+  }
+
+  return events;
 }

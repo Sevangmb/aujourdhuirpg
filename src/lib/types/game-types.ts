@@ -2,7 +2,7 @@
 import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
-import type { Quest, PNJ, HistoricalContact } from '.';
+import type { Quest, PNJ, HistoricalContact, DynamicItemCreationPayload } from '.';
 
 export type Enemy = {
   name: string;
@@ -38,6 +38,7 @@ export type GameEvent =
   | { type: 'XP_GAINED'; amount: number; }
   | { type: 'PLAYER_LEVELED_UP'; newLevel: number; }
   | { type: 'ITEM_ADDED'; itemId: string; itemName: string; quantity: number; }
+  | { type: 'DYNAMIC_ITEM_ADDED'; payload: DynamicItemCreationPayload }
   | { type: 'ITEM_REMOVED'; itemId: string; itemName: string; quantity: number; }
   | { type: 'ITEM_USED'; instanceId: string; itemName: string; description: string; }
   | { type: 'ITEM_XP_GAINED'; instanceId: string; itemName: string; xp: number; }

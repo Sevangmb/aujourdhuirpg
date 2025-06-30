@@ -16,6 +16,12 @@ const PlayerStatusPanel: React.FC<PlayerStatusPanelProps> = ({ player }) => {
   const hungerLevel = player.physiology?.basic_needs?.hunger?.level ?? 100;
   const thirstLevel = player.physiology?.basic_needs?.thirst?.level ?? 100;
 
+  const sante = player.stats.Sante;
+  const energie = player.stats.Energie;
+
+  const santePercentage = sante.max ? (sante.value / sante.max) * 100 : 100;
+  const energiePercentage = energie.max ? (energie.value / energie.max) * 100 : 100;
+
   return (
     <Card>
       <CardHeader className="p-3 pb-2">
@@ -26,16 +32,16 @@ const PlayerStatusPanel: React.FC<PlayerStatusPanelProps> = ({ player }) => {
         <div className="space-y-1">
           <div className="flex justify-between items-center text-xs">
             <span className="flex items-center gap-1.5"><Heart className="w-4 h-4 text-red-500" /> Santé</span>
-            <span>{player.stats.Sante} / 100</span>
+            <span>{sante.value} / {sante.max}</span>
           </div>
-          <Progress value={player.stats.Sante} className="h-2 [&>div]:bg-red-500" />
+          <Progress value={santePercentage} className="h-2 [&>div]:bg-red-500" />
         </div>
         <div className="space-y-1">
           <div className="flex justify-between items-center text-xs">
             <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-yellow-500" /> Énergie</span>
-            <span>{player.stats.Energie} / 100</span>
+            <span>{energie.value} / {energie.max}</span>
           </div>
-          <Progress value={player.stats.Energie} className="h-2 [&>div]:bg-yellow-500" />
+          <Progress value={energiePercentage} className="h-2 [&>div]:bg-yellow-500" />
         </div>
         <div className="space-y-1">
           <div className="flex justify-between items-center text-xs">

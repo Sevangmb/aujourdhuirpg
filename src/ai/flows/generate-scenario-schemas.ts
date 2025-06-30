@@ -6,6 +6,12 @@
 import {z} from 'genkit';
 import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
 import { PlayerInputSchema } from './schemas/player-common-schemas';
+import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas'; // NEW
+import { PNJInteractionSchema } from './schemas/pnj-schemas'; // NEW
+import { MajorDecisionSchema } from './schemas/decision-schemas'; // NEW
+import { ClueInputSchema, DocumentInputSchema } from './schemas/evidence-schemas'; // NEW
+import { NewTransactionSchema } from './schemas/finance-schemas'; // NEW
+import { DynamicItemCreationPayloadSchema } from './schemas/item-schemas'; // NEW
 import type { GameEvent } from '@/lib/types';
 
 
@@ -45,7 +51,7 @@ export const StoryChoiceSchema = z.object({
 }).describe("Un choix guidé et riche pour le joueur.");
 
 // --- Main Output Schema ---
-// The AI's response is now purely narrative and suggestive.
+// The AI's response now includes both narration AND potential game state changes.
 export const GenerateScenarioOutputSchema = z.object({
   scenarioText: z.string().describe('Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l\'action du joueur et prépare la scène pour la prochaine action.'),
   
@@ -56,4 +62,15 @@ export const GenerateScenarioOutputSchema = z.object({
 
   choices: z.array(StoryChoiceSchema).min(1).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ne doit pas être vide."),
   
-}).describe("Schéma de sortie pour le flux generateScenario. L'IA ne génère plus d'événements de jeu, seulement la narration et les choix.");
+  // --- NEW: AI-Generated Game Events ---
+  // The AI can now propose new game elements. The game engine will validate and apply them.
+  newQuests: z.array(QuestInputSchema).optional().describe("Propose de nouvelles quêtes à ajouter au journal du joueur."),
+  questUpdates: z.array(QuestUpdateSchema).optional().describe("Propose des mises à jour de quêtes existantes (ex: objectif complété)."),
+  newPNJs: z.array(PNJInteractionSchema).optional().describe("Introduit de nouveaux personnages non-joueurs dans la scène."),
+  newItems: z.array(DynamicItemCreationPayloadSchema).optional().describe("Introduit de nouveaux objets dans le jeu (ex: un objet trouvé)."),
+  newTransactions: z.array(NewTransactionSchema).optional().describe("Génère des transactions financières (ex: trouver de l'argent, recevoir un paiement)."),
+  newClues: z.array(ClueInputSchema).optional().describe("Génère de nouveaux indices pour le dossier d'enquête."),
+  newDocuments: z.array(DocumentInputSchema).optional().describe("Génère de nouveaux documents à ajouter au dossier d'enquête."),
+  majorDecisions: z.array(MajorDecisionSchema).optional().describe("Enregistre une décision majeure prise par le joueur."),
+
+}).describe("Schéma de sortie pour le flux generateScenario. L'IA génère la narration, les choix, et peut proposer des changements d'état du jeu.");

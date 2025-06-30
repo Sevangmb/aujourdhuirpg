@@ -37,6 +37,6 @@ export interface StoryChoice {
   };
   skillGains?: Record<string, number>;
   physiologicalEffects?: { hunger?: number; thirst?: number };
-  statEffects?: Partial<PlayerStats>;
+  statEffects?: Partial<Record<keyof PlayerStats, number>>;
   successProbability?: number; // Optional field for displaying success chance
 }

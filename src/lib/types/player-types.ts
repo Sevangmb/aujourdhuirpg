@@ -11,20 +11,25 @@ import type { HistoricalContact } from './historical-contact-types';
 import type { GameEra } from './era-types';
 import type { AdvancedPhysiologySystem } from './physiology-types';
 
+export interface Stat {
+  value: number;
+  max?: number; // Optional max value, e.g., for health or energy
+}
+
 export type PlayerStats = {
-  Sante: number;
-  Charisme: number;
-  Intelligence: number;
-  Force: number;
-  Energie: number; // Nouvelle stat: Endurance du joueur
-  Stress: number; // Nouvelle stat: Niveau de tension psychologique
-  Volonte: number; // Nouvelle stat: Résistance mentale
-  Reputation: number; // Nouvelle stat: Opinion générale des PNJ
-  Humeur: number;
-  Curiosite: number;
-  Inspiration: number;
-  [key: string]: number; // Allows for dynamic stats if needed
+  Sante: Stat;
+  Energie: Stat;
+  Stress: Stat;
+  Volonte: Stat;
+  Charisme: Stat;
+  Intelligence: Stat;
+  Force: Stat;
+  Reputation: Stat;
+  Humeur: Stat;
+  Curiosite: Stat;
+  Inspiration: Stat;
 };
+
 
 // --- NEW ADVANCED SKILL SYSTEM ---
 export interface AdvancedSkillSystem {

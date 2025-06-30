@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameAction, Enemy, GameEvent } from '@/lib/types';
-import { processPlayerAction, prepareAIInput, gameReducer } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -61,26 +61,29 @@ const GamePlay: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 1. Process the action in the game logic layer to get a list of events
-      const { events } = await processPlayerAction(gameState.player, gameState.currentEnemy || null, choice, weatherData);
+      // 1. Process the action in the game logic layer to get a list of deterministic events
+      const { events: deterministicEvents } = await processPlayerAction(gameState.player, gameState.currentEnemy || null, choice, weatherData);
       
       // 2. Apply events to a temporary state to get the state *after* the action, for the AI's context
-      const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: events });
+      const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: deterministicEvents });
 
-      // 3. === CASCADE ENRICHMENT ===
+      // 3. Run the enrichment cascade
       const cascadeResult = await runCascadeForAction(stateAfterAction, choice);
       
       // 4. Prepare the input for the AI with the calculated events, the future state, and cascade results
-      const inputForAI = prepareAIInput(stateAfterAction, choice, events, cascadeResult);
+      const inputForAI = prepareAIInput(stateAfterAction, choice, deterministicEvents, cascadeResult);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
-      // 5. Get the narration and next choices from the AI
+      // 5. Get the narration, next choices, and potential new game events from the AI
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      // 6. Dispatch the game events to *actually* update the state
-      dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
+      // 6. Convert AI proposals (new quests, items, etc.) into game events
+      const aiGeneratedEvents = convertAIOutputToEvents(aiOutput);
+
+      // 7. Dispatch ALL events (deterministic + AI-generated) to *actually* update the state
+      dispatch({ type: 'APPLY_GAME_EVENTS', payload: [...deterministicEvents, ...aiGeneratedEvents] });
       
-      // 7. Set the new scenario from the AI's output
+      // 8. Set the new scenario from the AI's output
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });
 
     } catch (error) {

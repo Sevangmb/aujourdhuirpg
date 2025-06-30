@@ -74,7 +74,7 @@ export function performSkillCheck(
   const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
 
   const controllingStatName = skillCategoryToStatMap[category];
-  const controllingStatValue = controllingStatName ? (stats[controllingStatName] || 0) : 0;
+  const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
   const statModifierValue = Math.floor(controllingStatValue / 10);
 
   // Calculate total modifier from all items in inventory
@@ -154,7 +154,7 @@ export function calculateSuccessProbability(
   const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
 
   const controllingStatName = skillCategoryToStatMap[category];
-  const controllingStatValue = controllingStatName ? (stats[controllingStatName] || 0) : 0;
+  const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
   const statModifierValue = Math.floor(controllingStatValue / 10);
 
   const itemModifierValue = inventory.reduce((total, item) => {

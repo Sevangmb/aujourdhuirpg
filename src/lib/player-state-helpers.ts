@@ -1,5 +1,5 @@
 
-import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem, GameNotification, Position, MasterIntelligentItem } from './types';
+import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem, GameNotification, Position, MasterIntelligentItem, DynamicItemCreationPayload } from './types';
 import { getMasterItemById } from '@/data/items';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,20 +47,34 @@ export function calculateXpToNextLevel(level: number): number {
   return level * 100 + 50 * (level - 1) * level;
 }
 
-export function applyStatChanges(currentStats: PlayerStats, changes: Partial<PlayerStats>): PlayerStats {
-  const newStats = { ...currentStats };
+export function applyStatChanges(currentStats: PlayerStats, changes: Partial<Record<keyof PlayerStats, number>>): PlayerStats {
+  const newStats = JSON.parse(JSON.stringify(currentStats));
   for (const key in changes) {
     if (Object.prototype.hasOwnProperty.call(newStats, key)) {
       const statKey = key as keyof PlayerStats;
-      newStats[statKey] = Math.max(0, (newStats[statKey] || 0) + (changes[statKey] || 0));
+      const changeValue = changes[statKey] || 0;
+      const statToChange = newStats[statKey];
+
+      const newValue = statToChange.value + changeValue;
+      const maxValue = statToChange.max !== undefined ? statToChange.max : newValue;
+      statToChange.value = Math.max(0, Math.min(newValue, maxValue));
     }
   }
   return newStats;
 }
 
-export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, location: Position): IntelligentItem {
+export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, location: Position, overrides?: DynamicItemCreationPayload['overrides']): IntelligentItem {
     const baseInstance: IntelligentItem = {
       ...masterItem,
+      
+      // Apply overrides if they exist
+      name: overrides?.name || masterItem.name,
+      description: overrides?.description || masterItem.description,
+      effects: overrides?.effects ? { ...masterItem.effects, ...overrides.effects } : masterItem.effects,
+      physiologicalEffects: overrides?.physiologicalEffects ? { ...masterItem.physiologicalEffects, ...overrides.physiologicalEffects } : masterItem.physiologicalEffects,
+      skillModifiers: overrides?.skillModifiers ? { ...masterItem.skillModifiers, ...overrides.skillModifiers } : masterItem.skillModifiers,
+
+      // Default instance properties
       instanceId: uuidv4(),
       quantity: 1, 
       condition: { durability: 100 },
@@ -69,7 +83,7 @@ export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, l
       xpToNextItemLevel: masterItem.xpToNextItemLevel,
       memory: {
         acquiredAt: new Date().toISOString(),
-        acquisitionStory: `Acquis à ${location.name}.`,
+        acquisitionStory: `Trouvé à ${location.name}.`, // More appropriate for dynamic items
         usageHistory: [],
       },
       contextual_properties: {
@@ -83,7 +97,7 @@ export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, l
 }
 
 
-export function addItemToInventory(currentInventory: IntelligentItem[], itemId: string, quantityToAdd: number, location: Position): IntelligentItem[] {
+export function addItemToInventory(currentInventory: IntelligentItem[], itemId: string, quantityToAdd: number, location: Position, overrides?: DynamicItemCreationPayload['overrides']): IntelligentItem[] {
   const masterItem = getMasterItemById(itemId);
   if (!masterItem) {
     console.warn(`Inventory Warning: Attempted to add unknown item ID: ${itemId}. Item not added.`);
@@ -92,34 +106,39 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
 
   const newInventory = [...currentInventory];
   
+  // Overrides force creation of a new, unique item instance, ignoring stacking.
+  if (overrides) {
+      newInventory.push(createNewInstanceFromMaster(masterItem, location, overrides));
+      return newInventory;
+  }
+  
+  // Standard logic for stackable items without overrides.
   if (masterItem.stackable) {
     const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
     if (existingItemIndex > -1) {
       newInventory[existingItemIndex].quantity += quantityToAdd;
-    } else {
-      const newInstance = createNewInstanceFromMaster(masterItem, location);
-      newInstance.quantity = quantityToAdd;
-      newInventory.push(newInstance);
+      return newInventory;
     }
-  } else {
-    for (let i = 0; i < quantityToAdd; i++) {
-      newInventory.push(createNewInstanceFromMaster(masterItem, location));
-    }
+  } 
+  
+  // If not stackable, or stackable but not present, create new instances.
+  for (let i = 0; i < quantityToAdd; i++) {
+    newInventory.push(createNewInstanceFromMaster(masterItem, location));
   }
   return newInventory;
 }
 
 
-export function removeItemFromInventory(currentInventory: IntelligentItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: IntelligentItem[], removedItemEffects?: Partial<PlayerStats>, removedItemName?: string } {
+export function removeItemFromInventory(currentInventory: IntelligentItem[], itemIdToRemoveOrName: string, quantityToRemove: number): { updatedInventory: IntelligentItem[], removedItemEffects?: Partial<Record<keyof PlayerStats, number>>, removedItemName?: string } {
   const newInventory = [...currentInventory];
   const itemIndex = newInventory.findIndex(item => item.id === itemIdToRemoveOrName || item.name.toLowerCase() === itemIdToRemoveOrName.toLowerCase());
 
-  let removedItemEffects: Partial<PlayerStats> | undefined = undefined;
+  let removedItemEffects: Partial<Record<keyof PlayerStats, number>> | undefined = undefined;
   let removedItemName: string | undefined = undefined;
 
   if (itemIndex > -1) {
     const itemBeingRemoved = newInventory[itemIndex];
-    removedItemEffects = itemBeingRemoved.effects;
+    removedItemEffects = itemBeingRemoved.effects as Partial<Record<keyof PlayerStats, number>> | undefined; // Cast may be needed if effects type changes
     removedItemName = itemBeingRemoved.name;
 
     if (itemBeingRemoved.stackable) {

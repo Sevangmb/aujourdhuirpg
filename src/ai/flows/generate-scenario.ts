@@ -86,14 +86,19 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
 const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider.`;
 
 const PROMPT_CORE_TASK = `
-**Tâche Principale : Raconter l'Histoire et Suggérer la Suite**
-Votre mission a trois volets :
+**Tâche Principale : Raconter l'Histoire, Suggérer la Suite, et Gérer le Monde**
+Votre mission a quatre volets :
 1.  **Générer le 'scenarioText' (Narration) :** Le moteur de jeu a déjà calculé les conséquences de l'action du joueur (\`gameEvents\`). Votre tâche est de transformer ces événements bruts en une description narrative captivante en HTML. Ne répétez PAS les événements, mais intégrez-les de manière transparente et immersive dans votre récit.
 2.  **Générer des Choix Guidés (Actions Adaptatives) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ \`choices\` avec 3 ou 4 objets \`StoryChoice\` riches et variés.
     - **Basé sur le Contexte et les Compétences :** Analysez l'environnement actuel du joueur, ses compétences et le \`cascadeResult\` pour proposer des actions pertinentes.
     - **Variété :** Proposez un mélange d'actions (observation, action, social, etc.). Évitez les choix génériques comme "Continuer".
     - **Structure Complète :** Chaque choix doit être un objet JSON complet.
 3.  **Générer une Recommandation Stratégique (Optionnel) :** En tant que MJ, analysez la situation globale du joueur et remplissez le champ optionnel 'aiRecommendation' avec un conseil stratégique.
+4.  **NOUVEAU - Agir en tant que Maître de Jeu :** En fonction de la narration, vous pouvez maintenant proposer des changements concrets au monde du jeu.
+    - **Si un PNJ propose un travail :** Utilisez le champ \`newQuests\` pour créer une nouvelle quête de type "job".
+    - **Si le joueur découvre un corps :** Utilisez \`newClues\` pour générer un indice "observation d'objet".
+    - **Si le joueur trouve un portefeuille :** Utilisez \`newItems\` pour l'objet "portefeuille" et \`newTransactions\` pour l'argent trouvé.
+    - **Remplissez les champs appropriés** (\`newQuests\`, \`newPNJs\`, \`questUpdates\`, etc.) uniquement lorsque cela est justifié par l'histoire que vous racontez. Sinon, laissez-les vides.
 `;
 
 const PROMPT_CASCADE_INSTRUCTIONS = `
@@ -218,6 +223,10 @@ const generateScenarioFlow = ai.defineFlow(
 
       if (!output) {
         throw new Error("AI model did not return any output.");
+      }
+      // Ensure the output conforms to the schema, especially the non-optional 'choices' field.
+      if (!output.choices) {
+        output.choices = [];
       }
       return output;
 
