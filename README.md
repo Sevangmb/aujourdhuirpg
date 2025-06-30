@@ -2,19 +2,23 @@
 
 ## Introduction
 
-Aujourd'hui RPG is an interactive role-playing game that plunges you into the heart of France, from contemporary times to pivotal historical eras. Create a unique character and navigate a dynamic world where every choice matters. Powered by generative AI, the game offers a deeply personal and replayable narrative experience, featuring a living economy, intelligent travel, and surprise encounters with historical figures.
+Aujourd'hui RPG is an interactive role-playing game that plunges you into the heart of France, blending realistic life simulation with narrative-driven adventure. Create a unique character and navigate a dynamic world where every choice—from the croissant you eat to the metro you take—matters. Powered by generative AI, the game offers a deeply personal and replayable experience, featuring a living economy, an intelligent travel system, and surprise encounters with historical figures.
 
 ## Core Features
 
-*   **Character Creation:** Design a detailed character with a unique name, background, and an AI-generated avatar.
-*   **Dynamic Storytelling:** Engage with scenarios presented in HTML, making choices that directly influence a story that evolves with you.
-*   **Multi-Era Gameplay:** Start your adventure in the modern day or travel back to historical periods like the Renaissance, meeting historical figures as they were in their own time.
-*   **Living Economy**: Actively earn money through AI-generated jobs and missions. Manage realistic expenses for everything from a cup of coffee to a taxi ride—the world has a cost.
-*   **Intelligent Transport System**: Travel between locations with choices of transport mode (walk, metro, taxi), each with time, cost, and energy trade-offs. Journeys can even trigger random narrative events.
-*   **Geospatial Analysis**: Use AI-powered tools to get strategic insights on your current location, including its safety, atmosphere, economic profile, and hidden gems.
-*   **Encounters with History**: Meet historical figures (or their modern descendants) tied to the places you visit. Uncover unique secrets, facts, and quests from these AI-enriched characters.
-*   **Investigation Dossier**: Become a detective. Collect clues and documents, and rely on an AI-generated summary to help you connect the dots and solve complex mysteries.
-*   **Cloud-Based Persistence:** Your progress is automatically saved to the cloud. Load different save points (auto-saves, manual saves, and checkpoints) to continue your adventure anytime, anywhere.
+*   **Character Creation:** Design a detailed character with a unique name, background, starting era, and an AI-generated avatar. Define your narrative experience by setting your preferred story tones (Horror, Romance, Action, etc.).
+*   **Dynamic AI Storytelling:** Engage with scenarios presented in rich HTML, making choices that directly influence a story that evolves with you. The AI acts as a Game Master, creating quests, NPCs, and events on the fly.
+*   **Enriched Item & Economy System:** Interact with a world of tangible objects.
+    *   **Real-World Items:** Discover authentic French products, read real books from Google Books, and use items with realistic properties (durability, nutritional value, etc.).
+    *   **Living Economy:** Earn money through AI-generated jobs. Manage realistic expenses for everything from a cup of coffee to a taxi ride—the world has a cost.
+    *   **Crafting & Cooking:** Use recipes and gathered ingredients to cook meals or craft items, with success based on your skills.
+*   **Intelligent Transport System:** Travel between locations with choices of transport mode (walk, metro, taxi), each with distinct time, cost, and energy trade-offs. Journeys can even trigger random narrative events.
+*   **Physiology Simulation:** Manage your character's hunger and thirst. Your physical state affects your performance, adding a layer of survival and realism to your adventure.
+*   **Narrative Combat:** Engage in a combat system that is driven by the story. Your stats, skills, and equipment determine the outcome of conflicts initiated by the AI.
+*   **Geospatial Analysis:** Use AI-powered tools to get strategic insights on your current location, including its safety, atmosphere, economic profile, and hidden gems.
+*   **Encounters with History:** Meet historical figures (or their modern descendants) tied to the places you visit. Uncover unique secrets, facts, and quests from these AI-enriched characters.
+*   **Investigation Dossier:** Become a detective. Collect clues and documents, and rely on an AI-generated summary to help you connect the dots and solve complex mysteries.
+*   **Cloud-Based Persistence:** Your progress is automatically saved. Load different save points (auto-saves, manual saves, and checkpoints) to continue your adventure anytime.
 
 ## Tech Stack
 
@@ -38,7 +42,7 @@ This section will guide you through setting up and running Aujourd'hui RPG local
 1.  **Clone the repository:**
     ```bash
     git clone <repository-url>
-    cd aujourdhui-rpg # Or your project's directory name
+    cd aujourdhui-rpg
     ```
     *(Replace `<repository-url>` with the actual URL of the repository)*
 
@@ -49,44 +53,39 @@ This section will guide you through setting up and running Aujourd'hui RPG local
 
 ### Running the Development Server
 
-To start the development server for Next.js:
+The application consists of two main parts: the Next.js frontend and the Genkit AI backend.
 
-```bash
-npm run dev
-```
+1.  **Start the Next.js frontend:**
+    ```bash
+    npm run dev
+    ```
+    This will start the main application, usually on `http://localhost:3000`.
 
-This will typically start the application on `http://localhost:3000`.
-
-The AI functionalities are powered by Genkit. To run the Genkit flows locally (e.g., for testing or development of AI features):
-
-```bash
-npm run genkit:dev
-```
-
-Or to watch for changes in AI-related files:
-
-```bash
-npm run genkit:watch
-```
+2.  **Start the Genkit AI flows:**
+    The AI functionalities are powered by Genkit. To run them locally for development and testing, use a separate terminal:
+    ```bash
+    npm run genkit:watch
+    ```
+    This starts the Genkit development server, which automatically reloads when you make changes to AI-related files.
 
 ### Environment Variables
 
 This project requires certain environment variables to be set up for full functionality, particularly for AI services and maps.
 
 1.  Create a `.env` file in the root of the project.
-2.  Add the necessary environment variables. The Firebase configuration is currently hardcoded in `src/lib/firebase.ts` for simplicity, but you will need the following for AI and external services:
+2.  Add the necessary environment variables. The Firebase configuration is currently hardcoded in `src/lib/firebase.ts` for simplicity.
 
     *   **Google AI / Genkit Configuration:**
         ```
         GOOGLE_API_KEY=your_google_ai_api_key
         ```
-        *(Required for all generative AI features, including text, images, and enrichments.)*
+        *(**Required** for all generative AI features, including text, images, and enrichments. Get this from the Google AI Studio.)*
 
     *   **Google Maps Configuration:**
         ```
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
         ```
-        *(Required for the map display component. Get this from the Google Cloud Console.)*
+        *(**Required** for the map display component. Get this from the Google Cloud Console.)*
     
     *   **NewsAPI Configuration (Optional):**
         ```
@@ -99,7 +98,7 @@ This project requires certain environment variables to be set up for full functi
 
 ## Style Guidelines
 
-The visual style of Aujourd'hui RPG is designed to be calm, immersive, and modern, using a customizable theme via CSS variables in `src/app/globals.css`.
+The visual style of Aujourd'hui RPG is designed to be calm, immersive, and modern, using a customizable theme via CSS variables in `src/app/globals.css`. The primary font used is 'Montserrat'.
 
 ## Contributing
 
