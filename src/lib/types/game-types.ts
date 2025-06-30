@@ -70,4 +70,5 @@ export type Position = {
   imageUrl?: string;
   zone?: Zone;
   poiHighlights?: string[];
+  tags?: Record<string, string>;
 };

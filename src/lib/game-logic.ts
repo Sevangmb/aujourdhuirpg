@@ -528,7 +528,8 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
       longitude: poi.lon ?? playerLocation.longitude,
       name: poi.name || "Lieu Inconnu",
       summary: poi.tags?.description || poi.type,
-      zone: { name: poi.subtype || poi.type || "Zone" }
+      zone: { name: poi.subtype || poi.type || "Zone" },
+      tags: poi.tags,
     })).filter(poi => {
         if (poisFromService.pois.length === 1) return true;
         return !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude);
@@ -576,7 +577,14 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
         },
       })),
       money: player.money,
-      currentLocation: player.currentLocation,
+      currentLocation: {
+        latitude: player.currentLocation.latitude,
+        longitude: player.currentLocation.longitude,
+        name: player.currentLocation.name,
+        type: player.currentLocation.zone?.name,
+        description: player.currentLocation.summary,
+        tags: player.currentLocation.tags,
+      },
       toneSettings: player.toneSettings,
   };
 

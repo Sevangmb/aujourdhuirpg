@@ -9,6 +9,9 @@ export const LocationSchema = z.object({
   latitude: z.number().describe('La latitude du lieu.'),
   longitude: z.number().describe('La longitude du lieu.'),
   name: z.string().describe('Le nom lisible du lieu (ex: "Paris, France").'),
+  type: z.string().optional().describe('Le type de lieu (ex: "restaurant", "shop", "museum").'),
+  description: z.string().optional().describe('Une brève description du lieu.'),
+  tags: z.record(z.string()).optional().describe('Tags bruts décrivant le lieu (ex: { "cuisine": "italian" }).'),
 });
 
 // UPDATED to AdvancedSkillSystem structure
