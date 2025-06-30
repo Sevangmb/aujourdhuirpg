@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
@@ -186,13 +187,13 @@ export const GameProvider: React.FC<{
     setTravelDestination(null);
 
     const travelNarrative = (await generateTravelEvent({
-      travelMode: mode, origin, destination,
+      travelMode: mode, origin, destination: travelDestination,
       gameTimeInMinutes: gameState.gameTimeInMinutes,
       playerStats: gameState.player.stats,
       playerSkills: gameState.player.skills,
     })).narrative;
 
-    dispatch({ type: 'EXECUTE_TRAVEL', payload: { destination, travelNarrative, time, cost, energy } });
+    dispatch({ type: 'EXECUTE_TRAVEL', payload: { destination: travelDestination, travelNarrative, time, cost, energy } });
   };
   
   const handleApproachContact = (contactToApproach: AdaptedContact) => {

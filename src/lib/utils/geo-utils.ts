@@ -1,3 +1,4 @@
+
 /**
  * Calculates the distance between two geographical points in kilometers.
  * Uses the Haversine formula.
