@@ -5,7 +5,7 @@ import React, { createContext, useContext, useReducer, useEffect, useState, useC
 import type { User } from 'firebase/auth';
 import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, fetchPoisForCurrentLocation } from '@/lib/game-logic';
+import { gameReducer, fetchPoisForCurrentLocation, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,6 +14,7 @@ import { generateLocationImage as generateLocationImageService } from '@/ai/flow
 import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow';
 import { findAndAdaptHistoricalContactsForLocation } from '@/services/historical-contact-service';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
+import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -72,6 +73,7 @@ export const GameProvider: React.FC<{
   // --- MODAL AND INTERACTION STATE ---
   const [encounter, setEncounter] = useState<AdaptedContact | null>(null);
   const [travelDestination, setTravelDestination] = useState<Position | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Loading state for async context actions
 
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -158,97 +160,107 @@ export const GameProvider: React.FC<{
   
   const handleConfirmTravel = async (mode: 'walk' | 'metro' | 'taxi') => {
     if (!travelDestination || !gameState || !gameState.player) return;
-
-    const origin = gameState.player.currentLocation;
-    const distance = getDistanceInKm(origin.latitude, origin.longitude, travelDestination.latitude, travelDestination.longitude);
-    
-    let time = 0, cost = 0, energy = 0;
-    if (mode === 'walk') {
-        time = Math.round(distance * 12);
-        energy = Math.round(distance * 5) + 1;
-    } else if (mode === 'metro') {
-        time = Math.round(distance * 4 + 10);
-        cost = 1.90;
-        energy = Math.round(distance * 1) + 1;
-    } else { // taxi
-        time = Math.round(distance * 2 + 5);
-        cost = parseFloat((5 + distance * 1.5).toFixed(2));
-        energy = Math.round(distance * 0.5);
-    }
-
-    if (gameState.player.money < cost) {
-        toast({ variant: "destructive", title: "Fonds insuffisants" }); return;
-    }
-    if (gameState.player.stats.Energie < energy) {
-        toast({ variant: "destructive", title: "Trop fatigué" }); return;
-    }
-    
+    setIsLoading(true);
     setTravelDestination(null);
-
-    const travelNarrative = (await generateTravelEvent({
-      travelMode: mode, origin, destination: travelDestination,
-      gameTimeInMinutes: gameState.gameTimeInMinutes,
-      playerStats: gameState.player.stats,
-      playerSkills: gameState.player.skills,
-    })).narrative;
-
-    // Dispatch a single action with all events
-    const events: GameEvent[] = [
-        { type: 'PLAYER_TRAVELS', from: origin.name, destination: travelDestination, mode, duration: time },
-        { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie - energy },
-    ];
-    if (cost > 0) {
-        events.push({ type: 'MONEY_CHANGED', amount: -cost, finalBalance: gameState.player.money - cost, description: `Transport en ${mode} vers ${travelDestination.name}` });
+  
+    try {
+      const origin = gameState.player.currentLocation;
+      const distance = getDistanceInKm(origin.latitude, origin.longitude, travelDestination.latitude, travelDestination.longitude);
+      
+      let time = 0, cost = 0, energy = 0;
+      if (mode === 'walk') {
+          time = Math.round(distance * 12);
+          energy = Math.round(distance * 5) + 1;
+      } else if (mode === 'metro') {
+          time = Math.round(distance * 4 + 10);
+          cost = 1.90;
+          energy = Math.round(distance * 1) + 1;
+      } else { // taxi
+          time = Math.round(distance * 2 + 5);
+          cost = parseFloat((5 + distance * 1.5).toFixed(2));
+          energy = Math.round(distance * 0.5);
+      }
+  
+      if (gameState.player.money < cost) {
+          toast({ variant: "destructive", title: "Fonds insuffisants" }); return;
+      }
+      if (gameState.player.stats.Energie < energy) {
+          toast({ variant: "destructive", title: "Trop fatigué" }); return;
+      }
+      
+      const travelNarrative = (await generateTravelEvent({
+        travelMode: mode, origin, destination: travelDestination,
+        gameTimeInMinutes: gameState.gameTimeInMinutes,
+        playerStats: gameState.player.stats,
+        playerSkills: gameState.player.skills,
+      })).narrative;
+  
+      const travelEvents: GameEvent[] = [
+          { type: 'PLAYER_TRAVELS', from: origin.name, destination: travelDestination, mode, duration: time },
+          { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie - energy },
+          { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'location_change', text: `Voyage vers ${travelDestination.name} en ${mode}.` } },
+      ];
+      if (cost > 0) {
+          travelEvents.push({ type: 'MONEY_CHANGED', amount: -cost, finalBalance: gameState.player.money - cost, description: `Transport en ${mode} vers ${travelDestination.name}` });
+      }
+      if (travelNarrative) {
+          travelEvents.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
+      }
+      
+      const stateAfterTravel = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: travelEvents });
+      
+      const arrivalChoice = { text: `[Arrivée à ${travelDestination.name}]` };
+      const aiInput = prepareAIInput(stateAfterTravel, arrivalChoice, travelEvents);
+      if (!aiInput) throw new Error("Could not prepare AI input for arrival.");
+  
+      const arrivalScenario = await generateScenario(aiInput);
+      
+      dispatch({ type: 'APPLY_GAME_EVENTS', payload: travelEvents });
+      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: arrivalScenario });
+  
+    } catch (error) {
+        let errorMessage = "Le voyage a été interrompu par une erreur inattendue.";
+        if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
+        toast({ variant: "destructive", title: "Erreur de Voyage", description: errorMessage });
+    } finally {
+        setIsLoading(false);
     }
-    if (travelNarrative) {
-        events.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
-    }
-    
-    // This part should eventually be handled by the AI narrating the events.
-    dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
-    
-    // For now, we set a simple scenario text after travel.
-    // In a fully event-driven model, the UI would react to the TRAVEL event, 
-    // and might request a new scenario from the AI.
-    dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
-        scenarioText: `${travelNarrative}<p>Vous arrivez à ${travelDestination.name}.</p>`, 
-        choices: [] // The AI should generate the next choices
-    }});
   };
+  
   
   const handleApproachContact = (contactToApproach: AdaptedContact) => {
     if (!gameState?.player) return;
     
-    const pnjData = {
+    const events: GameEvent[] = [];
+
+    const pnjData: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'> = {
       name: contactToApproach.modern.name,
       description: contactToApproach.modern.profession,
-      relationStatus: 'neutral' as const,
-      importance: 'minor' as const,
+      relationStatus: 'neutral',
+      importance: 'minor',
       dispositionScore: 50,
       interactionHistory: [contactToApproach.modern.greeting],
     };
+    events.push({ type: 'PNJ_ENCOUNTERED', pnj: pnjData });
 
-    const contactEvent: GameEvent = { type: 'PNJ_ENCOUNTERED', pnj: pnjData };
-    const historicalContactEvent: GameEvent = {
-        type: 'HISTORICAL_CONTACT_ADDED', // This is a new custom event we'd need to define
-        payload: {
-            id: uuidv4(),
-            historical: contactToApproach.historical,
-            modern: contactToApproach.modern,
-            metAt: { 
-                placeName: gameState.player.currentLocation.name, 
-                coordinates: { lat: gameState.player.currentLocation.latitude, lng: gameState.player.currentLocation.longitude }, 
-                date: new Date().toISOString() 
-            },
-            relationship: { trustLevel: 50, interactionCount: 1, lastInteraction: new Date().toISOString() },
-            knowledge: contactToApproach.knowledge,
-        }
+    const historicalContactData: HistoricalContact = {
+        id: uuidv4(),
+        historical: contactToApproach.historical,
+        modern: contactToApproach.modern,
+        metAt: { 
+            placeName: gameState.player.currentLocation.name, 
+            coordinates: { lat: gameState.player.currentLocation.latitude, lng: gameState.player.currentLocation.longitude }, 
+            date: new Date().toISOString() 
+        },
+        relationship: { trustLevel: 50, interactionCount: 1, lastInteraction: new Date().toISOString() },
+        knowledge: contactToApproach.knowledge,
     };
+    events.push({ type: 'HISTORICAL_CONTACT_ADDED', payload: historicalContactData });
     
-    dispatch({ type: 'APPLY_GAME_EVENTS', payload: [contactEvent] });
-    // We would also dispatch the historicalContactEvent if we add the handler in the reducer
+    events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'npc_interaction', text: `Rencontre avec ${contactToApproach.modern.name}.` }});
     
-    dispatch({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'npc_interaction', text: `Rencontre avec ${contactToApproach.modern.name}.` }});
+    dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
+
     toast({ title: "Nouvelle rencontre !", description: `${contactToApproach.modern.name} ajouté(e) à vos contacts.` });
     setEncounter(null);
   };

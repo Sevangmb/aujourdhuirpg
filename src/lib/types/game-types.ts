@@ -2,7 +2,7 @@
 import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
-import type { Quest, PNJ } from '.';
+import type { Quest, PNJ, HistoricalContact } from '.';
 
 export type Enemy = {
   name: string;
@@ -53,7 +53,11 @@ export type GameEvent =
   | { type: 'COMBAT_ACTION'; attacker: string; target: 'player' | 'enemy'; damage: number; newHealth: number; action: string; }
   | { type: 'MONEY_CHANGED'; amount: number; finalBalance: number; description: string; }
   | { type: 'PLAYER_TRAVELS'; from: string; destination: Position; mode: string; duration: number; }
-  | { type: 'TRAVEL_EVENT'; narrative: string; };
+  | { type: 'TRAVEL_EVENT'; narrative: string; }
+  | { type: 'HISTORICAL_CONTACT_ADDED'; payload: HistoricalContact; }
+  | { type: 'JOURNAL_ENTRY_ADDED'; payload: Omit<JournalEntry, 'id' | 'timestamp'>; }
+  | { type: 'GAME_TIME_PROGRESSED'; minutes: number; }
+  | { type: 'SCENARIO_TEXT_SET'; text: string; };
 
 
 export type GameState = {

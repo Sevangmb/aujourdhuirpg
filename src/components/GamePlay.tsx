@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameAction, Enemy, GameEvent } from '@/lib/types';
-import { processPlayerAction, prepareAIInput } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -62,19 +62,18 @@ const GamePlay: React.FC = () => {
       // 1. Process the action in the game logic layer to get a list of events
       const { events } = await processPlayerAction(gameState.player, gameState.currentEnemy || null, choice, weatherData);
       
-      // 2. Prepare the input for the AI with the calculated events
-      const inputForAI = prepareAIInput(gameState, choice, events);
+      // 2. Apply events to a temporary state to get the state *after* the action, for the AI's context
+      const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: events });
+
+      // 3. Prepare the input for the AI with the calculated events and the future state
+      const inputForAI = prepareAIInput(stateAfterAction, choice, events);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
-      // 3. Get the narration and next choices from the AI
+      // 4. Get the narration and next choices from the AI
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      // 4. Dispatch the game events to update the state
+      // 5. Dispatch the game events to *actually* update the state
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
-      
-      // 5. Dispatch journal entry and time separately
-      dispatch({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
-      dispatch({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: gameState.player.currentLocation } });
       
       // 6. Set the new scenario from the AI's output
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });

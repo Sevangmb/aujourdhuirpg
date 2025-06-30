@@ -23,15 +23,11 @@ export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
-  | { type: 'ADD_GAME_TIME'; payload: number }
-  | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
   | { type: 'UPDATE_PLAYER_DATA', payload: Player };
 
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (!state.player) return state;
-  const now = state.gameTimeInMinutes || 0;
-  const nowISO = new Date().toISOString(); // For dating new entries
 
   switch (action.type) {
     case 'APPLY_GAME_EVENTS': {
@@ -61,6 +57,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
                 
                 case 'ITEM_USED': {
+                    const nowISO = new Date().toISOString();
                     const updatedInventory = player.inventory.map(item => {
                         if (item.instanceId === event.instanceId) {
                             return { ...item, memory: { ...item.memory, usageHistory: [...item.memory.usageHistory, { timestamp: nowISO, event: event.description, locationName: player.currentLocation.name }] } };
@@ -81,6 +78,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                   const evolvedMasterItem = getMasterItemById(event.newItemId);
                   if (!evolvedMasterItem) return currentState;
                   
+                  const nowISO = new Date().toISOString();
                   const newInventory = [...player.inventory];
                   const originalItem = player.inventory[itemIndex];
                   const evolvedItem: IntelligentItem = {
@@ -104,15 +102,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     return { ...currentState, player: { ...player, currentLocation: newLocation, inventory: newInventory }, gameTimeInMinutes: currentState.gameTimeInMinutes + event.duration };
                 }
                 
-                case 'MONEY_CHANGED':
+                case 'MONEY_CHANGED': {
+                    const nowISO = new Date().toISOString();
                     return { ...currentState, player: { ...player, money: event.finalBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
-
+                }
                 case 'QUEST_ADDED': {
+                  const nowISO = new Date().toISOString();
                   const newQuest: Quest = { ...event.quest, id: uuidv4(), dateAdded: nowISO, status: 'active' };
                   return { ...currentState, player: { ...player, questLog: [...(player.questLog || []), newQuest] } };
                 }
         
                 case 'QUEST_STATUS_CHANGED': {
+                    const nowISO = new Date().toISOString();
                     const newQuestLog = player.questLog.map(q => 
                         q.id === event.questId ? { ...q, status: event.newStatus, dateCompleted: ['completed', 'failed'].includes(event.newStatus) ? nowISO : q.dateCompleted } : q
                     );
@@ -133,11 +134,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
         
                 case 'PNJ_ENCOUNTERED': {
+                    const nowISO = new Date().toISOString();
                     const newPNJ: PNJ = { ...event.pnj, id: uuidv4(), firstEncountered: player.currentLocation.name, lastSeen: nowISO };
                     return { ...currentState, player: { ...player, encounteredPNJs: [...(player.encounteredPNJs || []), newPNJ] } };
                 }
+
+                case 'HISTORICAL_CONTACT_ADDED': {
+                    return { ...currentState, player: { ...player, historicalContacts: [...(player.historicalContacts || []), event.payload] } };
+                }
         
                 case 'PNJ_RELATION_CHANGED': {
+                    const nowISO = new Date().toISOString();
                     const newPNJs = player.encounteredPNJs.map(p =>
                         p.id === event.pnjId ? { ...p, dispositionScore: event.finalDisposition, lastSeen: nowISO } : p
                     );
@@ -160,6 +167,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     }
                     return currentState;
 
+                case 'GAME_TIME_PROGRESSED':
+                    return { ...currentState, gameTimeInMinutes: currentState.gameTimeInMinutes + event.minutes };
+                
+                case 'JOURNAL_ENTRY_ADDED':
+                    return { ...currentState, journal: [...(currentState.journal || []), { ...event.payload, id: uuidv4(), timestamp: currentState.gameTimeInMinutes }] };
+
+                case 'SCENARIO_TEXT_SET':
+                    return { ...currentState, currentScenario: { ...currentState.currentScenario, scenarioText: event.text, choices: [] } };
+                
                 // Events that don't change state but are for the AI to narrate
                 case 'SKILL_CHECK_RESULT':
                 case 'TEXT_EVENT':
@@ -171,17 +187,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             }
         }, state);
     }
-    case 'ADD_JOURNAL_ENTRY':
-      return {
-        ...state,
-        journal: [...(state.journal || []), { ...action.payload, id: `${now}-${Math.random()}`, timestamp: now }],
-      };
     case 'SET_NEARBY_POIS':
       return { ...state, nearbyPois: action.payload };
     case 'SET_CURRENT_SCENARIO':
       return { ...state, currentScenario: action.payload };
-    case 'ADD_GAME_TIME':
-      return { ...state, gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload };
     case 'UPDATE_PLAYER_DATA':
         return { ...state, player: action.payload };
     default:
@@ -234,6 +243,11 @@ export async function processPlayerAction(
 }> {
   const playerState = JSON.parse(JSON.stringify(player));
   const events: GameEvent[] = [];
+
+  // --- LOG ACTION & TIME ---
+  events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost });
+  events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text, location: playerState.currentLocation } });
+
 
   // --- PHYSIOLOGY & ENERGY ---
   const timeDecayFactor = 0.05;
@@ -336,7 +350,7 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 }
 
 // --- AI Input Preparation ---
-export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice, gameEvents: GameEvent[]): any | null {
+export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents: GameEvent[]): any | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");
     return null;
