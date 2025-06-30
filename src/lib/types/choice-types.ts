@@ -14,7 +14,7 @@ export const CHOICE_ICON_NAMES = [
   "Eye", "Search", "Compass", "Map", // Exploration/Observation
   "MessageSquare", "Users", "Heart", // Social
   "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", // Action
-  "Brain", "BookOpen", "Wind", "Feather", "Drama" // Reflection
+  "Brain", "BookOpen", "Wind", "Feather", "Drama", "NotebookPen" // Reflection & Investigation
 ] as const;
 export type ChoiceIconName = (typeof CHOICE_ICON_NAMES)[number];
 

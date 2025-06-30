@@ -109,6 +109,14 @@ const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous pour façonner votre style d'écriture et les choix que vous proposez.
 {{{toneInstructions}}}
+- **CATALOGUE D'ACTIONS CONTEXTUELLES :** Pour rendre le jeu plus riche, inspirez-vous de ce catalogue pour générer des choix variés :
+    - **Investigation :**
+        - **Fouiller :** Si le contexte le permet (une pièce, une zone), proposez une action pour 'Fouiller'. C'est une action risquée qui doit avoir un \`skillCheck\` (ex: 'cognitive.observation'). La réussite peut mener à la découverte d'objets (\`itemsToAddToInventory\`) ou d'indices (\`newClues\`).
+        - **Prendre une photo :** Si le joueur possède un objet de type 'Camera' (\`vintage_camera_01\`), proposez de prendre une photo d'une scène ou d'un indice. Cela peut créer un \`newClues\` de type \`photo\`.
+        - **Prendre des notes :** Si le joueur possède un 'Carnet et Stylo' (\`notebook_pen_01\`), proposez une action pour prendre des notes sur un événement ou un lieu. Cela peut mettre à jour le champ \`updatedInvestigationNotes\`.
+    - **Social :**
+        - **Intimider :** Au lieu d'une simple discussion, proposez d'intimider un PNJ si le ton est tendu. Utilisez un \`skillCheck\` basé sur \`stats.Force\` ou \`social.persuasion\` avec une difficulté élevée.
+        - **Négocier :** Lors d'un achat, proposez de négocier le prix. Utilisez un \`skillCheck\` sur \`technical.finance\` ou \`social.persuasion\` pour potentiellement réduire le coût dans \`newTransactions\`.
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction, ennemi) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **SYSTÈME DE COMBAT :** Vous pouvez désormais initier et gérer des combats.
     - Pour **DÉMARRER** un combat, remplissez le champ 'combatEvent.startCombat' avec les stats de l'ennemi. Le jeu prendra le relais pour l'afficher.
