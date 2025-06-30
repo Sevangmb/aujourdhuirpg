@@ -18,7 +18,7 @@ export function getInitialScenario(player: Player): Scenario {
 }
 
 // --- Game Actions & Reducer ---
-// This reducer now directly applies the effects of GameEvents calculated by the game logic.
+// This reducer now directly applies the effects of GameEvents calculated by the logic layer.
 export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
@@ -68,8 +68,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
 
                 case 'ITEM_XP_GAINED': {
-                  const { updatedInventory } = processItemUpdatesHelper(player.inventory, [{ instanceId: event.instanceId, xpGained: event.xp }]);
-                  return { ...currentState, player: { ...player, inventory: updatedInventory } };
+                  const { newInventory } = processItemUpdatesHelper(player.inventory, [{ instanceId: event.instanceId, xpGained: event.xp }]);
+                  return { ...currentState, player: { ...player, inventory: newInventory } };
                 }
         
                 case 'ITEM_EVOLVED': {
@@ -108,7 +108,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
                 case 'QUEST_ADDED': {
                   const nowISO = new Date().toISOString();
-                  const newQuest: Quest = { ...event.quest, id: uuidv4(), dateAdded: nowISO, status: 'active' };
+                  const newQuest: Quest = { ...event.quest, id: uuidv4(), dateAdded: nowISO, status: 'active', objectives: event.quest.objectives.map(obj => ({...obj, id: uuidv4()})) };
                   return { ...currentState, player: { ...player, questLog: [...(player.questLog || []), newQuest] } };
                 }
         
@@ -300,11 +300,11 @@ export async function processPlayerAction(
     });
 
     if (skillCheckResult.success && choice.skillGains) {
-      // Skill gain itself is handled by the XP event for now.
-      // This could be a separate event if we want more granular control.
-      const { newProgression } = addXP(playerState.progression, 5); // Base XP for successful check
-      playerState.progression = newProgression;
-      events.push({ type: 'XP_GAINED', amount: 5 });
+        let totalXPGain = 5; // Base XP for successful check
+        Object.values(choice.skillGains).forEach(gain => totalXPGain += gain);
+        const { newProgression } = addXP(playerState.progression, totalXPGain);
+        playerState.progression = newProgression;
+        events.push({ type: 'XP_GAINED', amount: totalXPGain });
     }
   }
 
@@ -350,7 +350,7 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 }
 
 // --- AI Input Preparation ---
-export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents: GameEvent[]): any | null {
+export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents?: GameEvent[]): any | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");
     return null;
@@ -398,6 +398,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     player: playerInputForAI,
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
-    gameEvents: JSON.stringify(gameEvents, null, 2),
+    gameEvents: JSON.stringify(gameEvents || [], null, 2),
   };
 }

@@ -88,6 +88,9 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
           onCharacterCreate={handleCreate} 
           isSubmitting={isSubmittingCreation}
         />
+         <Button variant="link" onClick={() => setView('list')} className="mt-4" disabled={characters.length === 0}>
+            Retour à la sélection des personnages
+        </Button>
       </main>
     );
   }

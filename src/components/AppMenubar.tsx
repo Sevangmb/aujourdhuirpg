@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -55,12 +56,11 @@ const AppMenubar: React.FC = () => {
         handleManualSave,
         handleExitToSelection,
         handleSignOut,
-        contextualData
     } = useGame();
 
     const { 
         geoIntelligence,
-    } = contextualData;
+    } = gameState.contextualData;
     
     const [isToneSettingsOpen, setIsToneSettingsOpen] = React.useState(false);
     const player = gameState?.player;
@@ -74,7 +74,7 @@ const AppMenubar: React.FC = () => {
 
     return (
     <>
-        <Menubar className="w-full rounded-none border-b shrink-0 px-1 sm:px-2" style={{ backgroundColor: 'white', zIndex: 100 }}>
+        <Menubar className="w-full rounded-none border-b shrink-0 px-1 sm:px-2 z-50">
         <MenubarMenu>
             <MenubarTrigger className="px-2 sm:px-3">
                 <FileText className="h-4 w-4" />
