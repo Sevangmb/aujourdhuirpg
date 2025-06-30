@@ -1,3 +1,4 @@
+
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem } from './player-types';
@@ -33,5 +34,6 @@ export interface StoryChoice {
     difficulty: number; // e.g., 60
   };
   skillGains?: Record<string, number>;
+  physiologicalEffects?: { hunger?: number; thirst?: number };
   successProbability?: number;
 }

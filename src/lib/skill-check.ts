@@ -168,5 +168,3 @@ export function calculateSuccessProbability(
 
   return Math.round(Math.max(6, Math.min(95, successChance)));
 }
-
-    

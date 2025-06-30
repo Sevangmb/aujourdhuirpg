@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { StoryChoice } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, Zap, HelpCircle, Target, TrendingUp } from 'lucide-react';
+import { Clock, Zap, HelpCircle, Target, TrendingUp, Utensils, GlassWater } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 
@@ -74,6 +75,20 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) =
               {skillPathToLabel(skillPath)} +{gain}
             </Badge>
           ))}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+          {choice.physiologicalEffects?.hunger && (
+            <Badge variant="outline" className="text-xs font-normal border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
+              <Utensils className="w-3 h-3 mr-1" />
+              +{choice.physiologicalEffects.hunger} Faim
+            </Badge>
+          )}
+          {choice.physiologicalEffects?.thirst && (
+            <Badge variant="outline" className="text-xs font-normal border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+              <GlassWater className="w-3 h-3 mr-1" />
+              +{choice.physiologicalEffects.thirst} Soif
+            </Badge>
+          )}
         </div>
       </CardContent>
     </Card>

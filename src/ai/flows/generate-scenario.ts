@@ -65,7 +65,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **ÉVOLUTION DES OBJETS :** Certains objets, comme l'Appareil Photo Vintage, peuvent évoluer. Si le joueur utilise un tel objet de manière pertinente ou réussit une action avec, accordez-lui de l'expérience via le champ \`itemUpdates\`. Spécifiez l'instanceId de l'objet et le montant d'XP gagné. Si un objet gagne assez d'expérience, il peut évoluer et se transformer. N'oubliez pas de décrire cet événement passionnant dans votre narration !
 - **MÉMOIRE DES OBJETS :** Si votre narration décrit l'utilisation d'un objet spécifique de l'inventaire du joueur, vous DEVEZ le consigner dans le champ de sortie \`itemsUsed\`. Fournissez l'\`instanceId\` de l'objet et une brève \`usageDescription\` (ex: 'Utilisé pour prendre la photo du document'). C'est crucial pour que les objets accumulent une histoire.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une \`newTransactions\` avec un montant négatif. C'est crucial pour l'immersion.
-- **SIMULATION PHYSIOLOGIQUE :** Vérifiez les niveaux de faim et de soif du joueur. S'ils sont bas (en dessous de 30), le joueur sera pénalisé sur ses actions. Créez des choix pour manger ou boire, soit en trouvant un lieu, soit en utilisant un objet de l'inventaire. Le texte narratif peut refléter l'état du joueur (ex: "Votre estomac gargouille, vous avez du mal à vous concentrer.").
+- **SIMULATION PHYSIOLOGIQUE :** Vérifiez les niveaux de faim et de soif du joueur. S'ils sont bas (en dessous de 30), le joueur sera pénalisé sur ses actions. Créez des choix pour manger ou boire, soit en trouvant un lieu, soit en utilisant un objet de l'inventaire. Pour les choix qui restaurent ces besoins, remplissez le champ \`physiologicalEffects\` (ex: {'hunger': 20, 'thirst': 15}). Le texte narratif peut refléter l'état du joueur (ex: "Votre estomac gargouille, vous avez du mal à vous concentrer.").
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles (\`getWeatherTool\`, \`getNearbyPoisTool\`, \`getWikipediaInfoTool\`, \`getNewsTool\`) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante (un musée à proximité, un fait historique sur le lieu), créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
 - **STRICTEMENT INTERDIT dans 'scenarioText' :**
@@ -193,5 +193,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-
-    

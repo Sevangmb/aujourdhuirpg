@@ -64,6 +64,10 @@ export const StoryChoiceSchema = z.object({
       difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
   }).optional().describe("Un test de compétence optionnel associé à cette action."),
   skillGains: z.record(z.number()).optional().describe("XP de compétence gagnée lors de la réussite de cette action. Ex: {'cognitive.observation': 5, 'physical.stealth': 2}"),
+  physiologicalEffects: z.object({ 
+      hunger: z.number().optional(), 
+      thirst: z.number().optional() 
+  }).optional().describe("Effets physiologiques si le choix implique de manger/boire."),
 }).describe("Un choix guidé et riche pour le joueur.");
 
 // --- Main Output Schema ---

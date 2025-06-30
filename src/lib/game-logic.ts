@@ -359,6 +359,20 @@ export async function calculateDeterministicEffects(
     eventsForAI.push(`Le joueur a dépensé ${choice.energyCost} énergie.`);
   }
 
+  // Handle direct physiological effects from the choice (e.g., eating/drinking)
+  if (choice.physiologicalEffects) {
+    if (choice.physiologicalEffects.hunger) {
+      newPlayerState.physiology.basic_needs.hunger.level = Math.min(100, newPlayerState.physiology.basic_needs.hunger.level + choice.physiologicalEffects.hunger);
+      notifications.push({ type: 'info', title: 'Satiété', description: `Votre faim est apaisée.` });
+      eventsForAI.push(`Le joueur a mangé, restaurant ${choice.physiologicalEffects.hunger} points de faim.`);
+    }
+    if (choice.physiologicalEffects.thirst) {
+      newPlayerState.physiology.basic_needs.thirst.level = Math.min(100, newPlayerState.physiology.basic_needs.thirst.level + choice.physiologicalEffects.thirst);
+      notifications.push({ type: 'info', title: 'Hydratation', description: `Votre soif est étanchée.` });
+      eventsForAI.push(`Le joueur a bu, restaurant ${choice.physiologicalEffects.thirst} points de soif.`);
+    }
+  }
+
   // Handle skill checks
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
@@ -566,5 +580,3 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     currentInvestigationNotes: player.investigationNotes,
   };
 }
-
-    
