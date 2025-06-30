@@ -4,12 +4,14 @@
 import React from 'react';
 import Image from 'next/image';
 import { ImageIcon, Loader2, AlertTriangle } from 'lucide-react';
+import type { GameEra } from '@/lib/types';
 
 interface LocationImageDisplayProps {
   imageUrl: string | null;
   placeName: string;
   isLoading: boolean;
   error: string | null;
+  era: GameEra; // Add era to props
 }
 
 const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
@@ -17,6 +19,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
   placeName,
   isLoading,
   error,
+  era
 }) => {
   const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
   const placeholderImageSrc = `https://placehold.co/600x400.png`; // Generic placeholder
@@ -58,7 +61,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
     content = (
       <Image
         src={imageUrl}
-        alt={`Image de ${placeName}`}
+        alt={`Image de ${placeName} (${era})`}
         fill={true}
         className="object-cover"
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

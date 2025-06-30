@@ -642,5 +642,3 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     currentInvestigationNotes: player.investigationNotes,
   };
 }
-
-    

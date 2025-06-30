@@ -43,6 +43,7 @@ const GameSidebar: React.FC = () => {
         placeName={currentLocation.name || UNKNOWN_STARTING_PLACE_NAME}
         isLoading={locationImage.loading}
         error={locationImage.error}
+        era={player.era}
       />
     </div>
   );
