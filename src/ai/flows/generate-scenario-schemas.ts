@@ -75,10 +75,8 @@ export const StoryChoiceSchema = z.object({
 // --- Main Output Schema ---
 // This schema describes the AI's response, which now includes both narration and game-state-changing events.
 export const GenerateScenarioOutputSchema = z.object({
-  /** Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l'action du joueur et prépare la scène pour la prochaine action. */
   scenarioText: z.string().describe('Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l\'action du joueur et prépare la scène pour la prochaine action.'),
   
-  /** Détails d'un nouveau lieu si l'action du joueur l'a fait se déplacer de manière significative. */
   newLocationDetails: LocationSchema.extend({
     reasonForMove: z.string().optional()
   }).nullable().optional().describe("Détails d'un nouveau lieu si l'action du joueur l'a fait se déplacer de manière significative."),
@@ -86,67 +84,50 @@ export const GenerateScenarioOutputSchema = z.object({
   // --- NEW AI-DRIVEN GAME EVENTS ---
   // The AI can now populate these fields to directly influence the game state.
 
-  /** Liste de nouvelles quêtes à ajouter au journal du joueur. L'IA crée ces quêtes lorsque l'histoire le justifie. */
   newQuests: z.array(QuestInputSchema).optional().describe("Liste de nouvelles quêtes à ajouter au journal du joueur. L'IA crée ces quêtes lorsque l'histoire le justifie."),
   
-  /** Liste des mises à jour des quêtes existantes (ex: marquer un objectif comme complété). */
   updatedQuests: z.array(QuestUpdateSchema).optional().describe("Liste des mises à jour des quêtes existantes (ex: marquer un objectif comme complété)."),
 
-  /** Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde. */
   newPNJs: z.array(PNJInteractionSchema).optional().describe("Liste de nouveaux PNJ que le joueur rencontre. L'IA les crée pour peupler le monde."),
 
-  /** Mises à jour des PNJ existants, comme leur disposition envers le joueur. */
   updatedPNJs: z.array(z.object({
     id: z.string().describe("ID du PNJ existant à mettre à jour."),
     dispositionScore: z.number().optional().describe("Nouveau score de disposition du PNJ envers le joueur après l'interaction."),
     newInteractionLogEntry: z.string().optional().describe("Nouvelle entrée à ajouter à l'historique des interactions du PNJ.")
   })).optional().describe("Mises à jour des PNJ existants, comme leur disposition envers le joueur."),
 
-  /** Nouveaux indices découverts par le joueur. */
   newClues: z.array(ClueInputSchema).optional().describe("Nouveaux indices découverts par le joueur."),
   
-  /** Nouveaux documents que le joueur obtient. */
   newDocuments: z.array(DocumentInputSchema).optional().describe("Nouveaux documents que le joueur obtient."),
   
-  /** Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA. */
   updatedInvestigationNotes: z.string().nullable().optional().describe("Mise à jour optionnelle des notes d'enquête du joueur avec de nouvelles synthèses ou hypothèses par l'IA."),
 
-  /** Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés). */
   itemsToAddToInventory: z.array(z.object({
     itemId: z.string().describe("L'ID de l'objet depuis la liste maîtresse (ex: 'medkit_basic_01')."),
     quantity: z.number().min(1).describe("La quantité d'objet à ajouter.")
   })).optional().describe("Objets à ajouter directement à l'inventaire du joueur (ex: récompenses de quête, objets trouvés)."),
   
-  /** Mises à jour des objets dans l'inventaire du joueur, comme un gain d'expérience. */
   itemUpdates: z.array(z.object({
     instanceId: z.string().describe("L'ID d'instance unique de l'objet à mettre à jour."),
     xpGained: z.number().describe("La quantité de points d'expérience que l'objet a gagné.")
   })).optional().describe("Mises à jour des objets dans l'inventaire du joueur, comme un gain d'expérience."),
 
-  /** Objets de l'inventaire utilisés durant cette action. L'IA doit spécifier quel(s) objet(s) ont été utilisés pour que leur historique soit mis à jour. */
   itemsUsed: z.array(z.object({
     instanceId: z.string().describe("L'ID d'instance unique de l'objet à mettre à jour."),
     usageDescription: z.string().describe("Très brève description de l'utilisation (ex: 'Pour crocheter la serrure', 'Pour prendre une photo du suspect').")
   })).optional().describe("Liste des objets de l'inventaire utilisés durant cette action."),
 
-  /** Nouveaux objets uniques ou dynamiques à créer et ajouter à l'inventaire. */
   newDynamicItems: z.array(DynamicItemCreationPayloadSchema).optional().describe("Liste d'objets uniques ou dynamiques à créer et à ajouter à l'inventaire."),
   
-  /** Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense). */
   newTransactions: z.array(NewTransactionSchema).optional().describe("Liste des transactions financières qui ont eu lieu. À utiliser pour tout changement monétaire (revenu ou dépense)."),
   
-  /** La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente. */
   aiRecommendation: z.object({
     focus: z.string().describe("Un ou deux mots résumant l'axe recommandé, ex: 'Gagner de l'argent' ou 'Enquêter sur la piste'."),
     reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
-  /** Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ce champ est obligatoire. */
   choices: z.array(StoryChoiceSchema).min(1).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ne doit pas être vide."),
 
-  /** Points d'expérience (XP) que le joueur gagne. */
   xpGained: z.number().optional().describe("Points d'expérience (XP) que le joueur gagne."),
 
 }).describe("Schéma de sortie pour le flux generateScenario, incluant maintenant les événements de jeu pilotés par l'IA.");
-
-    
