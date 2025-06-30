@@ -254,7 +254,3 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
 export function getMasterItemById(itemId: string): MasterIntelligentItem | undefined {
   return ALL_MASTER_ITEMS.find(item => item.id === itemId);
 }
-
-    
-
-    
