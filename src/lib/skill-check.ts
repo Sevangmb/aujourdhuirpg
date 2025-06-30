@@ -138,6 +138,7 @@ export function performSkillCheck(
  * @param difficultyTarget The target difficulty for the check.
  * @param inventory The player's inventory.
  * @param situationalModifiers Any situational modifiers.
+ * @param physiology The player's current physiological state.
  * @returns A number representing the percentage chance of success (clamped between 6% and 95%).
  */
 export function calculateSuccessProbability(
@@ -146,7 +147,8 @@ export function calculateSuccessProbability(
   skillPath: string,
   difficultyTarget: number,
   inventory: IntelligentItem[],
-  situationalModifiers: number = 0
+  situationalModifiers: number = 0,
+  physiology: AdvancedPhysiologySystem
 ): number {
   const baseSkillValue = getSkillValueByPath(skills, skillPath);
   const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
@@ -162,11 +164,17 @@ export function calculateSuccessProbability(
     return total;
   }, 0);
 
-  const effectiveScore = baseSkillValue + statModifierValue + itemModifierValue + situationalModifiers;
+  let physiologicalModifiers = 0;
+  if (physiology.basic_needs.hunger.level < 20) {
+      physiologicalModifiers -= 10;
+  }
+  if (physiology.basic_needs.thirst.level < 20) {
+      physiologicalModifiers -= 15;
+  }
+
+  const effectiveScore = baseSkillValue + statModifierValue + itemModifierValue + situationalModifiers + physiologicalModifiers;
   const requiredRoll = difficultyTarget - effectiveScore;
   const successChance = 101 - requiredRoll;
 
   return Math.round(Math.max(6, Math.min(95, successChance)));
 }
-
-    

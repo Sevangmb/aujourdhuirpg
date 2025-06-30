@@ -40,6 +40,8 @@ const GamePlay: React.FC = () => {
             choice.skillCheck.skill,
             choice.skillCheck.difficulty,
             player.inventory, // Pass inventory for accurate calculation
+            0, // Situational modifiers from weather etc. are calculated server-side in deterministic effects
+            player.physiology
           );
           return { ...choice, successProbability: probability };
         }
@@ -49,7 +51,7 @@ const GamePlay: React.FC = () => {
     } else {
       setCurrentChoices(choices);
     }
-  }, [gameState?.currentScenario, gameState?.player, weatherData]);
+  }, [gameState?.currentScenario, gameState?.player]);
 
 
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {

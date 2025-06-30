@@ -61,7 +61,7 @@ export const GameProvider: React.FC<{
   
   // --- CONTEXTUAL DATA STATE ---
   const [weather, setWeather] = useState<AsyncData<WeatherData>>({ data: null, loading: false, error: null });
-  const [locationImage, setLocationImage] = useState({ url: null, loading: false, error: null });
+  const [locationImage, setLocationImage] = useState<{ url: string | null, loading: boolean, error: string | null }>({ url: null, loading: false, error: null });
   const [geoIntelligence, setGeoIntelligence] = useState<AsyncData<GeoIntelligence>>({ data: null, loading: false, error: null });
   const [pois, setPois] = useState<AsyncData<Position[]>>({ data: null, loading: false, error: null });
   
