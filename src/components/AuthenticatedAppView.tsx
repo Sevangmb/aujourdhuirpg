@@ -22,7 +22,7 @@ interface AuthenticatedAppViewProps {
   signOutUser: () => Promise<void>;
 }
 
-type AppMode = 'loading' | 'selecting_character' | 'creating_character' | 'playing';
+type AppMode = 'loading' | 'character_management' | 'playing';
 
 const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signOutUser }) => {
   const [appMode, setAppMode] = useState<AppMode>('loading');
@@ -40,11 +40,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     setAppMode('loading');
     const characters = await listCharacters(user.uid);
     setCharacterList(characters);
-    if (characters.length === 0) {
-      setAppMode('creating_character');
-    } else {
-      setAppMode('selecting_character');
-    }
+    setAppMode('character_management');
   }, [user]);
 
   useEffect(() => {
@@ -107,7 +103,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     } catch (error) {
       console.error("Error during character creation:", error);
       toast({ title: "Erreur de création", description: (error as Error).message || "Impossible de commencer l'aventure.", variant: "destructive" });
-      setAppMode('creating_character');
+      setAppMode('character_management'); // Return to management screen on error
     }
   }, [user, toast]);
 
@@ -130,7 +126,6 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   }, [user.uid, toast, fetchCharacterList, selectedCharacterId]);
 
   const handleExitToSelection = () => {
-    // The save logic is now inside the context, which will trigger on unmount or visibility change
     setInitialGameState(null);
     setSelectedCharacterId(null);
     clearLocalGameState();
@@ -141,17 +136,15 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     return <LoadingState loadingAuth={false} isLoadingState={true} />;
   }
   
-  if (appMode === 'selecting_character' || appMode === 'creating_character') {
+  if (appMode === 'character_management') {
     return (
       <CharacterSelectionScreen 
         characters={characterList}
         onSelectCharacterAndSave={handleSelectCharacterAndSave}
-        onGoToCreate={() => setAppMode('creating_character')}
         onCharacterCreate={handleCharacterCreate}
         onDeleteCharacter={handleDeleteCharacter}
         isDeleting={isDeletingCharacter}
         user={user}
-        mode={appMode}
       />
     );
   }

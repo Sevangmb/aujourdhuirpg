@@ -14,8 +14,7 @@ import {
     MenubarTrigger,
     MenubarLabel
 } from "@/components/ui/menubar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     FileText,
@@ -236,22 +235,15 @@ const AppMenubar: React.FC = () => {
                             <BookText className="mr-2 h-4 w-4" /> Ouvrir le Journal de Bord
                         </MenubarItem>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh] flex flex-col">
                         <DialogHeader>
                             <DialogTitle>Journal de Bord</DialogTitle>
                         </DialogHeader>
-                        <ScrollArea className="max-h-[70vh] p-1">
-                            <JournalDisplay journal={gameState.journal || []} />
-                        </ScrollArea>
-                        <DialogFooter>
-                            <Button onClick={(e) => {
-                                const dialog = e.currentTarget.closest('[role="dialog"]');
-                                if (dialog) {
-                                    const closeButton = dialog.querySelector('button[aria-label="Close"]') as HTMLElement;
-                                    if (closeButton) closeButton.click();
-                                }
-                            }}>Fermer</Button>
-                        </DialogFooter>
+                        <div className="flex-grow min-h-0">
+                           <ScrollArea className="h-full pr-4">
+                               <JournalDisplay journal={gameState.journal || []} />
+                           </ScrollArea>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </MenubarContent>

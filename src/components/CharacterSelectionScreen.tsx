@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { CharacterSummary } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,34 +16,41 @@ import { ScrollArea } from './ui/scroll-area';
 import { formatGameTime } from '@/lib/utils/time-utils';
 import CharacterCreationForm, { FullCharacterFormData } from './CharacterCreationForm';
 
-type AppMode = 'loading' | 'selecting_character' | 'creating_character' | 'playing';
+type ViewMode = 'list' | 'create';
 
 interface CharacterSelectionScreenProps {
   user: FirebaseUser;
   characters: CharacterSummary[];
   onSelectCharacterAndSave: (characterId: string, saveId: string) => void;
-  onGoToCreate: () => void;
   onCharacterCreate: (data: FullCharacterFormData) => void;
   onDeleteCharacter: (characterId: string) => void;
   isDeleting: string | null;
-  mode: AppMode;
 }
 
 export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> = ({
   user,
   characters,
   onSelectCharacterAndSave,
-  onGoToCreate,
   onCharacterCreate,
   onDeleteCharacter,
   isDeleting,
-  mode
 }) => {
+  const [view, setView] = useState<ViewMode>('list');
   const [isSavesModalOpen, setIsSavesModalOpen] = useState(false);
   const [saves, setSaves] = useState<SaveSummary[]>([]);
   const [selectedCharForSaves, setSelectedCharForSaves] = useState<CharacterSummary | null>(null);
   const [isLoadingSaves, setIsLoadingSaves] = useState(false);
   const [isSubmittingCreation, setIsSubmittingCreation] = useState(false);
+
+  useEffect(() => {
+    // If there are no characters, automatically switch to creation view.
+    // Otherwise, show the list.
+    if (characters.length === 0) {
+      setView('create');
+    } else {
+      setView('list');
+    }
+  }, [characters]);
 
   const handleShowSaves = async (character: CharacterSummary) => {
     if (!user) return;
@@ -74,15 +81,15 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
     setIsSubmittingCreation(false);
   };
   
-  if (mode === 'creating_character') {
-      return (
-        <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto bg-background min-h-screen">
-            <CharacterCreationForm 
-                onCharacterCreate={handleCreate} 
-                isSubmitting={isSubmittingCreation}
-            />
-        </main>
-      );
+  if (view === 'create') {
+    return (
+      <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto bg-background min-h-screen">
+        <CharacterCreationForm 
+          onCharacterCreate={handleCreate} 
+          isSubmitting={isSubmittingCreation}
+        />
+      </main>
+    );
   }
 
   return (
@@ -140,7 +147,7 @@ export const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> =
             </Card>
           ))}
           <Card
-            onClick={onGoToCreate}
+            onClick={() => setView('create')}
             className="flex flex-col items-center justify-center border-2 border-dashed hover:border-primary hover:text-primary cursor-pointer transition-colors duration-200 min-h-[340px] bg-card/50"
           >
             <PlusCircle className="w-16 h-16 text-muted-foreground group-hover:text-primary" />

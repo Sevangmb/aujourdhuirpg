@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { User } from 'firebase/auth';
@@ -108,11 +109,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             description = "Ce compte utilisateur a été désactivé.";
             break;
           case 'auth/user-not-found':
-          case 'auth/wrong-password': // Grouped for similar user experience
-            description = "Adresse e-mail ou mot de passe incorrect.";
-            break;
+          case 'auth/wrong-password':
           case 'auth/invalid-credential':
-             description = "Identifiants invalides. Veuillez vérifier votre e-mail et mot de passe.";
+             description = "Adresse e-mail ou mot de passe incorrect.";
             break;
           case 'auth/operation-not-allowed':
              description = "La connexion par e-mail et mot de passe n'est pas activée. Vérifiez la configuration de votre projet Firebase.";
