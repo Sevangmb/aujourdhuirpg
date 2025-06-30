@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest, PNJ } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, fetchPoisForCurrentLocation, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
@@ -184,7 +184,7 @@ export const GameProvider: React.FC<{
       if (gameState.player.money < cost) {
           toast({ variant: "destructive", title: "Fonds insuffisants" }); return;
       }
-      if (gameState.player.stats.Energie < energy) {
+      if (gameState.player.stats.Energie.value < energy) {
           toast({ variant: "destructive", title: "Trop fatigué" }); return;
       }
       
@@ -197,7 +197,7 @@ export const GameProvider: React.FC<{
   
       const travelEvents: GameEvent[] = [
           { type: 'PLAYER_TRAVELS', from: origin.name, destination: travelDestination, mode, duration: time },
-          { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie - energy },
+          { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie.value - energy },
           { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'location_change', text: `Voyage vers ${travelDestination.name} en ${mode}.` } },
       ];
       if (cost > 0) {
@@ -209,7 +209,7 @@ export const GameProvider: React.FC<{
       
       const stateAfterTravel = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: travelEvents });
       
-      const arrivalChoice = { text: `[Arrivée à ${travelDestination.name}]` };
+      const arrivalChoice = { text: `[Arrivée à ${travelDestination.name}]` } as StoryChoice;
       const aiInput = prepareAIInput(stateAfterTravel, arrivalChoice, travelEvents);
       if (!aiInput) throw new Error("Could not prepare AI input for arrival.");
   
@@ -240,6 +240,8 @@ export const GameProvider: React.FC<{
       importance: 'minor',
       dispositionScore: 50,
       interactionHistory: [contactToApproach.modern.greeting],
+      notes: [],
+      trustLevel: 50,
     };
     events.push({ type: 'PNJ_ENCOUNTERED', pnj: pnjData });
 
@@ -298,7 +300,7 @@ export const GameProvider: React.FC<{
           destination={travelDestination}
           onConfirmTravel={handleConfirmTravel}
           playerMoney={gameState.player.money}
-          playerEnergy={gameState.player.stats.Energie}
+          playerEnergy={gameState.player.stats.Energie.value}
         />
       )}
     </GameContext.Provider>
