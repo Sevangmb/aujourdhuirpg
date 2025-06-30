@@ -1,7 +1,7 @@
 
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent } from './types';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster, processItemUpdates as processItemUpdatesHelper } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -19,40 +19,14 @@ export function getInitialScenario(player: Player): Scenario {
 }
 
 // --- Game Actions & Reducer ---
-// Types for simplified AI payloads
-type AddQuestPayload = Omit<Quest, 'id' | 'dateAdded' | 'dateCompleted' | 'status' | 'objectives'> & { objectives: string[] };
-type AddPnjPayload = Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen' | 'interactionHistory' | 'notes' | 'trustLevel'>;
-type AddCluePayload = Omit<Clue, 'id' | 'dateFound'>;
-type AddDocumentPayload = Omit<GameDocument, 'id' | 'dateAcquired'>;
-
-
+// This reducer now directly applies the effects of GameEvents calculated by the game logic.
 export type GameAction =
-  | { type: 'EXECUTE_TRAVEL', payload: { destination: Position, travelNarrative: string, time: number, cost: number, energy: number } }
-  | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
+  | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
-  | { type: 'UPDATE_PLAYER_DATA'; payload: Partial<Player> }
-  | { type: 'SET_INVENTORY'; payload: IntelligentItem[] }
+  | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
   | { type: 'ADD_GAME_TIME'; payload: number }
   | { type: 'ADD_JOURNAL_ENTRY'; payload: Omit<JournalEntry, 'id' | 'timestamp'> }
-  | { type: 'LOG_ITEM_USAGE'; payload: { instanceId: string; usageDescription: string; } }
-  | { type: 'TRIGGER_EVENT_ACTIONS'; payload: GameAction[] }
-  // Combat Actions
-  | { type: 'START_COMBAT'; payload: Enemy }
-  | { type: 'UPDATE_ENEMY'; payload: Partial<Enemy> }
-  | { type: 'END_COMBAT' }
-  // AI-driven actions from simplified schemas
-  | { type: 'ADD_QUEST'; payload: AddQuestPayload }
-  | { type: 'UPDATE_QUEST'; payload: QuestUpdate }
-  | { type: 'ADD_PNJ'; payload: AddPnjPayload }
-  | { type: 'UPDATE_PNJ'; payload: { id: string; dispositionScore?: number; newInteractionLogEntry?: string; } }
-  | { type: 'ADD_CLUE'; payload: AddCluePayload }
-  | { type: 'ADD_DOCUMENT'; payload: AddDocumentPayload }
-  | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
-  | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
-  | { type: 'ADD_DYNAMIC_ITEM'; payload: DynamicItemCreationPayload }
-  | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
-  | { type: 'ADD_XP'; payload: number }
-  | { type: 'ADD_HISTORICAL_CONTACT'; payload: HistoricalContact };
+  | { type: 'UPDATE_PLAYER_DATA', payload: Player };
 
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -61,61 +35,52 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   const nowISO = new Date().toISOString(); // For dating new entries
 
   switch (action.type) {
-    case 'EXECUTE_TRAVEL': {
-      const { destination, travelNarrative, time, cost, energy } = action.payload;
-      
-      const mutablePlayer = { ...state.player };
+    case 'APPLY_GAME_EVENTS': {
+        // This is the new core of the reducer. It processes the event list from the logic layer.
+        return action.payload.reduce((currentState, event) => {
+            const player = currentState.player;
+            if (!player) return currentState;
 
-      mutablePlayer.stats = applyStatChanges(mutablePlayer.stats, { Energie: -energy });
-      mutablePlayer.money -= cost;
-      
-      const hungerDecay = (time * 0.02) + (energy * 0.2);
-      const thirstDecay = (time * 0.03) + (energy * 0.3);
-      mutablePlayer.physiology.basic_needs.hunger.level = Math.max(0, mutablePlayer.physiology.basic_needs.hunger.level - hungerDecay);
-      mutablePlayer.physiology.basic_needs.thirst.level = Math.max(0, mutablePlayer.physiology.basic_needs.thirst.level - thirstDecay);
-
-      const newTime = (state.gameTimeInMinutes || 0) + time;
-
-      const newJournalEntry: JournalEntry = {
-        id: `${newTime}-${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: newTime,
-        type: 'location_change',
-        text: `Voyage vers ${destination.name}.`,
-        location: destination,
-      };
-
-      const newTransaction: Transaction | null = cost > 0 ? {
-        id: `${newTime}-tx-${Math.random().toString(36).substr(2, 9)}`,
-        amount: -cost,
-        type: 'expense',
-        category: 'transport',
-        description: `Transport vers ${destination.name}`,
-        timestamp: new Date().toISOString(),
-        locationName: state.player.currentLocation.name,
-      } : null;
-      mutablePlayer.transactionLog = newTransaction ? [...(mutablePlayer.transactionLog || []), newTransaction] : mutablePlayer.transactionLog;
-
-      // Re-contextualize the entire inventory on arrival
-      mutablePlayer.inventory = mutablePlayer.inventory.map(item => 
-        updateItemContextualProperties(item, destination)
-      );
-      mutablePlayer.currentLocation = destination;
-
-
-      const arrivalText = `<p>Vous arrivez à ${destination.name}.</p>`;
-      const newScenarioText = `${travelNarrative}\n${arrivalText}`;
-
-      return {
-        ...state,
-        gameTimeInMinutes: newTime,
-        player: mutablePlayer,
-        currentScenario: { scenarioText: newScenarioText, choices: montmartreInitialChoices /* TODO: Make dynamic */ },
-        nearbyPois: null,
-        journal: [...(state.journal || []), newJournalEntry],
-      };
+            switch (event.type) {
+                case 'PLAYER_STAT_CHANGE':
+                    return { ...currentState, player: { ...player, stats: { ...player.stats, [event.stat]: event.finalValue } } };
+                case 'PLAYER_PHYSIOLOGY_CHANGE':
+                    return { ...currentState, player: { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } } };
+                case 'XP_GAINED': {
+                    const {newProgression} = addXP(player.progression, event.amount);
+                    return { ...currentState, player: { ...player, progression: newProgression } };
+                }
+                case 'ITEM_ADDED':
+                    return { ...currentState, player: { ...player, inventory: addItemToInventory(player.inventory, event.itemId, event.quantity, player.currentLocation) } };
+                case 'ITEM_REMOVED': {
+                    const { updatedInventory } = removeItemFromInventory(player.inventory, event.itemId, event.quantity);
+                    return { ...currentState, player: { ...player, inventory: updatedInventory } };
+                }
+                case 'ITEM_USED': {
+                    const updatedInventory = player.inventory.map(item => {
+                        if (item.instanceId === event.instanceId) {
+                            return { ...item, memory: { ...item.memory, usageHistory: [...item.memory.usageHistory, { timestamp: nowISO, event: event.description, locationName: player.currentLocation.name }] } };
+                        }
+                        return item;
+                    });
+                    return { ...currentState, player: { ...player, inventory: updatedInventory } };
+                }
+                case 'PLAYER_TRAVELS': {
+                    const newInventory = player.inventory.map(item => updateItemContextualProperties(item, { name: event.to, latitude: 0, longitude: 0 })); // Simplified location for update
+                    const newLocation: Position = { name: event.to, latitude: 0, longitude: 0, ...player.currentLocation }; // Needs proper update
+                    // This event needs more logic to actually update the position object correctly.
+                    // For now, we just update the name.
+                    newLocation.name = event.to;
+                    return { ...currentState, player: { ...player, currentLocation: newLocation, inventory: newInventory }, gameTimeInMinutes: currentState.gameTimeInMinutes + event.duration };
+                }
+                case 'MONEY_CHANGED':
+                    return { ...currentState, player: { ...player, money: event.finalBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
+                // Add cases for all other GameEvent types here...
+                default:
+                    return currentState;
+            }
+        }, state);
     }
-    case 'TRIGGER_EVENT_ACTIONS':
-      return action.payload.reduce(gameReducer, state);
     case 'ADD_JOURNAL_ENTRY':
       return {
         ...state,
@@ -125,212 +90,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, nearbyPois: action.payload };
     case 'SET_CURRENT_SCENARIO':
       return { ...state, currentScenario: action.payload };
-    case 'UPDATE_PLAYER_DATA':
-      return { ...state, player: { ...state.player, ...action.payload } };
-    case 'SET_INVENTORY':
-        return { ...state, player: { ...state.player, inventory: action.payload } };
-    case 'LOG_ITEM_USAGE': {
-        const { instanceId, usageDescription } = action.payload;
-        const updatedInventory = (state.player.inventory || []).map(item => {
-            if (item.instanceId === instanceId) {
-                const newUsageRecord: ItemUsageRecord = {
-                    timestamp: new Date().toISOString(), // Use real-world time for this log
-                    event: usageDescription,
-                    locationName: state.player.currentLocation.name,
-                };
-                return {
-                    ...item,
-                    memory: {
-                        ...item.memory,
-                        usageHistory: [...item.memory.usageHistory, newUsageRecord],
-                        lastUsed: new Date().toISOString(),
-                    },
-                };
-            }
-            return item;
-        });
-        return { ...state, player: { ...state.player, inventory: updatedInventory } };
-    }
     case 'ADD_GAME_TIME':
       return { ...state, gameTimeInMinutes: (state.gameTimeInMinutes || 0) + action.payload };
-    
-    // --- Combat Reducers ---
-    case 'START_COMBAT':
-        return { ...state, currentEnemy: action.payload };
-    case 'UPDATE_ENEMY':
-        if (!state.currentEnemy) return state;
-        return { ...state, currentEnemy: { ...state.currentEnemy, ...action.payload } };
-    case 'END_COMBAT':
-        return { ...state, currentEnemy: null };
-
-    // --- AI-Driven Reducers ---
-    case 'ADD_QUEST': {
-        const newQuest: Quest = {
-            id: uuidv4(),
-            title: action.payload.title,
-            description: action.payload.description,
-            type: action.payload.type,
-            giver: action.payload.giver,
-            rewardDescription: action.payload.rewardDescription,
-            moneyReward: action.payload.moneyReward,
-            relatedLocation: action.payload.relatedLocation,
-            dateAdded: nowISO,
-            status: action.payload.type === 'job' ? 'inactive' : 'active',
-            objectives: action.payload.objectives.map((desc): QuestObjective => ({
-                id: uuidv4(),
-                description: desc,
-                isCompleted: false
-            })),
-        };
-        return {
-            ...state,
-            player: { ...state.player, questLog: [...(state.player.questLog || []), newQuest] },
-        };
-    }
-    case 'UPDATE_QUEST': {
-        const { questId, newStatus, updatedObjectives } = action.payload;
-        const updatedQuestLog = state.player.questLog.map(quest => {
-            if (quest.id === questId) {
-                const newQuest = { ...quest };
-                if (newStatus) {
-                    newQuest.status = newStatus;
-                    if (['completed', 'failed'].includes(newStatus) && !newQuest.dateCompleted) {
-                        newQuest.dateCompleted = nowISO;
-                    }
-                }
-                if (updatedObjectives) {
-                    newQuest.objectives = newQuest.objectives.map(obj => {
-                        const update = updatedObjectives.find(u => u.objectiveId === obj.id);
-                        return update ? { ...obj, isCompleted: update.isCompleted } : obj;
-                    });
-                }
-                // Check if all objectives are completed to auto-complete the quest
-                if (newQuest.objectives.every(obj => obj.isCompleted)) {
-                    newQuest.status = 'completed';
-                    if (!newQuest.dateCompleted) {
-                        newQuest.dateCompleted = nowISO;
-                    }
-                }
-                return newQuest;
-            }
-            return quest;
-        });
-        return { ...state, player: { ...state.player, questLog: updatedQuestLog } };
-    }
-    case 'ADD_PNJ': {
-        const newPNJ: PNJ = { 
-            id: uuidv4(),
-            name: action.payload.name,
-            description: action.payload.description,
-            relationStatus: action.payload.relationStatus,
-            importance: action.payload.importance,
-            dispositionScore: action.payload.dispositionScore || 0,
-            firstEncountered: state.player.currentLocation.name, 
-            lastSeen: nowISO, 
-            interactionHistory: ["Rencontre initiale."],
-            trustLevel: 50,
-            notes: [],
-        };
-        return {
-            ...state,
-            player: { ...state.player, encounteredPNJs: [...(state.player.encounteredPNJs || []), newPNJ] },
-        };
-    }
-    case 'UPDATE_PNJ': {
-        const { id, dispositionScore, newInteractionLogEntry } = action.payload;
-        const updatedPNJLog = (state.player.encounteredPNJs || []).map(pnj => {
-            if (pnj.id === id) {
-                const newPnj = { ...pnj };
-                if (typeof dispositionScore === 'number') {
-                    newPnj.dispositionScore = dispositionScore;
-                }
-                if (newInteractionLogEntry) {
-                    newPnj.interactionHistory = [...(newPnj.interactionHistory || []), newInteractionLogEntry];
-                }
-                newPnj.lastSeen = nowISO;
-                return newPnj;
-            }
-            return pnj;
-        });
-        return { ...state, player: { ...state.player, encounteredPNJs: updatedPNJLog } };
-    }
-    case 'ADD_ITEM_TO_INVENTORY': {
-        const { itemId, quantity } = action.payload;
-        const updatedInventory = addItemToInventory(state.player.inventory, itemId, quantity, state.player.currentLocation);
-        return { ...state, player: { ...state.player, inventory: updatedInventory } };
-    }
-    case 'ADD_DYNAMIC_ITEM': {
-      const { baseItemId, overrides } = action.payload;
-      const masterItem = getMasterItemById(baseItemId);
-      if (!masterItem) {
-          console.warn(`Dynamic Item Warning: Base item ID ${baseItemId} not found.`);
-          return state;
-      }
-      const newInstance = createNewInstanceFromMaster(masterItem, state.player.currentLocation);
-      
-      // Apply overrides from the AI payload
-      if(overrides.name) newInstance.name = overrides.name;
-      if(overrides.description) newInstance.description = overrides.description;
-      if(overrides.effects) newInstance.effects = overrides.effects;
-      if(overrides.skillModifiers) newInstance.skillModifiers = overrides.skillModifiers;
-      if(overrides.physiologicalEffects) {
-        newInstance.physiologicalEffects = overrides.physiologicalEffects;
-      }
-
-      const newInventory = [...state.player.inventory, newInstance];
-      return { ...state, player: { ...state.player, inventory: newInventory } };
-    }
-    case 'ADD_TRANSACTION': {
-        const newTransaction: Transaction = {
-            ...action.payload,
-            id: uuidv4(),
-            timestamp: new Date().toISOString(),
-            locationName: state.player.currentLocation.name,
-        };
-        const newMoneyTotal = state.player.money + newTransaction.amount;
-        return {
-            ...state,
-            player: {
-                ...state.player,
-                money: newMoneyTotal,
-                transactionLog: [...(state.player.transactionLog || []), newTransaction],
-            }
-        };
-    }
-    case 'ADD_XP': {
-        const { newProgression, leveledUp } = addXP(state.player.progression, action.payload);
-        if (leveledUp) {
-            // Can add a notification here later if needed
-        }
-        return { ...state, player: { ...state.player, progression: newProgression } };
-    }
-     case 'ADD_CLUE': {
-        const newClue: Clue = { id: uuidv4(), ...action.payload, dateFound: nowISO };
-        return {
-            ...state,
-            player: { ...state.player, clues: [...(state.player.clues || []), newClue] },
-        };
-    }
-    case 'ADD_DOCUMENT': {
-        const newDocument: GameDocument = { id: uuidv4(), ...action.payload, dateAcquired: nowISO };
-        return {
-            ...state,
-            player: { ...state.player, documents: [...(state.player.documents || []), newDocument] },
-        };
-    }
-    case 'UPDATE_INVESTIGATION_NOTES': {
-        return {
-            ...state,
-            player: { ...state.player, investigationNotes: action.payload }
-        };
-    }
-    case 'ADD_HISTORICAL_CONTACT': {
-        const newContacts = [...(state.player.historicalContacts || []), action.payload];
-        return {
-            ...state,
-            player: { ...state.player, historicalContacts: newContacts },
-        };
-    }
+    case 'UPDATE_PLAYER_DATA':
+        return { ...state, player: action.payload };
     default:
       return state;
   }
@@ -349,7 +112,6 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
 
   const isBadWeather = weatherDesc.includes('pluie') || weatherDesc.includes('brouillard') || weatherDesc.includes('neige') || weatherDesc.includes('orage');
   
-  // Observation is harder in bad weather
   if (skillPath.includes('observation') || skillPath.includes('navigation')) {
     if (isBadWeather) {
       modifier = -10;
@@ -357,7 +119,6 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
     }
   }
 
-  // Stealth is easier in bad weather
   if (skillPath.includes('stealth')) {
     if (isBadWeather) {
       modifier = 10;
@@ -368,221 +129,94 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
   return { modifier, reason };
 }
 
-export async function calculateDeterministicEffects(
+/**
+ * Processes a player's action and returns a list of resulting game events.
+ * This is the new core of the game's logic engine.
+ */
+export async function processPlayerAction(
   player: Player,
   currentEnemy: Enemy | null,
   choice: StoryChoice,
   weatherData: WeatherData | null
-): Promise<{ 
-    updatedPlayer: Player; 
-    updatedEnemy: Enemy | null,
-    notifications: GameNotification[]; 
-    eventsForAI: string[]
+): Promise<{
+    playerBeforeAction: Player;
+    events: GameEvent[];
 }> {
-  const newPlayerState = JSON.parse(JSON.stringify(player));
-  let newEnemyState = currentEnemy ? JSON.parse(JSON.stringify(currentEnemy)) : null;
-  const notifications: GameNotification[] = [];
-  const eventsForAI: string[] = [];
+  const playerState = JSON.parse(JSON.stringify(player));
+  const events: GameEvent[] = [];
 
-  // --- PHYSIOLOGY DECAY ---
-  // Decay based on time and energy spent. Rates can be tweaked.
-  const timeDecayFactor = 0.05; // Hunger/Thirst points per minute
-  const energyDecayFactor = 0.1; // Hunger/Thirst points per energy point
-
+  // --- PHYSIOLOGY & ENERGY ---
+  const timeDecayFactor = 0.05;
+  const energyDecayFactor = 0.1;
   let hungerDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor);
-  let thirstDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor * 1.5); // Thirst decays faster
-
-  // --- Contextual Weather Effects on Physiology ---
-  if (weatherData) {
-    const temp = weatherData.temperature;
-    // Hot weather increases thirst decay
-    if (temp > 25) {
-      const thirstMultiplier = 1 + ((temp - 25) / 10); // Increases thirst decay by 10% for every degree above 25
-      thirstDecay *= Math.min(thirstMultiplier, 2.5); // Cap multiplier at 2.5x
-      eventsForAI.push(`La chaleur (${temp}°C) vous donne plus soif.`);
-    }
-    // Cold weather increases hunger decay (body burns more calories)
-    if (temp < 5) {
-      const hungerMultiplier = 1 + ((5 - temp) / 10); // Increases hunger decay by 10% for every degree below 5
-      hungerDecay *= Math.min(hungerMultiplier, 2.0); // Cap multiplier at 2.0x
-      eventsForAI.push(`Le froid (${temp}°C) vous creuse l'appétit.`);
-    }
-  }
-
-  newPlayerState.physiology.basic_needs.hunger.level = Math.max(0, newPlayerState.physiology.basic_needs.hunger.level - hungerDecay);
-  newPlayerState.physiology.basic_needs.thirst.level = Math.max(0, newPlayerState.physiology.basic_needs.thirst.level - thirstDecay);
+  let thirstDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor * 1.5);
   
-  // Apply energy cost from the choice
-  if (choice.energyCost > 0) {
-    newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - choice.energyCost);
-    notifications.push({ type: 'stat_changed', title: 'Énergie', description: `Vous avez dépensé ${choice.energyCost} points d'énergie.` });
-    eventsForAI.push(`Le joueur a dépensé ${choice.energyCost} énergie.`);
-  }
+  playerState.stats.Energie -= choice.energyCost;
+  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: playerState.stats.Energie });
 
-  // Handle direct physiological effects from the choice (e.g., eating/drinking)
+  playerState.physiology.basic_needs.hunger.level -= hungerDecay;
+  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: playerState.physiology.basic_needs.hunger.level });
+  
+  playerState.physiology.basic_needs.thirst.level -= thirstDecay;
+  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: -thirstDecay, finalValue: playerState.physiology.basic_needs.thirst.level });
+
+
   if (choice.physiologicalEffects) {
-    if (choice.physiologicalEffects.hunger) {
-      newPlayerState.physiology.basic_needs.hunger.level = Math.min(100, newPlayerState.physiology.basic_needs.hunger.level + choice.physiologicalEffects.hunger);
-      notifications.push({ type: 'info', title: 'Satiété', description: `Votre faim est apaisée.` });
-      eventsForAI.push(`Le joueur a mangé, restaurant ${choice.physiologicalEffects.hunger} points de faim.`);
-    }
-    if (choice.physiologicalEffects.thirst) {
-      newPlayerState.physiology.basic_needs.thirst.level = Math.min(100, newPlayerState.physiology.basic_needs.thirst.level + choice.physiologicalEffects.thirst);
-      notifications.push({ type: 'info', title: 'Hydratation', description: `Votre soif est étanchée.` });
-      eventsForAI.push(`Le joueur a bu, restaurant ${choice.physiologicalEffects.thirst} points de soif.`);
-    }
+      if (choice.physiologicalEffects.hunger) {
+        playerState.physiology.basic_needs.hunger.level += choice.physiologicalEffects.hunger;
+        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: choice.physiologicalEffects.hunger, finalValue: playerState.physiology.basic_needs.hunger.level });
+      }
+      if (choice.physiologicalEffects.thirst) {
+        playerState.physiology.basic_needs.thirst.level += choice.physiologicalEffects.thirst;
+        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: choice.physiologicalEffects.thirst, finalValue: playerState.physiology.basic_needs.thirst.level });
+      }
   }
-
-  // Handle direct stat effects from the choice
+  
   if (choice.statEffects) {
-    newPlayerState.stats = applyStatChanges(newPlayerState.stats, choice.statEffects);
-    const statChanges = Object.entries(choice.statEffects)
-      .map(([stat, value]) => `${stat} ${value > 0 ? '+' : ''}${value}`)
-      .join(', ');
-    notifications.push({
-      type: 'stat_changed',
-      title: 'Effet de la consommation',
-      description: `Vous ressentez des effets: ${statChanges}.`
-    });
-    eventsForAI.push(`Le joueur ressent des effets sur ses statistiques: ${statChanges}.`);
-  }
-
-  // --- COMBAT LOGIC ---
-  if (choice.isCombatAction && newEnemyState) {
-    // Player Attacks
-    const bestWeapon = newPlayerState.inventory
-        .filter((i: IntelligentItem) => i.combatStats?.damage)
-        .sort((a: IntelligentItem, b: IntelligentItem) => (b.combatStats!.damage!) - (a.combatStats!.damage!))[0];
-    const weaponDamage = bestWeapon?.combatStats?.damage || 1; // Unarmed damage
-    const strengthBonus = Math.floor(newPlayerState.stats.Force / 20); // Bonus from strength
-    const playerTotalDamage = weaponDamage + strengthBonus;
-    const enemyDamageTaken = Math.max(0, playerTotalDamage - newEnemyState.defense);
-    newEnemyState.health = Math.max(0, newEnemyState.health - enemyDamageTaken);
-
-    eventsForAI.push(`Le joueur attaque ${newEnemyState.name} avec ${bestWeapon?.name || 'ses poings'} et inflige ${enemyDamageTaken} points de dégâts. Santé de l'ennemi: ${newEnemyState.health}.`);
-
-    // Enemy Attacks (if still alive)
-    if (newEnemyState.health > 0) {
-        const bestArmor = newPlayerState.inventory
-            .filter((i: IntelligentItem) => i.combatStats?.defense)
-            .sort((a: IntelligentItem, b: IntelligentItem) => (b.combatStats!.defense!) - (a.combatStats!.defense!))[0];
-        const armorDefense = bestArmor?.combatStats?.defense || 0;
-        const playerDamageTaken = Math.max(0, newEnemyState.attack - armorDefense);
-        newPlayerState.stats.Sante = Math.max(0, newPlayerState.stats.Sante - playerDamageTaken);
-        
-        eventsForAI.push(`${newEnemyState.name} contre-attaque et inflige ${playerDamageTaken} points de dégâts. Santé du joueur: ${newPlayerState.stats.Sante}.`);
-        notifications.push({ type: 'info', title: 'Combat', description: `Vous infligez ${enemyDamageTaken} dégâts. Vous subissez ${playerDamageTaken} dégâts.` });
-    } else {
-        notifications.push({ type: 'info', title: 'Combat', description: `Vous infligez ${enemyDamageTaken} dégâts.` });
-        eventsForAI.push(`${newEnemyState.name} est vaincu !`);
+    for (const [stat, value] of Object.entries(choice.statEffects)) {
+        playerState.stats[stat] += value;
+        events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: playerState.stats[stat] });
     }
   }
-
-  // Handle skill checks
+  
+  // --- SKILL CHECK ---
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
-    
-    const { modifier: weatherModifier, reason: weatherReason } = getWeatherModifier(skill, weatherData);
-    if (weatherReason) {
-      eventsForAI.push(weatherReason);
-    }
-    
-    const skillCheckResult = performSkillCheck(
-      newPlayerState.skills,
-      newPlayerState.stats,
-      skill,
-      difficulty,
-      newPlayerState.inventory,
-      weatherModifier,
-      newPlayerState.physiology // Pass physiology to skill check
-    );
+    const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
+    const skillCheckResult = performSkillCheck(playerState.skills, playerState.stats, skill, difficulty, playerState.inventory, weatherModifier, playerState.physiology);
 
-    const outcomeTextMap = {
-      critical_success: "Réussite Critique !",
-      success: "Réussite",
-      failure: "Échec",
-      critical_failure: "Échec Critique !"
-    };
-    const outcomeText = outcomeTextMap[skillCheckResult.degreeOfSuccess];
-
-    let itemBonusText = "";
-    if (skillCheckResult.itemContributions.length > 0) {
-        const itemDetails = skillCheckResult.itemContributions
-            .map(c => `${c.name} (${c.bonus > 0 ? '+' : ''}${c.bonus})`)
-            .join(', ');
-        itemBonusText = ` | Objets: ${itemDetails}`;
-    }
-
-    notifications.push({
-      type: 'skill_check',
-      title: `Jet de ${skill}`,
-      description: `${outcomeText} (Jet: ${skillCheckResult.rollValue} + Mod: ${skillCheckResult.effectiveScore}${itemBonusText} = ${skillCheckResult.totalAchieved} vs Diff: ${skillCheckResult.difficultyTarget})`
+    events.push({
+        type: 'SKILL_CHECK_RESULT',
+        skill: skill,
+        success: skillCheckResult.success,
+        degree: skillCheckResult.degreeOfSuccess,
+        roll: skillCheckResult.rollValue,
+        total: skillCheckResult.totalAchieved,
+        difficulty: skillCheckResult.difficultyTarget,
     });
 
-    eventsForAI.push(
-      `Résultat du jet de compétence (${skill}) : ${outcomeText} (Jet: ${skillCheckResult.rollValue} + Score: ${skillCheckResult.effectiveScore} vs Difficulté: ${skillCheckResult.difficultyTarget})`
-    );
-
-    // --- APPLY SKILL GAINS ON SUCCESS ---
     if (skillCheckResult.success && choice.skillGains) {
-        const { updatedSkills, notifications: skillGainNotifications } = applySkillGains(newPlayerState.skills, choice.skillGains);
-        newPlayerState.skills = updatedSkills;
-        
-        skillGainNotifications.forEach(notif => {
-            notifications.push({ type: 'info', title: 'Compétence Améliorée', description: notif });
-        });
-        eventsForAI.push(...skillGainNotifications.map(n => `Effet de la réussite: ${n}`));
+      const { updatedSkills } = applySkillGains(playerState.skills, choice.skillGains);
+      playerState.skills = updatedSkills;
+      for (const [skillPath, gain] of Object.entries(choice.skillGains)) {
+        // We can add a specific event for skill gain if needed, or let the XP gain suffice
+      }
+      const { newProgression } = addXP(playerState.progression, 5); // Base XP for successful check
+      playerState.progression = newProgression;
+      events.push({ type: 'XP_GAINED', amount: 5 });
     }
   }
-  
-  // Specific hardcoded effects for certain choices can be added here
-    if (choice.id.startsWith('consume_item_')) {
-        const itemIdToConsume = choice.id.replace('consume_item_', '');
-        const itemInInventory = newPlayerState.inventory.find((i: IntelligentItem) => i.id === itemIdToConsume);
-        
-        if(itemInInventory) {
-            const { updatedInventory, removedItemName } = removeItemFromInventory(newPlayerState.inventory, itemIdToConsume, 1);
-            newPlayerState.inventory = updatedInventory;
 
-            // Apply physiological effects
-            if (itemInInventory.physiologicalEffects?.hunger) {
-                newPlayerState.physiology.basic_needs.hunger.level = Math.min(100, newPlayerState.physiology.basic_needs.hunger.level + itemInInventory.physiologicalEffects.hunger);
-            }
-            if (itemInInventory.physiologicalEffects?.thirst) {
-                newPlayerState.physiology.basic_needs.thirst.level = Math.min(100, newPlayerState.physiology.basic_needs.thirst.level + itemInInventory.physiologicalEffects.thirst);
-            }
-            
-            // Apply stat effects
-            if(itemInInventory.effects) {
-                newPlayerState.stats = applyStatChanges(newPlayerState.stats, itemInInventory.effects);
-            }
+  // This is where you would add logic for combat, item discovery, etc.
+  // Each piece of logic would push new events to the `events` array.
 
-            const consumptionMessage = `Vous avez consommé: ${removedItemName}.`;
-            notifications.push({ type: 'item_removed', title: 'Objet Consommé', description: consumptionMessage });
-            eventsForAI.push(`Le joueur a consommé ${removedItemName}.`);
-        }
-    }
-
-
-  return { updatedPlayer: newPlayerState, updatedEnemy: newEnemyState, notifications, eventsForAI };
+  return { playerBeforeAction: player, events };
 }
 
 
 // --- Event Triggers ---
 export function checkForLocationBasedEvents(newLocation: Position, gameState: GameState): GameAction[] {
   const triggeredActions: GameAction[] = [];
-  if (newLocation.zone?.name === "Forbidden Sector") {
-    triggeredActions.push({
-      type: 'ADD_JOURNAL_ENTRY',
-      payload: { type: 'event', text: `Vous sentez un frisson vous parcourir l'échine en entrant dans le ${newLocation.zone.name}. Quelque chose ne va pas ici.` }
-    });
-  }
-  if (newLocation.name === "Old Observatory") {
-    triggeredActions.push({
-      type: 'SET_CURRENT_SCENARIO',
-      payload: { scenarioText: `<p>Vous êtes arrivé à l'Ancien Observatoire. La porte est entrouverte et une faible lumière filtre de l'intérieur.</p>`, choices: [] }
-    });
-  }
   return triggeredActions;
 }
 
@@ -615,15 +249,14 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
 }
 
 // --- AI Input Preparation ---
-export function prepareAIInput(gameState: GameState, playerChoice: string, deterministicEvents: string[] = []): any | null {
+export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice, gameEvents: GameEvent[]): any | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");
     return null;
   }
 
-  const { player, currentEnemy } = gameState;
+  const { player } = gameState;
 
-  // We are creating a subset of the player object that matches PlayerInputSchema
   const playerInputForAI = {
       name: player.name,
       gender: player.gender,
@@ -646,9 +279,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
         quantity: item.quantity,
         condition: item.condition,
         economics: item.economics,
-        memory: {
-          acquisitionStory: item.memory.acquisitionStory
-        },
+        memory: { acquisitionStory: item.memory.acquisitionStory },
       })),
       money: player.money,
       currentLocation: {
@@ -664,34 +295,8 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
 
   return {
     player: playerInputForAI,
-    playerChoice: playerChoice,
-    currentScenario: gameState.currentScenario?.scenarioText || '',
-    currentEnemy: currentEnemy,
-    deterministicEvents: deterministicEvents,
-    activeQuests: (player.questLog || [])
-      .filter(q => ['active', 'inactive'].includes(q.status))
-      .map(q => ({
-        id: q.id,
-        title: q.title,
-        description: q.description.substring(0, 250),
-        type: q.type,
-        status: q.status,
-        giver: q.giver,
-        rewardDescription: q.rewardDescription,
-        moneyReward: q.moneyReward,
-        relatedLocation: q.relatedLocation,
-        currentObjectivesDescriptions: (q.objectives || [])
-          .filter(obj => !obj.isCompleted)
-          .map(obj => obj.description)
-      })),
-    encounteredPNJsSummary: (player.encounteredPNJs || []).map(p => ({
-        name: p.name,
-        relationStatus: p.relationStatus,
-        dispositionScore: p.dispositionScore,
-        interactionHistorySummary: p.interactionHistory?.slice(-2).join('; ')
-    })),
-    currentCluesSummary: (player.clues || []).map(clue => ({ title: clue.title, summary: clue.description.substring(0, 150) })),
-    currentDocumentsSummary: (player.documents || []).map(doc => ({ title: doc.title, summary: doc.content.substring(0, 150) })),
-    currentInvestigationNotes: player.investigationNotes,
+    playerChoiceText: playerChoice.text,
+    previousScenarioText: gameState.currentScenario?.scenarioText || '',
+    gameEvents: JSON.stringify(gameEvents, null, 2),
   };
 }

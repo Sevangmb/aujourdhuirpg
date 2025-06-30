@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -13,7 +14,8 @@ import { ChevronsUpDown } from 'lucide-react';
 
 
 const GameSidebar: React.FC = () => {
-  const { gameState, contextualData, handleInitiateTravel } = useGame();
+  const { gameState, handleInitiateTravel } = useGame();
+  const { contextualData } = gameState;
   const { weather, locationImage, pois } = contextualData;
   const isMobile = useIsMobile();
   

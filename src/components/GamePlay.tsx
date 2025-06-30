@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { StoryChoice, GameAction, Enemy } from '@/lib/types';
-import { calculateDeterministicEffects, prepareAIInput } from '@/lib/game-logic';
+import type { StoryChoice, GameAction, Enemy, GameEvent } from '@/lib/types';
+import { processPlayerAction, prepareAIInput } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -14,13 +14,12 @@ import { calculateSuccessProbability } from '@/lib/skill-check';
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
-import { processItemUpdates } from '@/lib/player-state-helpers';
 import CombatStatusDisplay from './CombatStatusDisplay';
 
 
 const GamePlay: React.FC = () => {
-  const { gameState, dispatch, contextualData } = useGame();
-  const { weather: { data: weatherData } } = contextualData;
+  const { gameState, dispatch } = useGame();
+  const { weather: { data: weatherData } } = gameState.contextualData;
 
   const [isLoading, setIsLoading] = useState(false);
   const [currentChoices, setCurrentChoices] = useState<StoryChoice[]>([]);
@@ -60,78 +59,25 @@ const GamePlay: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { updatedPlayer, updatedEnemy, notifications, eventsForAI } = await calculateDeterministicEffects(gameState.player, gameState.currentEnemy || null, choice, weatherData);
+      // 1. Process the action in the game logic layer to get a list of events
+      const { events } = await processPlayerAction(gameState.player, gameState.currentEnemy || null, choice, weatherData);
       
-      notifications.forEach(notification => toast({ title: notification.title, description: notification.description, duration: 4000 }));
-      
-      const tempGameStateForAI = { ...gameState, player: updatedPlayer, currentEnemy: updatedEnemy };
-      const inputForAI = prepareAIInput(tempGameStateForAI, choice.text, eventsForAI);
+      // 2. Prepare the input for the AI with the calculated events
+      const inputForAI = prepareAIInput(gameState, choice, events);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
+      // 3. Get the narration and next choices from the AI
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      const allActions: GameAction[] = [];
-      allActions.push({ type: 'UPDATE_PLAYER_DATA', payload: updatedPlayer });
-      if (updatedEnemy) {
-        allActions.push({ type: 'UPDATE_ENEMY', payload: updatedEnemy });
-      }
-
-      if (choice.timeCost > 0) allActions.push({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
-
-      allActions.push({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });
-      allActions.push({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: updatedPlayer.currentLocation } });
+      // 4. Dispatch the game events to update the state
+      dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
       
-      // Handle Combat Events from AI
-      if (aiOutput.combatEvent) {
-          if (aiOutput.combatEvent.startCombat) {
-              allActions.push({ type: 'START_COMBAT', payload: aiOutput.combatEvent.startCombat });
-          }
-          if (aiOutput.combatEvent.endCombat) {
-              allActions.push({ type: 'END_COMBAT' });
-          }
-      }
-
-      // Translate AI output to game actions
-      if (aiOutput.newQuests) aiOutput.newQuests.forEach(q => allActions.push({ type: 'ADD_QUEST', payload: q as any }));
-      if (aiOutput.updatedQuests) aiOutput.updatedQuests.forEach(u => allActions.push({ type: 'UPDATE_QUEST', payload: u }));
-      if (aiOutput.newPNJs) aiOutput.newPNJs.forEach(p => allActions.push({ type: 'ADD_PNJ', payload: p as any }));
-      if (aiOutput.updatedPNJs) aiOutput.updatedPNJs.forEach(u => allActions.push({ type: 'UPDATE_PNJ', payload: u }));
-      if (aiOutput.itemsToAddToInventory) aiOutput.itemsToAddToInventory.forEach(i => allActions.push({ type: 'ADD_ITEM_TO_INVENTORY', payload: i }));
-      if (aiOutput.newDynamicItems) aiOutput.newDynamicItems.forEach(i => allActions.push({ type: 'ADD_DYNAMIC_ITEM', payload: i }));
-      if (aiOutput.newTransactions) aiOutput.newTransactions.forEach(t => allActions.push({ type: 'ADD_TRANSACTION', payload: t }));
-      if (aiOutput.xpGained) allActions.push({ type: 'ADD_XP', payload: aiOutput.xpGained });
-      if (aiOutput.newClues) aiOutput.newClues.forEach(c => allActions.push({ type: 'ADD_CLUE', payload: c as any }));
-      if (aiOutput.newDocuments) aiOutput.newDocuments.forEach(d => allActions.push({ type: 'ADD_DOCUMENT', payload: d as any }));
-      if (aiOutput.updatedInvestigationNotes) allActions.push({ type: 'UPDATE_INVESTIGATION_NOTES', payload: aiOutput.updatedInvestigationNotes });
-
-      // Process item updates and evolutions
-      if (aiOutput.itemUpdates && aiOutput.itemUpdates.length > 0) {
-        const { newInventory, notifications: itemNotifications } = processItemUpdates(
-          updatedPlayer.inventory,
-          aiOutput.itemUpdates
-        );
-
-        itemNotifications.forEach(notification => {
-          toast({
-            title: notification.title,
-            description: notification.description,
-            duration: 5000,
-          });
-        });
-
-        allActions.push({ type: 'SET_INVENTORY', payload: newInventory });
-      }
+      // 5. Dispatch journal entry and time separately
+      dispatch({ type: 'ADD_GAME_TIME', payload: choice.timeCost });
+      dispatch({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'player_action', text: choice.text, location: gameState.player.currentLocation } });
       
-      // Process item usage logs
-      if (aiOutput.itemsUsed && aiOutput.itemsUsed.length > 0) {
-        aiOutput.itemsUsed.forEach(usage => {
-          allActions.push({ 
-            type: 'LOG_ITEM_USAGE', 
-            payload: { instanceId: usage.instanceId, usageDescription: usage.usageDescription } 
-          });
-        });
-      }
-      dispatch({ type: 'TRIGGER_EVENT_ACTIONS', payload: allActions });
+      // 6. Set the new scenario from the AI's output
+      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });
 
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";

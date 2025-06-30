@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
@@ -27,18 +27,18 @@ type AsyncData<T> = {
   error: string | null;
 };
 
+interface GameContextData {
+  weather: AsyncData<WeatherData>;
+  locationImage: { url: string | null; loading: boolean; error: string | null };
+  geoIntelligence: AsyncData<GeoIntelligence>;
+  pois: AsyncData<Position[]>;
+}
+
 interface GameContextType {
-  gameState: GameState;
+  gameState: GameState & { contextualData: GameContextData };
   dispatch: React.Dispatch<GameAction>;
   isGameActive: boolean;
   user: User;
-  
-  contextualData: {
-    weather: AsyncData<WeatherData>;
-    locationImage: { url: string | null; loading: boolean; error: string | null };
-    geoIntelligence: AsyncData<GeoIntelligence>;
-    pois: AsyncData<Position[]>;
-  };
 
   handleManualSave: () => void;
   handleExitToSelection: () => void;
@@ -47,6 +47,13 @@ interface GameContextType {
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
+
+const initialContextualData: GameContextData = {
+    weather: { data: null, loading: false, error: null },
+    locationImage: { url: null, loading: false, error: null },
+    geoIntelligence: { data: null, loading: false, error: null },
+    pois: { data: null, loading: false, error: null },
+}
 
 export const GameProvider: React.FC<{
   children: React.ReactNode;
@@ -60,10 +67,7 @@ export const GameProvider: React.FC<{
   const { toast } = useToast();
   
   // --- CONTEXTUAL DATA STATE ---
-  const [weather, setWeather] = useState<AsyncData<WeatherData>>({ data: null, loading: false, error: null });
-  const [locationImage, setLocationImage] = useState<{ url: string | null, loading: boolean, error: string | null }>({ url: null, loading: false, error: null });
-  const [geoIntelligence, setGeoIntelligence] = useState<AsyncData<GeoIntelligence>>({ data: null, loading: false, error: null });
-  const [pois, setPois] = useState<AsyncData<Position[]>>({ data: null, loading: false, error: null });
+  const [contextualData, setContextualData] = useState<GameContextData>(initialContextualData);
   
   // --- MODAL AND INTERACTION STATE ---
   const [encounter, setEncounter] = useState<AdaptedContact | null>(null);
@@ -108,34 +112,29 @@ export const GameProvider: React.FC<{
     const era = gameState.player?.era;
     if (!location || !era) return;
 
-    // Weather
-    setWeather(s => ({ ...s, loading: true }));
+    setContextualData(s => ({ ...s, weather: { ...s.weather, loading: true } }));
     getCurrentWeather(location.latitude, location.longitude).then(data => {
-      if ('error' in data) setWeather({ data: null, loading: false, error: data.error });
-      else setWeather({ data, loading: false, error: null });
+      if ('error' in data) setContextualData(s => ({ ...s, weather: { data: null, loading: false, error: data.error }}));
+      else setContextualData(s => ({ ...s, weather: { data, loading: false, error: null }}));
     });
 
-    // Location Image
-    setLocationImage(s => ({ ...s, loading: true }));
+    setContextualData(s => ({ ...s, locationImage: { ...s.locationImage, loading: true } }));
     generateLocationImageService({ placeName: location.name, era }).then(result => {
-      setLocationImage({ url: result.imageUrl, loading: false, error: result.error || null });
+      setContextualData(s => ({ ...s, locationImage: { url: result.imageUrl, loading: false, error: result.error || null }}));
     });
 
-    // Geo-intelligence
-    setGeoIntelligence(s => ({ ...s, loading: true }));
+    setContextualData(s => ({ ...s, geoIntelligence: { ...s.geoIntelligence, loading: true } }));
     generateGeoIntelligence({ placeName: location.name, latitude: location.latitude, longitude: location.longitude }).then(result => {
-        if (result) setGeoIntelligence({ data: result, loading: false, error: null });
-        else setGeoIntelligence({ data: null, loading: false, error: "L'IA n'a pas pu analyser ce lieu."});
-    }).catch(e => setGeoIntelligence({data: null, loading: false, error: (e as Error).message}));
+        if (result) setContextualData(s => ({ ...s, geoIntelligence: { data: result, loading: false, error: null } }));
+        else setContextualData(s => ({ ...s, geoIntelligence: { data: null, loading: false, error: "L'IA n'a pas pu analyser ce lieu." } }));
+    }).catch(e => setContextualData(s => ({ ...s, geoIntelligence: { data: null, loading: false, error: (e as Error).message } })));
 
-    // POIs
-    setPois(s => ({...s, loading: true}));
+    setContextualData(s => ({...s, pois: {...s.pois, loading: true}}));
     fetchPoisForCurrentLocation(location).then(data => {
-        setPois({ data, loading: false, error: null });
+        setContextualData(s => ({ ...s, pois: { data, loading: false, error: null }}));
         dispatch({ type: 'SET_NEARBY_POIS', payload: data });
-    }).catch(e => setPois({ data: null, loading: false, error: (e as Error).message }));
+    }).catch(e => setContextualData(s => ({ ...s, pois: { data: null, loading: false, error: (e as Error).message } })));
 
-    // Historical Encounter
     if (Math.random() > 0.15) return;
     findAndAdaptHistoricalContactsForLocation(location.name, era).then(potentialContacts => {
         const knownContactNames = new Set(gameState.player?.historicalContacts?.map(c => c.historical.name));
@@ -193,25 +192,40 @@ export const GameProvider: React.FC<{
       playerSkills: gameState.player.skills,
     })).narrative;
 
-    dispatch({ type: 'EXECUTE_TRAVEL', payload: { destination: travelDestination, travelNarrative, time, cost, energy } });
+    // Dispatch a single action with all events
+    const events: GameEvent[] = [
+        { type: 'PLAYER_TRAVELS', from: origin.name, to: travelDestination.name, mode, duration: time },
+        { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie - energy },
+    ];
+    if (cost > 0) {
+        events.push({ type: 'MONEY_CHANGED', amount: -cost, finalBalance: gameState.player.money - cost, description: `Transport en ${mode} vers ${travelDestination.name}` });
+    }
+    if (travelNarrative) {
+        events.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
+    }
+    
+    // Here we might need to call the AI to narrate the arrival.
+    // For now, let's just apply the events.
+    dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
+    // And set a simple scenario text after travel. This part would be improved by the AI refactor.
+    dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: `${travelNarrative}<p>Vous arrivez à ${travelDestination.name}.</p>`, choices: [] } });
+
   };
   
   const handleApproachContact = (contactToApproach: AdaptedContact) => {
+    // This logic would also be converted to a GameEvent in the full refactor.
+    // For now, it directly dispatches multiple actions.
     if (!gameState?.player) return;
     const { player } = gameState;
     const newContact: HistoricalContact = {
         id: uuidv4(),
         historical: contactToApproach.historical,
         modern: contactToApproach.modern,
-        metAt: {
-            placeName: player.currentLocation.name,
-            coordinates: { lat: player.currentLocation.latitude, lng: player.currentLocation.longitude },
-            date: new Date().toISOString()
-        },
+        metAt: { placeName: player.currentLocation.name, coordinates: { lat: player.currentLocation.latitude, lng: player.currentLocation.longitude }, date: new Date().toISOString() },
         relationship: { trustLevel: 50, interactionCount: 1, lastInteraction: new Date().toISOString() },
         knowledge: contactToApproach.knowledge,
     };
-    dispatch({ type: 'ADD_HISTORICAL_CONTACT', payload: newContact });
+    // dispatch({ type: 'ADD_HISTORICAL_CONTACT', payload: newContact });
     dispatch({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'npc_interaction', text: `Rencontre avec ${newContact.modern.name}.` }});
     toast({ title: "Nouvelle rencontre !", description: `${newContact.modern.name} ajouté(e) à vos contacts.` });
     setEncounter(null);
@@ -224,11 +238,10 @@ export const GameProvider: React.FC<{
 
 
   const value: GameContextType = {
-    gameState,
+    gameState: { ...gameState, contextualData },
     dispatch,
     isGameActive: !!gameState?.player,
     user,
-    contextualData: { weather, locationImage, geoIntelligence, pois },
     handleManualSave: () => handleSaveGame('manual'),
     handleExitToSelection: onExitToSelection,
     handleSignOut: onSignOut,

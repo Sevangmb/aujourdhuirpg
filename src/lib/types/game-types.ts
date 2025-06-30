@@ -1,6 +1,7 @@
 import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
-import type { StoryChoice } from './choice-types';
+import type { StoryChoice, ActionType } from './choice-types';
+import type { Quest, PNJ } from '.';
 
 export type Enemy = {
   name: string;
@@ -25,6 +26,34 @@ export type JournalEntry = {
   text: string; // Description of the entry
   location?: Position; // Optional, if related to a specific location
 };
+
+// --- NEW EVENT-DRIVEN ARCHITECTURE ---
+// Represents a single, concrete thing that happened in the game logic.
+export type GameEvent =
+  | { type: 'SKILL_CHECK_RESULT'; skill: string; success: boolean; degree: 'critical_success' | 'success' | 'failure' | 'critical_failure'; roll: number; total: number; difficulty: number; }
+  | { type: 'TEXT_EVENT'; text: string; } // Generic event for narration
+  | { type: 'PLAYER_STAT_CHANGE'; stat: keyof Player['stats']; change: number; finalValue: number; }
+  | { type: 'PLAYER_PHYSIOLOGY_CHANGE'; stat: 'hunger' | 'thirst'; change: number; finalValue: number; }
+  | { type: 'XP_GAINED'; amount: number; }
+  | { type: 'PLAYER_LEVELED_UP'; newLevel: number; }
+  | { type: 'ITEM_ADDED'; itemId: string; itemName: string; quantity: number; }
+  | { type: 'ITEM_REMOVED'; itemId: string; itemName: string; quantity: number; }
+  | { type: 'ITEM_USED'; instanceId: string; itemName: string; description: string; }
+  | { type: 'ITEM_XP_GAINED'; instanceId: string; itemName: string; xp: number; }
+  | { type: 'ITEM_LEVELED_UP'; instanceId: string; itemName: string; newLevel: number; }
+  | { type: 'ITEM_EVOLVED'; instanceId: string; oldItemName: string; newItemName: string; }
+  | { type: 'QUEST_ADDED'; questTitle: string; }
+  | { type: 'QUEST_STATUS_CHANGED'; questTitle: string; newStatus: Quest['status']; }
+  | { type: 'QUEST_OBJECTIVE_CHANGED'; questTitle: string; objective: string; completed: boolean; }
+  | { type: 'PNJ_ENCOUNTERED'; pnjName: string; }
+  | { type: 'PNJ_RELATION_CHANGED'; pnjName: string; change: number; finalDisposition: number; }
+  | { type: 'COMBAT_STARTED'; enemyName: string; }
+  | { type: 'COMBAT_ENDED'; winner: 'player' | 'enemy'; }
+  | { type: 'COMBAT_ACTION'; attacker: string; target: string; damage: number; newHealth: number; action: string; }
+  | { type: 'MONEY_CHANGED'; amount: number; finalBalance: number; description: string; }
+  | { type: 'PLAYER_TRAVELS'; from: string; to: string; mode: string; duration: number; }
+  | { type: 'TRAVEL_EVENT'; narrative: string; };
+
 
 export type GameState = {
   player: Player | null;
