@@ -261,6 +261,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
       levelRequired: 2,
       targetItemId: 'chronicler_camera_01',
     },
+    skillModifiers: { 'cognitive.observation': 5 },
   },
   {
     id: 'chronicler_camera_01',
@@ -271,6 +272,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: false,
     economics: { base_value: 250, rarity_multiplier: 2.5 },
     xpToNextItemLevel: 250,
+    skillModifiers: { 'cognitive.observation': 10, 'technical.investigation': 5 },
   },
 ];
 

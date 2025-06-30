@@ -24,7 +24,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
     ? 'text-green-600 bg-green-100/50' 
     : localValue < baseValue 
     ? 'text-red-600 bg-red-100/50' 
-    : 'text-green-600 bg-green-100/50';
+    : 'text-muted-foreground bg-muted/50';
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow duration-150 flex flex-col">

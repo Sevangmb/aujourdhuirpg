@@ -140,7 +140,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
         acquiredAt: item.acquiredAt || item.memory?.acquiredAt || new Date(0).toISOString(),
         acquisitionStory: item.memory?.acquisitionStory || "Fait partie de votre équipement de départ.",
         usageHistory: item.memory?.usageHistory || [],
-        lastUsed: item.lastUsed || item.memory?.lastUsed,
+        evolution_history: item.memory?.evolution_history || [],
       },
       economics: {
         ...masterItem.economics,

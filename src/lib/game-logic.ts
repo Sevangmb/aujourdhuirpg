@@ -1,6 +1,6 @@
 
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster, processItemUpdates as processItemUpdatesHelper } from './player-state-helpers';
+import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -8,6 +8,15 @@ import { performSkillCheck } from './skill-check';
 import { montmartreInitialChoices } from '@/data/choices';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
+
+// --- Constants for Game Logic ---
+const HUNGER_DECAY_PER_MINUTE = 0.05;
+const THIRST_DECAY_PER_MINUTE = 0.08;
+const HUNGER_DECAY_PER_ENERGY_POINT = 0.1;
+const THIRST_DECAY_PER_ENERGY_POINT = 0.15;
+const ITEM_XP_GAIN_ON_SUCCESSFUL_USE = 10;
+const PLAYER_XP_GAIN_ON_SUCCESSFUL_SKILL_CHECK = 5;
+
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -68,7 +77,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
 
                 case 'ITEM_XP_GAINED': {
-                  const { newInventory } = processItemUpdatesHelper(player.inventory, [{ instanceId: event.instanceId, xpGained: event.xp }]);
+                  const newInventory = player.inventory.map(item => {
+                    if (item.instanceId === event.instanceId) {
+                      return { ...item, itemXp: item.itemXp + event.xp };
+                    }
+                    return item;
+                  });
+                  return { ...currentState, player: { ...player, inventory: newInventory } };
+                }
+
+                case 'ITEM_LEVELED_UP': {
+                  const newInventory = player.inventory.map(item => {
+                    if (item.instanceId === event.instanceId) {
+                      const updatedItem = { ...item, itemLevel: event.newLevel, itemXp: event.newXp };
+                      if (event.newXpToNextLevel) {
+                        updatedItem.xpToNextItemLevel = event.newXpToNextLevel;
+                      }
+                      return updatedItem;
+                    }
+                    return item;
+                  });
                   return { ...currentState, player: { ...player, inventory: newInventory } };
                 }
         
@@ -81,15 +109,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                   const nowISO = new Date().toISOString();
                   const newInventory = [...player.inventory];
                   const originalItem = player.inventory[itemIndex];
+                  
                   const evolvedItem: IntelligentItem = {
                       ...evolvedMasterItem,
                       instanceId: originalItem.instanceId,
                       quantity: 1,
                       condition: { durability: 100 },
-                      itemLevel: 1,
+                      itemLevel: 1, // Reset level for new form
                       itemXp: 0,
                       xpToNextItemLevel: evolvedMasterItem.xpToNextItemLevel,
-                      memory: { ...originalItem.memory, evolution_history: [...(originalItem.memory.evolution_history || []), { fromItemId: originalItem.id, toItemId: evolvedMasterItem.id, atLevel: originalItem.itemLevel, timestamp: nowISO }] },
+                      memory: { 
+                          ...originalItem.memory, 
+                          evolution_history: [...(originalItem.memory.evolution_history || []), { fromItemId: originalItem.id, toItemId: evolvedMasterItem.id, atLevel: originalItem.itemLevel, timestamp: nowISO }] 
+                      },
                       contextual_properties: { local_value: evolvedMasterItem.economics.base_value, legal_status: 'legal', social_perception: 'normal', utility_rating: 50 },
                   };
                   newInventory[itemIndex] = evolvedItem;
@@ -171,7 +203,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     return { ...currentState, gameTimeInMinutes: currentState.gameTimeInMinutes + event.minutes };
                 
                 case 'JOURNAL_ENTRY_ADDED':
-                    return { ...currentState, journal: [...(currentState.journal || []), { ...event.payload, id: uuidv4(), timestamp: currentState.gameTimeInMinutes }] };
+                    return { ...currentState, journal: [...(currentState.journal || []), { ...event.payload, id: uuidv4(), timestamp: currentState.gameTimeInMinutes, location: player.currentLocation }] };
 
                 case 'SCENARIO_TEXT_SET':
                     return { ...currentState, currentScenario: { ...currentState.currentScenario, scenarioText: event.text, choices: [] } };
@@ -238,56 +270,55 @@ export async function processPlayerAction(
   choice: StoryChoice,
   weatherData: WeatherData | null
 ): Promise<{
-    playerBeforeAction: Player;
     events: GameEvent[];
 }> {
-  const playerState = JSON.parse(JSON.stringify(player));
   const events: GameEvent[] = [];
+  
+  // Create a mutable copy of the player state to track changes within this function
+  const tempPlayerState = JSON.parse(JSON.stringify(player));
 
   // --- LOG ACTION & TIME ---
   events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost });
-  events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text, location: playerState.currentLocation } });
+  events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
 
 
   // --- PHYSIOLOGY & ENERGY ---
-  const timeDecayFactor = 0.05;
-  const energyDecayFactor = 0.1;
-  let hungerDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor);
-  let thirstDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor * 1.5);
+  const hungerDecay = (choice.timeCost * HUNGER_DECAY_PER_MINUTE) + (choice.energyCost * HUNGER_DECAY_PER_ENERGY_POINT);
+  const thirstDecay = (choice.timeCost * THIRST_DECAY_PER_MINUTE) + (choice.energyCost * THIRST_DECAY_PER_ENERGY_POINT);
   
-  const newEnergy = playerState.stats.Energie - choice.energyCost;
-  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: newEnergy });
+  tempPlayerState.stats.Energie -= choice.energyCost;
+  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: tempPlayerState.stats.Energie });
 
-  const newHunger = playerState.physiology.basic_needs.hunger.level - hungerDecay;
-  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: newHunger });
+  tempPlayerState.physiology.basic_needs.hunger.level -= hungerDecay;
+  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: tempPlayerState.physiology.basic_needs.hunger.level });
   
-  const newThirst = playerState.physiology.basic_needs.thirst.level - thirstDecay;
-  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: -thirstDecay, finalValue: newThirst });
+  tempPlayerState.physiology.basic_needs.thirst.level -= thirstDecay;
+  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: -thirstDecay, finalValue: tempPlayerState.physiology.basic_needs.thirst.level });
 
 
   if (choice.physiologicalEffects) {
       if (choice.physiologicalEffects.hunger) {
-        const finalHunger = newHunger + choice.physiologicalEffects.hunger;
-        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: choice.physiologicalEffects.hunger, finalValue: finalHunger });
+        tempPlayerState.physiology.basic_needs.hunger.level += choice.physiologicalEffects.hunger;
+        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: choice.physiologicalEffects.hunger, finalValue: tempPlayerState.physiology.basic_needs.hunger.level });
       }
       if (choice.physiologicalEffects.thirst) {
-        const finalThirst = newThirst + choice.physiologicalEffects.thirst;
-        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: choice.physiologicalEffects.thirst, finalValue: finalThirst });
+        tempPlayerState.physiology.basic_needs.thirst.level += choice.physiologicalEffects.thirst;
+        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: choice.physiologicalEffects.thirst, finalValue: tempPlayerState.physiology.basic_needs.thirst.level });
       }
   }
   
   if (choice.statEffects) {
     for (const [stat, value] of Object.entries(choice.statEffects)) {
-        const finalValue = playerState.stats[stat] + value;
-        events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: finalValue });
+        tempPlayerState.stats[stat] += value;
+        events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: tempPlayerState.stats[stat] });
     }
   }
   
-  // --- SKILL CHECK ---
+  // --- SKILL CHECK & CONSEQUENCES (XP, Item Evolution) ---
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
     const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
-    const skillCheckResult = performSkillCheck(playerState.skills, playerState.stats, skill, difficulty, playerState.inventory, weatherModifier, playerState.physiology);
+    const skillCheckResult = performSkillCheck(tempPlayerState.skills, tempPlayerState.stats, skill, difficulty, tempPlayerState.inventory, weatherModifier, tempPlayerState.physiology);
 
     events.push({
         type: 'SKILL_CHECK_RESULT',
@@ -299,19 +330,52 @@ export async function processPlayerAction(
         difficulty: skillCheckResult.difficultyTarget,
     });
 
-    if (skillCheckResult.success && choice.skillGains) {
-        let totalXPGain = 5; // Base XP for successful check
+    if (skillCheckResult.success) {
+      // --- Grant Player XP ---
+      let totalXPGain = PLAYER_XP_GAIN_ON_SUCCESSFUL_SKILL_CHECK;
+      if (choice.skillGains) {
         Object.values(choice.skillGains).forEach(gain => totalXPGain += gain);
-        const { newProgression } = addXP(playerState.progression, totalXPGain);
-        playerState.progression = newProgression;
-        events.push({ type: 'XP_GAINED', amount: totalXPGain });
+      }
+      events.push({ type: 'XP_GAINED', amount: totalXPGain });
+      // Note: we don't update tempPlayerState.progression here, the reducer will handle it.
+
+      // --- Grant Item XP and check for evolution ---
+      for (const itemContribution of skillCheckResult.itemContributions) {
+        const itemIndex = tempPlayerState.inventory.findIndex((i: IntelligentItem) => i.name === itemContribution.name);
+        if (itemIndex > -1) {
+          const item = tempPlayerState.inventory[itemIndex];
+          const masterItem = getMasterItemById(item.id);
+
+          if (item.xpToNextItemLevel > 0 && masterItem) {
+            events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: ITEM_XP_GAIN_ON_SUCCESSFUL_USE });
+            item.itemXp += ITEM_XP_GAIN_ON_SUCCESSFUL_USE;
+
+            while (item.itemXp >= item.xpToNextItemLevel && item.xpToNextItemLevel > 0) {
+              const newLevel = item.itemLevel + 1;
+              const newXp = item.itemXp - item.xpToNextItemLevel;
+              const newXpToNext = item.xpToNextItemLevel * 2; // Simple doubling for now
+
+              events.push({ type: 'ITEM_LEVELED_UP', instanceId: item.instanceId, itemName: item.name, newLevel: newLevel, newXp: newXp, newXpToNextLevel: newXpToNext });
+              item.itemLevel = newLevel;
+              item.itemXp = newXp;
+              item.xpToNextItemLevel = newXpToNext;
+
+              if (masterItem.evolution && item.itemLevel >= masterItem.evolution.levelRequired) {
+                events.push({ type: 'ITEM_EVOLVED', instanceId: item.instanceId, oldItemName: item.name, newItemId: masterItem.evolution.targetItemId, newItemName: getMasterItemById(masterItem.evolution.targetItemId)?.name || 'Evolved Item' });
+                // We stop processing this item's XP loop as it has evolved.
+                break;
+              }
+            }
+          }
+        }
+      }
     }
   }
 
   // This is where you would add logic for combat, item discovery, etc.
   // Each piece of logic would push new events to the `events` array.
 
-  return { playerBeforeAction: player, events };
+  return { events };
 }
 
 

@@ -60,7 +60,6 @@ export interface IntelligentItem {
     acquiredAt: string; // ISO string date of when the item was acquired.
     acquisitionStory: string; // A short, potentially AI-generated story about how the item was found.
     usageHistory: ItemUsageRecord[]; // A log of how the item has been used.
-    lastUsed?: string; // ISO string date of last use.
     evolution_history?: ItemEvolutionRecord[]; // Log of transformations.
   };
 
