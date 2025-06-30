@@ -68,6 +68,7 @@ export const StoryChoiceSchema = z.object({
       hunger: z.number().optional(), 
       thirst: z.number().optional() 
   }).optional().describe("Effets physiologiques si le choix implique de manger/boire."),
+  statEffects: z.record(z.number()).optional().describe("Effets sur les statistiques du joueur après l'action. Ex: {'Energie': 5, 'Stress': -10}"),
 }).describe("Un choix guidé et riche pour le joueur.");
 
 // --- Main Output Schema ---

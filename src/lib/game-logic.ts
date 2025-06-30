@@ -390,6 +390,20 @@ export async function calculateDeterministicEffects(
     }
   }
 
+  // Handle direct stat effects from the choice
+  if (choice.statEffects) {
+    newPlayerState.stats = applyStatChanges(newPlayerState.stats, choice.statEffects);
+    const statChanges = Object.entries(choice.statEffects)
+      .map(([stat, value]) => `${stat} ${value > 0 ? '+' : ''}${value}`)
+      .join(', ');
+    notifications.push({
+      type: 'stat_changed',
+      title: 'Effet de la consommation',
+      description: `Vous ressentez des effets: ${statChanges}.`
+    });
+    eventsForAI.push(`Le joueur ressent des effets sur ses statistiques: ${statChanges}.`);
+  }
+
   // Handle skill checks
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;

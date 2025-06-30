@@ -5,7 +5,7 @@ import type { StoryChoice } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, Zap, HelpCircle, Target, TrendingUp, Utensils, GlassWater } from 'lucide-react';
+import { Clock, Zap, HelpCircle, Target, TrendingUp, Utensils, GlassWater, TrendingDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 
@@ -89,6 +89,19 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) =
               +{choice.physiologicalEffects.thirst} Soif
             </Badge>
           )}
+        </div>
+        <div className="flex flex-wrap gap-1 mt-2">
+          {choice.statEffects && Object.entries(choice.statEffects).map(([stat, value]) => (
+            <Badge key={stat} variant="outline" className={cn(
+                "text-xs font-normal",
+                 value > 0 
+                    ? "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-700 dark:bg-sky-900/50 dark:text-sky-300"
+                    : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
+                )}>
+              {value > 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+              {stat} {value > 0 ? '+' : ''}{value}
+            </Badge>
+          ))}
         </div>
       </CardContent>
     </Card>

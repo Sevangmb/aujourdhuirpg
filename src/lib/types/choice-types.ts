@@ -1,7 +1,7 @@
 
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
-import type { AdvancedSkillSystem } from './player-types';
+import type { AdvancedSkillSystem, PlayerStats } from './player-types';
 
 export const ACTION_TYPES = ["observation", "exploration", "social", "action", "reflection", "job"] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
@@ -35,5 +35,6 @@ export interface StoryChoice {
   };
   skillGains?: Record<string, number>;
   physiologicalEffects?: { hunger?: number; thirst?: number };
+  statEffects?: Partial<PlayerStats>;
   successProbability?: number;
 }
