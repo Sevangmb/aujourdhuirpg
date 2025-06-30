@@ -10,5 +10,4 @@ export interface BookSearchResult {
   publisher?: string;
   publishedDate?: string;
 }
-
     

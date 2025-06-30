@@ -23,6 +23,4 @@ import '@/ai/tools/get-nearby-pois-tool.ts';
 import '@/ai/tools/get-news-tool.ts';
 import '@/ai/tools/get-recipes-tool.ts';
 import '@/ai/tools/get-book-details-tool.ts';
-
-
     

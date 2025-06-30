@@ -33,5 +33,4 @@ export const getBookDetailsTool = ai.defineTool(
     return books; // The service returns data in the shape expected by the output schema
   }
 );
-
     
