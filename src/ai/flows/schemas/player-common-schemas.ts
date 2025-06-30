@@ -60,9 +60,9 @@ export const SkillsSchema = z.object({
     navigation: z.number(),
     adaptation: z.number(),
   }),
-}).describe("Les compétences granulaires du joueur, classées par catégorie.");
+});
 
-export const TraitsMentalStatesSchema = z.array(z.string()).describe("Les états mentaux ou traits de caractère actuels du joueur (ex: [\"Stressé\", \"Observateur\"]).");
+export const TraitsMentalStatesSchema = z.array(z.string());
 
 export const ProgressionInputSchema = z.object({
   level: z.number().describe("Le niveau actuel du joueur."),
@@ -91,7 +91,7 @@ export const IntelligentItemInputSchema = z.object({
       base_value: z.number(),
       rarity_multiplier: z.number()
   }).describe("Les propriétés économiques de base de l'objet."),
-}).describe("Un objet intelligent et détaillé dans l'inventaire du joueur.");
+});
 
 
 export const ToneSettingsSchema = z.object(
@@ -99,7 +99,7 @@ export const ToneSettingsSchema = z.object(
     acc[tone] = z.number().min(0).max(100);
     return acc;
   }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
-).partial().describe('Les préférences de tonalité définies par le joueur (ex: {"Horreur": 75, "Humour": 30}). Les valeurs vont de 0 à 100. Neutre est à 50.');
+).partial();
 
 
 // NEW: A comprehensive player schema for AI input

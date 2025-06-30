@@ -9,4 +9,4 @@ export const MajorDecisionSchema = z.object({
   summary: z.string().describe("Résumé concis de la décision prise par le joueur."),
   outcome: z.string().describe("Conséquence immédiate ou prévue de cette décision."),
   scenarioContext: z.string().describe("Brève description du contexte du scénario au moment de la décision.")
-}).describe("Structure pour enregistrer une décision majeure du joueur.");
+});

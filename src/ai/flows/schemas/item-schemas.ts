@@ -15,4 +15,4 @@ export const DynamicItemCreationPayloadSchema = z.object({
       thirst: z.number().optional() 
     }).optional().describe("Effets physiologiques si l'objet est consommable.")
   }).describe("Les propriétés spécifiques qui écrasent celles du modèle de base."),
-}).describe("Structure pour créer un nouvel objet dynamique dans l'inventaire du joueur.");
+});
