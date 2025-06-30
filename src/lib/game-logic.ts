@@ -349,6 +349,23 @@ export async function calculateDeterministicEffects(
   let hungerDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor);
   let thirstDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor * 1.5); // Thirst decays faster
 
+  // --- Contextual Weather Effects on Physiology ---
+  if (weatherData) {
+    const temp = weatherData.temperature;
+    // Hot weather increases thirst decay
+    if (temp > 25) {
+      const thirstMultiplier = 1 + ((temp - 25) / 10); // Increases thirst decay by 10% for every degree above 25
+      thirstDecay *= Math.min(thirstMultiplier, 2.5); // Cap multiplier at 2.5x
+      eventsForAI.push(`La chaleur (${temp}°C) vous donne plus soif.`);
+    }
+    // Cold weather increases hunger decay (body burns more calories)
+    if (temp < 5) {
+      const hungerMultiplier = 1 + ((5 - temp) / 10); // Increases hunger decay by 10% for every degree below 5
+      hungerDecay *= Math.min(hungerMultiplier, 2.0); // Cap multiplier at 2.0x
+      eventsForAI.push(`Le froid (${temp}°C) vous creuse l'appétit.`);
+    }
+  }
+
   newPlayerState.physiology.basic_needs.hunger.level = Math.max(0, newPlayerState.physiology.basic_needs.hunger.level - hungerDecay);
   newPlayerState.physiology.basic_needs.thirst.level = Math.max(0, newPlayerState.physiology.basic_needs.thirst.level - thirstDecay);
   
