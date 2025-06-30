@@ -62,7 +62,6 @@ Votre mission a quatre volets :
 const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
-- **ACTIONS CONTEXTUELLES AU LIEU :** Analysez le type de lieu ('player.currentLocation.type') et ses tags ('player.currentLocation.tags'). Si le joueur est dans un 'restaurant', proposez des actions comme "Consulter la carte". S'il est dans un 'museum', proposez "Examiner une exposition". Soyez spécifique en utilisant les tags ; par exemple, si le type est 'restaurant' et que les tags indiquent \`cuisine: "italian"\`, proposez "Commander des pâtes" plutôt que juste "Manger".
 - **GÉNÉRATION D'OBJETS CONTEXTUELS :** Le monde doit sembler vivant. Lorsque vous créez un scénario, pensez aux objets que le joueur pourrait trouver. Si le joueur explore une vieille bibliothèque, il pourrait trouver un 'Carnet et Stylo' ('notebook_pen_01'). Si une quête est terminée, la récompense doit être logique. Une quête de livraison à un médecin pourrait rapporter une 'Petite Trousse de Soins' ('medkit_basic_01'). Utilisez le champ 'itemsToAddToInventory' pour placer ces objets dans le monde.
 - **LIVRES ET SAVOIR :** Lorsque le joueur est dans une librairie ou une bibliothèque, utilisez l'outil 'getBookDetailsTool' pour trouver des livres réels pertinents. Proposez des choix pour acheter ou lire ces livres. Si le joueur acquiert un livre, utilisez le champ de sortie 'newDynamicItems' pour le créer.
   - Utilisez 'baseItemId: 'generic_book_01''.
@@ -74,18 +73,15 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **MÉMOIRE DES OBJETS :** Si votre narration décrit l'utilisation d'un objet spécifique de l'inventaire du joueur, vous DEVEZ le consigner dans le champ de sortie 'itemsUsed'. Fournissez l''instanceId' de l'objet et une brève 'usageDescription' (ex: 'Utilisé pour prendre la photo du document'). C'est crucial pour que les objets accumulent une histoire.
 - **SIMULATION ÉCONOMIQUE :** Le monde a un coût. Si le joueur achète un objet (café, journal), paie pour un service (ticket de métro, entrée de musée), ou effectue une action qui coûte de l'argent, générez **systématiquement** une 'newTransactions' avec un montant négatif. C'est crucial pour l'immersion.
 - **SIMULATION PHYSIOLOGIQUE :** Vérifiez les niveaux de faim et de soif du joueur. S'ils sont bas (en dessous de 30), le joueur sera pénalisé sur ses actions. Créez des choix pour manger ou boire, soit en trouvant un lieu, soit en utilisant un objet de l'inventaire. Pour les choix qui restaurent ces besoins, remplissez le champ 'physiologicalEffects' (ex: {'hunger': 20, 'thirst': 15}). Le texte narratif peut refléter l'état du joueur (ex: "Votre estomac gargouille, vous avez du mal à vous concentrer.").
-- **CUISINE GÉO-ADAPTATIVE :** Ne proposez JAMAIS des actions génériques comme "Manger" ou "Boire". Utilisez le contexte du lieu ('player.currentLocation.name', 'player.currentLocation.type') et les outils ('getNearbyPoisTool') pour proposer des expériences culinaires spécifiques et authentiques.
-    - Si le joueur est à Paris, proposez "Acheter un croissant dans une boulangerie" ou "S'asseoir en terrasse pour un café-crème".
-    - Si le joueur est à Marseille, proposez "Déguster une part de pissaladière sur le Vieux-Port".
-    - Utilisez les POIs pour identifier des restaurants, cafés ou boulangeries à proximité et créez des choix pour s'y rendre et consommer un produit local.
-    - Associez systématiquement ces choix à une transaction financière ('newTransactions') et à un effet physiologique ('physiologicalEffects'). Pour les choix alimentaires, vous pouvez également ajouter des 'statEffects' optionnels. Par exemple, un café pourrait donner "{'Energie': 5, 'Volonte': 2}", et un repas réconfortant "{'Stress': -10}".
-    - Décrivez l'expérience sensorielle (odeurs, goûts, ambiance) dans le 'scenarioText'.
-- **RECETTES RÉELLES, QUÊTES RÉELLES :** Le monde est connecté à une base de données de recettes. Lorsque le joueur souhaite cuisiner ou découvrir un plat local, utilisez l'outil 'getRecipesTool'. Si une recette est trouvée, ne vous contentez pas de la décrire. **Créez une nouvelle quête ('newQuests') de type 'job'.**
-    - **Titre :** "Cuisiner : [Nom de la recette]".
-    - **Description :** Mentionnez que c'est une recette locale. Listez les ingrédients retournés par l'outil.
-    - **Objectifs :** Créez des objectifs comme "Trouver les ingrédients nécessaires" et "Préparer la recette dans un lieu approprié".
-    - **Récompense :** Indiquez une récompense monétaire modeste ('moneyReward') pour ce "job" de cuisine.
-    Cette approche transforme une simple découverte en une activité concrète et gratifiante pour le joueur.
+- **INTERACTIONS CULINAIRES CONTEXTUELLES :** La nourriture est au cœur de l'expérience. Votre objectif est de rendre chaque interaction culinaire authentique, immersive et liée au gameplay.
+    - **Règle 1 : Pas de choix génériques.** N'utilisez JAMAIS "Manger" ou "Boire". Analysez TOUJOURS les 'tags' du lieu (ex: { "cuisine": "italian" }) et son 'type' (ex: "restaurant").
+    - **Règle 2 : Utiliser les outils pour trouver des plats.** Si le joueur est dans un lieu de restauration (restaurant, café), utilisez l'outil 'getRecipesTool' avec le type de cuisine du lieu (si disponible) pour trouver des plats authentiques. Si aucun tag de cuisine n'est présent, déduisez-la du nom ou du contexte.
+    - **Règle 3 : Créer des choix de commande.** Proposez des 'StoryChoice' pour commander les plats spécifiques trouvés. Ex: "Commander une Pissaladière", "Prendre un café-crème en terrasse". Si aucun plat spécifique n'est trouvé, inventez des choix plausibles (ex: "Commander le plat du jour").
+    - **Règle 4 : Lier aux mécaniques de jeu.** Chaque choix de nourriture/boisson DOIT générer :
+        - une 'newTransactions' avec un coût négatif réaliste.
+        - des 'physiologicalEffects' pour la faim/soif.
+        - des 'statEffects' optionnels (ex: un café pourrait donner de l'énergie).
+    - **Règle 5 : Créer des quêtes de cuisine.** SÉPARÉMENT, si le joueur exprime le désir de *cuisiner* ou d'*apprendre* une recette (plutôt que de la commander), ALORS utilisez l'outil 'getRecipesTool'. Créez une 'newQuests' de type 'job' avec la recette et ses ingrédients comme description/objectifs.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', 'getWikipediaInfoTool', 'getNewsTool') pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante (un musée à proximité, un fait historique sur le lieu), créez une 'StoryChoice' qui permet au joueur d'interagir avec cette information.
 - **STRICTEMENT INTERDIT dans 'scenarioText' :**
@@ -214,5 +210,3 @@ const generateScenarioFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
