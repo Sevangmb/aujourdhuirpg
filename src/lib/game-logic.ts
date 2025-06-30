@@ -1,5 +1,4 @@
 
-
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster, processItemUpdates as processItemUpdatesHelper } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
@@ -44,18 +43,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             switch (event.type) {
                 case 'PLAYER_STAT_CHANGE':
                     return { ...currentState, player: { ...player, stats: { ...player.stats, [event.stat]: event.finalValue } } };
+                
                 case 'PLAYER_PHYSIOLOGY_CHANGE':
                     return { ...currentState, player: { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } } };
+                
                 case 'XP_GAINED': {
                     const {newProgression} = addXP(player.progression, event.amount);
                     return { ...currentState, player: { ...player, progression: newProgression } };
                 }
+                
                 case 'ITEM_ADDED':
                     return { ...currentState, player: { ...player, inventory: addItemToInventory(player.inventory, event.itemId, event.quantity, player.currentLocation) } };
+                
                 case 'ITEM_REMOVED': {
                     const { updatedInventory } = removeItemFromInventory(player.inventory, event.itemId, event.quantity);
                     return { ...currentState, player: { ...player, inventory: updatedInventory } };
                 }
+                
                 case 'ITEM_USED': {
                     const updatedInventory = player.inventory.map(item => {
                         if (item.instanceId === event.instanceId) {
@@ -65,17 +69,103 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     });
                     return { ...currentState, player: { ...player, inventory: updatedInventory } };
                 }
+
+                case 'ITEM_XP_GAINED': {
+                  const { updatedInventory } = processItemUpdatesHelper(player.inventory, [{ instanceId: event.instanceId, xpGained: event.xp }]);
+                  return { ...currentState, player: { ...player, inventory: updatedInventory } };
+                }
+        
+                case 'ITEM_EVOLVED': {
+                  const itemIndex = player.inventory.findIndex(i => i.instanceId === event.instanceId);
+                  if (itemIndex === -1) return currentState;
+                  const evolvedMasterItem = getMasterItemById(event.newItemId);
+                  if (!evolvedMasterItem) return currentState;
+                  
+                  const newInventory = [...player.inventory];
+                  const originalItem = player.inventory[itemIndex];
+                  const evolvedItem: IntelligentItem = {
+                      ...evolvedMasterItem,
+                      instanceId: originalItem.instanceId,
+                      quantity: 1,
+                      condition: { durability: 100 },
+                      itemLevel: 1,
+                      itemXp: 0,
+                      xpToNextItemLevel: evolvedMasterItem.xpToNextItemLevel,
+                      memory: { ...originalItem.memory, evolution_history: [...(originalItem.memory.evolution_history || []), { fromItemId: originalItem.id, toItemId: evolvedMasterItem.id, atLevel: originalItem.itemLevel, timestamp: nowISO }] },
+                      contextual_properties: { local_value: evolvedMasterItem.economics.base_value, legal_status: 'legal', social_perception: 'normal', utility_rating: 50 },
+                  };
+                  newInventory[itemIndex] = evolvedItem;
+                  return { ...currentState, player: { ...player, inventory: newInventory } };
+                }
+
                 case 'PLAYER_TRAVELS': {
-                    const newInventory = player.inventory.map(item => updateItemContextualProperties(item, { name: event.to, latitude: 0, longitude: 0 })); // Simplified location for update
-                    const newLocation: Position = { name: event.to, latitude: 0, longitude: 0, ...player.currentLocation }; // Needs proper update
-                    // This event needs more logic to actually update the position object correctly.
-                    // For now, we just update the name.
-                    newLocation.name = event.to;
+                    const newLocation: Position = event.destination;
+                    const newInventory = player.inventory.map(item => updateItemContextualProperties(item, newLocation));
                     return { ...currentState, player: { ...player, currentLocation: newLocation, inventory: newInventory }, gameTimeInMinutes: currentState.gameTimeInMinutes + event.duration };
                 }
+                
                 case 'MONEY_CHANGED':
                     return { ...currentState, player: { ...player, money: event.finalBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
-                // Add cases for all other GameEvent types here...
+
+                case 'QUEST_ADDED': {
+                  const newQuest: Quest = { ...event.quest, id: uuidv4(), dateAdded: nowISO, status: 'active' };
+                  return { ...currentState, player: { ...player, questLog: [...(player.questLog || []), newQuest] } };
+                }
+        
+                case 'QUEST_STATUS_CHANGED': {
+                    const newQuestLog = player.questLog.map(q => 
+                        q.id === event.questId ? { ...q, status: event.newStatus, dateCompleted: ['completed', 'failed'].includes(event.newStatus) ? nowISO : q.dateCompleted } : q
+                    );
+                    return { ...currentState, player: { ...player, questLog: newQuestLog } };
+                }
+        
+                case 'QUEST_OBJECTIVE_CHANGED': {
+                    const newQuestLog = player.questLog.map(q => {
+                        if (q.id === event.questId) {
+                            const newObjectives = q.objectives.map(o => 
+                                o.id === event.objectiveId ? { ...o, isCompleted: event.completed } : o
+                            );
+                            return { ...q, objectives: newObjectives };
+                        }
+                        return q;
+                    });
+                    return { ...currentState, player: { ...player, questLog: newQuestLog } };
+                }
+        
+                case 'PNJ_ENCOUNTERED': {
+                    const newPNJ: PNJ = { ...event.pnj, id: uuidv4(), firstEncountered: player.currentLocation.name, lastSeen: nowISO };
+                    return { ...currentState, player: { ...player, encounteredPNJs: [...(player.encounteredPNJs || []), newPNJ] } };
+                }
+        
+                case 'PNJ_RELATION_CHANGED': {
+                    const newPNJs = player.encounteredPNJs.map(p =>
+                        p.id === event.pnjId ? { ...p, dispositionScore: event.finalDisposition, lastSeen: nowISO } : p
+                    );
+                    return { ...currentState, player: { ...player, encounteredPNJs: newPNJs } };
+                }
+
+                case 'COMBAT_STARTED':
+                    return { ...currentState, currentEnemy: event.enemy };
+                
+                case 'COMBAT_ENDED':
+                    return { ...currentState, currentEnemy: null };
+                
+                case 'COMBAT_ACTION':
+                    if (event.target === 'player' && player) {
+                        const newPlayer = { ...player, stats: { ...player.stats, Sante: event.newHealth } };
+                        return { ...currentState, player: newPlayer };
+                    } else if (event.target === 'enemy' && currentState.currentEnemy) {
+                        const newEnemy = { ...currentState.currentEnemy, health: event.newHealth };
+                        return { ...currentState, currentEnemy: newEnemy };
+                    }
+                    return currentState;
+
+                // Events that don't change state but are for the AI to narrate
+                case 'SKILL_CHECK_RESULT':
+                case 'TEXT_EVENT':
+                case 'TRAVEL_EVENT':
+                    return currentState; // No state change needed
+
                 default:
                     return currentState;
             }
@@ -151,31 +241,31 @@ export async function processPlayerAction(
   let hungerDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor);
   let thirstDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor * 1.5);
   
-  playerState.stats.Energie -= choice.energyCost;
-  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: playerState.stats.Energie });
+  const newEnergy = playerState.stats.Energie - choice.energyCost;
+  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: newEnergy });
 
-  playerState.physiology.basic_needs.hunger.level -= hungerDecay;
-  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: playerState.physiology.basic_needs.hunger.level });
+  const newHunger = playerState.physiology.basic_needs.hunger.level - hungerDecay;
+  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: newHunger });
   
-  playerState.physiology.basic_needs.thirst.level -= thirstDecay;
-  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: -thirstDecay, finalValue: playerState.physiology.basic_needs.thirst.level });
+  const newThirst = playerState.physiology.basic_needs.thirst.level - thirstDecay;
+  events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: -thirstDecay, finalValue: newThirst });
 
 
   if (choice.physiologicalEffects) {
       if (choice.physiologicalEffects.hunger) {
-        playerState.physiology.basic_needs.hunger.level += choice.physiologicalEffects.hunger;
-        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: choice.physiologicalEffects.hunger, finalValue: playerState.physiology.basic_needs.hunger.level });
+        const finalHunger = newHunger + choice.physiologicalEffects.hunger;
+        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: choice.physiologicalEffects.hunger, finalValue: finalHunger });
       }
       if (choice.physiologicalEffects.thirst) {
-        playerState.physiology.basic_needs.thirst.level += choice.physiologicalEffects.thirst;
-        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: choice.physiologicalEffects.thirst, finalValue: playerState.physiology.basic_needs.thirst.level });
+        const finalThirst = newThirst + choice.physiologicalEffects.thirst;
+        events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: choice.physiologicalEffects.thirst, finalValue: finalThirst });
       }
   }
   
   if (choice.statEffects) {
     for (const [stat, value] of Object.entries(choice.statEffects)) {
-        playerState.stats[stat] += value;
-        events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: playerState.stats[stat] });
+        const finalValue = playerState.stats[stat] + value;
+        events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: finalValue });
     }
   }
   
@@ -196,11 +286,8 @@ export async function processPlayerAction(
     });
 
     if (skillCheckResult.success && choice.skillGains) {
-      const { updatedSkills } = applySkillGains(playerState.skills, choice.skillGains);
-      playerState.skills = updatedSkills;
-      for (const [skillPath, gain] of Object.entries(choice.skillGains)) {
-        // We can add a specific event for skill gain if needed, or let the XP gain suffice
-      }
+      // Skill gain itself is handled by the XP event for now.
+      // This could be a separate event if we want more granular control.
       const { newProgression } = addXP(playerState.progression, 5); // Base XP for successful check
       playerState.progression = newProgression;
       events.push({ type: 'XP_GAINED', amount: 5 });

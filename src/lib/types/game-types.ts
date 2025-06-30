@@ -1,3 +1,4 @@
+
 import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
@@ -41,17 +42,17 @@ export type GameEvent =
   | { type: 'ITEM_USED'; instanceId: string; itemName: string; description: string; }
   | { type: 'ITEM_XP_GAINED'; instanceId: string; itemName: string; xp: number; }
   | { type: 'ITEM_LEVELED_UP'; instanceId: string; itemName: string; newLevel: number; }
-  | { type: 'ITEM_EVOLVED'; instanceId: string; oldItemName: string; newItemName: string; }
-  | { type: 'QUEST_ADDED'; questTitle: string; }
-  | { type: 'QUEST_STATUS_CHANGED'; questTitle: string; newStatus: Quest['status']; }
-  | { type: 'QUEST_OBJECTIVE_CHANGED'; questTitle: string; objective: string; completed: boolean; }
-  | { type: 'PNJ_ENCOUNTERED'; pnjName: string; }
-  | { type: 'PNJ_RELATION_CHANGED'; pnjName: string; change: number; finalDisposition: number; }
-  | { type: 'COMBAT_STARTED'; enemyName: string; }
+  | { type: 'ITEM_EVOLVED'; instanceId: string; oldItemName: string; newItemId: string; newItemName: string; }
+  | { type: 'QUEST_ADDED'; quest: Omit<Quest, 'id' | 'dateAdded' | 'status'>; }
+  | { type: 'QUEST_STATUS_CHANGED'; questId: string; newStatus: Quest['status']; }
+  | { type: 'QUEST_OBJECTIVE_CHANGED'; questId: string; objectiveId: string; completed: boolean; }
+  | { type: 'PNJ_ENCOUNTERED'; pnj: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'>; }
+  | { type: 'PNJ_RELATION_CHANGED'; pnjId: string; change: number; finalDisposition: number; }
+  | { type: 'COMBAT_STARTED'; enemy: Enemy; }
   | { type: 'COMBAT_ENDED'; winner: 'player' | 'enemy'; }
-  | { type: 'COMBAT_ACTION'; attacker: string; target: string; damage: number; newHealth: number; action: string; }
+  | { type: 'COMBAT_ACTION'; attacker: string; target: 'player' | 'enemy'; damage: number; newHealth: number; action: string; }
   | { type: 'MONEY_CHANGED'; amount: number; finalBalance: number; description: string; }
-  | { type: 'PLAYER_TRAVELS'; from: string; to: string; mode: string; duration: number; }
+  | { type: 'PLAYER_TRAVELS'; from: string; destination: Position; mode: string; duration: number; }
   | { type: 'TRAVEL_EVENT'; narrative: string; };
 
 

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, fetchPoisForCurrentLocation } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
@@ -194,7 +194,7 @@ export const GameProvider: React.FC<{
 
     // Dispatch a single action with all events
     const events: GameEvent[] = [
-        { type: 'PLAYER_TRAVELS', from: origin.name, to: travelDestination.name, mode, duration: time },
+        { type: 'PLAYER_TRAVELS', from: origin.name, destination: travelDestination, mode, duration: time },
         { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie - energy },
     ];
     if (cost > 0) {
@@ -204,30 +204,52 @@ export const GameProvider: React.FC<{
         events.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
     }
     
-    // Here we might need to call the AI to narrate the arrival.
-    // For now, let's just apply the events.
+    // This part should eventually be handled by the AI narrating the events.
     dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
-    // And set a simple scenario text after travel. This part would be improved by the AI refactor.
-    dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: `${travelNarrative}<p>Vous arrivez à ${travelDestination.name}.</p>`, choices: [] } });
-
+    
+    // For now, we set a simple scenario text after travel.
+    // In a fully event-driven model, the UI would react to the TRAVEL event, 
+    // and might request a new scenario from the AI.
+    dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
+        scenarioText: `${travelNarrative}<p>Vous arrivez à ${travelDestination.name}.</p>`, 
+        choices: [] // The AI should generate the next choices
+    }});
   };
   
   const handleApproachContact = (contactToApproach: AdaptedContact) => {
-    // This logic would also be converted to a GameEvent in the full refactor.
-    // For now, it directly dispatches multiple actions.
     if (!gameState?.player) return;
-    const { player } = gameState;
-    const newContact: HistoricalContact = {
-        id: uuidv4(),
-        historical: contactToApproach.historical,
-        modern: contactToApproach.modern,
-        metAt: { placeName: player.currentLocation.name, coordinates: { lat: player.currentLocation.latitude, lng: player.currentLocation.longitude }, date: new Date().toISOString() },
-        relationship: { trustLevel: 50, interactionCount: 1, lastInteraction: new Date().toISOString() },
-        knowledge: contactToApproach.knowledge,
+    
+    const pnjData = {
+      name: contactToApproach.modern.name,
+      description: contactToApproach.modern.profession,
+      relationStatus: 'neutral' as const,
+      importance: 'minor' as const,
+      dispositionScore: 50,
+      interactionHistory: [contactToApproach.modern.greeting],
     };
-    // dispatch({ type: 'ADD_HISTORICAL_CONTACT', payload: newContact });
-    dispatch({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'npc_interaction', text: `Rencontre avec ${newContact.modern.name}.` }});
-    toast({ title: "Nouvelle rencontre !", description: `${newContact.modern.name} ajouté(e) à vos contacts.` });
+
+    const contactEvent: GameEvent = { type: 'PNJ_ENCOUNTERED', pnj: pnjData };
+    const historicalContactEvent: GameEvent = {
+        type: 'HISTORICAL_CONTACT_ADDED', // This is a new custom event we'd need to define
+        payload: {
+            id: uuidv4(),
+            historical: contactToApproach.historical,
+            modern: contactToApproach.modern,
+            metAt: { 
+                placeName: gameState.player.currentLocation.name, 
+                coordinates: { lat: gameState.player.currentLocation.latitude, lng: gameState.player.currentLocation.longitude }, 
+                date: new Date().toISOString() 
+            },
+            relationship: { trustLevel: 50, interactionCount: 1, lastInteraction: new Date().toISOString() },
+            knowledge: contactToApproach.knowledge,
+        }
+    };
+    
+    dispatch({ type: 'APPLY_GAME_EVENTS', payload: [contactEvent] });
+    // We would also dispatch the historicalContactEvent if we add the handler in the reducer
+    
+    dispatch({ type: 'ADD_JOURNAL_ENTRY', payload: { type: 'npc_interaction', text: `Rencontre avec ${contactToApproach.modern.name}.` }});
+    toast({ title: "Nouvelle rencontre !", description: `${contactToApproach.modern.name} ajouté(e) à vos contacts.` });
     setEncounter(null);
   };
 
