@@ -34,6 +34,10 @@ export interface IntelligentItem {
   quantity: number;
   stackable: boolean; 
   effects?: Partial<PlayerStats>;
+  physiologicalEffects?: {
+    hunger?: number;
+    thirst?: number;
+  };
   skillModifiers?: Partial<Record<string, number>>;
   
   // State that evolves with gameplay
@@ -86,3 +90,5 @@ export interface MasterIntelligentItem extends Omit<IntelligentItem,
     targetItemId: string;
   };
 }
+
+    

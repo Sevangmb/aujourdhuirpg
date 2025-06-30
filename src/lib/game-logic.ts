@@ -374,7 +374,8 @@ export async function calculateDeterministicEffects(
       skill,
       difficulty,
       newPlayerState.inventory,
-      weatherModifier
+      weatherModifier,
+      newPlayerState.physiology // Pass physiology to skill check
     );
 
     const outcomeTextMap = {
@@ -416,20 +417,32 @@ export async function calculateDeterministicEffects(
   }
   
   // Specific hardcoded effects for certain choices can be added here
-  if (choice.id === 'montmartre_buy_crepe') {
-       const crepeCost = 4.5;
-       if (newPlayerState.money >= crepeCost) {
-            newPlayerState.money -= crepeCost;
-            newPlayerState.stats.Energie = Math.min(100, newPlayerState.stats.Energie + 5);
-            newPlayerState.physiology.basic_needs.hunger.level = Math.min(100, newPlayerState.physiology.basic_needs.hunger.level + 15);
-            notifications.push({ type: 'money_changed', title: 'Achat', description: `Vous avez acheté une crêpe pour ${crepeCost}€. `});
-            notifications.push({ type: 'stat_changed', title: 'Physiologie', description: `La crêpe vous redonne 5 énergie et réduit votre faim.`});
-            eventsForAI.push(`Le joueur a acheté une crêpe pour ${crepeCost}€, regagné 5 énergie et 15 satiété.`);
-       } else {
-           notifications.push({ type: 'warning', title: 'Fonds insuffisants', description: "Vous n'avez pas assez d'argent pour une crêpe."});
-           eventsForAI.push("Le joueur a tenté d'acheter une crêpe mais n'avait pas assez d'argent.");
-       }
-  }
+    if (choice.id.startsWith('consume_item_')) {
+        const itemIdToConsume = choice.id.replace('consume_item_', '');
+        const itemInInventory = newPlayerState.inventory.find((i: IntelligentItem) => i.id === itemIdToConsume);
+        
+        if(itemInInventory) {
+            const { updatedInventory, removedItemName } = removeItemFromInventory(newPlayerState.inventory, itemIdToConsume, 1);
+            newPlayerState.inventory = updatedInventory;
+
+            // Apply physiological effects
+            if (itemInInventory.physiologicalEffects?.hunger) {
+                newPlayerState.physiology.basic_needs.hunger.level = Math.min(100, newPlayerState.physiology.basic_needs.hunger.level + itemInInventory.physiologicalEffects.hunger);
+            }
+            if (itemInInventory.physiologicalEffects?.thirst) {
+                newPlayerState.physiology.basic_needs.thirst.level = Math.min(100, newPlayerState.physiology.basic_needs.thirst.level + itemInInventory.physiologicalEffects.thirst);
+            }
+            
+            // Apply stat effects
+            if(itemInInventory.effects) {
+                newPlayerState.stats = applyStatChanges(newPlayerState.stats, itemInInventory.effects);
+            }
+
+            const consumptionMessage = `Vous avez consommé: ${removedItemName}.`;
+            notifications.push({ type: 'item_removed', title: 'Objet Consommé', description: consumptionMessage });
+            eventsForAI.push(`Le joueur a consommé ${removedItemName}.`);
+        }
+    }
 
 
   return { updatedPlayer: newPlayerState, notifications, eventsForAI };
@@ -553,3 +566,5 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     currentInvestigationNotes: player.investigationNotes,
   };
 }
+
+    

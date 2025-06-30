@@ -5,7 +5,7 @@
  * stats, and situational factors against a difficulty target.
  */
 
-import type { AdvancedSkillSystem, PlayerStats, IntelligentItem } from './types';
+import type { AdvancedSkillSystem, PlayerStats, IntelligentItem, AdvancedPhysiologySystem } from './types';
 
 export type DegreeOfSuccess = 'critical_failure' | 'failure' | 'success' | 'critical_success';
 
@@ -58,6 +58,7 @@ function getSkillValueByPath(skills: AdvancedSkillSystem, path: string): number 
  * @param difficultyTarget The target number for the check.
  * @param inventory The player's current inventory to check for item modifiers.
  * @param situationalModifiers Optional circumstantial modifiers (e.g., weather).
+ * @param physiology The player's current physiological state.
  * @returns A SkillCheckResult object detailing the outcome.
  */
 export function performSkillCheck(
@@ -66,7 +67,8 @@ export function performSkillCheck(
   skillPath: string,
   difficultyTarget: number,
   inventory: IntelligentItem[],
-  situationalModifiers: number = 0
+  situationalModifiers: number = 0,
+  physiology: AdvancedPhysiologySystem
 ): SkillCheckResult {
   const baseSkillValue = getSkillValueByPath(skills, skillPath);
   const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
@@ -85,8 +87,17 @@ export function performSkillCheck(
     }
     return total;
   }, 0);
+  
+  // --- NEW: Apply penalties from physiology ---
+  let physiologicalModifiers = 0;
+  if (physiology.basic_needs.hunger.level < 20) {
+      physiologicalModifiers -= 10; // Hunger penalty
+  }
+  if (physiology.basic_needs.thirst.level < 20) {
+      physiologicalModifiers -= 15; // Dehydration is more severe
+  }
 
-  const totalModifier = baseSkillValue + statModifierValue + itemModifierValue + situationalModifiers;
+  const totalModifier = baseSkillValue + statModifierValue + itemModifierValue + situationalModifiers + physiologicalModifiers;
   const rollValue = Math.floor(Math.random() * 100) + 1;
   const totalAchieved = rollValue + totalModifier;
 
@@ -111,7 +122,7 @@ export function performSkillCheck(
     statModifierValue,
     itemModifierValue,
     itemContributions,
-    situationalModifierValue: situationalModifiers,
+    situationalModifierValue: situationalModifiers + physiologicalModifiers,
     effectiveScore: totalModifier,
     totalAchieved,
     difficultyTarget,
@@ -157,3 +168,5 @@ export function calculateSuccessProbability(
 
   return Math.round(Math.max(6, Math.min(95, successChance)));
 }
+
+    

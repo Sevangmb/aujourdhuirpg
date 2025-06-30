@@ -43,7 +43,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'consumable',
     iconName: 'Cookie',
     stackable: true,
-    effects: { Sante: 10 },
+    effects: { Energie: 10 },
+    physiologicalEffects: { hunger: 25 },
     economics: { base_value: 3, rarity_multiplier: 0.5 },
     xpToNextItemLevel: 0,
   },
@@ -55,6 +56,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'GlassWater',
     stackable: true,
     effects: { Sante: 2 },
+    physiologicalEffects: { thirst: 40 },
     economics: { base_value: 1, rarity_multiplier: 0.2 },
     xpToNextItemLevel: 0,
   },
@@ -242,3 +244,5 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
 export function getMasterItemById(itemId: string): MasterIntelligentItem | undefined {
   return ALL_MASTER_ITEMS.find(item => item.id === itemId);
 }
+
+    
