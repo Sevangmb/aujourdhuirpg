@@ -226,6 +226,17 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     xpToNextItemLevel: 0,
   },
   {
+    id: 'generic_meal_01',
+    name: 'Repas Maison',
+    description: "Un plat que vous avez cuisiné vous-même. Semble délicieux.",
+    type: 'consumable',
+    iconName: 'ChefHat',
+    stackable: true,
+    economics: { base_value: 20, rarity_multiplier: 1.0 }, // Value comes from ingredients + effort
+    xpToNextItemLevel: 0,
+    // Effects will be added dynamically by the AI
+  },
+  {
     id: 'vintage_camera_01',
     name: 'Appareil Photo Vintage',
     description: 'Un vieil appareil photo argentique. Il semble robuste et a certainement capturé de nombreuses histoires.',

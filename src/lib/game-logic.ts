@@ -44,7 +44,7 @@ export type GameAction =
   | { type: 'ADD_DOCUMENT'; payload: AddDocumentPayload }
   | { type: 'UPDATE_INVESTIGATION_NOTES', payload: string }
   | { type: 'ADD_ITEM_TO_INVENTORY'; payload: { itemId: string; quantity: number } }
-  | { type: 'ADD_DYNAMIC_ITEM', payload: DynamicItemCreationPayload }
+  | { type: 'ADD_DYNAMIC_ITEM'; payload: DynamicItemCreationPayload }
   | { type: 'ADD_TRANSACTION'; payload: Omit<Transaction, 'id' | 'timestamp' | 'locationName'> }
   | { type: 'ADD_XP'; payload: number }
   | { type: 'ADD_HISTORICAL_CONTACT'; payload: HistoricalContact };
@@ -259,6 +259,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if(overrides.description) newInstance.description = overrides.description;
       if(overrides.effects) newInstance.effects = overrides.effects;
       if(overrides.skillModifiers) newInstance.skillModifiers = overrides.skillModifiers;
+      if(overrides.physiologicalEffects) {
+        newInstance.physiologicalEffects = overrides.physiologicalEffects;
+      }
 
       const newInventory = [...state.player.inventory, newInstance];
       return { ...state, player: { ...state.player, inventory: newInventory } };
@@ -639,5 +642,3 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     currentInvestigationNotes: player.investigationNotes,
   };
 }
-
-    

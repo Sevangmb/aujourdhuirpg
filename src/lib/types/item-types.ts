@@ -99,8 +99,6 @@ export interface DynamicItemCreationPayload {
     description?: string;
     effects?: Partial<PlayerStats>;
     skillModifiers?: Partial<Record<string, number>>;
-    // can add more overridable properties here later
+    physiologicalEffects?: { hunger?: number; thirst?: number };
   };
 }
-
-    
