@@ -21,7 +21,7 @@ const choiceTypeStyles: Record<string, string> = {
   social: 'choice-card-social',
   action: 'choice-card-action',
   reflection: 'choice-card-reflection',
-  job: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700'
+  job: 'choice-card-job'
 };
 
 const skillPathToLabel = (path: string): string => {

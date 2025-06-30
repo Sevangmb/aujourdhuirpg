@@ -95,6 +95,7 @@ const GamePlay: React.FC = () => {
       if (aiOutput.newPNJs) aiOutput.newPNJs.forEach(p => allActions.push({ type: 'ADD_PNJ', payload: p as any }));
       if (aiOutput.updatedPNJs) aiOutput.updatedPNJs.forEach(u => allActions.push({ type: 'UPDATE_PNJ', payload: u }));
       if (aiOutput.itemsToAddToInventory) aiOutput.itemsToAddToInventory.forEach(i => allActions.push({ type: 'ADD_ITEM_TO_INVENTORY', payload: i }));
+      if (aiOutput.newDynamicItems) aiOutput.newDynamicItems.forEach(i => allActions.push({ type: 'ADD_DYNAMIC_ITEM', payload: i }));
       if (aiOutput.newTransactions) aiOutput.newTransactions.forEach(t => allActions.push({ type: 'ADD_TRANSACTION', payload: t }));
       if (aiOutput.xpGained) allActions.push({ type: 'ADD_XP', payload: aiOutput.xpGained });
       if (aiOutput.newClues) aiOutput.newClues.forEach(c => allActions.push({ type: 'ADD_CLUE', payload: c as any }));
