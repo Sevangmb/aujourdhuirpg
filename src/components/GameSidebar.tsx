@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -22,6 +21,8 @@ const GameSidebar: React.FC = () => {
 
   const { player, gameTimeInMinutes } = gameState;
   const currentLocation = player.currentLocation;
+  const currentLocationName = currentLocation?.name || UNKNOWN_STARTING_PLACE_NAME;
+
 
   const content = (
     <div className="space-y-4">
@@ -30,7 +31,7 @@ const GameSidebar: React.FC = () => {
         weatherData={weather.data}
         isLoading={weather.loading}
         error={weather.error}
-        placeName={currentLocation.name}
+        placeName={currentLocationName}
         gameTimeInMinutes={gameTimeInMinutes}
       />
       <MapDisplay
@@ -40,7 +41,7 @@ const GameSidebar: React.FC = () => {
       />
       <LocationImageDisplay
         imageUrl={locationImage.url}
-        placeName={currentLocation.name || UNKNOWN_STARTING_PLACE_NAME}
+        placeName={currentLocationName}
         isLoading={locationImage.loading}
         error={locationImage.error}
         era={player.era}

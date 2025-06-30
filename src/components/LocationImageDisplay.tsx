@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -8,7 +7,7 @@ import type { GameEra } from '@/lib/types';
 
 interface LocationImageDisplayProps {
   imageUrl: string | null;
-  placeName: string;
+  placeName: string | null;
   isLoading: boolean;
   error: string | null;
   era: GameEra; // Add era to props
@@ -49,7 +48,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
         <p className="text-xs">{error.substring(0, 100)}</p>
         <Image
           src={placeholderImageSrc}
-          alt={`Placeholder pour ${placeName} suite à une erreur`}
+          alt={`Placeholder pour ${placeName || 'lieu inconnu'} suite à une erreur`}
           fill={true}
           className="object-cover opacity-20 -z-10"
           data-ai-hint={hintKeywords}
@@ -61,7 +60,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
     content = (
       <Image
         src={imageUrl}
-        alt={`Image de ${placeName} (${era})`}
+        alt={`Image de ${placeName || 'lieu inconnu'} (${era})`}
         fill={true}
         className="object-cover"
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -74,7 +73,7 @@ const LocationImageDisplay: React.FC<LocationImageDisplayProps> = ({
     content = (
       <Image
         src={placeholderImageSrc}
-        alt={`Image placeholder pour ${placeName}`}
+        alt={`Image placeholder pour ${placeName || 'lieu inconnu'}`}
         fill={true}
         className="object-cover"
         data-ai-hint={hintKeywords}
