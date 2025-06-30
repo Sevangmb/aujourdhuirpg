@@ -83,29 +83,44 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
   return `**Instructions de Tonalité Spécifiques :** ${instructions.join(' ')}`;
 }
 
-// --- REFACTORED PROMPT (IN FRENCH) ---
-
 const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider.`;
 
 const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire et Suggérer la Suite**
 Votre mission a trois volets :
-1.  **Générer le 'scenarioText' (Narration) :** Le moteur de jeu a déjà calculé les conséquences de l'action du joueur. Celles-ci vous sont fournies dans le champ \`gameEvents\` sous forme de chaîne JSON. Votre tâche est de **transformer ces événements bruts en une description narrative captivante en HTML**. Ne répétez PAS les événements, mais intégrez-les de manière transparente et immersive dans votre récit.
+1.  **Générer le 'scenarioText' (Narration) :** Le moteur de jeu a déjà calculé les conséquences de l'action du joueur (\`gameEvents\`). Votre tâche est de transformer ces événements bruts en une description narrative captivante en HTML. Ne répétez PAS les événements, mais intégrez-les de manière transparente et immersive dans votre récit.
 2.  **Générer des Choix Guidés (Actions Adaptatives) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ \`choices\` avec 3 ou 4 objets \`StoryChoice\` riches et variés.
-    - **Basé sur le Contexte et les Compétences :** Analysez l'environnement actuel du joueur et ses compétences les plus élevées pour proposer des actions pertinentes. Utilisez les outils comme \`getNearbyPoisTool\` pour suggérer des explorations.
+    - **Basé sur le Contexte et les Compétences :** Analysez l'environnement actuel du joueur, ses compétences et le \`cascadeResult\` pour proposer des actions pertinentes.
     - **Variété :** Proposez un mélange d'actions (observation, action, social, etc.). Évitez les choix génériques comme "Continuer".
-    - **Structure Complète :** Chaque choix doit être un objet JSON complet avec tous les champs requis.
-3.  **Générer une Recommandation Stratégique (Optionnel) :** En tant que MJ, analysez la situation globale du joueur (quêtes, argent, compétences) et remplissez le champ optionnel 'aiRecommendation' avec un conseil stratégique.
+    - **Structure Complète :** Chaque choix doit être un objet JSON complet.
+3.  **Générer une Recommandation Stratégique (Optionnel) :** En tant que MJ, analysez la situation globale du joueur et remplissez le champ optionnel 'aiRecommendation' avec un conseil stratégique.
+`;
+
+const PROMPT_CASCADE_INSTRUCTIONS = `
+**EXPLOITATION DU CONTEXTE DE LA CASCADE (TRÈS IMPORTANT)**
+Le champ \`cascadeResult\` contient des informations contextuelles ultra-riches générées par des modules spécialisés. Votre tâche est d'utiliser ces informations pour rendre votre narration vivante et pour créer des choix pertinents.
+
+Voici comment interpréter les données de la cascade :
+
+- **Si le module \`cuisine\` est présent dans \`cascadeResult.results\` :**
+  - **Narration :** Décrivez les odeurs, les pensées du personnage sur une recette, ou l'ambiance d'une cuisine ou d'un restaurant. Utilisez les \`cookingOpportunities\` pour enrichir l'histoire.
+  - **Choix :** Si \`cascadeResult.results.cuisine.data.cookableRecipes\` n'est pas vide, proposez un choix de type 'job' ou 'action' pour "Cuisiner [nom de la recette]". Si \`nearlyCookableRecipes\` existe, proposez un choix pour "Trouver les ingrédients manquants pour [nom de la recette]".
+
+- **Si le module \`culture_locale\` est présent dans \`cascadeResult.results\` :**
+  - **Narration :** Intégrez un détail historique ou culturel du \`summary\` dans les pensées du personnage ou dans la description d'un bâtiment. Par exemple : "En passant devant la fontaine, vous vous souvenez avoir lu que..."
+  - **Choix :** Proposez un choix d'exploration lié à l'anecdote culturelle, comme "Chercher plus d'informations sur [détail historique]".
+
+- **Pour tous les modules :** Lisez les messages et les données fournies et laissez-les inspirer votre récit. Si des opportunités sont listées, essayez de les transformer en choix d'action.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
-- **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous pour façonner votre style d'écriture et les choix que vous proposez.
+- **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous.
 {{{toneInstructions}}}
-- **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez TOUS les détails fournis dans le champ 'cascadeResult' pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE avec les informations calculées.
+- **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez les instructions spécifiques ci-dessous pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
+${PROMPT_CASCADE_INSTRUCTIONS}
 - **RÈGLE D'OR :** Vous êtes le narrateur. Le moteur de jeu est le maître des règles. **NE modifiez PAS l'état du jeu**. Votre seule sortie est le \`scenarioText\`, les \`choices\`, et l'éventuelle \`aiRecommendation\`.
-- **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', etc.) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante, créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
-- **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
+- **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', etc.) pour enrichir votre narration et générer des choix contextuels.
 `;
 
 const PROMPT_PLAYER_CONTEXT = `
@@ -119,19 +134,12 @@ const PROMPT_PLAYER_CONTEXT = `
 
 const PROMPT_ACTION_AND_EFFECTS = `
 **Action du Joueur et Conséquences Calculées par le Moteur :**
-
 1.  **Action Saisie :** '{{{playerChoiceText}}}'
-
-2.  **Événements Déterministes à Raconter (Format JSON) :**
-    {{{gameEvents}}}
-    **Instruction Spéciale :** Un événement \`SKILL_CHECK_RESULT\` doit être raconté de manière immersive. Décrivez le succès ou l'échec, pas seulement le résultat mécanique.
-
-3.  **Contexte de la Cascade (JSON Format) :**
-    {{{cascadeResult}}}
+2.  **Événements Déterministes à Raconter (Format JSON) :** {{{gameEvents}}} (Intégrez-les de manière immersive dans la narration).
+3.  **Contexte de la Cascade (JSON Format) :** {{{cascadeResult}}} (Utilisez-le pour la narration et les choix comme indiqué dans les principes directeurs).
 
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.
 `;
-
 
 const FULL_PROMPT = `
 ${PROMPT_INTRO}
@@ -158,7 +166,6 @@ const scenarioPrompt = ai.definePrompt({
   prompt: FULL_PROMPT,
 });
 
-// --- PROLOGUE PROMPT (IN FRENCH) ---
 const PROLOGUE_PROMPT = `
 ${PROMPT_INTRO}
 
