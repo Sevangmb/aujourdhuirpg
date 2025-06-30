@@ -586,12 +586,13 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     currentScenario: gameState.currentScenario?.scenarioText || '',
     deterministicEvents: deterministicEvents,
     activeQuests: (player.questLog || [])
-      .filter(q => q.status === 'active')
+      .filter(q => ['active', 'inactive'].includes(q.status))
       .map(q => ({
         id: q.id,
         title: q.title,
         description: q.description.substring(0, 250),
         type: q.type,
+        status: q.status,
         giver: q.giver,
         rewardDescription: q.rewardDescription,
         moneyReward: q.moneyReward,

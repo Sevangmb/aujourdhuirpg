@@ -36,7 +36,7 @@ export const GenerateScenarioInputSchema = z.object({
   deterministicEvents: z.array(z.string()).optional().describe("Un résumé des événements déterministes calculés par le moteur de jeu. L'IA DOIT raconter ces événements comme s'étant déjà produits."),
 
   // Contextual summaries for the AI's narration
-  activeQuests: z.array(QuestInputSchema.omit({ status: true, objectives: true }).extend({ currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives du joueur (titre, description, objectifs actuels) pour contexte."),
+  activeQuests: z.array(QuestInputSchema.omit({ objectives: true }).extend({ id: z.string(), status: z.string(), currentObjectivesDescriptions: z.array(z.string())})).optional().describe("Liste des quêtes actives et inactives du joueur (ID, titre, description, objectifs actuels, statut) pour contexte."),
   encounteredPNJsSummary: z.array(z.object({
     name: z.string(),
     relationStatus: z.string(),
