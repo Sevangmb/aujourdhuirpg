@@ -83,38 +83,6 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
   return `**Instructions de Tonalité Spécifiques :** ${instructions.join(' ')}`;
 }
 
-function formatCascadeResultForPrompt(cascadeJsonString: string | undefined): string {
-  if (!cascadeJsonString || cascadeJsonString === '{}') {
-    return "Aucune cascade d'enrichissement n'a été exécutée pour cette action.";
-  }
-  try {
-    const cascadeData = JSON.parse(cascadeJsonString);
-    if (!cascadeData || !cascadeData.executionChain || !cascadeData.results) {
-      return "Les données de la cascade sont invalides ou vides.";
-    }
-
-    let promptText = `**CONTEXTE ULTRA-RICHE FOURNI PAR LA CASCADE MODULAIRE**\n`;
-    promptText += `Chaîne d'exécution: ${cascadeData.executionChain.join(' → ')}\n\n`;
-    promptText += `--- DÉTAILS DE L'ENRICHISSEMENT ---\n`;
-
-    for (const moduleId of cascadeData.executionChain) {
-      const result = cascadeData.results[moduleId];
-      if (result) {
-        promptText += `\n**Module: ${moduleId}** (Niveau: ${result.enrichmentLevel}, Temps: ${result.executionTime}ms)\n`;
-        promptText += "```json\n";
-        promptText += JSON.stringify(result.data, null, 2);
-        promptText += "\n```\n";
-      }
-    }
-    promptText += `--- FIN DE L'ENRICHISSEMENT ---\n`;
-    return promptText;
-  } catch (e) {
-    console.error("Failed to parse or format cascade result for prompt:", e);
-    return "Erreur lors du formatage du contexte de la cascade.";
-  }
-}
-
-
 // --- REFACTORED PROMPT (IN FRENCH) ---
 
 const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider.`;
@@ -134,7 +102,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous pour façonner votre style d'écriture et les choix que vous proposez.
 {{{toneInstructions}}}
-- **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez TOUS les détails fournis dans le champ 'Contexte de la Cascade' pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE avec les informations calculées.
+- **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez TOUS les détails fournis dans le champ 'cascadeResult' pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE avec les informations calculées.
 - **RÈGLE D'OR :** Vous êtes le narrateur. Le moteur de jeu est le maître des règles. **NE modifiez PAS l'état du jeu**. Votre seule sortie est le \`scenarioText\`, les \`choices\`, et l'éventuelle \`aiRecommendation\`.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', etc.) pour enrichir votre narration ET SURTOUT pour générer des choix d'actions contextuels. Si un outil retourne une information intéressante, créez une \`StoryChoice\` qui permet au joueur d'interagir avec cette information.
 - **RÈGLE ABSOLUE :** Le 'scenarioText' doit contenir UNIQUEMENT du texte narratif et descriptif en français, formaté en HTML.
@@ -158,8 +126,8 @@ const PROMPT_ACTION_AND_EFFECTS = `
     {{{gameEvents}}}
     **Instruction Spéciale :** Un événement \`SKILL_CHECK_RESULT\` doit être raconté de manière immersive. Décrivez le succès ou l'échec, pas seulement le résultat mécanique.
 
-3.  **Contexte de la Cascade :**
-    {{{formattedCascadeResult}}}
+3.  **Contexte de la Cascade (JSON Format) :**
+    {{{cascadeResult}}}
 
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.
 `;
@@ -177,7 +145,7 @@ const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string(), formattedCascadeResult: z.string() })},
+  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
   output: {schema: GenerateScenarioOutputSchema},
   config: {
     safetySettings: [
@@ -219,7 +187,7 @@ const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string(), formattedCascadeResult: z.string() })},
+  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: PROLOGUE_PROMPT,
 });
@@ -232,22 +200,28 @@ const generateScenarioFlow = ai.defineFlow(
   },
   async (input: GenerateScenarioInput) => {
     const toneInstructions = generateToneInstructions(input.player?.toneSettings);
-    const formattedCascadeResult = formatCascadeResultForPrompt(input.cascadeResult);
-    const enrichedInput = { ...input, toneInstructions, formattedCascadeResult };
+    const enrichedInput = { ...input, toneInstructions };
 
     const selectedPrompt = input.playerChoiceText === "[COMMENCER L'AVENTURE]"
       ? prologuePrompt
       : scenarioPrompt;
 
-    const {output} = await selectedPrompt(enrichedInput);
+    try {
+      const {output} = await selectedPrompt(enrichedInput);
 
-    if (!output) {
-      console.error('AI model did not return output for generateScenarioPrompt.');
-      return {
-        scenarioText: "<p>Erreur: L'IA n'a pas retourné de réponse. Veuillez réessayer.</p>",
-        choices: [],
-      };
+      if (!output) {
+        throw new Error("AI model did not return any output.");
+      }
+      return output;
+
+    } catch (error) {
+       console.error('Error in generateScenarioFlow calling prompt:', error);
+       return {
+         scenarioText: "<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p>",
+         choices: [],
+       };
     }
-    return output;
   }
 );
+
+    
