@@ -14,7 +14,7 @@ export const QuestInputSchema = z.object({
   rewardDescription: z.string().optional().describe("Description textuelle de la récompense potentielle (objets, XP)."),
   moneyReward: z.number().optional().describe("Montant d'argent (euros) offert en récompense pour la quête."),
   relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
-}).describe("Structure pour une nouvelle quête à ajouter au journal du joueur. L'IA n'a pas besoin de fournir un ID ou un statut.");
+});
 
 // This schema remains the same, as it's used for updating existing quests by ID.
 export const QuestUpdateSchema = z.object({
@@ -25,4 +25,4 @@ export const QuestUpdateSchema = z.object({
     isCompleted: z.boolean().describe("Si l'objectif est maintenant complété.")
   })).optional().describe("Liste des objectifs dont le statut a changé."),
   newObjectiveDescription: z.string().optional().describe("Description d'un nouvel objectif ajouté à cette quête (rare). L'IA devrait préférer créer des sous-quêtes ou des quêtes séquentielles.")
-}).describe("Structure pour mettre à jour une quête existante.");
+});
