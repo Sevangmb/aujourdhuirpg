@@ -10,32 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { calculateSuccessProbability } from '@/lib/skill-check';
+import { runCascadeForAction } from '@/core/cascade/cascade-system';
 
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
 import CombatStatusDisplay from './CombatStatusDisplay';
-
-// Imports for Cascade Architecture
-import { cascadeManager } from '@/core/cascade/cascade-manager';
-import type { EnrichedContext, CascadeResult } from '@/core/cascade/types';
-
-/**
- * Determines which root module to trigger for the cascade based on the player's choice.
- * @param choice The player's selected StoryChoice.
- * @returns The ID of the root module to execute.
- */
-const determineRelevantModule = (choice: StoryChoice): string => {
-  const choiceText = choice.text.toLowerCase();
-  const choiceType = choice.type;
-
-  if (choiceType === 'job' || choiceText.includes('manger') || choiceText.includes('cuisiner') || choiceText.includes('restaurant')) {
-    return 'cuisine';
-  }
-  
-  // Default to a general cultural analysis for other actions
-  return 'culture_locale';
-};
+import type { CascadeResult } from '@/core/cascade/types';
 
 
 const GamePlay: React.FC = () => {
@@ -86,21 +67,8 @@ const GamePlay: React.FC = () => {
       // 2. Apply events to a temporary state to get the state *after* the action, for the AI's context
       const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: events });
 
-      // 3. === NEW: CASCADE ENRICHMENT ===
-      let cascadeResult: CascadeResult | null = null;
-      if (stateAfterAction.player) {
-        try {
-          const baseContext: EnrichedContext = { 
-            player: stateAfterAction.player, 
-            action: { type: choice.type, payload: choice } 
-          };
-          const rootModuleId = determineRelevantModule(choice);
-          cascadeResult = await cascadeManager.enrichWithCascade(baseContext, rootModuleId);
-        } catch (cascadeError) {
-          console.error("Cascade enrichment failed:", cascadeError);
-          // Don't block the game, just log the error. The AI will receive null for the cascade result.
-        }
-      }
+      // 3. === CASCADE ENRICHMENT ===
+      const cascadeResult = await runCascadeForAction(stateAfterAction, choice);
       
       // 4. Prepare the input for the AI with the calculated events, the future state, and cascade results
       const inputForAI = prepareAIInput(stateAfterAction, choice, events, cascadeResult);

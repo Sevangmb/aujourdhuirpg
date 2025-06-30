@@ -1,109 +1,108 @@
+
 # Aujourd'hui RPG
 
-## Introduction
+![Game Screenshot](https://storage.googleapis.com/static.aiforge.dev/aujourdhui-rpg-banner.png)
 
-Aujourd'hui RPG is an interactive role-playing game that plunges you into the heart of France, blending realistic life simulation with narrative-driven adventure. Create a unique character and navigate a dynamic world where every choice—from the croissant you eat to the metro you take—matters. Powered by generative AI, the game offers a deeply personal and replayable experience, featuring a living economy, an intelligent travel system, and surprise encounters with historical figures.
+## 📖 Introduction
 
-## Core Features
+**Aujourd'hui RPG** est une expérience de jeu de rôle textuel interactive qui vous plonge au cœur de la France. Il mélange une simulation de vie réaliste avec une aventure narrative où chaque choix compte. Propulsé par une IA générative, le jeu offre une expérience profondément personnelle et rejouable.
 
-*   **Character Creation:** Design a detailed character with a unique name, background, starting era, and an AI-generated avatar. Define your narrative experience by setting your preferred story tones (Horror, Romance, Action, etc.).
-*   **Dynamic AI Storytelling:** Engage with scenarios presented in rich HTML, making choices that directly influence a story that evolves with you. The AI acts as a Game Master, creating quests, NPCs, and events on the fly.
-*   **Enriched Item & Economy System:** Interact with a world of tangible objects.
-    *   **Real-World Items:** Discover authentic French products, read real books from Google Books, and use items with realistic properties (durability, nutritional value, etc.).
-    *   **Living Economy:** Earn money through AI-generated jobs. Manage realistic expenses for everything from a cup of coffee to a taxi ride—the world has a cost.
-    *   **Crafting & Cooking:** Use recipes and gathered ingredients to cook meals or craft items, with success based on your skills.
-*   **Intelligent Transport System:** Travel between locations with choices of transport mode (walk, metro, taxi), each with distinct time, cost, and energy trade-offs. Journeys can even trigger random narrative events.
-*   **Physiology Simulation:** Manage your character's hunger and thirst. Your physical state affects your performance, adding a layer of survival and realism to your adventure.
-*   **Narrative Combat:** Engage in a combat system that is driven by the story. Your stats, skills, and equipment determine the outcome of conflicts initiated by the AI.
-*   **Geospatial Analysis:** Use AI-powered tools to get strategic insights on your current location, including its safety, atmosphere, economic profile, and hidden gems.
-*   **Encounters with History:** Meet historical figures (or their modern descendants) tied to the places you visit. Uncover unique secrets, facts, and quests from these AI-enriched characters.
-*   **Investigation Dossier:** Become a detective. Collect clues and documents, and rely on an AI-generated summary to help you connect the dots and solve complex mysteries.
-*   **Cloud-Based Persistence:** Your progress is automatically saved. Load different save points (auto-saves, manual saves, and checkpoints) to continue your adventure anytime.
+Ce projet se distingue par son **architecture modulaire en cascade**. Au lieu que l'IA gère à la fois la logique et la narration, nous avons séparé les responsabilités :
+-   Le **moteur de jeu**, écrit en TypeScript, est le maître des règles. Il calcule les conséquences logiques de chaque action.
+-   L'**IA** agit comme un narrateur créatif, prenant les résultats logiques du moteur pour tisser une histoire immersive.
 
-## Tech Stack
+Chaque action du joueur déclenche une cascade d'enrichissements contextuels, fournissant à l'IA un contexte ultra-riche pour une narration d'une profondeur inégalée.
 
-*   **Frontend:** Next.js (React framework)
-*   **Styling:** Tailwind CSS, ShadCN UI
-*   **Backend & Database:** Firebase (Firestore, Authentication, Storage)
-*   **AI & Generative Content:** Genkit (using Google AI)
-*   **Language:** TypeScript
+## ✨ Core Features
 
-## Getting Started
+*   **Création de Personnage Détaillée** : Concevez un personnage unique avec un nom, un passé, une époque de départ et un avatar généré par IA. Définissez votre expérience narrative en ajustant les tonalités de l'histoire (Horreur, Romance, Action, etc.).
+*   **Narration par IA Dynamique (Architecture en Cascade)** : Interagissez avec des scénarios présentés en HTML riche, en faisant des choix qui influencent directement une histoire qui évolue avec vous. Le moteur de jeu détermine les conséquences ; l'IA les raconte de manière captivante.
+*   **Système d'Objets et d'Économie Évolué** :
+    *   **Objets Intelligents** : Les objets ont une "mémoire", une condition, des propriétés contextuelles et peuvent même gagner de l'expérience et évoluer.
+    *   **Économie Vivante** : Gagnez de l'argent grâce à des jobs générés par l'IA. Gérez des dépenses réalistes pour tout, du café au taxi.
+    *   **Artisanat & Cuisine** : Utilisez des recettes et des ingrédients pour cuisiner des repas ou fabriquer des objets, avec un succès basé sur vos compétences.
+*   **Système de Transport Intelligent** : Voyagez entre les lieux avec des choix de mode de transport (marche, métro, taxi), chacun avec des compromis de temps, de coût et d'énergie. Les trajets peuvent même déclencher des événements narratifs aléatoires.
+*   **Simulation Physiologique** : Gérez la faim et la soif de votre personnage. Votre état physique affecte vos performances, ajoutant une couche de survie et de réalisme.
+*   **Combat Narratif** : Engagez-vous dans un système de combat piloté par l'histoire. Vos statistiques, compétences et équipement déterminent le résultat des conflits initiés par l'IA.
+*   **Analyse Géospatiale** : Utilisez des outils d'IA pour obtenir des informations stratégiques sur votre emplacement actuel, y compris sa sécurité, son atmosphère, son profil économique et ses joyaux cachés.
+*   **Rencontres avec l'Histoire** : Rencontrez des personnages historiques (ou leurs descendants modernes) liés aux lieux que vous visitez. Découvrez des secrets uniques, des faits et des quêtes de ces personnages enrichis par l'IA.
+*   **Dossier d'Enquête** : Devenez un détective. Collectez des indices et des documents, et appuyez-vous sur un résumé généré par l'IA pour vous aider à relier les points et à résoudre des mystères complexes.
+*   **Persistance Basée sur le Cloud** : Votre progression est automatiquement sauvegardée dans Firebase. Chargez différents points de sauvegarde (automatiques, manuels et checkpoints) pour continuer votre aventure à tout moment.
 
-This section will guide you through setting up and running Aujourd'hui RPG locally.
+## 🛠️ Tech Stack & Architecture
+
+*   **Frontend** : Next.js (React)
+*   **Styling** : Tailwind CSS, ShadCN UI
+*   **Backend & Database** : Firebase (Firestore, Authentication, Storage)
+*   **AI & Generative Content** : Google AI & Genkit
+*   **Language** : TypeScript
+*   **Architecture** : Le projet utilise une **architecture modulaire en cascade** personnalisée. Les actions du joueur déclenchent des chaînes de modules d'enrichissement (logique de jeu en TypeScript) qui créent un contexte riche avant de l'envoyer à l'IA pour une narration pure.
+
+## 🚀 Getting Started
+
+Cette section vous guidera pour configurer et lancer Aujourd'hui RPG localement.
 
 ### Prerequisites
 
-*   **Node.js:** Make sure you have Node.js installed (version 20.x or later recommended). You can download it from [https://nodejs.org/](https://nodejs.org/).
-*   **npm:** npm (Node Package Manager) is included with Node.js.
+*   **Node.js** : Assurez-vous d'avoir Node.js installé (version 20.x ou ultérieure recommandée).
+*   **npm** : npm (Node Package Manager) est inclus avec Node.js.
 
 ### Installation
 
-1.  **Clone the repository:**
+1.  **Cloner le dépôt :**
     ```bash
     git clone <repository-url>
     cd aujourdhui-rpg
     ```
-    *(Replace `<repository-url>` with the actual URL of the repository)*
-
-2.  **Install dependencies:**
+2.  **Installer les dépendances :**
     ```bash
     npm install
     ```
 
 ### Running the Development Server
 
-The application consists of two main parts: the Next.js frontend and the Genkit AI backend.
+L'application se compose de deux parties principales : le frontend Next.js et le backend Genkit AI.
 
-1.  **Start the Next.js frontend:**
+1.  **Lancer le frontend Next.js :**
     ```bash
     npm run dev
     ```
-    This will start the main application, usually on `http://localhost:3000`.
+    Cela démarrera l'application principale, généralement sur `http://localhost:3000`.
 
-2.  **Start the Genkit AI flows:**
-    The AI functionalities are powered by Genkit. To run them locally for development and testing, use a separate terminal:
+2.  **Lancer les flux Genkit AI :**
+    Les fonctionnalités d'IA sont alimentées par Genkit. Pour les exécuter localement pour le développement, utilisez un terminal séparé :
     ```bash
     npm run genkit:watch
     ```
-    This starts the Genkit development server, which automatically reloads when you make changes to AI-related files.
+    Cela démarre le serveur de développement Genkit, qui se recharge automatiquement lorsque vous modifiez les fichiers liés à l'IA.
 
 ### Environment Variables
 
-This project requires certain environment variables to be set up for full functionality, particularly for AI services and maps.
+Ce projet nécessite la configuration de certaines variables d'environnement.
 
-1.  Create a `.env` file in the root of the project.
-2.  Add the necessary environment variables. The Firebase configuration is currently hardcoded in `src/lib/firebase.ts` for simplicity.
+1.  Créez un fichier `.env` à la racine du projet.
+2.  Ajoutez les variables d'environnement nécessaires. La configuration Firebase est actuellement codée en dur dans `src/lib/firebase.ts` pour la simplicité de ce projet de démonstration.
 
     *   **Google AI / Genkit Configuration:**
         ```
         GOOGLE_API_KEY=your_google_ai_api_key
         ```
-        *(**Required** for all generative AI features, including text, images, and enrichments. Get this from the Google AI Studio.)*
+        *(\*\*Requis\*\* pour toutes les fonctionnalités d'IA générative. Obtenez-le depuis Google AI Studio.)*
 
     *   **Google Maps Configuration:**
         ```
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
         ```
-        *(**Required** for the map display component. Get this from the Google Cloud Console.)*
+        *(\*\*Requis\*\* pour le composant d'affichage de la carte. Obtenez-le depuis la Google Cloud Console.)*
     
-    *   **NewsAPI Configuration (Optional):**
+    *   **NewsAPI Configuration (Optionnel):**
         ```
         NEWS_API_KEY=your_newsapi_org_key
         ```
-        *(Optional. Used by an AI tool to fetch current news headlines. Get a key from newsapi.org.)*
+        *(Optionnel. Utilisé par un outil d'IA pour récupérer les titres d'actualités. Obtenez une clé sur newsapi.org.)*
 
+**Important** : N'ajoutez pas votre fichier `.env` au contrôle de version.
 
-**Important:** Do not commit your `.env` file to version control. Ensure it is listed in your `.gitignore` file.
+## 🎨 Style Guidelines
 
-## Style Guidelines
-
-The visual style of Aujourd'hui RPG is designed to be calm, immersive, and modern, using a customizable theme via CSS variables in `src/app/globals.css`. The primary font used is 'Montserrat'.
-
-## Contributing
-
-Contributions are welcome! Please feel free to open an issue or submit a pull request.
-
-## License
-
-This project does not currently have a license. Consider adding an open-source license such as MIT to define how others can use and contribute to the project.
+Le style visuel d'Aujourd'hui RPG est conçu pour être calme, immersif et moderne, en utilisant un thème personnalisable via des variables CSS dans `src/app/globals.css`. La police principale utilisée est 'Montserrat'.
