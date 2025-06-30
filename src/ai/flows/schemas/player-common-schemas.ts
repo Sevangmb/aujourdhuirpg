@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Zod schema definitions for common player-related data structures used as input for scenarios.
  */
@@ -74,6 +75,10 @@ export const IntelligentItemInputSchema = z.object({
   memory: z.object({
     acquisitionStory: z.string().describe("Comment et où cet objet a été obtenu."),
   }).describe("La 'mémoire' de l'objet, son histoire."),
+  economics: z.object({
+      base_value: z.number(),
+      rarity_multiplier: z.number()
+  }).describe("Les propriétés économiques de base de l'objet."),
 }).describe("Un objet intelligent et détaillé dans l'inventaire du joueur.");
 
 
@@ -83,3 +88,29 @@ export const ToneSettingsSchema = z.object(
     return acc;
   }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
 ).partial().describe('Les préférences de tonalité définies par le joueur (ex: {"Horreur": 75, "Humour": 30}). Les valeurs vont de 0 à 100. Neutre est à 50.');
+
+
+// NEW: A comprehensive player schema for AI input
+export const PlayerInputSchema = z.object({
+  name: z.string(),
+  gender: z.string(),
+  age: z.number(),
+  origin: z.string(),
+  era: z.string(),
+  background: z.string(),
+  stats: z.record(z.string(), z.number()),
+  skills: SkillsSchema,
+  physiology: z.object({
+    basic_needs: z.object({
+      hunger: z.object({ level: z.number() }),
+      thirst: z.object({ level: z.number() }),
+    }),
+  }),
+  traitsMentalStates: TraitsMentalStatesSchema,
+  progression: ProgressionInputSchema,
+  alignment: AlignmentSchema,
+  inventory: z.array(IntelligentItemInputSchema),
+  money: z.number(),
+  currentLocation: LocationSchema,
+  toneSettings: ToneSettingsSchema,
+});

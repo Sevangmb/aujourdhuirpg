@@ -12,4 +12,5 @@ export * from './finance-types';
 export * from './historical-contact-types';
 export * from './era-types';
 export * from './choice-types';
+export * from './physiology-types';
 export type { CharacterSummary, SaveSummary } from '@/services/firestore-service';

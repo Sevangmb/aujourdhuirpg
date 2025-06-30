@@ -2,7 +2,7 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact } from '@/lib/types';
+import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem } from '@/lib/types';
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,6 +29,26 @@ export const initialSkills: AdvancedSkillSystem = {
   physical: { endurance: 5, agility: 5, stealth: 5, strength: 5, dexterity: 5 },
   technical: { technology: 10, investigation: 5, languages: 5, finance: 5, crafting: 5 },
   survival: { streetwise: 10, wilderness: 5, medical: 5, navigation: 5, adaptation: 5 },
+};
+
+// NEW: Initial physiology data
+export const initialPhysiology: AdvancedPhysiologySystem = {
+  basic_needs: {
+    hunger: {
+      level: 100,
+      satisfaction_quality: 100,
+      cultural_craving: 'Aucune',
+      dietary_preferences: ['omnivore'],
+      food_memories: [],
+    },
+    thirst: {
+      level: 100,
+      hydration_quality: 100,
+      climate_adjustment: 0,
+      beverage_tolerance: [],
+      cultural_beverage_preference: 'eau',
+    },
+  },
 };
 
 export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];

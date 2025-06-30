@@ -1,6 +1,6 @@
 
 
-import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem } from './types';
+import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -22,6 +22,7 @@ import {
   initialToneSettings,
   initialTransactionLog,
   initialHistoricalContacts,
+  initialPhysiology,
 } from '@/data/initial-game-data';
 import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
@@ -92,6 +93,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     startingLocationName: savedPlayer?.startingLocationName,
     stats: { ...initialPlayerStats, ...(savedPlayer?.stats || {}) },
     skills: migrateSkills(savedPlayer?.skills), // Use migration function for skills
+    physiology: deepmerge(initialPhysiology, savedPlayer?.physiology || {}), // Hydrate physiology
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
     progression: { ...initialProgression, ...(savedPlayer?.progression || {}) },
     alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },

@@ -57,9 +57,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'EXECUTE_TRAVEL': {
       const { destination, travelNarrative, time, cost, energy } = action.payload;
+      
+      const mutablePlayer = { ...state.player };
 
-      const newStats = applyStatChanges(state.player.stats, { Energie: -energy });
-      const newMoney = state.player.money - cost;
+      mutablePlayer.stats = applyStatChanges(mutablePlayer.stats, { Energie: -energy });
+      mutablePlayer.money -= cost;
+      
+      const hungerDecay = (time * 0.02) + (energy * 0.2);
+      const thirstDecay = (time * 0.03) + (energy * 0.3);
+      mutablePlayer.physiology.basic_needs.hunger.level = Math.max(0, mutablePlayer.physiology.basic_needs.hunger.level - hungerDecay);
+      mutablePlayer.physiology.basic_needs.thirst.level = Math.max(0, mutablePlayer.physiology.basic_needs.thirst.level - thirstDecay);
+
       const newTime = (state.gameTimeInMinutes || 0) + time;
 
       const newJournalEntry: JournalEntry = {
@@ -79,12 +87,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         timestamp: new Date().toISOString(),
         locationName: state.player.currentLocation.name,
       } : null;
-      const transactionLog = newTransaction ? [...(state.player.transactionLog || []), newTransaction] : state.player.transactionLog;
+      mutablePlayer.transactionLog = newTransaction ? [...(mutablePlayer.transactionLog || []), newTransaction] : mutablePlayer.transactionLog;
 
       // Re-contextualize the entire inventory on arrival
-      const recontextualizedInventory = state.player.inventory.map(item => 
+      mutablePlayer.inventory = mutablePlayer.inventory.map(item => 
         updateItemContextualProperties(item, destination)
       );
+      mutablePlayer.currentLocation = destination;
+
 
       const arrivalText = `<p>Vous arrivez à ${destination.name}.</p>`;
       const newScenarioText = `${travelNarrative}\n${arrivalText}`;
@@ -92,14 +102,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         gameTimeInMinutes: newTime,
-        player: {
-          ...state.player,
-          currentLocation: destination,
-          stats: newStats,
-          money: newMoney,
-          transactionLog: transactionLog || [],
-          inventory: recontextualizedInventory,
-        },
+        player: mutablePlayer,
         currentScenario: { scenarioText: newScenarioText, choices: montmartreInitialChoices /* TODO: Make dynamic */ },
         nearbyPois: null,
         journal: [...(state.journal || []), newJournalEntry],
@@ -338,6 +341,17 @@ export async function calculateDeterministicEffects(
   const notifications: GameNotification[] = [];
   const eventsForAI: string[] = [];
 
+  // --- PHYSIOLOGY DECAY ---
+  // Decay based on time and energy spent. Rates can be tweaked.
+  const timeDecayFactor = 0.05; // Hunger/Thirst points per minute
+  const energyDecayFactor = 0.1; // Hunger/Thirst points per energy point
+
+  let hungerDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor);
+  let thirstDecay = (choice.timeCost * timeDecayFactor) + (choice.energyCost * energyDecayFactor * 1.5); // Thirst decays faster
+
+  newPlayerState.physiology.basic_needs.hunger.level = Math.max(0, newPlayerState.physiology.basic_needs.hunger.level - hungerDecay);
+  newPlayerState.physiology.basic_needs.thirst.level = Math.max(0, newPlayerState.physiology.basic_needs.thirst.level - thirstDecay);
+  
   // Apply energy cost from the choice
   if (choice.energyCost > 0) {
     newPlayerState.stats.Energie = Math.max(0, newPlayerState.stats.Energie - choice.energyCost);
@@ -407,9 +421,10 @@ export async function calculateDeterministicEffects(
        if (newPlayerState.money >= crepeCost) {
             newPlayerState.money -= crepeCost;
             newPlayerState.stats.Energie = Math.min(100, newPlayerState.stats.Energie + 5);
+            newPlayerState.physiology.basic_needs.hunger.level = Math.min(100, newPlayerState.physiology.basic_needs.hunger.level + 15);
             notifications.push({ type: 'money_changed', title: 'Achat', description: `Vous avez acheté une crêpe pour ${crepeCost}€. `});
-            notifications.push({ type: 'stat_changed', title: 'Énergie', description: `La crêpe vous redonne 5 points d'énergie.`});
-            eventsForAI.push(`Le joueur a acheté une crêpe pour ${crepeCost}€ et a regagné 5 énergie.`);
+            notifications.push({ type: 'stat_changed', title: 'Physiologie', description: `La crêpe vous redonne 5 énergie et réduit votre faim.`});
+            eventsForAI.push(`Le joueur a acheté une crêpe pour ${crepeCost}€, regagné 5 énergie et 15 satiété.`);
        } else {
            notifications.push({ type: 'warning', title: 'Fonds insuffisants', description: "Vous n'avez pas assez d'argent pour une crêpe."});
            eventsForAI.push("Le joueur a tenté d'acheter une crêpe mais n'avait pas assez d'argent.");
@@ -473,39 +488,44 @@ export function prepareAIInput(gameState: GameState, playerChoice: string, deter
     return null;
   }
 
-  const player = gameState.player;
+  const { player } = gameState;
+
+  // We are creating a subset of the player object that matches PlayerInputSchema
+  const playerInputForAI = {
+      name: player.name,
+      gender: player.gender,
+      age: player.age,
+      origin: player.origin,
+      era: player.era || 'Époque Contemporaine',
+      background: player.background,
+      stats: player.stats,
+      skills: player.skills,
+      physiology: player.physiology,
+      traitsMentalStates: player.traitsMentalStates,
+      progression: player.progression,
+      alignment: player.alignment,
+      inventory: player.inventory.map(item => ({
+        instanceId: item.instanceId,
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        type: item.type,
+        quantity: item.quantity,
+        condition: item.condition,
+        economics: item.economics,
+        memory: {
+          acquisitionStory: item.memory.acquisitionStory
+        },
+      })),
+      money: player.money,
+      currentLocation: player.currentLocation,
+      toneSettings: player.toneSettings,
+  };
 
   return {
-    playerName: player.name,
-    playerGender: player.gender,
-    playerAge: player.age,
-    playerOrigin: player.origin,
-    playerEra: player.era || 'Époque Contemporaine',
-    playerStartingLocation: player.startingLocationName || player.currentLocation.name,
-    playerBackground: player.background,
-    playerStats: player.stats,
-    playerSkills: player.skills,
-    playerTraitsMentalStates: player.traitsMentalStates,
-    playerProgression: player.progression,
-    playerAlignment: player.alignment,
-    playerInventory: player.inventory.map(item => ({
-      instanceId: item.instanceId,
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      type: item.type,
-      quantity: item.quantity,
-      condition: item.condition,
-      economics: item.economics,
-      memory: {
-        acquisitionStory: item.memory.acquisitionStory
-      },
-    })),
-    playerMoney: player.money,
+    player: playerInputForAI,
     playerChoice: playerChoice,
     currentScenario: gameState.currentScenario?.scenarioText || '',
-    playerLocation: player.currentLocation,
-    toneSettings: player.toneSettings,
     deterministicEvents: deterministicEvents,
     activeQuests: (player.questLog || [])
       .filter(q => q.status === 'active')

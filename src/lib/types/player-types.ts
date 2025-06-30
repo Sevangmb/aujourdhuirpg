@@ -9,6 +9,7 @@ import type { Position } from './game-types'; // Corrected path
 import type { Transaction } from './finance-types';
 import type { HistoricalContact } from './historical-contact-types';
 import type { GameEra } from './era-types';
+import type { AdvancedPhysiologySystem } from './physiology-types';
 
 export type PlayerStats = {
   Sante: number;
@@ -95,6 +96,7 @@ export type Player = {
   startingLocationName?: string; // Added for character creation context
   stats: PlayerStats;
   skills: AdvancedSkillSystem; // UPDATED from Skills to AdvancedSkillSystem
+  physiology: AdvancedPhysiologySystem; // NEW: Advanced physiology system
   traitsMentalStates: TraitsMentalStates;
   progression: Progression;
   alignment: Alignment;

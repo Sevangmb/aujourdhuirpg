@@ -15,7 +15,8 @@ import {
   ProgressionInputSchema,
   AlignmentSchema,
   IntelligentItemInputSchema,
-  ToneSettingsSchema
+  ToneSettingsSchema,
+  PlayerInputSchema, // Using a more comprehensive player schema
 } from './schemas/player-common-schemas';
 import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas';
 import { PNJInteractionSchema } from './schemas/pnj-schemas';
@@ -27,26 +28,10 @@ import { NewTransactionSchema } from './schemas/finance-schemas';
 // --- Main Input Schema ---
 // This schema describes all the information the game provides to the AI for context.
 export const GenerateScenarioInputSchema = z.object({
-  playerName: z.string().describe('Le nom du personnage du joueur.'),
-  playerGender: z.string().describe("Le genre du personnage du joueur."),
-  playerAge: z.number().describe("L'âge du personnage du joueur."),
-  playerOrigin: z.string().describe("L'origine (sociale, géographique) du personnage du joueur."),
-  playerBackground: z.string().describe("L'historique ou le passé du personnage du joueur."),
-  playerStats: z.record(z.number()).describe('Un enregistrement des statistiques du personnage (ex: {"Sante": 100, "Charisme": 50}).'),
-  playerEra: z.string().describe("L'époque dans laquelle se déroule le jeu."),
-  playerStartingLocation: z.string().describe('Le lieu de départ initial choisi par le joueur.'),
-  playerSkills: SkillsSchema,
-  playerTraitsMentalStates: TraitsMentalStatesSchema,
-  playerProgression: ProgressionInputSchema,
-  playerAlignment: AlignmentSchema,
-  playerInventory: z.array(IntelligentItemInputSchema).describe("Une liste des objets intelligents que le joueur possède, avec leurs détails, leur état et leur histoire."),
-  playerMoney: z.number().describe("La quantité d'argent actuelle du joueur (en euros)."),
-  
+  player: PlayerInputSchema.describe("L'objet complet contenant toutes les informations sur le joueur."),
   playerChoice: z.string().describe("L'action textuelle que le joueur a saisie."),
   currentScenario: z.string().describe('Le contexte du scénario actuel (le texte HTML du scénario précédent).'),
-  playerLocation: LocationSchema.describe("La position actuelle du joueur."),
-  toneSettings: ToneSettingsSchema.optional(),
-
+  
   // This field is for events calculated by the game engine BEFORE calling the AI.
   deterministicEvents: z.array(z.string()).optional().describe("Un résumé des événements déterministes calculés par le moteur de jeu. L'IA DOIT raconter ces événements comme s'étant déjà produits."),
 
