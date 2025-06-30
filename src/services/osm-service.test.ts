@@ -1,3 +1,4 @@
+
 import { fetchNearbyPoisFromOSM, type GetNearbyPoisServiceInput, type GetNearbyPoisServiceOutput } from './osm-service';
 
 // Mock global.fetch
