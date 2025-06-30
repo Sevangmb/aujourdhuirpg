@@ -22,6 +22,7 @@ import {
   GenerateScenarioOutputSchema,
 } from './generate-scenario-schemas';
 import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
+import type { ToneSettings } from '@/lib/types';
 
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
@@ -36,6 +37,50 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     };
   }
   return generateScenarioFlow(input);
+}
+
+
+function generateToneInstructions(toneSettings: ToneSettings | undefined): string {
+  if (!toneSettings || Object.keys(toneSettings).length === 0) {
+    return "Le style narratif doit être équilibré et neutre.";
+  }
+
+  const instructions: string[] = [];
+  const sortedTones = Object.entries(toneSettings).sort(([, a], [, b]) => b - a);
+
+  const primaryTone = sortedTones[0];
+  
+  if (primaryTone && primaryTone[1] > 55) { // Main tone must be significant
+    switch (primaryTone[0]) {
+      case 'Horreur':
+        instructions.push("Adoptez un style narratif sombre et oppressant. Utilisez un vocabulaire qui évoque le malaise et la tension. Décrivez les ombres, les bruits étranges. Proposez des choix liés à l'investigation du danger ou à la confrontation avec l'inconnu.");
+        break;
+      case 'Romance':
+        instructions.push("Utilisez un style poétique et sensoriel. Décrivez les émotions, les regards, les atmosphères avec des métaphores. Proposez des choix contemplatifs, comme savourer un moment, admirer une vue, ou engager une conversation intime.");
+        break;
+      case 'Humour':
+        instructions.push("Créez des situations cocasses et légères. Utilisez des dialogues pleins d'esprit et des descriptions ironiques. Proposez des choix qui permettent d'improviser, de faire une blague ou de prendre une situation à la légère.");
+        break;
+      case 'Mystère':
+        instructions.push("Distillez des indices subtils et maintenez une ambiance ambiguë. Privilégiez les non-dits et les questions en suspens. Proposez des choix liés à l'examen de détails, à la déduction et à la recherche d'informations cachées.");
+        break;
+      case 'Action':
+        instructions.push("Employez un style direct avec des phrases courtes et un rythme dynamique. Décrivez les mouvements et les impacts. Proposez des choix qui incitent à l'action rapide, à la prise de risque et à la confrontation physique.");
+        break;
+      case 'Fantastique':
+         instructions.push("Introduisez des éléments surnaturels ou magiques de manière subtile ou grandiose. Décrivez l'émerveillement, l'étrangeté. Proposez des choix qui permettent d'interagir avec le merveilleux, de découvrir des secrets anciens ou d'utiliser des capacités extraordinaires.");
+        break;
+      case 'Science Fiction':
+         instructions.push("Intégrez des concepts technologiques avancés, des dilemmes futuristes ou des rencontres extraterrestres. Utilisez un vocabulaire technique mais évocateur. Proposez des choix liés à l'utilisation de la technologie, à l'exploration spatiale ou à des questionnements sur l'humanité.");
+        break;
+    }
+  }
+
+  if (instructions.length === 0) {
+    return "Le style narratif doit être équilibré et neutre.";
+  }
+
+  return `**Instructions de Tonalité Spécifiques :** ${instructions.join(' ')}`;
 }
 
 
@@ -62,6 +107,8 @@ Votre mission a quatre volets :
 
 const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
+- **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous pour façonner votre style d'écriture et les choix que vous proposez.
+{{{toneInstructions}}}
 - **RÈGLE D'OR :** Tout ce qui doit devenir un élément de jeu interactif (quête, objet, PNJ, transaction) DOIT être défini dans les champs de sortie JSON. Ne les laissez pas exister uniquement dans le 'scenarioText'.
 - **GÉNÉRATION D'OBJETS CONTEXTUELS :** Le monde doit sembler vivant. Lorsque vous créez un scénario, pensez aux objets que le joueur pourrait trouver. Si le joueur explore une vieille bibliothèque, il pourrait trouver un 'Carnet et Stylo' ('notebook_pen_01'). Si une quête est terminée, la récompense doit être logique. Une quête de livraison à un médecin pourrait rapporter une 'Petite Trousse de Soins' ('medkit_basic_01'). Utilisez le champ 'itemsToAddToInventory' pour placer ces objets dans le monde.
 - **LIVRES ET SAVOIR :** Lorsque le joueur est dans une librairie ou une bibliothèque, utilisez l'outil 'getBookDetailsTool' pour trouver des livres réels pertinents. Proposez des choix pour acheter ou lire ces livres. Si le joueur acquiert un livre, utilisez le champ de sortie 'newDynamicItems' pour le créer.
@@ -112,7 +159,6 @@ const PROMPT_PLAYER_CONTEXT = `
   - Physiques: {{#each player.skills.physical}}{{{@key}}}: {{{this}}}, {{/each}}
   - Techniques: {{#each player.skills.technical}}{{{@key}}}: {{{this}}}, {{/each}}
   - Survie: {{#each player.skills.survival}}{{{@key}}}: {{{this}}}, {{/each}}
-- Tonalité : {{#if player.toneSettings}}{{#each player.toneSettings}}{{{@key}}}: {{{this}}} {{/each}}{{else}}(Équilibrée){{/if}}
 - Quêtes en cours: {{#each activeQuests}}"{{this.title}}" (Statut: {{this.status}}); {{/each}}
 - Scène Précédente : {{{currentScenario}}}
 - Dossier d'Enquête : {{{currentInvestigationNotes}}}
@@ -149,7 +195,7 @@ const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema},
+  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
   output: {schema: GenerateScenarioOutputSchema},
   config: {
     safetySettings: [
@@ -176,7 +222,8 @@ Vous commencez une nouvelle aventure de JDR textuel. Écrivez une scène d'intro
 - Lieu de Départ : {{{player.currentLocation.name}}}
 - Passé : {{{player.background}}}
 
-Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le personnage et laissez entrevoir le début de son aventure. Le ton doit être influencé par les préférences de tonalité.
+Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le personnage et laissez entrevoir le début de son aventure.
+{{{toneInstructions}}}
 
 **Contraintes Importantes :**
 - Le prologue doit être purement narratif. N'incluez AUCUNE mécanique de jeu. Ne générez pas de quêtes, d'objets ou de PNJ dans la sortie JSON pour le prologue.
@@ -190,7 +237,7 @@ const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema},
+  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: PROLOGUE_PROMPT,
 });
@@ -202,11 +249,14 @@ const generateScenarioFlow = ai.defineFlow(
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input: GenerateScenarioInput) => {
+    const toneInstructions = generateToneInstructions(input.player?.toneSettings);
+    const enrichedInput = { ...input, toneInstructions };
+
     const selectedPrompt = input.playerChoice === "[COMMENCER L'AVENTURE]"
       ? prologuePrompt
       : scenarioPrompt;
 
-    const {output} = await selectedPrompt(input);
+    const {output} = await selectedPrompt(enrichedInput);
 
     if (!output) {
       console.error('AI model did not return output for generateScenarioPrompt.');
