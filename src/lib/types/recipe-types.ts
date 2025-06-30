@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Defines the types for the recipe and culinary systems.
  * Based on the "Système de Physiologie Contextuelle Intelligente" design document.
