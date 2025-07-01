@@ -91,7 +91,7 @@ const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter, Suggérer, et Animer le Monde**
 Votre mission est quadruple :
 
-1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur (\`gameEvents\`). Transformez ces événements bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits.
+1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur et vous fournit un résumé textuel dans \`gameEvents\`. Transformez ces faits bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits.
 
 2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter un café...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
     - **EXIGENCES STRICTES POUR VOS CHOIX :**
@@ -151,7 +151,7 @@ const PROMPT_PLAYER_CONTEXT = `
 const PROMPT_ACTION_AND_EFFECTS = `
 **Action du Joueur et Conséquences Calculées par le Moteur :**
 1.  **Action Saisie :** '{{{playerChoiceText}}}'
-2.  **Événements Déterministes à Raconter (Format JSON) :** {{{gameEvents}}} (Intégrez-les de manière immersive dans la narration).
+2.  **Résumé des Événements Déterministes à Raconter :** {{{gameEvents}}} (Utilisez ce résumé comme base factuelle pour votre narration immersive).
 3.  **Contexte de la Cascade (Texte) :** {{{cascadeResult}}} (Utilisez ces informations pour la narration et les choix).
 
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.

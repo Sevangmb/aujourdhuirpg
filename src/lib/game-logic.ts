@@ -3,12 +3,12 @@
 
 
 
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
 import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
-import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
 import type { WeatherData } from '@/app/actions/get-current-weather';
@@ -465,6 +465,65 @@ export async function fetchPoisForCurrentLocation(playerLocation: Position): Pro
   }
 }
 
+/**
+ * Translates a list of game events into a human-readable text summary for the AI.
+ * @param events The array of game events.
+ * @returns A string summarizing the events.
+ */
+function summarizeGameEventsForAI(events: GameEvent[]): string {
+    if (!events || events.length === 0) {
+        return "Aucun événement particulier ne s'est produit.";
+    }
+
+    const summaries: string[] = [];
+
+    for (const event of events) {
+        switch (event.type) {
+            case 'SKILL_CHECK_RESULT':
+                summaries.push(
+                    `- Test de compétence (${event.skill}): ${event.success ? 'RÉUSSITE' : 'ÉCHEC'}. ` +
+                    `(Score: ${event.totalAchieved} vs Difficulté: ${event.difficultyTarget})`
+                );
+                break;
+            case 'PLAYER_STAT_CHANGE':
+                if (Math.abs(event.change) > 0) { // Only report actual changes
+                   summaries.push(`- Statistique modifiée: ${event.stat} ${event.change > 0 ? '+' : ''}${event.change} (Nouveau total: ${event.finalValue}).`);
+                }
+                break;
+            case 'XP_GAINED':
+                summaries.push(`- Le joueur a gagné ${event.amount} points d'expérience.`);
+                break;
+            case 'PLAYER_LEVELED_UP':
+                summaries.push(`- FÉLICITATIONS: Le joueur a atteint le niveau ${event.newLevel} !`);
+                break;
+            case 'ITEM_ADDED':
+                summaries.push(`- Objet ajouté à l'inventaire: ${event.quantity}x ${event.itemName}.`);
+                break;
+            case 'ITEM_REMOVED':
+                 summaries.push(`- Objet retiré de l'inventaire: ${event.quantity}x ${event.itemName}.`);
+                break;
+            case 'ITEM_EVOLVED':
+                summaries.push(`- ÉVOLUTION: ${event.oldItemName} est devenu ${event.newItemName} !`);
+                break;
+            case 'MONEY_CHANGED':
+                 summaries.push(`- Transaction: ${event.amount > 0 ? '+' : ''}${event.amount.toFixed(2)}€ (${event.description}). Nouveau solde: ${event.finalBalance.toFixed(2)}€.`)
+                break;
+            case 'TEXT_EVENT':
+                summaries.push(`- Événement narratif: ${event.text}`);
+                break;
+            // Other events can be ignored for the AI summary as they are either silent state changes or too detailed.
+            default:
+                break;
+        }
+    }
+
+    if (summaries.length === 0) {
+        return "L'action n'a pas eu de conséquences mécaniques notables à narrer.";
+    }
+
+    return summaries.join('\n');
+}
+
 // --- AI Input Preparation ---
 export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents?: GameEvent[], cascadeResult?: CascadeResult | null): any | null {
   if (!gameState.player) {
@@ -570,11 +629,13 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 
   const suggestedContextualActions = generatePlayerStateActions(player);
 
+  const gameEventsSummary = summarizeGameEventsForAI(gameEvents || []);
+
   return {
     player: playerInputForAI,
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
-    gameEvents: JSON.stringify(gameEvents || [], null, 2),
+    gameEvents: gameEventsSummary,
     cascadeResult: cascadeSummary,
     suggestedContextualActions,
   };
