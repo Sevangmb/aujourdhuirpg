@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Type definitions specific to the Player module.
  */
@@ -9,7 +10,8 @@ export type {
     PlayerStats,
     AdvancedSkillSystem,
     Progression,
-    Alignment
+    Alignment,
+    SkillDetail,
 } from '@/lib/types';
 
 // Example of a module-specific type

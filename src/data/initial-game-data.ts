@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Centralized initial game data constants.
  */
@@ -8,20 +9,27 @@ import { v4 as uuidv4 } from 'uuid';
 import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
 import { montmartreInitialChoices } from './choices';
 
+const createStat = (value: number, max?: number): { value: number, max?: number } => ({ value, max });
+
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
-  Sante: { value: 100, max: 100 },
-  Energie: { value: 100, max: 100 },
-  Stress: { value: 10, max: 100 },
-  Volonte: { value: 50, max: 100 },
-  Humeur: { value: 50, max: 100 },
-  Charisme: { value: 50 },
-  Intelligence: { value: 50 },
-  Force: { value: 50 },
-  Reputation: { value: 0 },
-  Curiosite: { value: 20 },
-  Inspiration: { value: 10 },
+  Force: createStat(10),
+  Dexterite: createStat(10),
+  Constitution: createStat(10),
+  Intelligence: createStat(10),
+  Perception: createStat(10),
+  Charisme: createStat(10),
+  Volonte: createStat(10),
+  Savoir: createStat(10),
+  Technique: createStat(10),
+  MagieOccultisme: createStat(10),
+  Discretion: createStat(10),
+  ChanceDestin: createStat(10),
+  Sante: createStat(100, 100),
+  Energie: createStat(100, 100),
+  Stress: createStat(0, 100),
 };
+
 
 const createSkillDetail = (level: number): SkillDetail => ({
     level: level,
@@ -30,44 +38,61 @@ const createSkillDetail = (level: number): SkillDetail => ({
 });
 
 export const initialSkills: AdvancedSkillSystem = {
-  cognitive: { 
-    analysis: createSkillDetail(5), 
-    memory: createSkillDetail(5), 
-    creativity: createSkillDetail(5), 
-    logic: createSkillDetail(5), 
-    observation: createSkillDetail(10) 
+  physiques: {
+    combat_mains_nues: createSkillDetail(5),
+    arme_blanche: createSkillDetail(5),
+    arme_de_tir: createSkillDetail(5),
+    arme_a_feu: createSkillDetail(5),
+    pilotage_monture: createSkillDetail(5),
+    pilotage_vehicules: createSkillDetail(5),
+    pilotage_spatial: createSkillDetail(5),
+    esquive: createSkillDetail(5),
+    natation: createSkillDetail(5),
+    escalade: createSkillDetail(5),
+    discretion_skill: createSkillDetail(5),
   },
-  social: { 
-    persuasion: createSkillDetail(10), 
-    empathy: createSkillDetail(5), 
-    leadership: createSkillDetail(5), 
-    networking: createSkillDetail(5), 
-    cultural_adaptation: createSkillDetail(5) 
+  techniques: {
+    artisanat_general: createSkillDetail(5),
+    forge_metallurgie: createSkillDetail(5),
+    maconnerie_construction: createSkillDetail(5),
+    menuiserie: createSkillDetail(5),
+    couture_tissage: createSkillDetail(5),
+    joaillerie: createSkillDetail(5),
+    navigation: createSkillDetail(5),
+    mecanique: createSkillDetail(5),
+    electronique: createSkillDetail(5),
+    informatique_hacking: createSkillDetail(5),
+    ingenierie_spatiale: createSkillDetail(5),
+    contrefacon: createSkillDetail(5),
   },
-  physical: { 
-    endurance: createSkillDetail(5), 
-    agility: createSkillDetail(5), 
-    stealth: createSkillDetail(5), 
-    strength: createSkillDetail(5), 
-    dexterity: createSkillDetail(5) 
+  survie: {
+    pistage: createSkillDetail(5),
+    orientation: createSkillDetail(5),
+    chasse_peche: createSkillDetail(5),
+    herboristerie: createSkillDetail(5),
+    premiers_secours: createSkillDetail(5),
+    medecine: createSkillDetail(5),
+    survie_generale: createSkillDetail(5),
   },
-  technical: { 
-    technology: createSkillDetail(10), 
-    investigation: createSkillDetail(5), 
-    languages: createSkillDetail(5), 
-    finance: createSkillDetail(5), 
-    crafting: createSkillDetail(5) 
+  sociales: {
+    persuasion: createSkillDetail(5),
+    seduction: createSkillDetail(5),
+    intimidation: createSkillDetail(5),
+    tromperie_baratin: createSkillDetail(5),
+    commandement: createSkillDetail(5),
+    etiquette: createSkillDetail(5),
   },
-  survival: { 
-    streetwise: createSkillDetail(10), 
-    wilderness: createSkillDetail(5), 
-    medical: createSkillDetail(5), 
-    navigation: createSkillDetail(5), 
-    adaptation: createSkillDetail(5) 
+  savoir: {
+    histoire: createSkillDetail(5),
+    geographie: createSkillDetail(5),
+    theologie_religions: createSkillDetail(5),
+    sciences_naturelles: createSkillDetail(5),
+    alchimie_chimie: createSkillDetail(5),
+    occultisme_magie_theorique: createSkillDetail(5),
+    astrologie_astronomie: createSkillDetail(5),
   },
 };
 
-// NEW: Initial physiology data
 export const initialPhysiology: AdvancedPhysiologySystem = {
   basic_needs: {
     hunger: {
@@ -101,7 +126,6 @@ export const initialAlignment: Alignment = {
   goodEvil: 0,
 };
 
-// NEW: Initial Momentum
 export const initialMomentum: MomentumSystem = {
     consecutive_successes: 0,
     consecutive_failures: 0,
@@ -114,11 +138,10 @@ export const initialInventory: IntelligentItem[] = [
   getMasterItemById('wallet_01'),
   getMasterItemById('keys_apartment_01'),
   getMasterItemById('energy_bar_01'),
-  getMasterItemById('vintage_camera_01'), // Added the new evolving item
+  getMasterItemById('vintage_camera_01'),
 ]
 .filter((item): item is NonNullable<typeof item> => item !== undefined)
 .map(masterItem => {
-  // Create a full IntelligentItem instance
   return {
     ...masterItem,
     instanceId: uuidv4(),
@@ -126,7 +149,6 @@ export const initialInventory: IntelligentItem[] = [
     condition: { durability: 100 },
     itemLevel: 1,
     itemXp: 0,
-    // xpToNextItemLevel is already on masterItem
     memory: {
       acquiredAt: new Date().toISOString(),
       acquisitionStory: "Fait partie de votre équipement de départ standard.",
@@ -142,10 +164,10 @@ export const initialInventory: IntelligentItem[] = [
 });
 
 
-export const initialPlayerLocation: Position = { // Changed from LocationData to Position
+export const initialPlayerLocation: Position = {
   latitude: 48.8566,
   longitude: 2.3522,
-  name: 'Paris, France', // Changed from placeName to name
+  name: 'Paris, France',
 };
 
 export const defaultAvatarUrl = 'https://placehold.co/150x150.png';
@@ -153,7 +175,7 @@ export const initialPlayerMoney: number = 50;
 export const initialTransactionLog: Transaction[] = [];
 
 export const initialToneSettings: ToneSettings = AVAILABLE_TONES.reduce((acc, tone) => {
-  acc[tone] = 50; // Default all tones to a neutral 50
+  acc[tone] = 50;
   return acc;
 }, {} as ToneSettings);
 

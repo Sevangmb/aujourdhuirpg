@@ -1,3 +1,4 @@
+
 import type { StoryChoice } from '@/lib/types';
 import { Eye, Search, Building, Wind, Drama, MessageSquare, ShoppingCart, BookOpen, Utensils, Compass } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export const montmartreInitialChoices: StoryChoice[] = [
     energyCost: 8,
     timeCost: 20,
     consequences: ['Connexions', 'Indices cachés', 'Inspiration'],
-    skillCheck: { skill: 'cognitive.observation', difficulty: 60 },
+    skillCheck: { skill: 'survie.pistage', difficulty: 40 },
   },
    {
     id: 'montmartre_talk_artist',
@@ -46,7 +47,7 @@ export const montmartreInitialChoices: StoryChoice[] = [
     energyCost: 5,
     timeCost: 15,
     consequences: ['Informations locales', 'Nouvelle relation', 'Opportunité'],
-    skillCheck: { skill: 'social.persuasion', difficulty: 50 },
+    skillCheck: { skill: 'sociales.persuasion', difficulty: 50 },
   },
   {
     id: 'montmartre_buy_crepe',
@@ -69,7 +70,7 @@ export const montmartreInitialChoices: StoryChoice[] = [
     energyCost: 5,
     timeCost: 15,
     consequences: ['Découverte musicale', 'Moment poétique', 'Sérendipité'],
-    skillCheck: { skill: 'physical.stealth', difficulty: 40 },
+    skillCheck: { skill: 'physiques.discretion_skill', difficulty: 40 },
   },
   {
     id: 'montmartre_remember_past',

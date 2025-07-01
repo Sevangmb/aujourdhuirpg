@@ -19,7 +19,6 @@ import { isShopOpen } from '@/lib/utils/time-utils';
 
 
 // --- Game Actions & Reducer ---
-// This reducer now directly applies the effects of GameEvents calculated by the logic layer.
 export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
@@ -43,10 +42,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'APPLY_GAME_EVENTS': {
       let nextState = state;
-      const eventQueue = [...action.payload]; // Initialize queue with incoming events
+      const eventQueue = [...action.payload];
 
       while (eventQueue.length > 0) {
-        const event = eventQueue.shift()!; // Process one event at a time
+        const event = eventQueue.shift()!;
         let player = nextState.player;
         if (!player) continue;
 
@@ -72,7 +71,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const { newProgression, events: xpEvents } = addPlayerXp(player.progression, event.amount);
             player = { ...player, progression: newProgression };
             if (xpEvents.length > 0) {
-                eventQueue.push(...xpEvents); // Add new events to the queue
+                eventQueue.push(...xpEvents);
             }
             break;
           }
@@ -81,14 +80,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             player = { ...player, skills: updatedSkills };
             if (leveledUp && newLevel) {
                 const skillName = event.skill.split('.')[1] || event.skill;
-                const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Votre compétence ${skillName} a atteint le niveau ${newLevel} !` }};
-                eventQueue.push(journalEntry); // Add new event to the queue
+                const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Votre compétence ${skillName.replace(/_/g, ' ')} a atteint le niveau ${newLevel} !` }};
+                eventQueue.push(journalEntry);
             }
             break;
           }
           case 'PLAYER_LEVELED_UP': {
             const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Félicitations ! Vous avez atteint le niveau ${event.newLevel} !` }};
-            eventQueue.push(journalEntry); // Add new event to the queue
+            eventQueue.push(journalEntry);
             break;
           }
           case 'ITEM_ADDED':
@@ -116,13 +115,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             break;
           }
           case 'ITEM_XP_GAINED': {
-            const newInventory = player.inventory.map(item => {
-              if (item.instanceId === event.instanceId) {
-                return { ...item, itemXp: item.itemXp + event.xp };
-              }
-              return item;
-            });
-            player = { ...player, inventory: newInventory };
+            const itemIndex = player.inventory.findIndex(i => i.instanceId === event.instanceId);
+            if (itemIndex > -1) {
+              const newInventory = [...player.inventory];
+              const itemToUpdate = { ...newInventory[itemIndex] };
+              const xpEvents = grantXpToItem(itemToUpdate, event.xp);
+              // The grantXpToItem function will return events that we need to process.
+              // We can't just update the item here, because it might level up or evolve.
+              // So, we just push the new events to the main queue.
+              eventQueue.push(...xpEvents);
+            }
             break;
           }
           case 'ITEM_LEVELED_UP': {
@@ -156,7 +158,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 condition: { durability: 100 },
                 itemLevel: 1,
                 itemXp: 0,
-                xpToNextItemLevel: evolvedMasterItem.xpToNextItemLevel,
                 memory: { 
                     ...originalItem.memory, 
                     evolution_history: [...(originalItem.memory.evolution_history || []), { fromItemId: originalItem.id, toItemId: evolvedMasterItem.id, atLevel: originalItem.itemLevel, timestamp: nowISO }] 
@@ -254,28 +255,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   }
 }
 
-// --- Deterministic Logic ---
-
 export function getWeatherModifier(skillPath: string, weatherData: WeatherData | null): { modifier: number, reason: string } {
   if (!weatherData) {
     return { modifier: 0, reason: "" };
   }
 
   const weatherDesc = weatherData.description.toLowerCase();
-  const skill = skillPath.split('.').pop() || '';
   let modifier = 0;
   
-  // Fog effects
   if (weatherDesc.includes('brouillard')) {
-    if (skill === 'stealth') modifier += 15;
-    if (skill === 'navigation') modifier -= 10;
-    if (skill === 'observation') modifier -= 8;
+    if (skillPath.includes('discretion') || skillPath.includes('pistage')) modifier += 10;
+    if (skillPath.includes('navigation') || skillPath.includes('orientation')) modifier -= 10;
   }
-  // Rain effects
   else if (weatherDesc.includes('pluie') || weatherDesc.includes('averses')) {
-    if (skill === 'stealth') modifier += 10;
-    if (skill === 'observation') modifier -= 5;
-    if (skill === 'persuasion' || skill === 'networking') modifier -= 3;
+    if (skillPath.includes('discretion')) modifier += 5;
+    if (skillPath.includes('persuasion') || skillPath.includes('seduction')) modifier -= 3;
   }
   
   let reason = "";
@@ -288,10 +282,6 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
   return { modifier, reason };
 }
 
-/**
- * Processes a player's action and returns a list of resulting game events.
- * This is the new core of the game's logic engine.
- */
 export async function processPlayerAction(
   player: Player,
   currentEnemy: Enemy | null,
@@ -305,7 +295,6 @@ export async function processPlayerAction(
   
   const tempPlayerState = JSON.parse(JSON.stringify(player)) as Player;
 
-  // Handle specific action types like using an item from inventory
   if (choice.id.startsWith('use_item_')) {
     const instanceId = choice.id.replace('use_item_', '');
     const itemToUse = player.inventory.find(i => i.instanceId === instanceId);
@@ -317,7 +306,6 @@ export async function processPlayerAction(
     }
   }
 
-  // Handle cooking action
   if (choice.id.startsWith('cook_')) {
     const recipeName = choice.id.replace('cook_', '').replace(/_/g, ' ');
     const cuisineData = cascadeResult?.results.get('cuisine')?.data;
@@ -325,14 +313,12 @@ export async function processPlayerAction(
 
     if (recipe) {
         let totalHungerRestored = 0;
-        // Consume ingredients
         for (const ingredient of recipe.ingredients) {
             events.push({ type: 'ITEM_REMOVED', itemId: ingredient.name, itemName: ingredient.name, quantity: 1 });
-            totalHungerRestored += 5; // Base hunger restoration per ingredient
+            totalHungerRestored += 5;
         }
-        totalHungerRestored += 20; // Bonus for a full meal
+        totalHungerRestored += 20;
 
-        // Create the new meal item
         const mealPayload: DynamicItemCreationPayload = {
             baseItemId: 'generic_meal_01',
             overrides: {
@@ -342,36 +328,20 @@ export async function processPlayerAction(
             }
         };
         events.push({ type: 'DYNAMIC_ITEM_ADDED', payload: mealPayload });
-
-        // Grant XP
-        events.push({ type: 'SKILL_XP_AWARDED', skill: 'technical.crafting', amount: 15 });
+        events.push({ type: 'SKILL_XP_AWARDED', skill: 'techniques.artisanat_general', amount: 15 });
         events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: `Vous avez cuisiné : ${recipe.name}.` } });
     }
   }
 
-
-  // --- LOG ACTION & TIME ---
   events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost || 0 });
-  if (!choice.id.startsWith('cook_')) { // Avoid duplicate journal entries for cooking
+  if (!choice.id.startsWith('cook_')) {
     events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
   }
 
-
-  // --- PHYSIOLOGY, ENERGY & WEATHER EFFECTS (Rebalanced) ---
   const hungerDecay = ((choice.timeCost || 0) * 0.05) + ((choice.energyCost || 0) * 0.1);
   const thirstDecay = ((choice.timeCost || 0) * 0.08) + ((choice.energyCost || 0) * 0.08);
 
-  let energyChangeFromWeather = 0;
-  if (weatherData) {
-      const weatherDesc = weatherData.description.toLowerCase();
-      if (weatherDesc.includes('dégagé')) { // Sunny
-          const finalHumeur = tempPlayerState.stats.Humeur.value + 5;
-          events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Humeur', change: 5, finalValue: finalHumeur });
-          energyChangeFromWeather = -3; // Endurance penalty
-      }
-  }
-  
-  const totalEnergyChange = -(choice.energyCost || 0) + energyChangeFromWeather;
+  const totalEnergyChange = -(choice.energyCost || 0);
   const newEnergy = tempPlayerState.stats.Energie.value + totalEnergyChange;
   events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: totalEnergyChange, finalValue: newEnergy });
 
@@ -401,7 +371,6 @@ export async function processPlayerAction(
     }
   }
   
-  // --- SKILL CHECK & CONSEQUENCES (XP, Item Evolution, Momentum) ---
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
     const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
@@ -417,12 +386,11 @@ export async function processPlayerAction(
         difficulty: skillCheckResult.difficultyTarget,
     });
     
-    // Update Momentum
     const newMomentum = { ...tempPlayerState.momentum };
     if (skillCheckResult.success) {
       newMomentum.consecutive_successes += 1;
       newMomentum.consecutive_failures = 0;
-      newMomentum.momentum_bonus = Math.min(5, newMomentum.consecutive_successes); // +1 per success, max +5
+      newMomentum.momentum_bonus = Math.min(5, newMomentum.consecutive_successes);
       newMomentum.desperation_bonus = 0;
       if (newMomentum.momentum_bonus > 1) {
           events.push({ type: 'TEXT_EVENT', text: `Votre série de succès vous donne un bonus de +${newMomentum.momentum_bonus} !`});
@@ -430,7 +398,7 @@ export async function processPlayerAction(
     } else {
       newMomentum.consecutive_failures += 1;
       newMomentum.consecutive_successes = 0;
-      newMomentum.desperation_bonus = Math.min(8, newMomentum.consecutive_failures * 2); // +2 per failure, max +8
+      newMomentum.desperation_bonus = Math.min(8, newMomentum.consecutive_failures * 2);
       newMomentum.momentum_bonus = 0;
       if (newMomentum.desperation_bonus > 0) {
           events.push({ type: 'TEXT_EVENT', text: `Face à l'échec, votre détermination vous donne un bonus de +${newMomentum.desperation_bonus} !`});
@@ -438,26 +406,21 @@ export async function processPlayerAction(
     }
     events.push({ type: 'MOMENTUM_UPDATED', newMomentum });
 
-    // Grant Skill XP
     const skillXpGained = getSkillXp(skillCheckResult.difficultyTarget, skillCheckResult.success);
     if (skillXpGained > 0) {
       events.push({ type: 'SKILL_XP_AWARDED', skill: skill, amount: skillXpGained });
     }
 
     if (skillCheckResult.success) {
-      // Grant Player XP
-      let totalPlayerXPGain = 10; // Base XP for succeeding at a check
+      let totalPlayerXPGain = 10;
       
-      // Grant Item XP
       for (const itemContribution of skillCheckResult.itemContributions) {
         const item = tempPlayerState.inventory.find((i: IntelligentItem) => i.name === itemContribution.name);
         if (item) {
-          const itemXpEvents = grantXpToItem(item, 10); // Grant 10 XP per use
-          events.push(...itemXpEvents);
+          events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: 10 });
         }
       }
       
-      // Grant bonus skill XP from choice
       if (choice.skillGains) {
         for (const [skillPath, amount] of Object.entries(choice.skillGains)) {
           events.push({ type: 'SKILL_XP_AWARDED', skill: skillPath, amount: amount });
@@ -472,11 +435,6 @@ export async function processPlayerAction(
 }
 
 
-/**
- * Translates a list of game events into a human-readable text summary for the AI.
- * @param events The array of game events.
- * @returns A string summarizing the events.
- */
 function summarizeGameEventsForAI(events: GameEvent[]): string {
     if (!events || events.length === 0) {
         return "Aucun événement particulier ne s'est produit.";
@@ -488,12 +446,12 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
         switch (event.type) {
             case 'SKILL_CHECK_RESULT':
                 summaries.push(
-                    `- Test de compétence (${event.skill}): ${event.success ? 'RÉUSSITE' : 'ÉCHEC'}. ` +
+                    `- Test de compétence (${event.skill.replace(/_/g, ' ')}): ${event.success ? 'RÉUSSITE' : 'ÉCHEC'}. ` +
                     `(Score: ${event.total} vs Difficulté: ${event.difficulty})`
                 );
                 break;
             case 'PLAYER_STAT_CHANGE':
-                if (Math.abs(event.change) > 0) { // Only report actual changes
+                if (Math.abs(event.change) > 0) {
                    summaries.push(`- Statistique modifiée: ${event.stat} ${event.change > 0 ? '+' : ''}${event.change} (Nouveau total: ${event.finalValue}).`);
                 }
                 break;
@@ -518,7 +476,6 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
             case 'TEXT_EVENT':
                 summaries.push(`- Événement narratif: ${event.text}`);
                 break;
-            // Other events can be ignored for the AI summary as they are either silent state changes or too detailed.
             default:
                 break;
         }
@@ -531,7 +488,6 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
     return summaries.join('\n');
 }
 
-// --- AI Input Preparation ---
 export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents?: GameEvent[], cascadeResult?: CascadeResult | null): any | null {
   if (!gameState.player) {
     console.error("Cannot prepare AI input: Player state is missing.");
@@ -540,54 +496,23 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 
   const { player } = gameState;
 
-  // Create a simplified, nested skill object for the AI, matching the Zod schema
-  const simplifiedSkills = Object.fromEntries(
-    Object.entries(player.skills).map(([category, skills]) => [
-      category,
-      Object.fromEntries(
-        Object.entries(skills).map(([skillName, skillDetail]) => [
-          skillName,
-          (skillDetail as any).level
-        ])
-      )
-    ])
-  );
+  const flatStats = (Object.keys(player.stats) as Array<keyof PlayerStats>).reduce((acc, key) => {
+      acc[key] = player.stats[key].value;
+      return acc;
+  }, {} as Record<keyof PlayerStats, number>);
 
+  const flatSkills = (Object.keys(player.skills) as Array<keyof AdvancedSkillSystem>).reduce((acc, category) => {
+      const skillsInCategory = player.skills[category];
+      for (const skillName in skillsInCategory) {
+          acc[`${category}.${skillName}`] = skillsInCategory[skillName].level;
+      }
+      return acc;
+  }, {} as Record<string, number>);
 
   const playerInputForAI = {
-      name: player.name,
-      gender: player.gender,
-      age: player.age,
-      origin: player.origin,
-      era: player.era || 'Époque Contemporaine',
-      background: player.background,
-      stats: Object.fromEntries(Object.entries(player.stats).map(([k, v]) => [k, v.value])),
-      skills: simplifiedSkills, 
-      physiology: player.physiology,
-      traitsMentalStates: player.traitsMentalStates,
-      progression: player.progression,
-      alignment: player.alignment,
-      inventory: player.inventory.map(item => ({
-        instanceId: item.instanceId,
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        type: item.type,
-        quantity: item.quantity,
-        condition: item.condition,
-        economics: item.economics,
-        memory: { acquisitionStory: item.memory.acquisitionStory },
-      })),
-      money: player.money,
-      currentLocation: {
-        latitude: player.currentLocation.latitude,
-        longitude: player.currentLocation.longitude,
-        name: player.currentLocation.name,
-        type: player.currentLocation.zone?.name,
-        description: player.currentLocation.summary,
-        tags: player.currentLocation.tags,
-      },
-      toneSettings: player.toneSettings,
+      ...player,
+      stats: flatStats,
+      skills: flatSkills,
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
         .map(item => item.name),
@@ -628,16 +553,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       }
   }
 
-  const suggestedContextualActions = [
-      ...generatePlayerStateActions(player),
-      ...generateActionsForPOIs(gameState.nearbyPois || [], player, gameState.gameTimeInMinutes)
-  ].map(action => ({
-    text: action.text,
-    description: action.description,
-    type: action.type,
-    estimatedCost: action.economicImpact?.cost,
-  }));
-
   const gameEventsSummary = summarizeGameEventsForAI(gameEvents || []);
 
   return {
@@ -646,16 +561,9 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: gameEventsSummary,
     cascadeResult: cascadeSummary,
-    suggestedContextualActions,
   };
 }
 
-/**
- * Converts AI-generated proposals into a list of concrete GameEvents.
- * This acts as a security and validation layer between the AI and the game engine.
- * @param aiOutput The output from the generateScenario AI flow.
- * @returns An array of GameEvent objects.
- */
 export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameEvent[] {
   const events: GameEvent[] = [];
 
@@ -706,8 +614,7 @@ export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameE
 
   if (aiOutput.newTransactions) {
     aiOutput.newTransactions.forEach(txData => {
-        // The reducer will calculate the finalBalance. We just provide the change.
-        events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description, finalBalance: 0 /* Placeholder */ });
+        events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description, finalBalance: 0 });
     });
   }
   
@@ -720,19 +627,12 @@ export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameE
   return events;
 }
 
-/**
- * Takes choices from the AI and enriches them with calculated mechanical data.
- * @param choices The raw choices from the AI.
- * @param player The current player state.
- * @returns The same choices, but with mechanical properties filled in.
- */
 export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player): StoryChoice[] {
     if (!choices) return [];
 
     return choices.map(choice => {
         const enrichedChoice = { ...choice };
 
-        // Assign default costs based on action type if not provided
         if (enrichedChoice.timeCost === undefined) {
             switch(choice.type) {
                 case 'reflection': enrichedChoice.timeCost = 10; break;
@@ -756,7 +656,6 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
             }
         }
 
-        // Calculate success probability if there's a skill check
         if (choice.skillCheck) {
             enrichedChoice.successProbability = calculateSuccessProbability(
                 player.skills,
@@ -764,7 +663,7 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
                 choice.skillCheck.skill,
                 choice.skillCheck.difficulty,
                 player.inventory,
-                0, // No situational modifier for probability check, just raw chance
+                0,
                 player.physiology,
                 player.momentum
             );
@@ -774,8 +673,6 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
     });
 }
 
-
-// --- POI ACTION GENERATION ---
 
 function getIconForService(serviceId: string): ChoiceIconName {
     if (serviceId.includes('buy_sandwich') || serviceId.includes('buy_pastry')) return 'Utensils';
@@ -787,7 +684,7 @@ function getIconForService(serviceId: string): ChoiceIconName {
     if (serviceId.includes('people_watch') || serviceId.includes('browse_')) return 'Eye';
     if (serviceId.includes('withdraw_')) return 'ShoppingCart';
     if (serviceId.includes('visit')) return 'Compass';
-    if (serviceId.includes('take_power_nap')) return 'Zap'; // Using Zap for energy
+    if (serviceId.includes('take_power_nap')) return 'Zap';
     if (serviceId.includes('use_hotel_services')) return 'Briefcase';
 
     return 'Compass';
@@ -807,24 +704,22 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
     const contextualChoices: StoryChoice[] = [];
     if (!pois) return [];
   
-    for (const poi of pois.slice(0, 8)) { // Limit total POIs considered
+    for (const poi of pois.slice(0, 8)) {
       let actionsForThisPoi = 0;
-      const maxActionsPerPoi = 1; // Explicitly define here
+      const maxActionsPerPoi = 1;
       for (const service of poi.services) {
         if (actionsForThisPoi >= maxActionsPerPoi) break;
   
-        // Check if the service is available at the current time
         if (service.availability && !isShopOpen(gameTimeInMinutes, service.availability)) {
             continue; 
         }
 
-        // Can player afford this?
         if (service.cost.min > player.money) {
           continue;
         }
   
         const distance = getDistanceInKm(player.currentLocation.latitude, player.currentLocation.longitude, poi.latitude, poi.longitude);
-        const travelTime = Math.ceil(distance * 12); // ~12 min/km walking
+        const travelTime = Math.ceil(distance * 12);
         
         const descriptionDistance = distance < 0.1 ? 'juste ici' : 
                                   distance < 0.3 ? 'à quelques pas' :
@@ -837,8 +732,8 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
           description: `${service.description}, ${descriptionDistance}.`,
           iconName: getIconForService(service.id),
           type: getActionTypeForService(service.id),
-          mood: 'adventurous', // Generic mood
-          energyCost: Math.round(service.duration / 10) + Math.ceil(distance * 5) + 1, // Estimate energy cost
+          mood: 'adventurous',
+          energyCost: Math.round(service.duration / 10) + Math.ceil(distance * 5) + 1,
           timeCost: service.duration + travelTime,
           consequences: ['Interaction sociale', `Coût: ${service.cost.min}-${service.cost.max}€`],
           economicImpact: {
@@ -850,7 +745,6 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
               serviceId: service.id,
               establishmentType: poi.establishmentType,
           },
-          // Skill checks for POI actions can be added in the future
         };
         contextualChoices.push(choice);
         actionsForThisPoi++;
@@ -859,18 +753,12 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
     return contextualChoices;
 }
 
-/**
- * Generates utility actions based on player's state (hunger, thirst, health) and inventory.
- * @param player The current player object.
- * @returns An array of StoryChoice objects for using available items.
- */
 export function generatePlayerStateActions(player: Player): StoryChoice[] {
     const choices: StoryChoice[] = [];
     if (!player) return choices;
 
     const { inventory, physiology, stats } = player;
 
-    // Check hunger
     if (physiology.basic_needs.hunger.level < 50) {
         const foodItems = inventory.filter(item => item.type === 'consumable' && item.physiologicalEffects?.hunger);
         if (foodItems.length > 0) {
@@ -890,7 +778,6 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
         }
     }
 
-    // Check thirst
     if (physiology.basic_needs.thirst.level < 60) {
         const drinkItems = inventory.filter(item => item.type === 'consumable' && item.physiologicalEffects?.thirst);
          if (drinkItems.length > 0) {
@@ -910,7 +797,6 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
         }
     }
     
-    // Check low health
     if (stats.Sante.value < (stats.Sante.max || 100) * 0.7) {
         const healingItems = inventory.filter(item => item.type === 'consumable' && item.effects?.Sante && (item.effects.Sante as unknown as number) > 0);
         if (healingItems.length > 0) {
@@ -925,7 +811,7 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
                 energyCost: 1,
                 timeCost: 3,
                 consequences: ['Récupération de santé'],
-                statEffects: bestHeal.effects as Partial<Record<keyof PlayerStats, number>>,
+                statEffects: bestHeal.effects,
             });
         }
     }
@@ -933,17 +819,10 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
     return choices;
 }
 
-/**
- * Generates contextual choices based on the results of the enrichment cascade.
- * @param cascadeResult The result from the cascade system.
- * @param player The current player object.
- * @returns An array of StoryChoice objects.
- */
 export function generateCascadeBasedActions(cascadeResult: CascadeResult | null, player: Player): StoryChoice[] {
     const choices: StoryChoice[] = [];
     if (!cascadeResult) return choices;
 
-    // 1. Check for Cuisine opportunities
     const cuisineResult = cascadeResult.results.get('cuisine');
     if (cuisineResult?.data?.cookableRecipes) {
         for (const recipe of (cuisineResult.data.cookableRecipes as EnrichedRecipe[])) {
@@ -957,12 +836,11 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
                 timeCost: 30,
                 energyCost: 10,
                 consequences: ['Repas préparé', 'Gain de compétence'],
-                skillGains: { 'technical.crafting': 15 }
+                skillGains: { 'techniques.artisanat_general': 15 }
             });
         }
     }
 
-    // 2. Check for Book opportunities
     const livreResult = cascadeResult.results.get('livre');
     if (livreResult?.data?.foundBooks && livreResult.data.foundBooks.length > 0) {
         for (const book of (livreResult.data.foundBooks as BookSearchResult[])) {
@@ -976,7 +854,7 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
                 timeCost: 45,
                 energyCost: 5,
                 consequences: ['Nouvelles connaissances', 'Gain de compétence'],
-                skillGains: { 'cognitive.memory': 10 }
+                skillGains: { 'savoir.histoire': 10 }
             });
         }
     }

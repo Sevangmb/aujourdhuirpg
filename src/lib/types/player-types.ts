@@ -18,20 +18,26 @@ export interface Stat {
   max?: number; // Optional max value, e.g., for health or energy
 }
 
+// NEW STAT SYSTEM
 export type PlayerStats = {
+  // --- CORE STATS ---
+  Force: Stat;
+  Dexterite: Stat;
+  Constitution: Stat;
+  Intelligence: Stat;
+  Perception: Stat;
+  Charisme: Stat;
+  Volonte: Stat;
+  Savoir: Stat;
+  Technique: Stat;
+  MagieOccultisme: Stat;
+  Discretion: Stat;
+  ChanceDestin: Stat;
+  // --- DERIVED STATS ---
   Sante: Stat;
   Energie: Stat;
   Stress: Stat;
-  Volonte: Stat;
-  Charisme: Stat;
-  Intelligence: Stat;
-  Force: Stat;
-  Reputation: Stat;
-  Humeur: Stat;
-  Curiosite: Stat;
-  Inspiration: Stat;
 };
-
 
 export interface SkillDetail {
   level: number;
@@ -45,47 +51,60 @@ export interface SkillCategory {
 
 // --- NEW ADVANCED SKILL SYSTEM ---
 export interface AdvancedSkillSystem {
-  cognitive: SkillCategory & {
-    analysis: SkillDetail;
-    memory: SkillDetail;
-    creativity: SkillDetail;
-    logic: SkillDetail;
-    observation: SkillDetail;
+  physiques: SkillCategory & {
+    combat_mains_nues: SkillDetail;
+    arme_blanche: SkillDetail;
+    arme_de_tir: SkillDetail;
+    arme_a_feu: SkillDetail;
+    pilotage_monture: SkillDetail;
+    pilotage_vehicules: SkillDetail;
+    pilotage_spatial: SkillDetail;
+    esquive: SkillDetail;
+    natation: SkillDetail;
+    escalade: SkillDetail;
+    discretion_skill: SkillDetail; // Added for stealth checks
   };
-  social: SkillCategory & {
-    persuasion: SkillDetail;
-    empathy: SkillDetail;
-    leadership: SkillDetail;
-    networking: SkillDetail;
-    cultural_adaptation: SkillDetail;
-  };
-  physical: SkillCategory & {
-    endurance: SkillDetail;
-    agility: SkillDetail;
-    stealth: SkillDetail;
-    strength: SkillDetail;
-    dexterity: SkillDetail;
-  };
-  technical: SkillCategory & {
-    technology: SkillDetail;
-    investigation: SkillDetail;
-    languages: SkillDetail;
-    finance: SkillDetail;
-    crafting: SkillDetail;
-  };
-  survival: SkillCategory & {
-    streetwise: SkillDetail;
-    wilderness: SkillDetail;
-    medical: SkillDetail;
+  techniques: SkillCategory & {
+    artisanat_general: SkillDetail;
+    forge_metallurgie: SkillDetail;
+    maconnerie_construction: SkillDetail;
+    menuiserie: SkillDetail;
+    couture_tissage: SkillDetail;
+    joaillerie: SkillDetail;
     navigation: SkillDetail;
-    adaptation: SkillDetail;
+    mecanique: SkillDetail;
+    electronique: SkillDetail;
+    informatique_hacking: SkillDetail;
+    ingenierie_spatiale: SkillDetail;
+    contrefacon: SkillDetail;
+  };
+  survie: SkillCategory & {
+    pistage: SkillDetail;
+    orientation: SkillDetail;
+    chasse_peche: SkillDetail;
+    herboristerie: SkillDetail;
+    premiers_secours: SkillDetail;
+    medecine: SkillDetail;
+    survie_generale: SkillDetail;
+  };
+  sociales: SkillCategory & {
+    persuasion: SkillDetail;
+    seduction: SkillDetail;
+    intimidation: SkillDetail;
+    tromperie_baratin: SkillDetail;
+    commandement: SkillDetail;
+    etiquette: SkillDetail;
+  };
+  savoir: SkillCategory & {
+    histoire: SkillDetail;
+    geographie: SkillDetail;
+    theologie_religions: SkillDetail;
+    sciences_naturelles: SkillDetail;
+    alchimie_chimie: SkillDetail;
+    occultisme_magie_theorique: SkillDetail;
+    astrologie_astronomie: SkillDetail;
   };
 }
-
-
-// DEPRECATED, but kept for type compatibility during transition
-export type Skills = Record<string, number>;
-// --- END ADVANCED SKILL SYSTEM ---
 
 export type TraitsMentalStates = string[]; // e.g., ["Stressé", "Fatigué"]
 
@@ -120,27 +139,25 @@ export type Player = {
   background: string; // Historique plus détaillé du personnage, style RP
   startingLocationName?: string; // Added for character creation context
   stats: PlayerStats;
-  skills: AdvancedSkillSystem; // UPDATED from Skills to AdvancedSkillSystem
-  physiology: AdvancedPhysiologySystem; // NEW: Advanced physiology system
-  momentum: MomentumSystem; // NEW: Momentum System
+  skills: AdvancedSkillSystem;
+  physiology: AdvancedPhysiologySystem;
+  momentum: MomentumSystem;
   traitsMentalStates: TraitsMentalStates;
   progression: Progression;
   alignment: Alignment;
   inventory: IntelligentItem[];
   money: number; // Player's current money (euros)
   transactionLog: Transaction[];
-  currentLocation: Position; // Changed from LocationData to Position
+  currentLocation: Position;
   toneSettings: ToneSettings;
-  // Nouveaux champs pour le journal de quêtes, etc.
   questLog: Quest[];
   encounteredPNJs: PNJ[];
   decisionLog: MajorDecision[];
-  // Nouveaux champs pour Indices & Documents
   clues: Clue[];
   documents: GameDocument[];
-  investigationNotes: string; // Un texte libre pour les hypothèses, suspects, lieux
-  historicalContacts: HistoricalContact[]; // Carnet d'adresses pour les contacts historiques
-  lastPlayed?: string; // Added to track last played timestamp, hydrated from save file
+  investigationNotes: string;
+  historicalContacts: HistoricalContact[];
+  lastPlayed?: string;
 };
 
 // --- Zod Schemas for AI ---
@@ -156,27 +173,21 @@ export const LocationSchema = z.object({
 
 // This simplified schema is for the AI, which only needs the level number.
 export const SkillsSchema = z.object({
-  cognitive: z.object({
-    analysis: z.number(), memory: z.number(), creativity: z.number(),
-    logic: z.number(), observation: z.number(),
-  }),
-  social: z.object({
-    persuasion: z.number(), empathy: z.number(), leadership: z.number(),
-    networking: z.number(), cultural_adaptation: z.number(),
-  }),
-  physical: z.object({
-    endurance: z.number(), agility: z.number(), stealth: z.number(),
-    strength: z.number(), dexterity: z.number(),
-  }),
-  technical: z.object({
-    technology: z.number(), investigation: z.number(), languages: z.number(),
-    finance: z.number(), crafting: z.number(),
-  }),
-  survival: z.object({
-    streetwise: z.number(), wilderness: z.number(), medical: z.number(),
-    navigation: z.number(), adaptation: z.number(),
-  }),
+  physiques: z.record(z.number()),
+  techniques: z.record(z.number()),
+  survie: z.record(z.number()),
+  sociales: z.record(z.number()),
+  savoir: z.record(z.number()),
 });
+
+export const PlayerStatsSchema = z.object({
+    Force: z.number(), Dexterite: z.number(), Constitution: z.number(),
+    Intelligence: z.number(), Perception: z.number(), Charisme: z.number(),
+    Volonte: z.number(), Savoir: z.number(), Technique: z.number(),
+    MagieOccultisme: z.number(), Discretion: z.number(), ChanceDestin: z.number(),
+    Sante: z.number(), Energie: z.number(), Stress: z.number()
+});
+
 
 export const TraitsMentalStatesSchema = z.array(z.string());
 
@@ -226,7 +237,7 @@ export const PlayerInputSchema = z.object({
   origin: z.string(),
   era: z.string(),
   background: z.string(),
-  stats: z.record(z.string(), z.number()),
+  stats: PlayerStatsSchema,
   skills: SkillsSchema,
   physiology: z.object({
     basic_needs: z.object({

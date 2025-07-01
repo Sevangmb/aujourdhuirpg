@@ -13,11 +13,8 @@ import { ClueInputSchema, DocumentInputSchema } from '@/lib/types/evidence-types
 import { NewTransactionSchema } from '@/modules/economy/types';
 import { DynamicItemCreationPayloadSchema } from '@/lib/types/item-types';
 import { EnemySchema } from '@/modules/combat/types';
-import type { GameEvent } from '@/lib/types';
-
 
 // --- Main Input Schema ---
-// This schema describes all the information the game provides to the AI for context.
 export const GenerateScenarioInputSchema = z.object({
   player: PlayerInputSchema.describe("L'objet complet contenant toutes les informations sur le joueur."),
   playerChoiceText: z.string().describe("L'action textuelle que le joueur a saisie."),
@@ -37,11 +34,10 @@ export const StoryChoiceSchema = z.object({
   consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
   
   skillCheck: z.object({
-      skill: z.string().describe("Le chemin de la compétence à tester (ex: 'cognitive.observation')."),
+      skill: z.string().describe("Le chemin de la compétence à tester (ex: 'sociales.persuasion')."),
       difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
   }).optional().describe("Un test de compétence optionnel associé à cette action."),
   
-  // Mechanical fields are optional. The game logic will calculate them.
   energyCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
   timeCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
   skillGains: z.record(z.number()).optional().describe("LAISSER VIDE. Le moteur de jeu attribuera l'XP."),
@@ -53,7 +49,6 @@ export const StoryChoiceSchema = z.object({
 }).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.");
 
 // --- Main Output Schema ---
-// The AI's response now includes both narration AND potential game state changes.
 export const GenerateScenarioOutputSchema = z.object({
   scenarioText: z.string().describe('Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l\'action du joueur et prépare la scène pour la prochaine action.'),
   
@@ -62,10 +57,8 @@ export const GenerateScenarioOutputSchema = z.object({
     reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
-  choices: z.array(StoryChoiceSchema).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite."),
+  choices: z.array(StoryChoiceSchema).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite.").optional(),
   
-  // --- NEW: AI-Generated Game Events ---
-  // The AI can now propose new game elements. The game engine will validate and apply them.
   newQuests: z.array(QuestInputSchema).optional().describe("Propose de nouvelles quêtes à ajouter au journal du joueur."),
   questUpdates: z.array(QuestUpdateSchema).optional().describe("Propose des mises à jour de quêtes existantes (ex: objectif complété)."),
   newPNJs: z.array(PNJInteractionSchema).optional().describe("Introduit de nouveaux personnages non-joueurs dans la scène."),
@@ -75,6 +68,4 @@ export const GenerateScenarioOutputSchema = z.object({
   newDocuments: z.array(DocumentInputSchema).optional().describe("Génère de nouveaux documents à ajouter au dossier d'enquête."),
   majorDecisions: z.array(MajorDecisionSchema).optional().describe("Enregistre une décision majeure prise par le joueur."),
   startCombat: z.array(EnemySchema).optional().describe("Introduit un ou plusieurs ennemis pour commencer un combat."),
-
-
 }).describe("Schéma de sortie pour le flux generateScenario. L'IA génère la narration, les choix, et peut proposer des changements d'état du jeu.");

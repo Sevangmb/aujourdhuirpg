@@ -3,7 +3,7 @@
 
 import type { PlayerStats } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Heart, Smile, Brain, Dumbbell, Zap, CloudFog, Anchor, Users, Lightbulb, Sparkles } from 'lucide-react'; 
+import { Heart, Zap, Brain, Dumbbell, Dices, Hand, Crosshair, Users, Anchor, Book, UserCog, CloudFog, Sparkles } from 'lucide-react'; 
 import React from 'react';
 
 interface StatDisplayProps {
@@ -12,17 +12,26 @@ interface StatDisplayProps {
 
 const statIcons: Record<string, React.ElementType> = {
   Sante: Heart,
-  Charisme: Smile,
-  Intelligence: Brain,
-  Force: Dumbbell,
   Energie: Zap,
   Stress: CloudFog,
+  Force: Dumbbell,
+  Dexterite: Hand,
+  Constitution: Heart,
+  Intelligence: Brain,
+  Perception: Crosshair,
+  Charisme: Users,
   Volonte: Anchor,
-  Reputation: Users,
-  Humeur: Smile,
-  Curiosite: Lightbulb,
-  Inspiration: Sparkles,
+  Savoir: Book,
+  Technique: UserCog,
+  MagieOccultisme: Sparkles,
+  Discretion: CloudFog,
+  ChanceDestin: Dices,
 };
+
+const STATS_TO_DISPLAY: (keyof PlayerStats)[] = [
+    'Sante', 'Energie', 'Stress', 'Force', 'Dexterite', 'Constitution', 'Intelligence', 'Perception', 'Charisme'
+];
+
 
 const StatDisplay: React.FC<StatDisplayProps> = ({ stats }) => {
   const [pulseKey, setPulseKey] = React.useState<string | null>(null);
@@ -47,13 +56,14 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats }) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="p-3">
-        <CardTitle className="font-headline text-center text-lg text-primary">Statistiques</CardTitle>
+        <CardTitle className="font-headline text-center text-lg text-primary">Attributs</CardTitle>
       </CardHeader>
       <CardContent className="p-3">
-        <div className="grid grid-cols-2 gap-2">
-          {stats && Object.entries(stats).map(([key, statObj]) => {
+        <div className="grid grid-cols-3 gap-2">
+          {stats && STATS_TO_DISPLAY.map((key) => {
+            const statObj = stats[key];
             const IconComponent = statIcons[key] || Zap;
-            if (!IconComponent) return null;
+            if (!IconComponent || !statObj) return null;
             
             const isPulsing = pulseKey === key;
             return (
@@ -61,9 +71,9 @@ const StatDisplay: React.FC<StatDisplayProps> = ({ stats }) => {
                 key={key} 
                 className={`flex flex-col items-center p-1.5 rounded-lg bg-background shadow-sm border border-border ${isPulsing ? 'animate-stat-pulse' : ''}`}
               >
-                <IconComponent className={`w-6 h-6 mb-0.5 ${isPulsing ? 'text-accent' : 'text-foreground/80'}`} />
+                <IconComponent className={`w-5 h-5 mb-0.5 ${isPulsing ? 'text-accent' : 'text-foreground/80'}`} />
                 <span className="font-semibold text-xs">{key}</span>
-                <span className={`text-md font-bold ${isPulsing ? 'text-accent' : 'text-primary'}`}>
+                <span className={`text-sm font-bold ${isPulsing ? 'text-accent' : 'text-primary'}`}>
                   {statObj.value}
                 </span>
               </div>

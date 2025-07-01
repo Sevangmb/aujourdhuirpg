@@ -83,61 +83,55 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
   return `**Instructions de Tonalité Spécifiques :** ${instructions.join(' ')}`;
 }
 
-// --- PROMPT COMPONENTS ---
-
-const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider.`;
+const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.`;
 
 const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter, Suggérer, et Animer le Monde**
 Votre mission est quadruple :
 
-1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur et vous fournit un résumé textuel dans \`gameEvents\`. Transformez ces faits bruts en une description narrative captivante en HTML, en utilisant des paragraphes (<p>) bien espacés pour une lecture aérée. Soyez immersif, n'énumérez pas les faits. Utilisez des dialogues lorsque c'est pertinent.
+1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur et vous fournit un résumé textuel dans \`gameEvents\`. Transformez ces faits bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits. Intégrez des dialogues lorsque c'est pertinent pour rendre la scène vivante.
 
-2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter un café...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
-    - **EXIGENCES STRICTES POUR VOS CHOIX :**
+2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
+    - **EXIGENCES STRICTES :**
         - **Pensez comme un scénariste :** Quels choix créeraient du drame, du mystère, ou révéleraient quelque chose sur le monde ou le personnage ?
-        - **NE CALCULEZ PAS les coûts et récompenses :** Ne remplissez PAS les champs mécaniques comme \`energyCost\`, \`timeCost\`, ou \`skillGains\`. Le moteur de jeu s'en chargera. Concentrez-vous sur la création d'actions narrativement intéressantes.
-        - **Utilisez les PNJ et l'intrigue :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
-        - **Soyez spécifique :** Ne vous contentez pas d'un verbe, décrivez l'action de manière évocatrice.
-    - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique du jeu) :**
+        - **NE CALCULEZ PAS :** Ne remplissez PAS les champs mécaniques comme \`energyCost\`, \`timeCost\`, ou \`skillGains\`. Le moteur de jeu s'en chargera.
+        - **Soyez spécifique et inspiré :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
+    - **À INTERDIRE FORMELLEMENT (Actions trop génériques) :**
         - ❌ "Explorer les environs", "Observer les alentours"
         - ❌ "Parler à quelqu'un" (Préférez "Confronter le marchand sur son mensonge")
-        - ❌ "Manger", "Boire", "Aller à [lieu proche]" (Le moteur de jeu s'en occupe déjà)
+        - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre" (Le moteur de jeu s'en occupe déjà via la logique contextuelle)
         - ❌ Ne créez **JAMAIS** de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.
-    - **EXEMPLES D'ACTIONS ATTENDUES (Narratives et créatives) :**
-        - ✅ "Utiliser votre compétence en observation pour déceler une incohérence dans le témoignage du garde."
+    - **EXEMPLES D'ACTIONS ATTENDUES :**
+        - ✅ "Utiliser votre compétence en Pistage pour déceler une incohérence dans le témoignage du garde."
         - ✅ "Proposer au musicien de rue de l'accompagner avec votre vieil harmonica, espérant attirer une audience... et peut-être des informations."
         - ✅ "Graver discrètement un symbole mystérieux sur le banc, un signe de reconnaissance pour une société secrète à laquelle vous appartenez."
 
-3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. En fonction de votre narration, vous pouvez proposer des changements concrets.
-    - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête.
-    - Si le joueur découvre un corps, utilisez \`newClues\` et \`startCombat\` avec un ennemi "Rat d'égout agressif".
+3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. Si votre narration le justifie, proposez des changements concrets.
+    - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête. Pour un 'job', proposez un 'requiredSkill' pertinent comme 'techniques.artisanat_general'.
+    - Si le joueur découvre un corps, utilisez \`newClues\` et \`startCombat\`.
     - Si le joueur trouve un portefeuille, utilisez \`newItems\` et \`newTransactions\`.
-    - **Remplissez les champs** (\`newQuests\`, \`startCombat\`, \`newPNJs\`, etc.) **uniquement** si cela est logiquement justifié par le récit. Sinon, laissez-les vides.
+    - **Remplissez ces champs uniquement** si cela est logiquement justifié. Sinon, laissez-les vides.
 
-4.  **Donner un Conseil Stratégique (aiRecommendation) :** Si pertinent, analysez la situation globale du joueur (argent bas, quête importante) et donnez un conseil via le champ optionnel \`aiRecommendation\`.
+4.  **Donner un Conseil Stratégique (aiRecommendation) :** Si pertinent, analysez la situation et donnez un conseil via le champ optionnel \`aiRecommendation\`.
 `;
 
 const PROMPT_CASCADE_INSTRUCTIONS = `
 **EXPLOITATION DU CONTEXTE DE LA CASCADE (TRÈS IMPORTANT)**
-Le champ \`cascadeResult\` contient un résumé textuel des informations contextuelles générées par des modules spécialisés (culture, cuisine, etc.). **Utilisez ces informations pour enrichir votre narration.** Par exemple, si le résumé mentionne une opportunité de cuisiner, vous pouvez décrire l'odeur des épices dans l'air. Si le résumé mentionne un fait culturel, intégrez-le dans la description des lieux. Le moteur de jeu génère déjà les actions logiques (comme "Cuisiner le plat X"), votre rôle n'est donc **PAS** de créer ces actions, mais de créer une ambiance cohérente avec ces informations.
+Le champ \`cascadeResult\` contient un résumé des informations générées par des modules spécialisés. **Utilisez ces informations pour enrichir votre narration et créer une ambiance cohérente.** Par exemple, si le résumé mentionne une opportunité de cuisiner, vous pouvez décrire l'odeur des épices dans l'air. Si le résumé mentionne un fait culturel, intégrez-le dans la description des lieux. Le moteur de jeu génère déjà les actions logiques (comme "Cuisiner le plat X"), votre rôle n'est donc **PAS** de créer ces actions, mais de créer une atmosphère qui les justifie.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous.
 {{{toneInstructions}}}
-
-- **GÉNÉRATION DE JOBS :** Lorsque vous générez une quête de type "job", vous devez fournir la compétence requise dans le champ \`requiredSkill\` de l'objet de la quête (par exemple, \`'technical.crafting'\`). Le moteur de jeu calculera la récompense monétaire en fonction du niveau de compétence du joueur. Ne fixez PAS la récompense vous-même.
-
-- **CONTEXTE ENRICHI :** Vous recevez des données enrichies. Utilisez-les pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
+- **CONTEXTE ENRICHI :** Utilisez toutes les données fournies pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
   - **Cascade Modulaire :** ${PROMPT_CASCADE_INSTRUCTIONS}
   
   {{#if player.recentActionTypes}}
-  🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions du joueur étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions narratifs différents. Le moteur de jeu ajoutera des actions utilitaires (manger, boire, etc.) si nécessaire.
+  🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions du joueur étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions narratifs différents.
   {{/if}}
 
-- **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', etc.) pour enrichir votre narration et générer des choix contextuels.
+- **UTILISATION DES OUTILS :** Utilisez les outils disponibles ('getWeatherTool', etc.) pour enrichir votre narration et générer des choix contextuels.
 `;
 
 const PROMPT_PLAYER_CONTEXT = `
@@ -167,9 +161,6 @@ ${PROMPT_ACTION_AND_EFFECTS}
 `;
 
 
-// --- PROMPTS DEFINITION ---
-
-// This is the schema for the data passed to the prompt, including internal fields.
 const PromptInputSchema = GenerateScenarioInputSchema.extend({ 
   toneInstructions: z.string(),
 });
@@ -207,9 +198,9 @@ Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le 
 {{{toneInstructions}}}
 
 **Contraintes Importantes :**
-- Le prologue doit être purement narratif.
-- La sortie DOIT être du HTML valide, utilisant des balises <p> pour une lecture aérée.
-- Fournissez 3 suggestions d'actions initiales dans le champ \`choices\` en respectant la structure NARRATIVE de l'objet 'StoryChoice'. Ne vous préoccupez pas des valeurs mécaniques comme les coûts ou les gains.
+- Le prologue doit être purement narratif et immersif, avec des paragraphes bien espacés.
+- La sortie DOIT être du HTML valide.
+- Fournissez 3 suggestions d'actions initiales NARRATIVES dans le champ \`choices\`.
 
 Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure.
 `;
@@ -229,8 +220,6 @@ const prologuePrompt = ai.definePrompt({
 });
 
 
-// --- FLOW DEFINITION ---
-
 const generateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
@@ -239,7 +228,6 @@ const generateScenarioFlow = ai.defineFlow(
   },
   async (input) => {
     const toneInstructions = generateToneInstructions(input.player?.toneSettings);
-    // Construct the full object expected by the prompt
     const enrichedInput = { ...input, toneInstructions };
 
     const selectedPrompt = input.playerChoiceText === "[COMMENCER L'AVENTURE]"
@@ -252,7 +240,6 @@ const generateScenarioFlow = ai.defineFlow(
       if (!output) {
         throw new Error("AI model did not return any output.");
       }
-      // Ensure the output conforms to the schema, especially the non-optional 'choices' field.
       if (!output.choices) {
         output.choices = [];
       }

@@ -1,5 +1,4 @@
 
-
 import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem, SkillDetail } from '@/lib/types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
@@ -44,7 +43,6 @@ export async function saveGameState(uid: string, characterId: string, state: Gam
     return result;
   }
   
-  // Local save remains simple, it just caches the last played character's state.
   result.localSaveSuccess = saveGameStateToLocal(state);
 
   if (state.player && !state.player.isAnonymous) {
@@ -59,58 +57,21 @@ export async function saveGameState(uid: string, characterId: string, state: Gam
   return result;
 }
 
-function migrateSkills(savedSkills: any): AdvancedSkillSystem {
-    const newSkills = JSON.parse(JSON.stringify(initialSkills));
-    if (!savedSkills || typeof savedSkills !== 'object' || Array.isArray(savedSkills)) {
-        return newSkills;
+function hydrateStats(savedStats?: Partial<PlayerStats>): PlayerStats {
+    if (!savedStats || Object.keys(savedStats).length < 12) {
+        return { ...initialPlayerStats };
     }
-
-    // Check if it's already the new structure by checking if a skill is an object with a 'level' property
-    if (savedSkills.cognitive && typeof savedSkills.cognitive.analysis === 'object' && savedSkills.cognitive.analysis !== null && 'level' in savedSkills.cognitive.analysis) {
-        return deepmerge(newSkills, savedSkills);
-    }
-
-    // It's the old format (numbers), so we migrate
-    for (const category in savedSkills) {
-        if (Object.prototype.hasOwnProperty.call(savedSkills, category) && (newSkills as any)[category]) {
-            for (const skillName in savedSkills[category]) {
-                if (Object.prototype.hasOwnProperty.call(savedSkills[category], skillName) && (newSkills as any)[category][skillName]) {
-                    const level = savedSkills[category][skillName];
-                    if(typeof level === 'number') {
-                         (newSkills as any)[category][skillName] = {
-                            level: level,
-                            xp: 0,
-                            xpToNext: getSkillUpgradeCost(level)
-                        };
-                    }
-                }
-            }
-        }
-    }
-    return newSkills;
+    return deepmerge(initialPlayerStats, savedStats);
 }
 
-function migrateStats(savedStats: any): PlayerStats {
-    const newStats = JSON.parse(JSON.stringify(initialPlayerStats)); // Deep copy
-    if (!savedStats || typeof savedStats !== 'object') {
-        return newStats;
-    }
 
-    for (const key in newStats) {
-        if (Object.prototype.hasOwnProperty.call(savedStats, key)) {
-            const savedValue = savedStats[key as keyof PlayerStats];
-            if (typeof savedValue === 'number') {
-                // Old format: Sante: 100
-                (newStats as any)[key].value = savedValue;
-            } else if (typeof savedValue === 'object' && 'value' in savedValue) {
-                // New format: Sante: { value: 100, max: 100 }
-                // Use deepmerge to preserve potential new fields in initialPlayerStats
-                (newStats as any)[key] = deepmerge((newStats as any)[key], savedValue);
-            }
-        }
+function hydrateSkills(savedSkills?: Partial<AdvancedSkillSystem>): AdvancedSkillSystem {
+    if (!savedSkills || !savedSkills.physiques?.arme_a_feu) { // A quick check for the old format
+        return { ...initialSkills };
     }
-    return newStats;
+    return deepmerge(initialSkills, savedSkills);
 }
+
 
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   const player: Player = {
@@ -124,9 +85,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     background: savedPlayer?.background || '',
     era: savedPlayer?.era || 'Époque Contemporaine',
     startingLocationName: savedPlayer?.startingLocationName,
-    stats: migrateStats(savedPlayer?.stats),
-    skills: migrateSkills(savedPlayer?.skills), // Use migration function for skills
-    physiology: deepmerge(initialPhysiology, savedPlayer?.physiology || {}), // Hydrate physiology
+    stats: hydrateStats(savedPlayer?.stats),
+    skills: hydrateSkills(savedPlayer?.skills),
+    physiology: deepmerge(initialPhysiology, savedPlayer?.physiology || {}),
     momentum: { ...initialMomentum, ...(savedPlayer?.momentum || {}) },
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
     progression: { ...initialProgression, ...(savedPlayer?.progression || {}) },
@@ -150,10 +111,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
   }
 
-  // Handle inventory hydration, converting old item formats to the new IntelligentItem structure
   const inventoryToHydrate = savedPlayer?.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : initialInventory;
-  player.inventory = inventoryToHydrate.map((item: any) => { // Use 'any' to handle old format
-    const masterItem = getMasterItemById(item.id || item.itemId); // Handle old itemId property
+  player.inventory = inventoryToHydrate.map((item: any) => {
+    const masterItem = getMasterItemById(item.id || item.itemId);
     if (!masterItem) {
       console.warn(`Could not find master item for id ${item.id || item.itemId} during hydration.`);
       return null;
@@ -181,7 +141,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
         ...masterItem.economics,
         ...(item.economics || {})
       },
-       // Initialize contextual properties - these will be updated by game logic
       contextual_properties: {
         local_value: item.contextual_properties?.local_value || masterItem.economics.base_value,
         legal_status: item.contextual_properties?.legal_status || 'legal',

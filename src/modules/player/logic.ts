@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Contains the core business logic for the Player module.
  * This will eventually replace parts of lib/player-state-helpers.ts.
@@ -12,7 +13,6 @@ export function calculateXpToNextLevel(level: number): number {
 
 export function getSkillUpgradeCost(currentLevel: number): number {
   if (currentLevel <= 0) currentLevel = 1;
-  // Formula from user's plan
   return Math.floor(currentLevel * currentLevel * 1.5) + 20;
 }
 
@@ -65,8 +65,7 @@ export function addPlayerXp(currentProgression: Progression, xpGained: number): 
   }
 
   newProgression.xp += xpGained;
-  events.push({ type: 'XP_GAINED', amount: xpGained });
-
+  
   while (newProgression.xp >= newProgression.xpToNextLevel && newProgression.xpToNextLevel > 0) {
     newProgression.level += 1;
     newProgression.xp -= newProgression.xpToNextLevel;

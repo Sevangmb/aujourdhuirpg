@@ -4,7 +4,7 @@
 import type { Player, AdvancedSkillSystem } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
-import { Shield, Brain as BrainIcon, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users as PeopleIcon, Heart, Smile, Dumbbell, BookOpen, UserCog, Stethoscope, Hand, Landmark } from 'lucide-react';
+import { Shield, Brain, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users, Heart, Dumbbell, UserCog, Stethoscope, Hand, Landmark, Dices, Book, Crosshair } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -13,21 +13,40 @@ interface PlayerSheetProps {
   player: Player;
 }
 
+const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
+  Force: Dumbbell,
+  Dexterite: Hand,
+  Constitution: Heart,
+  Intelligence: Brain,
+  Perception: Crosshair,
+  Charisme: Users,
+  Volonte: Anchor,
+  Savoir: Book,
+  Technique: UserCog,
+  MagieOccultisme: Sparkles,
+  Discretion: CloudFog,
+  ChanceDestin: Dices,
+  Sante: Heart,
+  Energie: Zap,
+  Stress: CloudFog,
+};
+
 const skillCategoryIcons: { [key in keyof AdvancedSkillSystem]: React.ElementType } = {
-  cognitive: BrainIcon,
-  social: PeopleIcon,
-  physical: Dumbbell,
-  technical: UserCog,
-  survival: Landmark,
+  physiques: Dumbbell,
+  techniques: UserCog,
+  survie: Landmark,
+  sociales: Users,
+  savoir: Book,
 };
 
 const skillCategoryLabels: { [key in keyof AdvancedSkillSystem]: string } = {
-  cognitive: "Cognitives",
-  social: "Sociales",
-  physical: "Physiques",
-  technical: "Techniques",
-  survival: "Survie",
+  physiques: "Physiques",
+  techniques: "Techniques & Artisanat",
+  survie: "Survie & Exploration",
+  sociales: "Sociales",
+  savoir: "Savoir",
 };
+
 
 const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   if (!player) return null;
@@ -35,6 +54,11 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   const xpPercentage = player.progression.xpToNextLevel > 0 
     ? (player.progression.xp / player.progression.xpToNextLevel) * 100 
     : 0;
+
+  const coreAttributes = [
+    'Force', 'Dexterite', 'Constitution', 'Intelligence', 'Perception', 'Charisme', 
+    'Volonte', 'Savoir', 'Technique', 'MagieOccultisme', 'Discretion', 'ChanceDestin'
+  ];
 
   return (
     <div>
@@ -65,21 +89,20 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
         <Accordion type="multiple" defaultValue={['stats', 'skills']} className="w-full">
             <AccordionItem value="stats">
               <AccordionTrigger>
-                <div className="flex items-center gap-2"><Shield className="w-4 h-4" />Caractéristiques Principales</div>
+                <div className="flex items-center gap-2"><Shield className="w-4 h-4" />Attributs</div>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm p-2">
-                  {Object.entries(player.stats).map(([stat, statObj]) => {
-                    let Icon = Zap; 
-                    if (stat === "Sante") Icon = Heart; else if (stat === "Charisme") Icon = Smile; else if (stat === "Intelligence") Icon = BrainIcon; else if (stat === "Force") Icon = Dumbbell; else if (stat === "Energie") Icon = Zap; else if (stat === "Stress") Icon = CloudFog; else if (stat === "Volonte") Icon = Anchor; else if (stat === "Reputation") Icon = PeopleIcon;
-
+                  {coreAttributes.map((statName) => {
+                    const statObj = player.stats[statName as keyof Player['stats']];
+                    const Icon = statIcons[statName as keyof Player['stats']] || Zap;
                     return (
-                      <div key={stat} className="flex flex-col items-center p-1.5 bg-muted/30 rounded-md text-xs">
+                      <div key={statName} className="flex flex-col items-center p-1.5 bg-muted/30 rounded-md text-xs">
                         <div className="flex items-center">
                           <Icon className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-                          <span className="font-medium">{stat}</span>
+                          <span className="font-medium">{statName}</span>
                         </div>
-                        <span className="font-bold text-primary">{statObj.value}</span>
+                        <span className="font-bold text-primary text-lg">{statObj.value}</span>
                       </div>
                     );
                   })}
@@ -107,9 +130,12 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                                 <AccordionContent>
                                     <div className="space-y-1 pt-2">
                                         {Object.entries(subSkills).map(([skill, value]) => (
-                                            <div key={skill} className="flex justify-between p-1.5 text-xs">
+                                            <div key={skill} className="flex justify-between items-center p-1.5 text-xs">
                                                 <span className="font-medium capitalize">{skill.replace(/_/g, ' ')}</span>
-                                                <span className="font-bold text-primary">{value}</span>
+                                                <div className="text-right">
+                                                  <span className="font-bold text-primary">{value.level}</span>
+                                                  <Progress value={(value.xp / value.xpToNext) * 100} className="w-16 h-1 mt-0.5"/>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
