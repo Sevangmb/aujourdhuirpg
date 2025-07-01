@@ -33,6 +33,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (!state.player) return state;
 
   switch (action.type) {
+    case 'UPDATE_PLAYER_DATA':
+        return { ...state, player: action.payload };
     case 'UPDATE_INVENTORY_ITEM': {
       if (!state.player) return state;
       const newInventory = state.player.inventory.map(item =>
@@ -247,8 +249,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, nearbyPois: action.payload };
     case 'SET_CURRENT_SCENARIO':
       return { ...state, currentScenario: action.payload };
-    case 'UPDATE_PLAYER_DATA':
-      return { ...state, player: action.payload };
+    
     default:
       return state;
   }
@@ -471,28 +472,6 @@ export async function processPlayerAction(
   return { events };
 }
 
-
-// --- Event Triggers ---
-export function checkForLocationBasedEvents(newLocation: Position, gameState: GameState): GameAction[] {
-  const triggeredActions: GameAction[] = [];
-  return triggeredActions;
-}
-
-export async function fetchPoisForCurrentLocation(playerLocation: Position): Promise<EnhancedPOI[] | null> {
-  if (!playerLocation) return null;
-  try {
-    const poisFromService = await fetchNearbyPoisFromOSM({
-        latitude: playerLocation.latitude,
-        longitude: playerLocation.longitude,
-        radius: 500,
-        limit: 15
-    });
-    return poisFromService;
-  } catch (error) {
-    console.error("Error fetching new POIs:", error);
-    return null;
-  }
-}
 
 /**
  * Translates a list of game events into a human-readable text summary for the AI.
@@ -831,6 +810,7 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
   
     for (const poi of pois.slice(0, 8)) { // Limit total POIs considered
       let actionsForThisPoi = 0;
+      const maxActionsPerPoi = 1; // Explicitly define here
       for (const service of poi.services) {
         if (actionsForThisPoi >= maxActionsPerPoi) break;
   

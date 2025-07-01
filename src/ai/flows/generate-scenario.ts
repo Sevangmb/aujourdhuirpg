@@ -91,7 +91,7 @@ const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter, Suggérer, et Animer le Monde**
 Votre mission est quadruple :
 
-1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur et vous fournit un résumé textuel dans \`gameEvents\`. Transformez ces faits bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits.
+1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur et vous fournit un résumé textuel dans \`gameEvents\`. Transformez ces faits bruts en une description narrative captivante en HTML, en utilisant des paragraphes (<p>) bien espacés pour une lecture aérée. Soyez immersif, n'énumérez pas les faits. Utilisez des dialogues lorsque c'est pertinent.
 
 2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter un café...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
     - **EXIGENCES STRICTES POUR VOS CHOIX :**
@@ -225,7 +225,7 @@ Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le 
 
 **Contraintes Importantes :**
 - Le prologue doit être purement narratif.
-- La sortie DOIT être du HTML valide.
+- La sortie DOIT être du HTML valide, utilisant des balises <p> pour une lecture aérée.
 - Fournissez 3 suggestions d'actions initiales dans le champ \`choices\` en respectant la structure NARRATIVE de l'objet 'StoryChoice'. Ne vous préoccupez pas des valeurs mécaniques comme les coûts ou les gains.
 
 Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure.
