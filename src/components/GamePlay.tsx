@@ -63,7 +63,7 @@ const GamePlay: React.FC = () => {
       // 9. Generate actions based on the cascade result
       const cascadeActions = generateCascadeBasedActions(cascadeResult, finalStateAfterAllEvents.player!);
 
-      const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!);
+      const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!, finalStateAfterAllEvents.gameTimeInMinutes);
       const stateBasedActions = generatePlayerStateActions(finalStateAfterAllEvents.player!);
       
       // 10. Enrich AI choices with calculated costs and probabilities

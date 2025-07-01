@@ -16,6 +16,7 @@ import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } f
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
+import { isShopOpen } from '@/lib/utils/time-utils';
 
 
 // --- Game Actions & Reducer ---
@@ -651,7 +652,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 
   const suggestedContextualActions = [
       ...generatePlayerStateActions(player),
-      ...generateActionsForPOIs(gameState.nearbyPois || [], player)
+      ...generateActionsForPOIs(gameState.nearbyPois || [], player, gameState.gameTimeInMinutes)
   ].map(action => ({
     text: action.text,
     description: action.description,
@@ -824,7 +825,7 @@ function getActionTypeForService(serviceId: string): ActionType {
     return 'action';
 }
 
-export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxActionsPerPoi = 1): StoryChoice[] {
+export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, gameTimeInMinutes: number): StoryChoice[] {
     const contextualChoices: StoryChoice[] = [];
     if (!pois) return [];
   
@@ -833,6 +834,11 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxA
       for (const service of poi.services) {
         if (actionsForThisPoi >= maxActionsPerPoi) break;
   
+        // Check if the service is available at the current time
+        if (service.availability && !isShopOpen(gameTimeInMinutes, service.availability)) {
+            continue; 
+        }
+
         // Can player afford this?
         if (service.cost.min > player.money) {
           continue;
