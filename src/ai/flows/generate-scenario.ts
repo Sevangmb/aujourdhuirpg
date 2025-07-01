@@ -36,7 +36,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
       aiRecommendation: { focus: 'Erreur', reasoning: 'Clé API manquante.' },
     };
   }
-  return generateScenarioFlow(input as any); // Cast as any because the input from game-logic has more fields
+  return generateScenarioFlow(input); 
 }
 
 
@@ -166,29 +166,12 @@ ${PROMPT_PLAYER_CONTEXT}
 ${PROMPT_ACTION_AND_EFFECTS}
 `;
 
-// --- NEW SCHEMAS FOR CONTEXT ---
-const PoiContextSchema = z.object({
-  name: z.string().optional(),
-  type: z.string(),
-  subCategory: z.string(),
-  availableServices: z.array(z.string()),
-  distance: z.number(),
-});
-
-const SuggestedActionContextSchema = z.object({
-  text: z.string(),
-  description: z.string(),
-  type: z.string(),
-  estimatedCost: z.object({ min: z.number(), max: z.number() }).optional(),
-});
-
 
 // --- PROMPTS DEFINITION ---
 
 // This is the schema for the data passed to the prompt, including internal fields.
 const PromptInputSchema = GenerateScenarioInputSchema.extend({ 
   toneInstructions: z.string(),
-  suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
 });
 
 
@@ -248,15 +231,10 @@ const prologuePrompt = ai.definePrompt({
 
 // --- FLOW DEFINITION ---
 
-// This is the schema for the data received by the flow from the client.
-const FlowInputSchema = GenerateScenarioInputSchema.extend({
-    suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
-});
-
 const generateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
-    inputSchema: FlowInputSchema, // Use the extended schema to accept all fields
+    inputSchema: GenerateScenarioInputSchema, 
     outputSchema: GenerateScenarioOutputSchema,
   },
   async (input) => {
@@ -269,7 +247,7 @@ const generateScenarioFlow = ai.defineFlow(
       : scenarioPrompt;
 
     try {
-      const {output} = await selectedPrompt(enrichedInput); // No cast needed
+      const {output} = await selectedPrompt(enrichedInput); 
 
       if (!output) {
         throw new Error("AI model did not return any output.");
