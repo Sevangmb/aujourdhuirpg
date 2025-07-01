@@ -11,6 +11,7 @@ import {
 } from './schemas/generate-geo-intelligence-schemas';
 import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool';
 import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
+import { getNewsTool } from '@/ai/tools/get-news-tool';
 
 
 export type GenerateGeoIntelligenceInput = z.infer<typeof GenerateGeoIntelligenceInputSchema>;
@@ -29,7 +30,7 @@ export async function generateGeoIntelligence(
 const geoIntelligencePrompt = ai.definePrompt({
   name: 'generateGeoIntelligencePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWikipediaInfoTool, getNearbyPoisTool],
+  tools: [getWikipediaInfoTool, getNearbyPoisTool, getNewsTool],
   input: { schema: GenerateGeoIntelligenceInputSchema },
   output: { schema: GenerateGeoIntelligenceOutputSchema },
   prompt: `
@@ -37,7 +38,7 @@ const geoIntelligencePrompt = ai.definePrompt({
     Votre mission est de fournir une analyse détaillée et immersive pour le lieu suivant : {{placeName}} ({{latitude}}, {{longitude}}).
 
     **Instructions Clés :**
-    1.  **Utilisez les outils :** Interrogez les outils \`getWikipediaInfoTool\` et \`getNearbyPoisTool\` pour obtenir des informations factuelles sur le lieu et ses environs.
+    1.  **Utilisez les outils :** Interrogez les outils \`getWikipediaInfoTool\`, \`getNearbyPoisTool\` et \`getNewsTool\` pour obtenir des informations factuelles sur le lieu, ses environs et l'actualité locale. Pour l'outil \`getNewsTool\`, utilisez le \`placeName\` comme mot-clé ('keywords').
     2.  **Analysez le quartier :** Si le lieu est un commerce spécifique (comme "Pomme de Pain", un café, etc.), basez votre analyse sur le quartier général où il se trouve, en utilisant les informations des outils pour le contexte.
     3.  **Plan de secours :** Si les outils ne retournent aucune information utile ou si le lieu est très générique, utilisez vos connaissances générales sur les villes françaises pour fournir une analyse plausible et crédible. Ne laissez PAS la réponse vide.
     4.  **Formatage :** Produisez une réponse JSON structurée qui suit précisément le schéma de sortie fourni, sans aucune exception.
@@ -51,6 +52,7 @@ const geoIntelligencePrompt = ai.definePrompt({
     - economicActivity : Listez 2-3 activités économiques clés (ex: "Tourisme", "Finance", "Artisanat", "Restauration").
     - historicalAnecdote : Racontez une anecdote historique intéressante et peu connue sur ce lieu ou son quartier.
     - dominantAtmosphere : Décrivez l'ambiance générale en quelques mots (ex: "Vibrant et bruyant", "Calme et verdoyant").
+    - currentEvents : Listez 1-2 titres d'actualité pertinents pour le lieu, tirés de l'outil \`getNewsTool\`. S'il n'y a rien de pertinent, laissez le tableau vide.
 
     RECOMMANDATIONS IA :
     - bestTimeToVisit : Quels sont les meilleurs moments pour visiter ? (ex: "En journée", "Le soir en semaine").

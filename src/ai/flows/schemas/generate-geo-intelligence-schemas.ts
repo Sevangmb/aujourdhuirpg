@@ -17,6 +17,7 @@ const AreaAnalysisSchema = z.object({
   economicActivity: z.array(z.string()).describe("Liste des types d'activités économiques dominantes (ex: 'Tourisme', 'Finance', 'Artisanat')."),
   historicalAnecdote: z.string().describe("Une anecdote historique ou un fait marquant sur le lieu."),
   dominantAtmosphere: z.string().describe("Description de l'ambiance générale du quartier (ex: 'Calme et résidentiel', 'Vibrant et touristique')."),
+  currentEvents: z.array(z.string()).optional().describe("Liste des titres d'actualités récents et pertinents pour le lieu."),
 });
 
 const AIRecommendationSchema = z.object({
