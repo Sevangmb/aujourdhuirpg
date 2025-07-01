@@ -116,6 +116,10 @@ Voici comment interpréter les données de la cascade :
   - **Narration :** Intégrez un détail historique ou culturel du \`summary\` dans les pensées du personnage ou dans la description d'un bâtiment. Par exemple : "En passant devant la fontaine, vous vous souvenez avoir lu que..."
   - **Choix :** Proposez un choix d'exploration lié à l'anecdote culturelle, comme "Chercher plus d'informations sur [détail historique]".
 
+- **Si le module \`livre\` est présent dans \`cascadeResult.results\` :**
+  - **Narration :** Décrivez le personnage en train de chercher ou trouver des livres. Mentionnez les titres trouvés dans \`cascadeResult.results.livre.data.foundBooks\`.
+  - **Choix :** Pour chaque livre pertinent trouvé, proposez un choix de type 'action' pour "Lire le livre : [titre du livre]" ou "Acheter le livre : [titre du livre]". S'il n'y a pas de livres, proposez un choix pour "Continuer les recherches".
+
 - **Pour tous les modules :** Lisez les messages et les données fournies et laissez-les inspirer votre récit. Si des opportunités sont listées, essayez de les transformer en choix d'action.
 `;
 
@@ -248,5 +252,3 @@ const generateScenarioFlow = ai.defineFlow(
     }
   }
 );
-
-    

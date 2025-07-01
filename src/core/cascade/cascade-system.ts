@@ -14,6 +14,9 @@ function determineRelevantModules(choice: StoryChoice): string[] {
   const choiceType = choice.type;
 
   // Specific keyword triggers
+  if (choiceText.includes('livre') || choiceText.includes('bibliothèque') || choiceText.includes('rechercher') || choiceText.includes('lire')) {
+    return ['livre'];
+  }
   if (choiceType === 'job' || choiceText.includes('manger') || choiceText.includes('cuisiner') || choiceText.includes('restaurant')) {
     return ['cuisine'];
   }
