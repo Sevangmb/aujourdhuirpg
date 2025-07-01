@@ -127,6 +127,12 @@ const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous.
 {{{toneInstructions}}}
+- **SYSTÈME ÉCONOMIQUE POUR LES JOBS :** Lorsque vous générez une quête de type "job", la récompense monétaire (\`moneyReward\`) doit être cohérente avec le niveau de compétence du joueur et la nature du travail. Utilisez les Tiers suivants comme guide :
+  - **Petits Boulots (5-15€):** Tâches simples ne nécessitant aucune compétence particulière (ex: distribuer des flyers, faire une course).
+  - **Emploi Qualifié (15-30€):** Tâches nécessitant un niveau de compétence de base (10-25) dans un domaine pertinent (ex: aider un cuisinier, réparer un objet simple).
+  - **Expertise (30-60€):** Tâches complexes nécessitant un niveau de compétence notable (25-50) (ex: rédiger un article technique, enquêter sur une piste difficile).
+  - **Consulting (60-150€+):** Tâches de très haut niveau nécessitant une compétence avancée (>50) ou une combinaison de compétences rares (ex: décrypter des données complexes, négocier un accord commercial).
+  Analysez les compétences du joueur (objet \`player.skills\`) pour proposer des jobs appropriés et fixer une récompense juste.
 - **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez les instructions spécifiques ci-dessous pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
 ${PROMPT_CASCADE_INSTRUCTIONS}
 - **RÈGLE D'OR :** Vous êtes le narrateur. Le moteur de jeu est le maître des règles. **NE modifiez PAS l'état du jeu**. Votre seule sortie est le \`scenarioText\`, les \`choices\`, et l'éventuelle \`aiRecommendation\`.
