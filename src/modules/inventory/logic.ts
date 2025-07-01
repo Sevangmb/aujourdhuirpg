@@ -1,5 +1,8 @@
+/**
+ * @fileOverview Contains the core business logic for the Inventory module.
+ */
 
-import type { PlayerStats, IntelligentItem, Progression, AdvancedSkillSystem, GameNotification, Position, MasterIntelligentItem, DynamicItemCreationPayload } from './types';
+import type { PlayerStats, IntelligentItem, Position, MasterIntelligentItem, DynamicItemCreationPayload } from '@/lib/types';
 import { getMasterItemById } from '@/data/items';
 import { v4 as uuidv4 } from 'uuid';
 

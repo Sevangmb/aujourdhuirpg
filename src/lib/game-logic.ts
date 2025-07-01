@@ -1,5 +1,5 @@
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent, EnrichedObject } from './types';
-import { applyStatChanges, addItemToInventory, removeItemFromInventory, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
+import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -307,8 +307,8 @@ export async function processPlayerAction(
 
 
   // --- PHYSIOLOGY & ENERGY ---
-  const hungerDecay = (choice.timeCost * HUNGER_DECAY_PER_MINUTE) + (choice.energyCost * HUNGER_DECAY_PER_ENERGY_POINT);
-  const thirstDecay = (choice.timeCost * THIRST_DECAY_PER_MINUTE) + (choice.energyCost * THIRST_DECAY_PER_ENERGY_POINT);
+  const hungerDecay = (choice.timeCost * 0.1) + (choice.energyCost * 0.2);
+  const thirstDecay = (choice.timeCost * 0.2) + (choice.energyCost * 0.1);
   
   tempPlayerState.stats.Energie.value -= choice.energyCost;
   events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: tempPlayerState.stats.Energie.value });
@@ -357,7 +357,7 @@ export async function processPlayerAction(
 
     if (skillCheckResult.success) {
       // --- Grant Player XP ---
-      let totalXPGain = PLAYER_XP_GAIN_ON_SUCCESSFUL_SKILL_CHECK;
+      let totalXPGain = 10;
       if (choice.skillGains) {
         Object.values(choice.skillGains).forEach(gain => totalXPGain += gain);
       }
@@ -372,8 +372,8 @@ export async function processPlayerAction(
           const masterItem = getMasterItemById(item.id);
 
           if (item.xpToNextItemLevel > 0 && masterItem) {
-            events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: ITEM_XP_GAIN_ON_SUCCESSFUL_USE });
-            item.itemXp += ITEM_XP_GAIN_ON_SUCCESSFUL_USE;
+            events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: 10 });
+            item.itemXp += 10;
 
             while (item.itemXp >= item.xpToNextItemLevel && item.xpToNextItemLevel > 0) {
               const newLevel = item.itemLevel + 1;
