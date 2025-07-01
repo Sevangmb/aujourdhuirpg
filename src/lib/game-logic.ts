@@ -80,13 +80,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             player = { ...player, skills: updatedSkills };
             if (leveledUp && newLevel) {
                 const skillName = event.skill.split('.')[1] || event.skill;
-                const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Votre compétence ${skillName.replace(/_/g, ' ')} a atteint le niveau ${newLevel} !` }};
+                const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'event', text: `Votre compétence ${skillName.replace(/_/g, ' ')} a atteint le niveau ${newLevel} !` }};
                 eventQueue.push(journalEntry);
             }
             break;
           }
           case 'PLAYER_LEVELED_UP': {
-            const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Félicitations ! Vous avez atteint le niveau ${event.newLevel} !` }};
+            const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'event', text: `Félicitations ! Vous avez atteint le niveau ${event.newLevel} !` }};
             eventQueue.push(journalEntry);
             break;
           }
@@ -603,9 +603,32 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
   }, {} as Record<string, number>);
 
   const playerInputForAI = {
-      ...player,
+      name: player.name,
+      gender: player.gender,
+      age: player.age,
+      origin: player.origin,
+      era: player.era,
+      background: player.background,
       stats: flatStats,
       skills: flatSkills,
+      physiology: player.physiology,
+      traitsMentalStates: player.traitsMentalStates,
+      progression: player.progression,
+      alignment: player.alignment,
+      inventory: player.inventory.map(item => ({
+        instanceId: item.instanceId,
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        type: item.type,
+        quantity: item.quantity,
+        condition: item.condition,
+        economics: item.economics,
+        memory: { acquisitionStory: item.memory.acquisitionStory },
+      })),
+      money: player.money,
+      currentLocation: player.currentLocation,
+      toneSettings: player.toneSettings,
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
         .map(item => item.name),
