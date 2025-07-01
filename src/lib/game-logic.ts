@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
@@ -17,6 +17,8 @@ import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/mo
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
+import { getDistanceInKm } from '@/lib/utils/geo-utils';
+
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -284,11 +286,9 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
   else if (weatherDesc.includes('pluie') || weatherDesc.includes('averses')) {
     if (skill === 'stealth') modifier += 10;
     if (skill === 'observation') modifier -= 5;
-    // The plan mentioned social skill. This is a bit strange but let's assume it affects persuasion/networking
     if (skill === 'persuasion' || skill === 'networking') modifier -= 3;
   }
-  // Note: Sunny effects are handled as stat changes in processPlayerAction
-
+  
   let reason = "";
   if (modifier > 0) {
     reason = `Le temps (${weatherData.description}) favorise cette action.`;
@@ -609,4 +609,74 @@ export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameE
   }
 
   return events;
+}
+
+
+// --- POI ACTION GENERATION ---
+
+function getIconForService(serviceId: string): ChoiceIconName {
+    if (serviceId.includes('buy_sandwich') || serviceId.includes('buy_pastry')) return 'Utensils';
+    if (serviceId.includes('buy_')) return 'ShoppingCart';
+    if (serviceId.includes('order_')) return 'NotebookPen';
+    if (serviceId.includes('get_') || serviceId.includes('consultation')) return 'MessageSquare';
+    if (serviceId.includes('book_')) return 'Briefcase';
+    if (serviceId.includes('work_')) return 'Wrench';
+    if (serviceId.includes('people_watch') || serviceId.includes('browse_')) return 'Eye';
+    if (serviceId.includes('withdraw_')) return 'ShoppingCart';
+    if (serviceId.includes('visit')) return 'Compass';
+    if (serviceId.includes('take_power_nap')) return 'Zap'; // Using Zap for energy
+    if (serviceId.includes('use_hotel_services')) return 'Briefcase';
+
+    return 'Compass';
+}
+
+function getActionTypeForService(serviceId: string): ActionType {
+    if (serviceId.includes('buy_') || serviceId.includes('order_') || serviceId.includes('rent_') || serviceId.includes('withdraw_')) return 'action';
+    if (serviceId.includes('browse_') || serviceId.includes('people_watch') || serviceId.includes('visit')) return 'exploration';
+    if (serviceId.includes('get_') || serviceId.includes('consultation') || serviceId.includes('meet_')) return 'social';
+    if (serviceId.includes('book_') || serviceId.includes('work_') || serviceId.includes('use_hotel_services')) return 'job';
+    if (serviceId.includes('take_power_nap')) return 'reflection';
+
+    return 'action';
+}
+
+export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxActionsPerPoi = 1): StoryChoice[] {
+    const contextualChoices: StoryChoice[] = [];
+    if (!pois) return [];
+  
+    for (const poi of pois.slice(0, 8)) { // Limit total POIs considered
+      let actionsForThisPoi = 0;
+      for (const service of poi.services) {
+        if (actionsForThisPoi >= maxActionsPerPoi) break;
+  
+        // Can player afford this?
+        if (service.cost.min > player.money) {
+          continue;
+        }
+  
+        const distance = getDistanceInKm(player.currentLocation.latitude, player.currentLocation.longitude, poi.latitude, poi.longitude);
+        const travelTime = Math.ceil(distance * 12); // ~12 min/km walking
+        
+        const descriptionDistance = distance < 0.1 ? 'juste ici' : 
+                                  distance < 0.3 ? 'à quelques pas' :
+                                  distance < 0.5 ? 'à proximité' : 
+                                  `à ${Math.round(distance * 1000)}m`;
+
+        const choice: StoryChoice = {
+          id: `${poi.osmId}_${service.id}`,
+          text: `${service.name} (${poi.name})`,
+          description: `${service.description}, ${descriptionDistance}.`,
+          iconName: getIconForService(service.id),
+          type: getActionTypeForService(service.id),
+          mood: 'adventurous', // Generic mood
+          energyCost: Math.round(service.duration / 10) + Math.ceil(distance * 5) + 1, // Estimate energy cost
+          timeCost: service.duration + travelTime,
+          consequences: ['Interaction sociale', `Coût: ${service.cost.min}-${service.cost.max}€`],
+          // Skill checks for POI actions can be added in the future
+        };
+        contextualChoices.push(choice);
+        actionsForThisPoi++;
+      }
+    }
+    return contextualChoices;
 }

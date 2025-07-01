@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameAction, GameEvent } from '@/lib/types';
 import type { Enemy } from '@/modules/combat/types';
-import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -84,8 +85,13 @@ const GamePlay: React.FC = () => {
       // 7. Dispatch ALL events (deterministic + AI-generated) to *actually* update the state
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: [...deterministicEvents, ...aiGeneratedEvents] });
       
-      // 8. Set the new scenario from the AI's output
-      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: aiOutput.choices, aiRecommendation: aiOutput.aiRecommendation } });
+      // --- NEW: Generate contextual actions based on POIs in the new state ---
+      const finalStateAfterAllEvents = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
+      const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!);
+      const allChoices = [...(aiOutput.choices || []), ...poiActions];
+
+      // 8. Set the new scenario from the AI's output, now with merged choices
+      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: allChoices, aiRecommendation: aiOutput.aiRecommendation } });
 
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";
