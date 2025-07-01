@@ -1,5 +1,4 @@
 
-
 import type { Player, MomentumSystem } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
@@ -42,7 +41,7 @@ export type GameEvent =
   | { type: 'ITEM_XP_GAINED'; instanceId: string; itemName: string; xp: number; }
   | { type: 'ITEM_LEVELED_UP'; instanceId: string; itemName: string; newLevel: number; newXp?: number; newXpToNextLevel?: number; }
   | { type: 'ITEM_EVOLVED'; instanceId: string; oldItemName: string; newItemId: string; newItemName: string; }
-  | { type: 'QUEST_ADDED'; quest: Omit<Quest, 'id' | 'dateAdded' | 'status'>; }
+  | { type: 'QUEST_ADDED'; quest: Omit<Quest, 'id' | 'dateAdded'>; }
   | { type: 'QUEST_STATUS_CHANGED'; questId: string; newStatus: Quest['status']; }
   | { type: 'QUEST_OBJECTIVE_CHANGED'; questId: string; objectiveId: string; completed: boolean; }
   | { type: 'PNJ_ENCOUNTERED'; pnj: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'>; }

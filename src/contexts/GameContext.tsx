@@ -23,6 +23,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { HistoricalEncounterModal } from '@/components/HistoricalEncounterModal';
 import { TravelModal } from '@/components/TravelModal';
 import { objectCascadeManager } from '@/core/objects/object-cascade-manager';
+import { fetchTopHeadlines } from '@/data-sources/news/news-api';
+import { NewsQuestGenerator } from '@/modules/news/news-quest-generator';
 
 
 // Helper types for managing async data
@@ -154,6 +156,55 @@ export const GameProvider: React.FC<{
 
   }, [gameState.player?.currentLocation.name, gameState.player?.era]);
   
+  // --- NEWS QUEST GENERATION LOGIC ---
+  const lastCheckedDay = useRef(0);
+  const generateAndAddNewQuests = useCallback(async () => {
+    if (!gameState?.player) return;
+
+    try {
+        const newsData = await fetchTopHeadlines({ country: 'fr', category: 'general', pageSize: 10 });
+        if (newsData.status !== 'ok' || newsData.articles.length === 0) return;
+
+        const generator = new NewsQuestGenerator();
+        const questPromises = newsData.articles.map(article => generator.generateQuestFromNews(article));
+        const potentialQuests = (await Promise.all(questPromises)).filter((q): q is Omit<Quest, 'id' | 'dateAdded'> => q !== null);
+
+        if (potentialQuests.length > 0) {
+            const existingQuestTitles = new Set(gameState.player.questLog.map(q => q.title));
+            const newQuests = potentialQuests.filter(q => !existingQuestTitles.has(q.title));
+
+            if (newQuests.length > 0) {
+                 const events: GameEvent[] = newQuests.map(quest => ({
+                    type: 'QUEST_ADDED',
+                    quest: quest
+                }));
+
+                events.push({
+                    type: 'JOURNAL_ENTRY_ADDED',
+                    payload: {
+                        type: 'event',
+                        text: `En lisant les nouvelles du matin, plusieurs pistes intéressantes ont attiré votre attention. (Nouvelles quêtes disponibles dans votre journal)`
+                    }
+                });
+
+                dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
+                toast({ title: "Nouvelles Pistes", description: "De nouvelles quêtes basées sur l'actualité ont été ajoutées à votre journal." });
+            }
+        }
+    } catch (error) {
+        console.error("Error generating news quests:", error);
+    }
+  }, [gameState?.player, toast]);
+
+  useEffect(() => {
+    if (!gameState?.player) return;
+    const currentDay = Math.floor(gameState.gameTimeInMinutes / 1440);
+    if (currentDay > lastCheckedDay.current) {
+        lastCheckedDay.current = currentDay;
+        generateAndAddNewQuests();
+    }
+  }, [gameState?.gameTimeInMinutes, gameState?.player, generateAndAddNewQuests]);
+
   // --- ACTION HANDLERS ---
   const handleInitiateTravel = (destination: Position) => {
     if (!gameState?.player) return;

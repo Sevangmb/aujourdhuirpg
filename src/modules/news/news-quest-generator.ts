@@ -21,7 +21,7 @@ function calculateExpiration(publishedAt: string | null, days: number): string {
 
 export class NewsQuestGenerator {
 
-  public async generateQuestFromNews(article: NewsArticle): Promise<Quest | null> {
+  public async generateQuestFromNews(article: NewsArticle): Promise<Omit<Quest, 'id' | 'dateAdded'> | null> {
     const questType = this.determineQuestType(article);
 
     switch (questType) {
@@ -32,7 +32,7 @@ export class NewsQuestGenerator {
       case 'SOCIAL':
       case 'DISCOVERY':
       case 'ECONOMIC':
-        console.log(`Quest generation for type ${questType} is not yet implemented.`);
+        // console.log(`Quest generation for type ${questType} is not yet implemented.`);
         return Promise.resolve(null);
       default:
         return Promise.resolve(null);
@@ -65,8 +65,7 @@ export class NewsQuestGenerator {
     return null;
   }
 
-  private async createInvestigationQuest(article: NewsArticle): Promise<Quest | null> {
-    const now = new Date().toISOString();
+  private async createInvestigationQuest(article: NewsArticle): Promise<Omit<Quest, 'id' | 'dateAdded'> | null> {
     
     const rewards: QuestRewards = {
         xp: 150,
@@ -77,21 +76,19 @@ export class NewsQuestGenerator {
         reputation: 20
     };
 
-    const quest: Quest = {
-      id: `investigation_${article.url.substring(article.url.lastIndexOf('/') + 1)}`, // semi-unique id
+    const questData: Omit<Quest, 'id' | 'dateAdded'> = {
       title: `Enquête: ${simplifyTitle(article.title)}`,
       description: `Les rumeurs courent dans Paris suite à l'affaire mentionnée dans cet article de ${article.sourceName}. Menez votre propre investigation pour découvrir la vérité.`,
       type: 'secondary',
       status: 'inactive',
-      dateAdded: now,
       objectives: [
-        { id: uuidv4(), description: `Collecter des informations sur "${extractKeyEntity(article)}"`, isCompleted: false },
-        { id: uuidv4(), description: 'Interroger les témoins potentiels dans le quartier concerné', isCompleted: false },
-        { id: uuidv4(), description: 'Trouver des preuves ou indices matériels', isCompleted: false }
+        { description: `Collecter des informations sur "${extractKeyEntity(article)}"`, isCompleted: false },
+        { description: 'Interroger les témoins potentiels dans le quartier concerné', isCompleted: false },
+        { description: 'Trouver des preuves ou indices matériels', isCompleted: false }
       ],
       rewardDescription: `Récompenses pour la résolution du mystère.`,
       rewards: rewards,
     };
-    return quest;
+    return questData;
   }
 }

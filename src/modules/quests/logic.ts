@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Contains the core business logic for the Quest module.
  */
@@ -5,7 +6,7 @@
 import type { GameState, Quest } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
-export function handleAddQuest(state: GameState, questData: Omit<Quest, 'id' | 'dateAdded' | 'status'>): GameState {
+export function handleAddQuest(state: GameState, questData: Omit<Quest, 'id' | 'dateAdded'>): GameState {
     if (!state.player) return state;
 
     const nowISO = new Date().toISOString();
@@ -13,7 +14,7 @@ export function handleAddQuest(state: GameState, questData: Omit<Quest, 'id' | '
         ...questData,
         id: uuidv4(),
         dateAdded: nowISO,
-        status: 'active',
+        status: questData.status || 'active', // Default to 'active' if not provided
         objectives: questData.objectives.map(obj => ({ ...obj, id: uuidv4() }))
     };
 
