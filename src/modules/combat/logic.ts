@@ -3,17 +3,85 @@
  * @fileOverview Contains the core business logic for the Combat module.
  */
 
-import type { GameState } from '@/lib/types';
+import type { GameState, Player, GameEvent } from '@/lib/types';
 import type { Enemy } from './types';
+import { performSkillCheck } from '@/lib/skill-check';
 
-// This function doesn't exist yet, but it's a good example of what would go here.
-export function calculateDamage(attackerStats: any, defenderStats: any): number {
-    // Basic damage calculation
-    const baseDamage = attackerStats.attack * (1 - defenderStats.defense / 100);
-    return Math.max(1, Math.round(baseDamage));
+export function calculateDamage(attackerStats: Player['stats'], weaponDamage: number, defenderStats: Enemy): number {
+    const attackPower = (attackerStats.Force.value / 5) + (attackerStats.Dexterite.value / 10) + weaponDamage;
+    const defensePower = defenderStats.defense / 2;
+    const damage = attackPower - defensePower;
+    // Add some randomness
+    const randomFactor = (Math.random() - 0.5) * (damage * 0.2); // +/- 10%
+    const finalDamage = Math.round(damage + randomFactor);
+    return Math.max(1, finalDamage);
 }
 
-// Logic to handle the COMBAT_ACTION event, previously in the main reducer
+export function processCombatTurn(player: Player, enemy: Enemy, choice: any): { events: GameEvent[] } {
+    const events: GameEvent[] = [];
+
+    if (choice.combatActionType === 'attack') {
+        const weapon = player.inventory.find(i => i.type === 'tool' && i.combatStats?.damage) || { combatStats: { damage: 1 } };
+        const playerDamage = calculateDamage(player.stats, weapon.combatStats!.damage!, enemy);
+        const newEnemyHealth = enemy.health - playerDamage;
+        
+        events.push({
+            type: 'COMBAT_ACTION',
+            attacker: player.name,
+            target: 'enemy',
+            damage: playerDamage,
+            newHealth: newEnemyHealth,
+            action: `attaque avec ${weapon.name || 'ses poings'}`,
+        });
+
+        if (newEnemyHealth <= 0) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'player' });
+            events.push({ type: 'XP_GAINED', amount: 50 }); // Base XP for winning
+            return { events };
+        }
+
+        const enemyDamage = Math.max(1, enemy.attack - (player.stats.Constitution.value / 5));
+        const newPlayerHealth = player.stats.Sante.value - enemyDamage;
+
+        events.push({
+            type: 'COMBAT_ACTION',
+            attacker: enemy.name,
+            target: 'player',
+            damage: enemyDamage,
+            newHealth: newPlayerHealth,
+            action: 'riposte',
+        });
+        
+        if (newPlayerHealth <= 0) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
+        }
+    } else if (choice.combatActionType === 'flee') {
+        const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.esquive', 60, player.inventory, 0, player.physiology, player.momentum);
+        events.push(skillCheckResult as any); // cast for now
+        if (skillCheckResult.success) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'player' }); // Player escaped
+        } else {
+             const enemyDamage = Math.max(1, enemy.attack - (player.stats.Constitution.value / 10)); // Attack of opportunity
+             const newPlayerHealth = player.stats.Sante.value - enemyDamage;
+             events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: 'attaque dans le dos' });
+             if (newPlayerHealth <= 0) {
+                 events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
+             }
+        }
+    } else if (choice.id.startsWith('combat_use_item_')) {
+        const instanceId = choice.id.replace('combat_use_item_', '');
+        const item = player.inventory.find(i => i.instanceId === instanceId);
+        if (item && item.effects?.Sante) {
+            events.push({ type: 'ITEM_REMOVED', itemId: item.id, itemName: item.name, quantity: 1 });
+            const newHealth = Math.min(player.stats.Sante.max!, player.stats.Sante.value + (item.effects.Sante as any));
+            events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Sante', change: (item.effects.Sante as any), finalValue: newHealth });
+        }
+    }
+
+
+    return { events };
+}
+
 export function handleCombatAction(state: GameState, target: 'player' | 'enemy', newHealth: number): GameState {
     if (target === 'player' && state.player) {
         const newSante = { ...state.player.stats.Sante, value: newHealth };
@@ -26,12 +94,10 @@ export function handleCombatAction(state: GameState, target: 'player' | 'enemy',
     return state;
 }
 
-// Logic to handle COMBAT_STARTED
 export function handleCombatStarted(state: GameState, enemy: Enemy): GameState {
     return { ...state, currentEnemy: enemy };
 }
 
-// Logic to handle COMBAT_ENDED
 export function handleCombatEnded(state: GameState): GameState {
     return { ...state, currentEnemy: null };
 }

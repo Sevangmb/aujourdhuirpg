@@ -96,11 +96,11 @@ Votre mission est quadruple :
         - **Pensez comme un scénariste :** Quels choix créeraient du drame, du mystère, ou révéleraient quelque chose sur le monde ou le personnage ?
         - **NE CALCULEZ PAS :** Ne remplissez PAS les champs mécaniques comme \`energyCost\`, \`timeCost\`, ou \`skillGains\`. Le moteur de jeu s'en chargera.
         - **Soyez spécifique et inspiré :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
-    - **À INTERDIRE FORMELLEMENT (Actions trop génériques) :**
+    - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique) :**
         - ❌ "Explorer les environs", "Observer les alentours"
         - ❌ "Parler à quelqu'un" (Préférez "Confronter le marchand sur son mensonge")
-        - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre" (Le moteur de jeu s'en occupe déjà via la logique contextuelle)
-        - ❌ Ne créez **JAMAIS** de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.
+        - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre", "Acheter Objet X" (Le moteur de jeu s'en occupe déjà via la logique contextuelle)
+        - ❌ **Ne créez JAMAIS de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.**
     - **EXEMPLES D'ACTIONS ATTENDUES :**
         - ✅ "Utiliser votre compétence en Pistage pour déceler une incohérence dans le témoignage du garde."
         - ✅ "Proposer au musicien de rue de l'accompagner avec votre vieil harmonica, espérant attirer une audience... et peut-être des informations."
@@ -108,7 +108,7 @@ Votre mission est quadruple :
 
 3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. Si votre narration le justifie, proposez des changements concrets.
     - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête. Pour un 'job', proposez un 'requiredSkill' pertinent comme 'techniques.artisanat_general'.
-    - Si le joueur découvre un corps, utilisez \`newClues\` et \`startCombat\`.
+    - **Si la narration mène à un combat inévitable, utilisez \`startCombat\` pour introduire un ou plusieurs ennemis. Le moteur de jeu gérera ensuite le combat.**
     - Si le joueur trouve un portefeuille, utilisez \`newItems\` et \`newTransactions\`.
     - **Remplissez ces champs uniquement** si cela est logiquement justifié. Sinon, laissez-les vides.
 

@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
-import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
+import { handleCombatAction, handleCombatEnded, handleCombatStarted, processCombatTurn } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
@@ -120,9 +120,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               const newInventory = [...player.inventory];
               const itemToUpdate = { ...newInventory[itemIndex] };
               const xpEvents = grantXpToItem(itemToUpdate, event.xp);
-              // The grantXpToItem function will return events that we need to process.
-              // We can't just update the item here, because it might level up or evolve.
-              // So, we just push the new events to the main queue.
               eventQueue.push(...xpEvents);
             }
             break;
@@ -282,9 +279,8 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
   return { modifier, reason };
 }
 
-export async function processPlayerAction(
+export async function processExplorationAction(
   player: Player,
-  currentEnemy: Enemy | null,
   choice: StoryChoice,
   weatherData: WeatherData | null,
   cascadeResult: CascadeResult | null,
@@ -434,6 +430,22 @@ export async function processPlayerAction(
   return { events };
 }
 
+export async function processPlayerAction(
+  player: Player,
+  currentEnemy: Enemy | null,
+  choice: StoryChoice,
+  weatherData: WeatherData | null,
+  cascadeResult: CascadeResult | null,
+): Promise<{
+    events: GameEvent[];
+}> {
+    if (currentEnemy) {
+        return processCombatTurn(player, currentEnemy, choice);
+    } else {
+        return processExplorationAction(player, choice, weatherData, cascadeResult);
+    }
+}
+
 
 function summarizeGameEventsForAI(events: GameEvent[]): string {
     if (!events || events.length === 0) {
@@ -444,6 +456,12 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
 
     for (const event of events) {
         switch (event.type) {
+            case 'COMBAT_ACTION':
+                summaries.push(`- Au combat, ${event.attacker} a attaqué ${event.target === 'player' ? 'le joueur' : 'l\'ennemi'} avec ${event.action}, infligeant ${event.damage} dégâts. Nouvelle santé: ${event.newHealth}.`);
+                break;
+            case 'COMBAT_ENDED':
+                 summaries.push(`- Le combat est terminé. Le vainqueur est : ${event.winner}.`);
+                break;
             case 'SKILL_CHECK_RESULT':
                 summaries.push(
                     `- Test de compétence (${event.skill.replace(/_/g, ' ')}): ${event.success ? 'RÉUSSITE' : 'ÉCHEC'}. ` +
@@ -860,4 +878,65 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
     }
     
     return choices;
+}
+
+
+// --- COMBAT LOGIC ---
+export function generateCombatActions(player: Player, enemy: Enemy): StoryChoice[] {
+    const actions: StoryChoice[] = [];
+
+    // Basic Attack
+    actions.push({
+        id: 'combat_attack',
+        text: 'Attaquer',
+        description: `Attaquer ${enemy.name} avec votre meilleure option.`,
+        iconName: 'Sword',
+        type: 'action',
+        mood: 'adventurous',
+        isCombatAction: true,
+        combatActionType: 'attack',
+        timeCost: 0,
+        energyCost: 10,
+        consequences: ['Dégâts potentiels', 'Riposte de l\'ennemi'],
+    });
+
+    // Use Healing Item
+    const healingItems = player.inventory.filter(i => i.effects?.Sante && (i.effects.Sante as any) > 0);
+    if (healingItems.length > 0) {
+        const bestHeal = healingItems.sort((a,b) => (b.effects!.Sante as any) - (a.effects!.Sante as any))[0];
+        actions.push({
+            id: `combat_use_item_${bestHeal.instanceId}`,
+            text: `Utiliser ${bestHeal.name}`,
+            description: `Utiliser un objet pour récupérer de la santé.`,
+            iconName: 'Heart',
+            type: 'action',
+            mood: 'social',
+            isCombatAction: true,
+            combatActionType: 'special',
+            timeCost: 0,
+            energyCost: 2,
+            consequences: ['Récupération de santé'],
+        });
+    }
+
+    // Flee
+    actions.push({
+        id: 'combat_flee',
+        text: 'Fuir',
+        description: 'Tenter de s\'échapper du combat.',
+        iconName: 'Zap', // Placeholder icon
+        type: 'action',
+        mood: 'mysterious',
+        isCombatAction: true,
+        combatActionType: 'flee',
+        timeCost: 0,
+        energyCost: 15,
+        consequences: ['Fin du combat ?', 'Risque d\'attaque dans le dos'],
+        skillCheck: {
+            skill: 'physiques.esquive',
+            difficulty: 60, // Base difficulty to flee
+        },
+    });
+
+    return actions;
 }
