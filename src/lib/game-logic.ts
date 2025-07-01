@@ -284,14 +284,10 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
   else if (weatherDesc.includes('pluie') || weatherDesc.includes('averses')) {
     if (skill === 'stealth') modifier += 10;
     if (skill === 'observation') modifier -= 5;
-    if (skill === 'social') modifier -= 3; // a bit strange, but following the plan
+    // The plan mentioned social skill. This is a bit strange but let's assume it affects persuasion/networking
+    if (skill === 'persuasion' || skill === 'networking') modifier -= 3;
   }
-  // Sunny effects
-  else if (weatherDesc.includes('dégagé')) {
-    if (skill === 'endurance') modifier -= 3;
-    // 'moral' is a stat (Humeur), not a skill, so it cannot be handled here.
-    // This function only returns a modifier for the current skill check.
-  }
+  // Note: Sunny effects are handled as stat changes in processPlayerAction
 
   let reason = "";
   if (modifier > 0) {
@@ -324,12 +320,23 @@ export async function processPlayerAction(
   events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
 
 
-  // --- PHYSIOLOGY & ENERGY (Rebalanced) ---
+  // --- PHYSIOLOGY, ENERGY & WEATHER EFFECTS (Rebalanced) ---
   const hungerDecay = (choice.timeCost * 0.05) + (choice.energyCost * 0.1);
   const thirstDecay = (choice.timeCost * 0.08) + (choice.energyCost * 0.08);
+
+  let energyChangeFromWeather = 0;
+  if (weatherData) {
+      const weatherDesc = weatherData.description.toLowerCase();
+      if (weatherDesc.includes('dégagé')) { // Sunny
+          const finalHumeur = tempPlayerState.stats.Humeur.value + 5;
+          events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Humeur', change: 5, finalValue: finalHumeur });
+          energyChangeFromWeather = -3; // Endurance penalty
+      }
+  }
   
-  const newEnergy = tempPlayerState.stats.Energie.value - choice.energyCost;
-  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: newEnergy });
+  const totalEnergyChange = -choice.energyCost + energyChangeFromWeather;
+  const newEnergy = tempPlayerState.stats.Energie.value + totalEnergyChange;
+  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: totalEnergyChange, finalValue: newEnergy });
 
   const newHunger = tempPlayerState.physiology.basic_needs.hunger.level - hungerDecay;
   events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: newHunger });
