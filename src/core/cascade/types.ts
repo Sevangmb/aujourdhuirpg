@@ -23,7 +23,7 @@ export interface ModuleEnrichmentResult {
     moduleId: string;
     data: any; // The enriched data produced by the module.
     enrichmentLevel: 'basic' | 'detailed' | 'comprehensive';
-    dependenciesUsed: { [moduleId: string]: ModuleEnrichmentResult };
+    dependenciesUsed: string[]; // List of dependency module IDs used.
     executionTime: number; // in ms
 }
 

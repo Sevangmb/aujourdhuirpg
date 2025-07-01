@@ -48,7 +48,7 @@ export class RecettesModule implements EnrichmentModule {
       moduleId: this.id,
       data: data,
       enrichmentLevel: 'comprehensive',
-      dependenciesUsed: context.dependencyResults || {},
+      dependenciesUsed: Object.keys(context.dependencyResults || {}),
       executionTime: Date.now() - startTime,
     };
   }

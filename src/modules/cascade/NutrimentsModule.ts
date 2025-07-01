@@ -39,7 +39,7 @@ export class NutrimentsModule implements EnrichmentModule {
       moduleId: this.id,
       data: data,
       enrichmentLevel: 'basic',
-      dependenciesUsed: context.dependencyResults || {},
+      dependenciesUsed: Object.keys(context.dependencyResults || {}),
       executionTime: Date.now() - startTime,
     };
   }

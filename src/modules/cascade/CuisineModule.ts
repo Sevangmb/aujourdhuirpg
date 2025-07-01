@@ -69,7 +69,7 @@ export class CuisineModule implements EnrichmentModule {
       moduleId: this.id,
       data: cuisineEnrichment,
       enrichmentLevel: 'comprehensive',
-      dependenciesUsed: context.dependencyResults || {},
+      dependenciesUsed: Object.keys(context.dependencyResults || {}),
       executionTime: Date.now() - startTime,
     };
   }

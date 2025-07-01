@@ -27,7 +27,7 @@ export class IngredientsModule implements EnrichmentModule {
       moduleId: this.id,
       data: data,
       enrichmentLevel: 'detailed',
-      dependenciesUsed: context.dependencyResults || {},
+      dependenciesUsed: Object.keys(context.dependencyResults || {}),
       executionTime: Date.now() - startTime,
     };
   }

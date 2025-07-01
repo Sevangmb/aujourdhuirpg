@@ -20,7 +20,7 @@ export class CultureLocaleModule implements EnrichmentModule {
       moduleId: this.id,
       data: culturalData,
       enrichmentLevel: 'basic',
-      dependenciesUsed: {},
+      dependenciesUsed: [],
       executionTime: Date.now() - startTime,
     };
   }
