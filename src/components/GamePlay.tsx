@@ -41,9 +41,10 @@ const GamePlay: React.FC = () => {
             player.stats,
             choice.skillCheck.skill,
             choice.skillCheck.difficulty,
-            player.inventory, // Pass inventory for accurate calculation
-            0, // Situational modifiers from weather etc. are calculated server-side in deterministic effects
-            player.physiology
+            player.inventory,
+            0,
+            player.physiology,
+            player.momentum
           );
           return { ...choice, successProbability: probability };
         }

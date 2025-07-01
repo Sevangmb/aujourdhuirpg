@@ -6,8 +6,8 @@ import type { MajorDecision } from './decision-types';
 import type { Clue, GameDocument } from './evidence-types';
 import type { ToneSettings } from './tone-types';
 import type { Position } from './game-types'; // Corrected path
-import type { Transaction } from './finance-types';
-import type { HistoricalContact } from './historical-contact-types';
+import type { Transaction } from '../modules/economy/types';
+import type { HistoricalContact } from '../modules/historical/types';
 import type { GameEra } from './era-types';
 import type { AdvancedPhysiologySystem } from './physiology-types';
 
@@ -99,6 +99,13 @@ export type Alignment = {
   goodEvil: number; // e.g., -100 (Evil) to 100 (Good)
 };
 
+export interface MomentumSystem {
+  consecutive_successes: number;
+  consecutive_failures: number;
+  momentum_bonus: number;
+  desperation_bonus: number;
+}
+
 export type Player = {
   uid?: string; // Firebase Auth UID, optional for anonymous or pre-auth states
   isAnonymous?: boolean;
@@ -113,6 +120,7 @@ export type Player = {
   stats: PlayerStats;
   skills: AdvancedSkillSystem; // UPDATED from Skills to AdvancedSkillSystem
   physiology: AdvancedPhysiologySystem; // NEW: Advanced physiology system
+  momentum: MomentumSystem; // NEW: Momentum System
   traitsMentalStates: TraitsMentalStates;
   progression: Progression;
   alignment: Alignment;

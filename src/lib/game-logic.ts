@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
@@ -68,6 +68,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
                  case 'PLAYER_PHYSIOLOGY_CHANGE':
                     player = { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } };
+                    break;
+                case 'MOMENTUM_UPDATED':
+                    player = { ...player, momentum: event.newMomentum };
                     break;
                 case 'XP_GAINED': {
                     const { newProgression, events: xpEvents } = addPlayerXp(player.progression, event.amount);
@@ -344,11 +347,11 @@ export async function processPlayerAction(
     }
   }
   
-  // --- SKILL CHECK & CONSEQUENCES (XP, Item Evolution) ---
+  // --- SKILL CHECK & CONSEQUENCES (XP, Item Evolution, Momentum) ---
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
     const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
-    const skillCheckResult = performSkillCheck(tempPlayerState.skills, tempPlayerState.stats, skill, difficulty, tempPlayerState.inventory, weatherModifier, tempPlayerState.physiology);
+    const skillCheckResult = performSkillCheck(tempPlayerState.skills, tempPlayerState.stats, skill, difficulty, tempPlayerState.inventory, weatherModifier, tempPlayerState.physiology, tempPlayerState.momentum);
 
     events.push({
         type: 'SKILL_CHECK_RESULT',
@@ -360,6 +363,28 @@ export async function processPlayerAction(
         difficulty: skillCheckResult.difficultyTarget,
     });
     
+    // Update Momentum
+    const newMomentum = { ...tempPlayerState.momentum };
+    if (skillCheckResult.success) {
+      newMomentum.consecutive_successes += 1;
+      newMomentum.consecutive_failures = 0;
+      newMomentum.momentum_bonus = Math.min(5, newMomentum.consecutive_successes); // +1 per success, max +5
+      newMomentum.desperation_bonus = 0;
+      if (newMomentum.momentum_bonus > 1) {
+          events.push({ type: 'TEXT_EVENT', text: `Votre série de succès vous donne un bonus de +${newMomentum.momentum_bonus} !`});
+      }
+    } else {
+      newMomentum.consecutive_failures += 1;
+      newMomentum.consecutive_successes = 0;
+      newMomentum.desperation_bonus = Math.min(8, newMomentum.consecutive_failures * 2); // +2 per failure, max +8
+      newMomentum.momentum_bonus = 0;
+      if (newMomentum.desperation_bonus > 0) {
+          events.push({ type: 'TEXT_EVENT', text: `Face à l'échec, votre détermination vous donne un bonus de +${newMomentum.desperation_bonus} !`});
+      }
+    }
+    events.push({ type: 'MOMENTUM_UPDATED', newMomentum });
+
+    // Grant Skill XP
     const skillXpGained = getSkillXp(skillCheckResult.difficultyTarget, skillCheckResult.success);
     if (skillXpGained > 0) {
       events.push({ type: 'SKILL_XP_AWARDED', skill: skill, amount: skillXpGained });
@@ -377,7 +402,7 @@ export async function processPlayerAction(
         }
       }
       
-      // Grant bonus player XP from choice
+      // Grant bonus skill XP from choice
       if (choice.skillGains) {
         for (const [skillPath, amount] of Object.entries(choice.skillGains)) {
           events.push({ type: 'SKILL_XP_AWARDED', skill: skillPath, amount: amount });

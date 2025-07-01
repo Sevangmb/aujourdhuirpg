@@ -1,7 +1,7 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem, SkillDetail } from '@/lib/types';
+import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem, SkillDetail, MomentumSystem } from '@/lib/types';
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -98,6 +98,14 @@ export const initialProgression: Progression = {
 export const initialAlignment: Alignment = {
   chaosLawful: 0,
   goodEvil: 0,
+};
+
+// NEW: Initial Momentum
+export const initialMomentum: MomentumSystem = {
+    consecutive_successes: 0,
+    consecutive_failures: 0,
+    momentum_bonus: 0,
+    desperation_bonus: 0,
 };
 
 export const initialInventory: IntelligentItem[] = [

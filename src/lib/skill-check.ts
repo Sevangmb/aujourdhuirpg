@@ -5,7 +5,7 @@
  * stats, and situational factors against a difficulty target.
  */
 
-import type { AdvancedSkillSystem, PlayerStats, IntelligentItem, AdvancedPhysiologySystem, SkillDetail } from './types';
+import type { AdvancedSkillSystem, PlayerStats, IntelligentItem, AdvancedPhysiologySystem, SkillDetail, MomentumSystem } from './types';
 
 export type DegreeOfSuccess = 'critical_failure' | 'failure' | 'success' | 'critical_success';
 
@@ -52,13 +52,12 @@ function getSkillValueByPath(skills: AdvancedSkillSystem, path: string): SkillDe
 const getPhysiologyPenalty = (physiology: AdvancedPhysiologySystem): number => {
     let penalty = 0;
     const { hunger, thirst } = physiology.basic_needs;
-    // Hunger penalties (gradual)
+
     if (hunger.level < 10) penalty -= 12;
     else if (hunger.level < 30) penalty -= 8;
     else if (hunger.level < 50) penalty -= 5;
     else if (hunger.level < 70) penalty -= 2;
 
-    // Thirst penalties (more severe)
     if (thirst.level < 10) penalty -= 15;
     else if (thirst.level < 20) penalty -= 10;
     else if (thirst.level < 40) penalty -= 6;
@@ -91,6 +90,7 @@ function getSpecializationBonus(skills: AdvancedSkillSystem, skillPath: string):
  * @param inventory The player's current inventory to check for item modifiers.
  * @param situationalModifiers Optional circumstantial modifiers (e.g., weather).
  * @param physiology The player's current physiological state.
+ * @param momentum The player's current momentum state.
  * @returns A SkillCheckResult object detailing the outcome.
  */
 export function performSkillCheck(
@@ -100,7 +100,8 @@ export function performSkillCheck(
   difficultyTarget: number,
   inventory: IntelligentItem[],
   situationalModifiers: number = 0,
-  physiology: AdvancedPhysiologySystem
+  physiology: AdvancedPhysiologySystem,
+  momentum: MomentumSystem
 ): SkillCheckResult {
   const skillDetail = getSkillValueByPath(skills, skillPath);
   const baseSkillValue = skillDetail.level;
@@ -109,7 +110,6 @@ export function performSkillCheck(
   const controllingStatName = skillCategoryToStatMap[category];
   const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
   
-  // Rebalanced Stat Modifier (logarithmic style curve)
   const statModifierValue = controllingStatValue > 50 ? Math.floor(Math.sqrt(controllingStatValue - 50) * 2) : 0;
 
   const itemContributions: { name: string; bonus: number }[] = [];
@@ -122,14 +122,13 @@ export function performSkillCheck(
     return total;
   }, 0);
 
-  // Capped item bonus
   const cappedItemModifierValue = Math.min(itemModifierValue, 15);
   
   const physiologicalModifiers = getPhysiologyPenalty(physiology);
-  
   const specializationBonus = getSpecializationBonus(skills, skillPath);
+  const momentumBonus = momentum.momentum_bonus + momentum.desperation_bonus;
 
-  const totalModifier = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + specializationBonus;
+  const totalModifier = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + specializationBonus + momentumBonus;
   const rollValue = Math.floor(Math.random() * 100) + 1;
   const totalAchieved = rollValue + totalModifier;
 
@@ -154,7 +153,7 @@ export function performSkillCheck(
     statModifierValue,
     itemModifierValue: cappedItemModifierValue,
     itemContributions,
-    situationalModifierValue: situationalModifiers + physiologicalModifiers + specializationBonus,
+    situationalModifierValue: situationalModifiers + physiologicalModifiers + specializationBonus + momentumBonus,
     effectiveScore: totalModifier,
     totalAchieved,
     difficultyTarget,
@@ -171,6 +170,7 @@ export function performSkillCheck(
  * @param inventory The player's inventory.
  * @param situationalModifiers Any situational modifiers.
  * @param physiology The player's current physiological state.
+ * @param momentum The player's current momentum state.
  * @returns A number representing the percentage chance of success (clamped between 6% and 95%).
  */
 export function calculateSuccessProbability(
@@ -180,7 +180,8 @@ export function calculateSuccessProbability(
   difficultyTarget: number,
   inventory: IntelligentItem[],
   situationalModifiers: number = 0,
-  physiology: AdvancedPhysiologySystem
+  physiology: AdvancedPhysiologySystem,
+  momentum: MomentumSystem
 ): number {
   const skillDetail = getSkillValueByPath(skills, skillPath);
   const baseSkillValue = skillDetail.level;
@@ -199,10 +200,10 @@ export function calculateSuccessProbability(
   const cappedItemModifierValue = Math.min(itemModifierValue, 15);
 
   const physiologicalModifiers = getPhysiologyPenalty(physiology);
-  
   const specializationBonus = getSpecializationBonus(skills, skillPath);
+  const momentumBonus = momentum.momentum_bonus + momentum.desperation_bonus;
 
-  const effectiveScore = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + specializationBonus;
+  const effectiveScore = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + specializationBonus + momentumBonus;
   const requiredRoll = difficultyTarget - effectiveScore;
   const successChance = 101 - requiredRoll;
 

@@ -1,8 +1,9 @@
 
-import type { Player } from './player-types';
+import type { Player, MomentumSystem } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
-import type { Quest, PNJ, HistoricalContact, DynamicItemCreationPayload } from '.';
+import type { Quest, PNJ, DynamicItemCreationPayload } from '.';
+import type { HistoricalContact } from '../modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 
 // This type represents the data for a scenario that the player is currently in.
@@ -27,6 +28,7 @@ export type GameEvent =
   | { type: 'TEXT_EVENT'; text: string; } // Generic event for narration
   | { type: 'PLAYER_STAT_CHANGE'; stat: keyof Player['stats']; change: number; finalValue: number; }
   | { type: 'PLAYER_PHYSIOLOGY_CHANGE'; stat: 'hunger' | 'thirst'; change: number; finalValue: number; }
+  | { type: 'MOMENTUM_UPDATED'; newMomentum: MomentumSystem }
   | { type: 'XP_GAINED'; amount: number; }
   | { type: 'PLAYER_LEVELED_UP'; newLevel: number; }
   | { type: 'SKILL_XP_AWARDED', skill: string, amount: number }
