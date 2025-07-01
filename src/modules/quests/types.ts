@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import type { PlayerStats } from "@/lib/types";
 
@@ -58,7 +59,7 @@ export const QuestInputSchema = z.object({
   giver: z.string().optional().describe("Nom du PNJ qui a donné la quête. OMETTRE si pas de PNJ donneur spécifique."),
   rewardDescription: z.string().optional().describe("Description textuelle de la récompense potentielle."),
   rewards: QuestRewardsSchema.optional().describe("Les récompenses structurées pour la quête."),
-  requiredSkill: z.string().optional().describe("Pour les 'jobs', le chemin de la compétence requise (ex: 'technical.crafting')."),
+  requiredSkill: z.string().optional().describe("Pour les 'jobs', le chemin de la compétence requise (ex: 'techniques.artisanat_general')."),
   relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
 });
 
@@ -73,3 +74,5 @@ export const QuestUpdateSchema = z.object({
   })).optional().describe("Liste des objectifs dont le statut a changé."),
   newObjectiveDescription: z.string().optional().describe("Description d'un nouvel objectif ajouté à cette quête (rare). L'IA devrait préférer créer des sous-quêtes ou des quêtes séquentielles.")
 });
+
+    

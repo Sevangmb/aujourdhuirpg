@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Contains the core business logic for the Economy module.
  */
@@ -77,3 +78,5 @@ export function calculateJobReward(playerSkills: Player['skills'], quest: Pick<Q
     if (skillLevel >= 10) return Math.floor(Math.random() * 16) + 15; // 15-30€
     return Math.floor(Math.random() * 11) + 5; // 5-15€
 }
+
+    
