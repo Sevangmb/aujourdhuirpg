@@ -4,13 +4,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameAction, GameEvent } from '@/lib/types';
 import type { Enemy } from '@/modules/combat/types';
-import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { calculateSuccessProbability } from '@/lib/skill-check';
 import { runCascadeForAction } from '@/core/cascade/cascade-system';
 
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
@@ -25,38 +24,9 @@ const GamePlay: React.FC = () => {
   const { weather: { data: weatherData } } = gameState.contextualData;
 
   const [isLoading, setIsLoading] = useState(false);
-  const [currentChoices, setCurrentChoices] = useState<StoryChoice[]>([]);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
-  useEffect(() => {
-    const player = gameState?.player;
-    const choices = gameState?.currentScenario?.choices || [];
-
-    if (player) {
-      const choicesWithProbability = choices.map(choice => {
-        if (choice.skillCheck) {
-          const probability = calculateSuccessProbability(
-            player.skills,
-            player.stats,
-            choice.skillCheck.skill,
-            choice.skillCheck.difficulty,
-            player.inventory,
-            0,
-            player.physiology,
-            player.momentum
-          );
-          return { ...choice, successProbability: probability };
-        }
-        return choice;
-      });
-      setCurrentChoices(choicesWithProbability);
-    } else {
-      setCurrentChoices(choices);
-    }
-  }, [gameState?.currentScenario, gameState?.player]);
-
-
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
     if (!gameState || !gameState.player) return;
 
@@ -83,15 +53,22 @@ const GamePlay: React.FC = () => {
       const aiGeneratedEvents = convertAIOutputToEvents(aiOutput);
 
       // 7. Dispatch ALL events (deterministic + AI-generated) to *actually* update the state
-      dispatch({ type: 'APPLY_GAME_EVENTS', payload: [...deterministicEvents, ...aiGeneratedEvents] });
+      const allEvents = [...deterministicEvents, ...aiGeneratedEvents];
+      dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
       
-      // --- NEW: Generate contextual actions based on POIs and Player State in the new state ---
+      // 8. Generate contextual actions based on POIs and Player State in the new state
+      // We need to re-run the reducer on a temp variable to get the final state for choice generation
       const finalStateAfterAllEvents = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
       const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!);
       const stateBasedActions = generatePlayerStateActions(finalStateAfterAllEvents.player!);
-      const allChoices = [...(aiOutput.choices || []), ...poiActions, ...stateBasedActions];
+      
+      // 9. Enrich AI choices with calculated costs and probabilities
+      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateAfterAllEvents.player!);
+      
+      // 10. Merge all choices
+      const allChoices = [...enrichedAIChoices, ...poiActions, ...stateBasedActions];
 
-      // 8. Set the new scenario from the AI's output, now with merged choices
+      // 11. Set the new scenario from the AI's output, now with fully enriched and merged choices
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: allChoices, aiRecommendation: aiOutput.aiRecommendation } });
 
     } catch (error) {
@@ -122,7 +99,7 @@ const GamePlay: React.FC = () => {
         <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
         {!isLoading && !currentEnemy && (
           <ChoiceSelectionDisplay
-            choices={currentChoices}
+            choices={currentScenario.choices || []}
             onSelectChoice={handleChoiceSelected}
             isLoading={isLoading}
             aiRecommendation={currentScenario.aiRecommendation || null}

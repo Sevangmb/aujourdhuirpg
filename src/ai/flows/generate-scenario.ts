@@ -96,6 +96,7 @@ Votre mission est quadruple :
 2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter un café...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
     - **EXIGENCES STRICTES POUR VOS CHOIX :**
         - **Pensez comme un scénariste :** Quels choix créeraient du drame, du mystère, ou révéleraient quelque chose sur le monde ou le personnage ?
+        - **NE CALCULEZ PAS les coûts et récompenses :** Ne remplissez PAS les champs mécaniques comme \`energyCost\`, \`timeCost\`, ou \`skillGains\`. Le moteur de jeu s'en chargera. Concentrez-vous sur la création d'actions narrativement intéressantes.
         - **Utilisez les PNJ et l'intrigue :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
         - **Soyez spécifique :** Ne vous contentez pas d'un verbe, décrivez l'action de manière évocatrice.
     - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique du jeu) :**
@@ -225,7 +226,7 @@ Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le 
 **Contraintes Importantes :**
 - Le prologue doit être purement narratif.
 - La sortie DOIT être du HTML valide.
-- Fournissez 3 suggestions d'actions initiales dans le champ \`choices\` en respectant la structure complète de l'objet 'StoryChoice'.
+- Fournissez 3 suggestions d'actions initiales dans le champ \`choices\` en respectant la structure NARRATIVE de l'objet 'StoryChoice'. Ne vous préoccupez pas des valeurs mécaniques comme les coûts ou les gains.
 
 Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure.
 `;

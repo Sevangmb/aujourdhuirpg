@@ -21,9 +21,9 @@ import type { GameEvent } from '@/lib/types';
 export const GenerateScenarioInputSchema = z.object({
   player: PlayerInputSchema.describe("L'objet complet contenant toutes les informations sur le joueur."),
   playerChoiceText: z.string().describe("L'action textuelle que le joueur a saisie."),
-  gameEvents: z.string().describe("Une chaîne JSON représentant une liste d'événements de jeu que le moteur a calculés. L'IA DOIT raconter ces événements de manière immersive."),
+  gameEvents: z.string().describe("Une chaîne de caractères résumant les événements de jeu que le moteur a calculés. L'IA DOIT raconter ces événements de manière immersive."),
   previousScenarioText: z.string().describe('Le contexte du scénario précédent (le texte HTML du scénario précédent).'),
-  cascadeResult: z.string().optional().describe("Une chaîne JSON contenant les résultats de la cascade d'enrichissement modulaire. L'IA doit utiliser ce contexte ultra-riche pour sa narration."),
+  cascadeResult: z.string().optional().describe("Un résumé textuel des informations contextuelles générées par les modules de la cascade. L'IA doit utiliser ce contexte pour sa narration."),
 }).describe("Schéma d'entrée pour le flux generateScenario. L'IA est un narrateur, pas un décideur.");
 
 
@@ -34,20 +34,23 @@ export const StoryChoiceSchema = z.object({
   iconName: z.enum(CHOICE_ICON_NAMES).describe("Le nom d'une icône Lucide-React valide pour représenter le choix."),
   type: z.enum(ACTION_TYPES).describe("La catégorie de l'action."),
   mood: z.enum(MOOD_TYPES).describe("L'ambiance générale de ce choix."),
-  energyCost: z.number().describe("Le coût en énergie estimé pour le joueur (1-20)."),
-  timeCost: z.number().describe("Le coût en temps estimé en minutes pour l'action (5-60)."),
   consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
+  
   skillCheck: z.object({
       skill: z.string().describe("Le chemin de la compétence à tester (ex: 'cognitive.observation')."),
       difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
   }).optional().describe("Un test de compétence optionnel associé à cette action."),
-  skillGains: z.record(z.number()).optional().describe("XP de compétence gagnée lors de la réussite de cette action. Ex: {'cognitive.observation': 5, 'physical.stealth': 2}"),
+  
+  // Mechanical fields are optional. The game logic will calculate them.
+  energyCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
+  timeCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
+  skillGains: z.record(z.number()).optional().describe("LAISSER VIDE. Le moteur de jeu attribuera l'XP."),
   physiologicalEffects: z.object({ 
       hunger: z.number().optional(), 
       thirst: z.number().optional() 
   }).optional().describe("Effets physiologiques si le choix implique de manger/boire."),
   statEffects: z.record(z.number()).optional().describe("Effets sur les statistiques du joueur après l'action. Ex: {'Energie': 5, 'Stress': -10}"),
-}).describe("Un choix guidé et riche pour le joueur.");
+}).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.");
 
 // --- Main Output Schema ---
 // The AI's response now includes both narration AND potential game state changes.

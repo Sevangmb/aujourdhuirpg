@@ -4,13 +4,14 @@
 
 
 
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
 import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 import { getMasterItemById } from '@/data/items';
-import { performSkillCheck } from './skill-check';
+import { performSkillCheck, calculateSuccessProbability } from './skill-check';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
@@ -324,13 +325,13 @@ export async function processPlayerAction(
 
 
   // --- LOG ACTION & TIME ---
-  events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost });
+  events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost || 0 });
   events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
 
 
   // --- PHYSIOLOGY, ENERGY & WEATHER EFFECTS (Rebalanced) ---
-  const hungerDecay = (choice.timeCost * 0.05) + (choice.energyCost * 0.1);
-  const thirstDecay = (choice.timeCost * 0.08) + (choice.energyCost * 0.08);
+  const hungerDecay = ((choice.timeCost || 0) * 0.05) + ((choice.energyCost || 0) * 0.1);
+  const thirstDecay = ((choice.timeCost || 0) * 0.08) + ((choice.energyCost || 0) * 0.08);
 
   let energyChangeFromWeather = 0;
   if (weatherData) {
@@ -342,7 +343,7 @@ export async function processPlayerAction(
       }
   }
   
-  const totalEnergyChange = -choice.energyCost + energyChangeFromWeather;
+  const totalEnergyChange = -(choice.energyCost || 0) + energyChangeFromWeather;
   const newEnergy = tempPlayerState.stats.Energie.value + totalEnergyChange;
   events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: totalEnergyChange, finalValue: newEnergy });
 
@@ -482,7 +483,7 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
             case 'SKILL_CHECK_RESULT':
                 summaries.push(
                     `- Test de compétence (${event.skill}): ${event.success ? 'RÉUSSITE' : 'ÉCHEC'}. ` +
-                    `(Score: ${event.totalAchieved} vs Difficulté: ${event.difficultyTarget})`
+                    `(Score: ${event.total} vs Difficulté: ${event.difficulty})`
                 );
                 break;
             case 'PLAYER_STAT_CHANGE':
@@ -709,6 +710,60 @@ export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameE
   }
 
   return events;
+}
+
+/**
+ * Takes choices from the AI and enriches them with calculated mechanical data.
+ * @param choices The raw choices from the AI.
+ * @param player The current player state.
+ * @returns The same choices, but with mechanical properties filled in.
+ */
+export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player): StoryChoice[] {
+    if (!choices) return [];
+
+    return choices.map(choice => {
+        const enrichedChoice = { ...choice };
+
+        // Assign default costs based on action type if not provided
+        if (enrichedChoice.timeCost === undefined) {
+            switch(choice.type) {
+                case 'reflection': enrichedChoice.timeCost = 10; break;
+                case 'observation': enrichedChoice.timeCost = 15; break;
+                case 'social': enrichedChoice.timeCost = 15; break;
+                case 'exploration': enrichedChoice.timeCost = 30; break;
+                case 'action': enrichedChoice.timeCost = 5; break;
+                case 'job': enrichedChoice.timeCost = 60; break;
+                default: enrichedChoice.timeCost = 10;
+            }
+        }
+        if (enrichedChoice.energyCost === undefined) {
+            switch(choice.type) {
+                case 'reflection': enrichedChoice.energyCost = 2; break;
+                case 'observation': enrichedChoice.energyCost = 5; break;
+                case 'social': enrichedChoice.energyCost = 5; break;
+                case 'exploration': enrichedChoice.energyCost = 10; break;
+                case 'action': enrichedChoice.energyCost = 8; break;
+                case 'job': enrichedChoice.energyCost = 20; break;
+                default: enrichedChoice.energyCost = 5;
+            }
+        }
+
+        // Calculate success probability if there's a skill check
+        if (choice.skillCheck) {
+            enrichedChoice.successProbability = calculateSuccessProbability(
+                player.skills,
+                player.stats,
+                choice.skillCheck.skill,
+                choice.skillCheck.difficulty,
+                player.inventory,
+                0,
+                player.physiology,
+                player.momentum
+            );
+        }
+
+        return enrichedChoice;
+    });
 }
 
 
