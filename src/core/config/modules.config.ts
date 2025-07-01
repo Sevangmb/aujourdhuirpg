@@ -7,10 +7,12 @@ import { playerModule } from '@/modules/player';
 import { inventoryModule } from '@/modules/inventory';
 import { combatModule } from '@/modules/combat';
 import { questModule } from '@/modules/quests';
+import { economyModule } from '@/modules/economy';
 
 export const ALL_MODULES: CascadeModule[] = [
   playerModule,
   inventoryModule,
   combatModule,
   questModule,
+  economyModule,
 ];

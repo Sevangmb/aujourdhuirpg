@@ -8,7 +8,7 @@ export * from './evidence-types';
 export * from './tone-types';
 export * from './game-types';
 export * from './geo-intelligence-types';
-export * from './finance-types';
+export * from '@/modules/economy/types';
 export * from './historical-contact-types';
 export * from './era-types';
 export * from './choice-types';

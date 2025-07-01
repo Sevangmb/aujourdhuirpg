@@ -14,6 +14,7 @@ import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addXp } from '@/modules/player/logic';
 import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
+import { handleMoneyChange } from '@/modules/economy/logic';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -160,11 +161,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     return { ...currentState, player: { ...player, currentLocation: newLocation, inventory: newInventory }, gameTimeInMinutes: currentState.gameTimeInMinutes + event.duration };
                 }
                 
-                case 'MONEY_CHANGED': {
-                    const nowISO = new Date().toISOString();
-                    const newBalance = player.money + event.amount;
-                    return { ...currentState, player: { ...player, money: newBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
-                }
+                case 'MONEY_CHANGED':
+                    return handleMoneyChange(currentState, event.amount, event.description);
+
                 case 'QUEST_ADDED':
                     return handleAddQuest(currentState, event.quest);
         
