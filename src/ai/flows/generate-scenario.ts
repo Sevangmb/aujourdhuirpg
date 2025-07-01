@@ -16,7 +16,6 @@ import { getWikipediaInfoTool } from '@/ai/tools/get-wikipedia-info-tool';
 import { getNearbyPoisTool } from '@/ai/tools/get-nearby-pois-tool';
 import { getNewsTool } from '@/ai/tools/get-news-tool';
 import { getRecipesTool } from '@/ai/tools/get-recipes-tool';
-import { getBookDetailsTool } from '@/ai/tools/get-book-details-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
@@ -227,7 +226,7 @@ const SuggestedActionContextSchema = z.object({
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool],
   input: {schema: GenerateScenarioInputSchema.extend({ 
     toneInstructions: z.string(),
     nearbyEstablishments: z.array(PoiContextSchema).optional(),
@@ -275,7 +274,7 @@ ${PROLOGUE_PROMPT_TASK}
 const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
+  tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool],
   input: {schema: GenerateScenarioInputSchema.extend({ 
     toneInstructions: z.string(),
     nearbyEstablishments: z.array(PoiContextSchema).optional(),
