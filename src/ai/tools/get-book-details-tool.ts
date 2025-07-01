@@ -3,7 +3,8 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { searchBooks, type BookSearchResult } from '@/data-sources/culture/google-books-api';
+import { searchBooks } from '@/data-sources/culture/google-books-api';
+import type { BookSearchResult } from '@/lib/types';
 
 const GetBookDetailsInputSchema = z.object({
   query: z.string().describe('The search query for the book (e.g., title, author, ISBN).'),
