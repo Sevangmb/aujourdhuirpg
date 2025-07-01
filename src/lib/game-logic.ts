@@ -673,12 +673,21 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 
   const gameEventsSummary = summarizeGameEventsForAI(gameEvents || []);
 
+  const contextualActions = generateActionsForPOIs(gameState.nearbyPois || [], player, gameState.gameTimeInMinutes);
+  const suggestedContextualActions = contextualActions.map(action => ({
+    text: action.text,
+    description: action.description,
+    type: action.type,
+    estimatedCost: action.economicImpact?.cost,
+  }));
+
   return {
     player: playerInputForAI,
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: gameEventsSummary,
     cascadeResult: cascadeSummary.replace(/[\n\r]/g, ' '),
+    suggestedContextualActions,
   };
 }
 
