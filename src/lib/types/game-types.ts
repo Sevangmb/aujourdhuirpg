@@ -3,15 +3,7 @@ import type { Player } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
 import type { Quest, PNJ, HistoricalContact, DynamicItemCreationPayload } from '.';
-
-export type Enemy = {
-  name: string;
-  description: string;
-  health: number;
-  maxHealth: number;
-  attack: number;
-  defense: number;
-};
+import type { Enemy } from '@/modules/combat/types';
 
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {

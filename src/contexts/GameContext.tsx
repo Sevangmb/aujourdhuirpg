@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject } from '@/lib/types';
+import type { Enemy } from '@/modules/combat/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, fetchPoisForCurrentLocation, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';

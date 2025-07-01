@@ -2,7 +2,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { StoryChoice, GameAction, Enemy, GameEvent } from '@/lib/types';
+import type { StoryChoice, GameAction, GameEvent } from '@/lib/types';
+import type { Enemy } from '@/modules/combat/types';
 import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';

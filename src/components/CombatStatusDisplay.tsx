@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import type { Enemy } from '@/lib/types';
+import type { Enemy } from '@/modules/combat/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Shield } from 'lucide-react';

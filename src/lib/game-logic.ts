@@ -1,4 +1,6 @@
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent, EnrichedObject } from './types';
+
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject } from './types';
+import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -10,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addXp } from '@/modules/player/logic';
+import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -207,21 +210,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 }
 
                 case 'COMBAT_STARTED':
-                    return { ...currentState, currentEnemy: event.enemy };
+                    return handleCombatStarted(currentState, event.enemy);
                 
                 case 'COMBAT_ENDED':
-                    return { ...currentState, currentEnemy: null };
+                    return handleCombatEnded(currentState);
                 
                 case 'COMBAT_ACTION':
-                    if (event.target === 'player' && player) {
-                        const newSante = { ...player.stats.Sante, value: event.newHealth };
-                        const newPlayer = { ...player, stats: { ...player.stats, Sante: newSante } };
-                        return { ...currentState, player: newPlayer };
-                    } else if (event.target === 'enemy' && currentState.currentEnemy) {
-                        const newEnemy = { ...currentState.currentEnemy, health: event.newHealth };
-                        return { ...currentState, currentEnemy: newEnemy };
-                    }
-                    return currentState;
+                    return handleCombatAction(currentState, event.target, event.newHealth);
 
                 case 'GAME_TIME_PROGRESSED':
                     return { ...currentState, gameTimeInMinutes: currentState.gameTimeInMinutes + event.minutes };
