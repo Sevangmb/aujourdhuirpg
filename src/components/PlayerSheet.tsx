@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Player, AdvancedSkillSystem, SkillCategory } from '@/lib/types';
@@ -11,24 +12,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './
 interface PlayerSheetProps {
   player: Player;
 }
-
-const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
-  Force: Dumbbell,
-  Dexterite: UserCog,
-  Constitution: Heart,
-  Intelligence: Book,
-  Perception: Crosshair,
-  Charisme: Users,
-  Volonte: Anchor,
-  Savoir: Book,
-  Technique: UserCog,
-  MagieOccultisme: Sparkles,
-  Discretion: CloudFog,
-  ChanceDestin: Dices,
-  Sante: Heart,
-  Energie: Zap,
-  Stress: CloudFog,
-};
 
 const skillCategoryIcons: { [key in keyof AdvancedSkillSystem]: React.ElementType } = {
   physiques: Dumbbell,
@@ -49,6 +32,24 @@ const skillCategoryLabels: { [key in keyof AdvancedSkillSystem]: string } = {
 
 const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   if (!player) return null;
+
+  const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
+    Force: Dumbbell,
+    Dexterite: UserCog,
+    Constitution: Heart,
+    Intelligence: Book,
+    Perception: Crosshair,
+    Charisme: Users,
+    Volonte: Anchor,
+    Savoir: Book,
+    Technique: UserCog,
+    MagieOccultisme: Sparkles,
+    Discretion: CloudFog,
+    ChanceDestin: Dices,
+    Sante: Heart,
+    Energie: Zap,
+    Stress: CloudFog,
+  };
 
   const xpPercentage = player.progression.xpToNextLevel > 0 
     ? (player.progression.xp / player.progression.xpToNextLevel) * 100 
