@@ -1,111 +1,122 @@
 /**
- * @fileOverview Manages the cascade of modules to enrich a simple object into a detailed one.
+ * @fileOverview Enrichment module to assess the magical potential of an object.
  */
-
 import type {
-  BaseObject,
-  EnrichedObject,
   ObjectEnrichmentModule,
+  ObjectModuleResult,
+  BaseObject,
   ObjectEnrichmentContext,
-} from './object-types';
+  EnchantmentPotential,
+  LocalEnchantment,
+  CurrentEnchantment,
+  MaterialInfo,
+} from '@/core/objects/object-types';
 
-export class ObjectCascadeManager {
-  private objectModules = new Map<string, ObjectEnrichmentModule>();
+export class EnchantementsModule implements ObjectEnrichmentModule {
+  readonly id = 'enchantements';
 
-  /**
-   * 🎯 MAIN FUNCTION - Transforms a simple object into an ultra-rich one.
-   */
   async enrichObject(
-    baseObject: BaseObject,
+    object: BaseObject,
     context: ObjectEnrichmentContext
-  ): Promise<EnrichedObject> {
-    const startTime = Date.now();
-    console.log(`🎒 Enriching object: ${baseObject.name}`);
+  ): Promise<ObjectModuleResult> {
+    console.log(`✨ Analyzing magical potential: ${object.name}`);
 
-    // 1. Determine which modules to use based on the object's type
-    const relevantModules = this.determineRelevantModules(baseObject.type);
-    console.log(`📋 Selected modules for type "${baseObject.type}": ${relevantModules.join(', ')}`);
+    const enchantmentPotential = this.assessEnchantmentPotential(object);
+    const availableEnchantments = this.findLocalEnchantments(context);
+    const currentEnchantments = this.analyzeCurrentEnchantments(object);
 
-    // 2. Execute all relevant modules in a predefined sequence
-    let enrichedObject: EnrichedObject = { ...baseObject };
-    const executionChain: string[] = [];
+    return {
+      moduleId: this.id,
+      enrichmentData: {
+        enchantmentPotential: {
+          maxSlots: enchantmentPotential.slots,
+          compatibleSchools: enchantmentPotential.schools,
+          materialReceptivity: enchantmentPotential.receptivity,
+        },
+        availableEnchantments: availableEnchantments.map((ench) => ({
+          name: ench.name,
+          effect: ench.effect,
+          cost: ench.cost,
+          enchanter: ench.enchanter,
+          successChance: this.calculateSuccessChance(
+            ench,
+            object,
+            enchantmentPotential.receptivity
+          ),
+        })),
+        currentEnchantments,
+      },
+    };
+  }
 
-    for (const moduleId of relevantModules) {
-      const module = this.objectModules.get(moduleId);
-      if (module) {
-        try {
-            const result = await module.enrichObject(enrichedObject, context);
-            enrichedObject = { ...enrichedObject, ...result.enrichmentData };
-            executionChain.push(moduleId);
-            console.log(`✅ ${moduleId} finished.`);
-        } catch (error) {
-            console.error(`❌ Error in module ${moduleId}:`, error);
-        }
-      } else {
-        console.warn(`Module [${moduleId}] not found for object enrichment.`);
+  private assessEnchantmentPotential(object: BaseObject): {
+    slots: number;
+    receptivity: number;
+    schools: string[];
+  } {
+    let maxSlots = 1;
+    let receptivity = (object.material as MaterialInfo)?.magicalReceptivity || 10;
+    let compatibleSchools = ['enhancement'];
+    const quality = object.quality || 'common';
+
+    const qualityMultipliers = {
+        poor: 0.5, common: 1, fine: 1.5, superior: 2, masterwork: 3, legendary: 5
+    };
+
+    receptivity = Math.round(receptivity * qualityMultipliers[quality]);
+    maxSlots = Math.floor(1 + qualityMultipliers[quality]);
+    
+    if (object.type === 'weapon') {
+      compatibleSchools = ['fire', 'ice', 'lightning', 'sharpness', 'vampiric', 'enhancement'];
+    } else if (object.type === 'armor') {
+      compatibleSchools = ['protection', 'regeneration', 'elemental_resistance', 'enhancement'];
+    }
+
+    return { slots: maxSlots, receptivity, schools: compatibleSchools };
+  }
+  
+  private findLocalEnchantments(context: ObjectEnrichmentContext): LocalEnchantment[] {
+    // In a real game, this would query the world state for nearby enchanters
+    return [
+      {
+        name: 'Lame Enflammée Mineure',
+        effect: '+5 dégâts de feu.',
+        cost: 200,
+        enchanter: 'Maître Élémentaire Morgane',
+        school: 'fire',
+      },
+      {
+        name: 'Précision du Faucon',
+        effect: '+15% précision, +5% critique.',
+        cost: 150,
+        enchanter: 'Enchanteur Marcus',
+        school: 'enhancement',
+      },
+      {
+        name: 'Armure de la Tortue',
+        effect: '+10% résistance aux dégâts physiques.',
+        cost: 180,
+        enchanter: 'Artisan Runique Bjorn',
+        school: 'protection',
       }
-    }
-
-    // 3. Add enrichment metadata
-    enrichedObject.enrichmentMetadata = {
-      executionChain,
-      enrichmentDepth: executionChain.length,
-      enrichmentTime: Date.now() - startTime,
-    };
-
-    console.log(
-      `🎉 Enrichment complete: ${
-        Object.keys(enrichedObject).length
-      } properties generated.`
-    );
-    return enrichedObject;
+    ];
   }
 
-  /**
-   * Determines the sequence of modules to execute based on the object type.
-   * The order of modules in the array matters for the cascade.
-   */
-  private determineRelevantModules(
-    objectType: BaseObject['type']
-  ): string[] {
-    const moduleMap: Partial<Record<BaseObject['type'], string[]>> = {
-      weapon: [
-        'proprietes_armes',
-        'valeur_economique',
-        'enchantements',
-        'historique_objet',
-      ],
-      armor: [
-        'valeur_economique',
-        'enchantements',
-        'historique_objet',
-      ],
-       wearable: [ // For items like jackets
-        'valeur_economique',
-        'enchantements',
-        'historique_objet',
-      ],
-      tool: [
-        'valeur_economique',
-        'historique_objet',
-      ],
-    };
-
-    // For any other type, apply a generic set of modules
-    const genericModules = ['valeur_economique', 'historique_objet'];
-
-    return moduleMap[objectType] || genericModules;
-  }
-
-  /**
-   * Registers an enrichment module into the manager.
-   * @param module The module instance to register.
-   */
-  registerModule(module: ObjectEnrichmentModule): void {
-    if (this.objectModules.has(module.id)) {
-      console.warn(`📦 Module [${module.id}] is already registered. Overwriting.`);
+  private analyzeCurrentEnchantments(object: BaseObject): CurrentEnchantment[] {
+    // This would read from the object's existing data if it was already enchanted
+    if (object.name.toLowerCase().includes('enflammée')) {
+        return [{
+            name: 'Enchantement de Feu',
+            description: 'L\'objet crépite d\'une chaleur magique.',
+            powerLevel: 35
+        }];
     }
-    this.objectModules.set(module.id, module);
-    console.log(`📦 Module ${module.id} registered.`);
+    return [];
+  }
+  
+  private calculateSuccessChance(enchantment: LocalEnchantment, object: BaseObject, receptivity: number): number {
+    let chance = 50 + receptivity / 2;
+    // more complex logic could go here
+    return Math.min(95, Math.round(chance));
   }
 }
