@@ -304,7 +304,15 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
         }
 
         const attackCheck = performSkillCheck(player.skills, player.stats, skillToUse, enemy.defense, player.inventory, 0, player.physiology, player.momentum);
-        events.push({ ...attackCheck, type: 'SKILL_CHECK_RESULT' });
+        events.push({
+            type: 'SKILL_CHECK_RESULT',
+            skill: attackCheck.skillUsed,
+            success: attackCheck.success,
+            degree: attackCheck.degreeOfSuccess,
+            roll: attackCheck.rollValue,
+            total: attackCheck.totalAchieved,
+            difficulty: attackCheck.difficultyTarget,
+        });
 
         if (attackCheck.success) {
             const playerDamage = calculateDamage(player.stats, weapon.combatStats!.damage!, enemy.defense, attackCheck.degreeOfSuccess);
@@ -337,7 +345,15 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
         }
     } else if (choice.combatActionType === 'flee') {
         const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.esquive', 60, player.inventory, 0, player.physiology, player.momentum);
-        events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
+        events.push({
+            type: 'SKILL_CHECK_RESULT',
+            skill: skillCheckResult.skillUsed,
+            success: skillCheckResult.success,
+            degree: skillCheckResult.degreeOfSuccess,
+            roll: skillCheckResult.rollValue,
+            total: skillCheckResult.totalAchieved,
+            difficulty: skillCheckResult.difficultyTarget,
+        });
         if (skillCheckResult.success) {
             events.push({ type: 'COMBAT_ENDED', winner: 'player' });
             return { events };
@@ -455,7 +471,15 @@ export async function processExplorationAction(
     const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
     const skillCheckResult = performSkillCheck(tempPlayerState.skills, tempPlayerState.stats, skill, difficulty, tempPlayerState.inventory, weatherModifier, tempPlayerState.physiology, tempPlayerState.momentum);
 
-    events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
+    events.push({
+        type: 'SKILL_CHECK_RESULT',
+        skill: skillCheckResult.skillUsed,
+        success: skillCheckResult.success,
+        degree: skillCheckResult.degreeOfSuccess,
+        roll: skillCheckResult.rollValue,
+        total: skillCheckResult.totalAchieved,
+        difficulty: skillCheckResult.difficultyTarget,
+    });
     
     const newMomentum = { ...tempPlayerState.momentum };
     if (skillCheckResult.success) {
