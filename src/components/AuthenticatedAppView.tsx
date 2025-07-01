@@ -81,7 +81,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null, toneSettings: hydratedPlayer.toneSettings,
       };
       
-      const aiInput = prepareAIInput(tempStateForPrologue, "[COMMENCER L'AVENTURE]");
+      const aiInput = prepareAIInput(tempStateForPrologue, { text: "[COMMENCER L'AVENTURE]" });
       if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
 
       const prologueResult = await generateScenario(aiInput);
