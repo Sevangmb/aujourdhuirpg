@@ -471,11 +471,17 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     Object.entries(player.stats).map(([key, statObj]) => [key, statObj.value])
   );
   
-  // Flatten skills for AI
-  const flatSkills = Object.fromEntries(
-    Object.entries(player.skills).flatMap(([category, skills]) => 
-      Object.entries(skills).map(([skillName, skillDetail]) => [`${category}.${skillName}`, (skillDetail as any).level])
-    )
+  // Create a simplified, nested skill object for the AI, matching the Zod schema
+  const simplifiedSkills = Object.fromEntries(
+    Object.entries(player.skills).map(([category, skills]) => [
+      category,
+      Object.fromEntries(
+        Object.entries(skills).map(([skillName, skillDetail]) => [
+          skillName,
+          (skillDetail as any).level
+        ])
+      )
+    ])
   );
 
 
@@ -487,7 +493,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       era: player.era || 'Époque Contemporaine',
       background: player.background,
       stats: flatStats,
-      skills: flatSkills, // Sending flattened skills
+      skills: simplifiedSkills, // Sending simplified, nested skills
       physiology: player.physiology,
       traitsMentalStates: player.traitsMentalStates,
       progression: player.progression,
