@@ -62,7 +62,7 @@ export const GenerateScenarioOutputSchema = z.object({
     reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
-  choices: z.array(StoryChoiceSchema).min(1).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite. Ne doit pas être vide."),
+  choices: z.array(StoryChoiceSchema).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite."),
   
   // --- NEW: AI-Generated Game Events ---
   // The AI can now propose new game elements. The game engine will validate and apply them.
