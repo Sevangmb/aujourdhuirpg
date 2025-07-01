@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schema definitions for the generateGeoIntelligence flow input and output.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export const GenerateGeoIntelligenceInputSchema = z.object({
   placeName: z.string().describe("The name of the location to analyze."),

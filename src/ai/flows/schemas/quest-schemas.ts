@@ -1,7 +1,7 @@
 /**
  * @fileOverview Zod schema definitions for quest-related data structures used in scenarios.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Schema for structured rewards
 export const QuestRewardsSchema = z.object({

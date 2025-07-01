@@ -1,4 +1,4 @@
-import { z } from 'genkit';
+import { z } from 'zod';
 import type { PlayerStats } from './player-types';
 import type { Position } from './game-types';
 import type { GameEra } from './era-types';

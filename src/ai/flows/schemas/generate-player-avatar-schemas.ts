@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schema definitions for the generatePlayerAvatar flow input and output.
  */
-import {z} from 'genkit';
+import {z} from 'zod';
 
 export const GeneratePlayerAvatarInputSchema = z.object({
   name: z.string().describe("The character's name."),

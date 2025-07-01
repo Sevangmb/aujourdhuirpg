@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schema definitions for PNJ (NPC) related data structures used in scenarios.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Simplified for AI generation. The game logic will handle adding a unique ID and other metadata.
 export const PNJInteractionSchema = z.object({

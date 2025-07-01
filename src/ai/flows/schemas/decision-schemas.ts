@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schema definitions for major player decision data structures used in scenarios.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export const MajorDecisionSchema = z.object({
   id: z.string().describe("Identifiant unique pour cette décision (ex: 'choix_trahir_contact_paris')."),

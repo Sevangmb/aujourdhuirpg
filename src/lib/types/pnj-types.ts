@@ -1,4 +1,4 @@
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export type PNJRelationStatus = 'friendly' | 'neutral' | 'hostile' | 'allied' | 'rival' | 'unknown';
 export type PNJImportance = 'major' | 'minor' | 'recurring';

@@ -1,5 +1,5 @@
 
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Simplified for AI output. Timestamp and ID will be added by the game logic.
 export const NewTransactionSchema = z.object({

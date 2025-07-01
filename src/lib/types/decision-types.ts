@@ -1,4 +1,4 @@
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export interface MajorDecision {
   id: string; // Unique ID for the decision, e.g., "decision_betray_contact_01"

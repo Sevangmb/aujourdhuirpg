@@ -1,7 +1,7 @@
 /**
  * @fileOverview Zod schemas for the generateHistoricalContact flow.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 import { HistoricalContactSchema, ContactKnowledgeSchema, GenerateHistoricalContactInputSchema as TypeHistoricalContactInputSchema } from '@/modules/historical/types';
 
 export const GenerateHistoricalContactInputSchema = TypeHistoricalContactInputSchema;

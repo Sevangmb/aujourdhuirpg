@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schema definitions for common player-related data structures used as input for scenarios.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 import { AVAILABLE_TONES } from '@/lib/types';
 
 export const LocationSchema = z.object({

@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schema definitions for evidence (clues and documents) related data structures used in scenarios.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Simplified for AI generation. Game logic will add ID, date, source etc.
 export const ClueInputSchema = z.object({

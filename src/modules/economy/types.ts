@@ -1,4 +1,4 @@
-import { z } from 'genkit';
+import { z } from 'zod';
 import type { Position } from '@/lib/types';
 
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'investment';

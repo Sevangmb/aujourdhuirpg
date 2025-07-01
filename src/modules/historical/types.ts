@@ -2,7 +2,7 @@
  * @fileOverview Zod schemas and TypeScript types for the Historical Contacts feature.
  */
 import type { GameState } from '@/lib/types/game-types';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { AVAILABLE_ERAS } from '@/lib/types/era-types';
 
 // Data structure for the raw historical information fetched from Wikipedia

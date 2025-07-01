@@ -519,7 +519,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
         tags: player.currentLocation.tags,
       },
       toneSettings: player.toneSettings,
-      // --- ADDED NEW FIELDS for context ---
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
         .map(item => item.name),

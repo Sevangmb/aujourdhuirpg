@@ -2,7 +2,7 @@
 /**
  * @fileOverview Zod schemas for the generateTravelEvent flow.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 import { LocationSchema, SkillsSchema } from '@/lib/types/player-types';
 
 export const GenerateTravelEventInputSchema = z.object({

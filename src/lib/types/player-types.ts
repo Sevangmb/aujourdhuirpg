@@ -1,4 +1,4 @@
-import { z } from 'genkit';
+import { z } from 'zod';
 import { AVAILABLE_TONES } from './tone-types';
 import type { IntelligentItem } from './item-types';
 import type { Quest } from '../modules/quests/types';

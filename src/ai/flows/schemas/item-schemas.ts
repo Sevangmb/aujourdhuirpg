@@ -1,7 +1,7 @@
 /**
  * @fileOverview Zod schema definitions for item-related data structures used in scenarios.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export const DynamicItemCreationPayloadSchema = z.object({
   baseItemId: z.string().describe("L'ID de l'objet de base à utiliser comme modèle (ex: 'generic_book_01')."),

@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import type { z } from 'genkit'; // Import z as a type
+import { z } from 'zod'; 
 import { 
   GeneratePlayerAvatarInputSchema, 
   GeneratePlayerAvatarOutputSchema 

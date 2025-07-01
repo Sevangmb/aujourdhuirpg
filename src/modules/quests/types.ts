@@ -1,4 +1,4 @@
-import { z } from 'genkit';
+import { z } from 'zod';
 import type { PlayerStats } from "@/lib/types";
 
 export type QuestStatus = 'active' | 'completed' | 'failed' | 'inactive';

@@ -3,7 +3,7 @@
  * @fileOverview Zod schema definitions for the generateScenario flow input and output.
  * This file outlines the contract between the game engine and the AI narrator.
  */
-import {z} from 'genkit';
+import {z} from 'zod';
 import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
 import { PlayerInputSchema } from '@/lib/types/player-types';
 import { QuestInputSchema, QuestUpdateSchema } from '@/modules/quests/types';

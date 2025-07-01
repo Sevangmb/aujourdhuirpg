@@ -1,7 +1,7 @@
 /**
  * @fileOverview Zod schemas for generating a save game summary.
  */
-import { z } from 'genkit';
+import { z } from 'zod';
 
 export const GenerateSaveSummaryInputSchema = z.object({
   playerName: z.string().describe("The player's name."),
