@@ -7,7 +7,7 @@ import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, Gam
 import type { AdaptedContact, HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, fetchPoisForCurrentLocation, prepareAIInput } from '@/lib/game-logic';
+import { gameReducer, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,6 +25,7 @@ import { TravelModal } from '@/components/TravelModal';
 import { objectCascadeManager } from '@/core/objects/object-cascade-manager';
 import { fetchTopHeadlines } from '@/data-sources/news/news-api';
 import { NewsQuestGenerator } from '@/modules/news/news-quest-generator';
+import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 
 
 // Helper types for managing async data
@@ -140,7 +141,12 @@ export const GameProvider: React.FC<{
     }).catch(e => setContextualData(s => ({ ...s, geoIntelligence: { data: null, loading: false, error: (e as Error).message } })));
 
     setContextualData(s => ({...s, pois: {...s.pois, loading: true}}));
-    fetchPoisForCurrentLocation(location).then(data => {
+    fetchNearbyPoisFromOSM({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radius: 500,
+        limit: 15,
+    }).then(data => {
         setContextualData(s => ({ ...s, pois: { data, loading: false, error: null }}));
         dispatch({ type: 'SET_NEARBY_POIS', payload: data });
     }).catch(e => setContextualData(s => ({ ...s, pois: { data: null, loading: false, error: (e as Error).message } })));

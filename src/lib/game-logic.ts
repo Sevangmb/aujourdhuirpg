@@ -3,7 +3,6 @@ import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry,
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
-import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck, calculateSuccessProbability } from './skill-check';
 import type { WeatherData } from '@/app/actions/get-current-weather';
