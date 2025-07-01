@@ -1,7 +1,7 @@
 
 "use client";
 import React from 'react';
-import type { HistoricalContact } from '@/lib/types';
+import type { HistoricalContact } from '@/modules/historical/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';

@@ -8,6 +8,7 @@ import { inventoryModule } from '@/modules/inventory';
 import { combatModule } from '@/modules/combat';
 import { questModule } from '@/modules/quests';
 import { economyModule } from '@/modules/economy';
+import { historicalModule } from '@/modules/historical';
 
 export const ALL_MODULES: CascadeModule[] = [
   playerModule,
@@ -15,4 +16,5 @@ export const ALL_MODULES: CascadeModule[] = [
   combatModule,
   questModule,
   economyModule,
+  historicalModule,
 ];

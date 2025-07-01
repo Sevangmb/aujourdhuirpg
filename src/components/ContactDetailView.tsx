@@ -1,7 +1,7 @@
 
 "use client";
 import React from 'react';
-import type { HistoricalContact } from '@/lib/types';
+import type { HistoricalContact } from '@/modules/historical/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';

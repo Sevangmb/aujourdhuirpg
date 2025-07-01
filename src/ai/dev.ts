@@ -15,7 +15,7 @@ import '@/ai/flows/generate-save-summary-flow.ts';
 import '@/ai/flows/schemas/generate-save-summary-schemas.ts';
 import '@/ai/flows/generate-travel-event-flow.ts';
 import '@/ai/flows/schemas/generate-travel-event-schemas.ts';
-import '@/ai/flows/generate-historical-contact-flow.ts';
+import '@/modules/historical/flows/generate-historical-contact-flow';
 import '@/ai/flows/schemas/generate-historical-contact-schemas.ts';
 import '@/ai/tools/get-weather-tool.ts';
 import '@/ai/tools/get-wikipedia-info-tool.ts';

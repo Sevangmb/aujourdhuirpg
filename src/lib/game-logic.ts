@@ -1,5 +1,6 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject } from './types';
+import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
@@ -15,6 +16,7 @@ import { addXp } from '@/modules/player/logic';
 import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
+import { handleAddHistoricalContact } from '@/modules/historical/logic';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -179,9 +181,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     return { ...currentState, player: { ...player, encounteredPNJs: [...(player.encounteredPNJs || []), newPNJ] } };
                 }
 
-                case 'HISTORICAL_CONTACT_ADDED': {
-                    return { ...currentState, player: { ...player, historicalContacts: [...(player.historicalContacts || []), event.payload] } };
-                }
+                case 'HISTORICAL_CONTACT_ADDED':
+                    return handleAddHistoricalContact(currentState, event.payload as HistoricalContact);
         
                 case 'PNJ_RELATION_CHANGED': {
                     const nowISO = new Date().toISOString();
@@ -338,7 +339,8 @@ export async function processPlayerAction(
       if (choice.skillGains) {
         Object.values(choice.skillGains).forEach(gain => totalXPGain += gain);
       }
-      events.push({ type: 'XP_GAINED', amount: totalXPGain });
+      const { events: xpEvents } = addXp(tempPlayerState.progression, totalXPGain);
+      events.push(...xpEvents);
       // Note: we don't update tempPlayerState.progression here, the reducer will handle it.
 
       // --- Grant Item XP and check for evolution ---

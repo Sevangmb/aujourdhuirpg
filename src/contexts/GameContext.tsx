@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject } from '@/lib/types';
+import type { AdaptedContact, HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, fetchPoisForCurrentLocation, prepareAIInput } from '@/lib/game-logic';
@@ -13,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getCurrentWeather } from '@/app/actions/get-current-weather';
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
 import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow';
-import { findAndAdaptHistoricalContactsForLocation } from '@/services/historical-contact-service';
+import { findAndAdaptHistoricalContactsForLocation } from '@/modules/historical/service';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';

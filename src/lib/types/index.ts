@@ -9,7 +9,7 @@ export * from './tone-types';
 export * from './game-types';
 export * from './geo-intelligence-types';
 export * from '@/modules/economy/types';
-export * from './historical-contact-types';
+export * from '@/modules/historical/types';
 export * from './era-types';
 export * from './choice-types';
 export * from './physiology-types';

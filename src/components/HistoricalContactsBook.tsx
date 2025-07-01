@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import type { HistoricalContact } from '@/lib/types';
+import type { HistoricalContact } from '@/modules/historical/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ContactCard from './ContactCard';
