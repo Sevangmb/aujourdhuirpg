@@ -138,12 +138,10 @@ export function grantXpToItem(item: IntelligentItem, xpGained: number): GameEven
   let currentXp = item.itemXp + xpGained;
   let currentLevel = item.itemLevel;
   let xpToNext = item.xpToNextItemLevel;
-
-  events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: xpGained });
   
   const masterItem = getMasterItemById(item.id);
   
-  while (currentXp >= xpToNext) {
+  while (currentXp >= xpToNext && xpToNext > 0) {
     currentLevel += 1;
     currentXp -= xpToNext;
     xpToNext = Math.round(xpToNext * 1.5); // Increase next threshold
@@ -171,6 +169,11 @@ export function grantXpToItem(item: IntelligentItem, xpGained: number): GameEven
         break; // Stop leveling up as the item is being replaced
       }
     }
+  }
+
+  if (events.length === 0) {
+      // If no level up, just record the XP gain
+      events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: xpGained });
   }
   
   return events;

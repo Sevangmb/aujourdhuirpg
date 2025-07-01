@@ -21,7 +21,7 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: any): { 
     const events: GameEvent[] = [];
 
     if (choice.combatActionType === 'attack') {
-        const weapon = player.inventory.find(i => i.type === 'tool' && i.combatStats?.damage) || { combatStats: { damage: 1 } };
+        const weapon = player.inventory.find(i => i.type === 'tool' && i.combatStats?.damage) || { name: "Poings", combatStats: { damage: 1 } };
         const playerDamage = calculateDamage(player.stats, weapon.combatStats!.damage!, enemy);
         const newEnemyHealth = enemy.health - playerDamage;
         
@@ -36,7 +36,12 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: any): { 
 
         if (newEnemyHealth <= 0) {
             events.push({ type: 'COMBAT_ENDED', winner: 'player' });
-            events.push({ type: 'XP_GAINED', amount: 50 }); // Base XP for winning
+            // Loot & XP
+            events.push({ type: 'XP_GAINED', amount: enemy.attack + enemy.defense }); 
+            if (Math.random() < 0.5) { // 50% chance to drop money
+                const moneyDropped = Math.floor(Math.random() * (enemy.attack * 2)) + 5;
+                events.push({ type: 'MONEY_CHANGED', amount: moneyDropped, finalBalance: player.money + moneyDropped, description: `Butin sur ${enemy.name}` });
+            }
             return { events };
         }
 

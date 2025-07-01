@@ -4,7 +4,7 @@
 import type { Player, AdvancedSkillSystem } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
-import { Shield, Brain, Sparkles, TrendingUp, Palette, Euro, Zap, CloudFog, Anchor, Users, Heart, Dumbbell, UserCog, Stethoscope, Hand, Landmark, Dices, Book, Crosshair } from 'lucide-react';
+import { Shield, Sparkles, TrendingUp, Euro, Zap, CloudFog, Anchor, Users, Heart, Dumbbell, UserCog, Stethoscope, Hand, Landmark, Dices, Book, Crosshair } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -17,7 +17,7 @@ const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
   Force: Dumbbell,
   Dexterite: Hand,
   Constitution: Heart,
-  Intelligence: Brain,
+  Intelligence: Book,
   Perception: Crosshair,
   Charisme: Users,
   Volonte: Anchor,

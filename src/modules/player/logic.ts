@@ -8,12 +8,13 @@ import type { GameEvent } from '@/lib/types';
 
 export function calculateXpToNextLevel(level: number): number {
   if (level <= 0) level = 1;
-  return level * 100 + 50 * (level - 1) * level;
+  // A steeper curve: 100 base, 50 multiplier per level squared
+  return Math.floor(100 + (level -1) * 50 + Math.pow(level -1, 2.2) * 20);
 }
 
 export function getSkillUpgradeCost(currentLevel: number): number {
   if (currentLevel <= 0) currentLevel = 1;
-  return Math.floor(currentLevel * currentLevel * 1.5) + 20;
+  return Math.floor(20 + Math.pow(currentLevel, 1.8) * 5);
 }
 
 export function applySkillXp(currentSkills: AdvancedSkillSystem, skillPath: string, xpGained: number): { updatedSkills: AdvancedSkillSystem, leveledUp: boolean, newLevel?: number } {
@@ -36,7 +37,7 @@ export function applySkillXp(currentSkills: AdvancedSkillSystem, skillPath: stri
   let leveledUp = false;
   let newLevel: number | undefined;
 
-  while (skill.xp >= skill.xpToNext) {
+  while (skill.xp >= skill.xpToNext && skill.xpToNext > 0) {
     leveledUp = true;
     skill.level += 1;
     skill.xp -= skill.xpToNext;
@@ -50,8 +51,8 @@ export function applySkillXp(currentSkills: AdvancedSkillSystem, skillPath: stri
 }
 
 export function getSkillXp(difficulty: number, success: boolean): number {
-  const baseXP = Math.floor(difficulty / 10);
-  return success ? baseXP : Math.floor(baseXP / 2);
+  const baseXP = Math.max(1, Math.floor(difficulty / 8));
+  return success ? baseXP : Math.floor(baseXP / 3);
 }
 
 export function addPlayerXp(currentProgression: Progression, xpGained: number): { newProgression: Progression, events: GameEvent[] } {
