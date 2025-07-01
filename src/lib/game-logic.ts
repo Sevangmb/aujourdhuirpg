@@ -728,5 +728,3 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxA
     }
     return contextualChoices;
 }
-
-    
