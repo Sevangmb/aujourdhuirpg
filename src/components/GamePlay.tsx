@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameEvent } from '@/lib/types';
 import type { Enemy } from '@/modules/combat/types';
-import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions, generateCombatActions } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions, generateCombatActions, summarizeGameEventsForAI } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -30,58 +30,71 @@ const GamePlay: React.FC = () => {
   
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
     if (!gameState || !gameState.player) return;
-
     setIsLoading(true);
 
     try {
-      // 1. Process the action (combat or exploration) to get deterministic events
+      // Phase 1: Run cascade for context (only for non-combat actions)
+      const cascadeResult = gameState.currentEnemy ? null : await runCascadeForAction(gameState, choice);
+
+      // Phase 2: Process action to get deterministic events
       const { events: deterministicEvents } = await processPlayerAction(
         gameState.player, 
         gameState.currentEnemy || null, 
         choice, 
-        weatherData, 
-        null // No cascade for combat actions for now
+        weatherData,
+        cascadeResult
       );
       
-      // 2. Apply events to a temporary state to get the state *after* the action, for the AI's context
+      // Phase 3: Apply events to a temporary state to get the state *after* the action, for the AI's context
       const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: deterministicEvents });
 
-      // 3. Prepare the input for the AI with the calculated events and the future state
-      const inputForAI = prepareAIInput(stateAfterAction, choice, deterministicEvents, null);
+      // Phase 4: Prepare input for the AI with the calculated events and future state
+      const inputForAI = prepareAIInput(stateAfterAction, choice, deterministicEvents, cascadeResult);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
       
-      // 4. Get the narration, next choices, and potential new game events from the AI
+      // Phase 5: Get the narration, next choices, and potential new game events from the AI
       const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      // 5. Convert AI proposals (new quests, items, etc.) into game events
+      // Phase 6: Convert AI proposals (new quests, items, etc.) into game events
       const aiGeneratedEvents = convertAIOutputToEvents(aiOutput);
 
-      // 6. Dispatch ALL events (deterministic + AI-generated) to *actually* update the state
+      // Phase 7: Dispatch ALL events (deterministic + AI-generated) to *actually* update the state
       const allEvents = [...deterministicEvents, ...aiGeneratedEvents];
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
       
-      // --- This part is now skipped for combat turns, narration is enough ---
-      if (!stateAfterAction.currentEnemy) {
-          const finalStateAfterAllEvents = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
-          const cascadeResult = await runCascadeForAction(finalStateAfterAllEvents, choice);
-          const cascadeActions = generateCascadeBasedActions(cascadeResult, finalStateAfterAllEvents.player!);
-          const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!, finalStateAfterAllEvents.gameTimeInMinutes);
-          const stateBasedActions = generatePlayerStateActions(finalStateAfterAllEvents.player!);
-          const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateAfterAllEvents.player!);
-          const allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
-          dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: allChoices, aiRecommendation: aiOutput.aiRecommendation } });
-      } else {
-           dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { ...aiOutput, choices: [] } }); // Clear choices in combat, AI gives narration
-      }
+      // Phase 8: Post-AI logic - enrich choices and add contextual ones
+      // This is now done after the main state update to have the final final state
+      const finalState = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
+      
+      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalState.player!);
+      const cascadeActions = generateCascadeBasedActions(cascadeResult, finalState.player!);
+      const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
+      const stateBasedActions = generatePlayerStateActions(finalState.player!);
+      
+      const allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
 
+      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
+          scenarioText: aiOutput.scenarioText, 
+          choices: allChoices, 
+          aiRecommendation: aiOutput.aiRecommendation 
+      }});
+      
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";
       if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
       toast({ variant: "destructive", title: "Erreur de Connexion avec l'IA", description: errorMessage });
-    } finally {
-      setIsLoading(false);
+      // Reset loading state on error to allow player to try again
+      setIsLoading(false); 
     }
   }, [gameState, dispatch, toast, weatherData]);
+
+
+  useEffect(() => {
+    // This effect ensures the loading spinner is correctly turned off after the state update from handleChoiceSelected completes.
+    if(isLoading && gameState) {
+      setIsLoading(false);
+    }
+  }, [gameState, isLoading]);
 
 
   if (!gameState || !gameState.player || !gameState.currentScenario) {
