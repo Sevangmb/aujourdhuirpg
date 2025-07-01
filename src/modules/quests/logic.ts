@@ -1,21 +1,32 @@
-
 /**
  * @fileOverview Contains the core business logic for the Quest module.
  */
 
-import type { GameState, Quest } from '@/lib/types';
+import type { GameState, Quest, Player } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { calculateJobReward } from '@/modules/economy/logic';
 
 export function handleAddQuest(state: GameState, questData: Omit<Quest, 'id' | 'dateAdded'>): GameState {
     if (!state.player) return state;
 
+    const mutableQuestData = { ...questData };
+    
+    // If the quest is a job, calculate the reward based on player skills, overriding any AI suggestion.
+    if (mutableQuestData.type === 'job' && state.player.skills) {
+        const moneyReward = calculateJobReward(state.player.skills, mutableQuestData);
+        if (!mutableQuestData.rewards) {
+            mutableQuestData.rewards = {};
+        }
+        mutableQuestData.rewards.money = moneyReward;
+    }
+
     const nowISO = new Date().toISOString();
     const newQuest: Quest = {
-        ...questData,
+        ...mutableQuestData,
         id: uuidv4(),
         dateAdded: nowISO,
-        status: questData.status || 'active', // Default to 'active' if not provided
-        objectives: questData.objectives.map(obj => ({ ...obj, id: uuidv4() }))
+        status: mutableQuestData.status || 'active', // Default to 'active' if not provided
+        objectives: mutableQuestData.objectives.map(obj => ({ ...obj, id: uuidv4() }))
     };
 
     const newQuestLog = [...(state.player.questLog || []), newQuest];

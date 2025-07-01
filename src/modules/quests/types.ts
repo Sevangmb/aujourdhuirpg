@@ -28,6 +28,7 @@ export interface Quest {
   giver?: string; // Name of the PNJ who gave the quest, if any
   rewardDescription?: string; // Text description of the reward (items, XP)
   rewards?: QuestRewards;
+  requiredSkill?: string; // NEW: The skill path required for job reward calculation, e.g., 'technical.crafting'
   relatedLocation?: string; // Name of a relevant location
   dateAdded: string; // ISO string date
   dateCompleted?: string; // ISO string date
@@ -38,7 +39,7 @@ export interface Quest {
 // Schema for structured rewards
 export const QuestRewardsSchema = z.object({
   xp: z.number().optional().describe("Points d'expérience gagnés."),
-  money: z.number().optional().describe("Montant d'argent (euros) gagné."),
+  money: z.number().optional().describe("Montant d'argent (euros) gagné. NOTE: Pour les 'jobs', ce montant sera recalculé par la logique du jeu."),
   items: z.array(z.object({
     itemId: z.string().describe("L'ID de l'objet de base à donner en récompense."),
     quantity: z.number().int().min(1).default(1).describe("La quantité de l'objet à donner.")
@@ -57,6 +58,7 @@ export const QuestInputSchema = z.object({
   giver: z.string().optional().describe("Nom du PNJ qui a donné la quête. OMETTRE si pas de PNJ donneur spécifique."),
   rewardDescription: z.string().optional().describe("Description textuelle de la récompense potentielle."),
   rewards: QuestRewardsSchema.optional().describe("Les récompenses structurées pour la quête."),
+  requiredSkill: z.string().optional().describe("Pour les 'jobs', le chemin de la compétence requise (ex: 'technical.crafting')."),
   relatedLocation: z.string().optional().describe("Nom d'un lieu pertinent pour la quête."),
 });
 
