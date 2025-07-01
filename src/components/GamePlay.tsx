@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameAction, GameEvent } from '@/lib/types';
 import type { Enemy } from '@/modules/combat/types';
-import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,10 @@ const GamePlay: React.FC = () => {
       // 8. Generate contextual actions based on POIs and Player State in the new state
       // We need to re-run the reducer on a temp variable to get the final state for choice generation
       const finalStateAfterAllEvents = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
+      
+      // NEW: Generate actions based on the cascade result
+      const cascadeActions = generateCascadeBasedActions(cascadeResult, finalStateAfterAllEvents.player!);
+
       const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!);
       const stateBasedActions = generatePlayerStateActions(finalStateAfterAllEvents.player!);
       
@@ -66,7 +70,7 @@ const GamePlay: React.FC = () => {
       const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateAfterAllEvents.player!);
       
       // 10. Merge all choices
-      const allChoices = [...enrichedAIChoices, ...poiActions, ...stateBasedActions];
+      const allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
 
       // 11. Set the new scenario from the AI's output, now with fully enriched and merged choices
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: allChoices, aiRecommendation: aiOutput.aiRecommendation } });

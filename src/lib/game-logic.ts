@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
@@ -628,7 +622,15 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       }
   }
 
-  const suggestedContextualActions = generatePlayerStateActions(player);
+  const suggestedContextualActions = [
+      ...generatePlayerStateActions(player),
+      ...generateActionsForPOIs(gameState.nearbyPois || [], player)
+  ].map(action => ({
+    text: action.text,
+    description: action.description,
+    type: action.type,
+    estimatedCost: action.economicImpact?.cost,
+  }));
 
   const gameEventsSummary = summarizeGameEventsForAI(gameEvents || []);
 
@@ -916,5 +918,56 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
         }
     }
 
+    return choices;
+}
+
+/**
+ * Generates contextual choices based on the results of the enrichment cascade.
+ * @param cascadeResult The result from the cascade system.
+ * @param player The current player object.
+ * @returns An array of StoryChoice objects.
+ */
+export function generateCascadeBasedActions(cascadeResult: CascadeResult | null, player: Player): StoryChoice[] {
+    const choices: StoryChoice[] = [];
+    if (!cascadeResult) return choices;
+
+    // 1. Check for Cuisine opportunities
+    const cuisineResult = cascadeResult.results.get('cuisine');
+    if (cuisineResult?.data?.cookableRecipes) {
+        for (const recipeName of cuisineResult.data.cookableRecipes) {
+            choices.push({
+                id: `cook_${recipeName.replace(/\s+/g, '_')}`,
+                text: `Cuisiner : ${recipeName}`,
+                description: "Utiliser les ingrédients de votre inventaire pour préparer un plat délicieux et réconfortant.",
+                iconName: 'ChefHat',
+                type: 'action',
+                mood: 'social',
+                timeCost: 30,
+                energyCost: 10,
+                consequences: ['Repas préparé', 'Gain de compétence'],
+                skillGains: { 'technical.crafting': 15 }
+            });
+        }
+    }
+
+    // 2. Check for Book opportunities
+    const livreResult = cascadeResult.results.get('livre');
+    if (livreResult?.data?.foundBooks && livreResult.data.foundBooks.length > 0) {
+        for (const book of (livreResult.data.foundBooks as BookSearchResult[])) {
+             choices.push({
+                id: `read_${book.title.replace(/\s+/g, '_').substring(0,20)}`,
+                text: `Lire : ${book.title}`,
+                description: book.description?.substring(0, 100) + '...' || "Lire ce livre pour en apprendre plus.",
+                iconName: 'BookOpen',
+                type: 'reflection',
+                mood: 'contemplative',
+                timeCost: 45,
+                energyCost: 5,
+                consequences: ['Nouvelles connaissances', 'Gain de compétence'],
+                skillGains: { 'cognitive.memory': 10 }
+            });
+        }
+    }
+    
     return choices;
 }

@@ -120,7 +120,7 @@ Votre mission est quadruple :
 
 const PROMPT_CASCADE_INSTRUCTIONS = `
 **EXPLOITATION DU CONTEXTE DE LA CASCADE (TRÈS IMPORTANT)**
-Le champ \`cascadeResult\` contient un résumé textuel des informations contextuelles générées par des modules spécialisés. Votre tâche est d'utiliser ces informations pour rendre votre narration vivante et pour créer des choix pertinents. Intégrez ces informations naturellement dans le récit et inspirez-vous d'elles pour créer des choix d'action. Par exemple, si une opportunité de cuisine est listée, proposez un choix pour cuisiner. Si un contexte culturel est donné, proposez un choix pour explorer cet aspect. Si des livres sont mentionnés, proposez un choix pour les lire ou les acheter.
+Le champ \`cascadeResult\` contient un résumé textuel des informations contextuelles générées par des modules spécialisés (culture, cuisine, etc.). **Utilisez ces informations pour enrichir votre narration.** Par exemple, si le résumé mentionne une opportunité de cuisiner, vous pouvez décrire l'odeur des épices dans l'air. Si le résumé mentionne un fait culturel, intégrez-le dans la description des lieux. Le moteur de jeu génère déjà les actions logiques (comme "Cuisiner le plat X"), votre rôle n'est donc **PAS** de créer ces actions, mais de créer une ambiance cohérente avec ces informations.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
