@@ -13,6 +13,7 @@ import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addXp } from '@/modules/player/logic';
 import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
+import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -164,32 +165,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     const newBalance = player.money + event.amount;
                     return { ...currentState, player: { ...player, money: newBalance, transactionLog: [...(player.transactionLog || []), { id: uuidv4(), amount: event.amount, description: event.description, timestamp: nowISO, type: event.amount > 0 ? 'income' : 'expense', category: 'other_expense', locationName: player.currentLocation.name }] } };
                 }
-                case 'QUEST_ADDED': {
-                  const nowISO = new Date().toISOString();
-                  const newQuest: Quest = { ...event.quest, id: uuidv4(), dateAdded: nowISO, status: 'active', objectives: event.quest.objectives.map(obj => ({...obj, id: uuidv4()})) };
-                  return { ...currentState, player: { ...player, questLog: [...(player.questLog || []), newQuest] } };
-                }
+                case 'QUEST_ADDED':
+                    return handleAddQuest(currentState, event.quest);
         
-                case 'QUEST_STATUS_CHANGED': {
-                    const nowISO = new Date().toISOString();
-                    const newQuestLog = player.questLog.map(q => 
-                        q.id === event.questId ? { ...q, status: event.newStatus, dateCompleted: ['completed', 'failed'].includes(event.newStatus) ? nowISO : q.dateCompleted } : q
-                    );
-                    return { ...currentState, player: { ...player, questLog: newQuestLog } };
-                }
+                case 'QUEST_STATUS_CHANGED':
+                    return handleQuestStatusChange(currentState, event.questId, event.newStatus);
         
-                case 'QUEST_OBJECTIVE_CHANGED': {
-                    const newQuestLog = player.questLog.map(q => {
-                        if (q.id === event.questId) {
-                            const newObjectives = q.objectives.map(o => 
-                                o.id === event.objectiveId ? { ...o, isCompleted: event.completed } : o
-                            );
-                            return { ...q, objectives: newObjectives };
-                        }
-                        return q;
-                    });
-                    return { ...currentState, player: { ...player, questLog: newQuestLog } };
-                }
+                case 'QUEST_OBJECTIVE_CHANGED':
+                    return handleQuestObjectiveChange(currentState, event.questId, event.objectiveId, event.completed);
         
                 case 'PNJ_ENCOUNTERED': {
                     const nowISO = new Date().toISOString();
