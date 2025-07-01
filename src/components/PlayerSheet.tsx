@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Player, AdvancedSkillSystem, SkillCategory } from '@/lib/types';
@@ -13,25 +12,24 @@ interface PlayerSheetProps {
   player: Player;
 }
 
-const skillCategoryIcons: { [key in keyof AdvancedSkillSystem]: React.ElementType } = {
-  physiques: Dumbbell,
-  techniques: UserCog,
-  survie: Landmark,
-  sociales: Users,
-  savoir: Book,
-};
-
-const skillCategoryLabels: { [key in keyof AdvancedSkillSystem]: string } = {
-  physiques: "Compétences Physiques",
-  techniques: "Techniques & Artisanat",
-  survie: "Survie & Exploration",
-  sociales: "Compétences Sociales",
-  savoir: "Savoirs & Connaissances",
-};
-
-
 const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
   if (!player) return null;
+
+  const skillCategoryIcons: { [key in keyof AdvancedSkillSystem]: React.ElementType } = {
+    physiques: Dumbbell,
+    techniques: UserCog,
+    survie: Landmark,
+    sociales: Users,
+    savoir: Book,
+  };
+  
+  const skillCategoryLabels: { [key in keyof AdvancedSkillSystem]: string } = {
+    physiques: "Compétences Physiques",
+    techniques: "Techniques & Artisanat",
+    survie: "Survie & Exploration",
+    sociales: "Compétences Sociales",
+    savoir: "Savoirs & Connaissances",
+  };
 
   const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
     Force: Dumbbell,

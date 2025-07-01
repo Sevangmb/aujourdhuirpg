@@ -11,9 +11,11 @@ export class CultureLocaleModule implements EnrichmentModule {
 
     const wikiData = await fetchWikipediaSummary(locationName);
 
-    // Sanitize the summary to prevent JSON parsing errors from complex whitespace.
-    // This replaces any sequence of whitespace characters (including newlines and tabs) with a single space.
-    const sanitizedSummary = (wikiData?.summary || 'Aucune information culturelle trouvée.').replace(/\s+/g, ' ').trim();
+    // Sanitize the summary to prevent JSON parsing errors from complex whitespace or special characters.
+    const sanitizedSummary = (wikiData?.summary || 'Aucune information culturelle trouvée.')
+        .replace(/[^\x00-\x7F]/g, "") // Remove non-ASCII characters
+        .replace(/\s+/g, ' ') // Collapse whitespace
+        .trim();
 
     const culturalData = {
       summary: sanitizedSummary,
