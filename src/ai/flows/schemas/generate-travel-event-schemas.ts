@@ -3,7 +3,7 @@
  * @fileOverview Zod schemas for the generateTravelEvent flow.
  */
 import { z } from 'genkit';
-import { LocationSchema, SkillsSchema } from './player-common-schemas';
+import { LocationSchema, SkillsSchema } from '@/lib/types/player-types';
 
 export const GenerateTravelEventInputSchema = z.object({
   travelMode: z.enum(['walk', 'metro', 'taxi']).describe("The mode of transport used by the player."),

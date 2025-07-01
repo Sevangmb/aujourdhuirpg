@@ -5,13 +5,13 @@
  */
 import {z} from 'genkit';
 import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
-import { PlayerInputSchema } from './schemas/player-common-schemas';
-import { QuestInputSchema, QuestUpdateSchema } from './schemas/quest-schemas'; // NEW
-import { PNJInteractionSchema } from './schemas/pnj-schemas'; // NEW
-import { MajorDecisionSchema } from './schemas/decision-schemas'; // NEW
-import { ClueInputSchema, DocumentInputSchema } from './schemas/evidence-schemas'; // NEW
-import { NewTransactionSchema } from './schemas/finance-schemas'; // NEW
-import { DynamicItemCreationPayloadSchema } from './schemas/item-schemas'; // NEW
+import { PlayerInputSchema } from '@/lib/types/player-types';
+import { QuestInputSchema, QuestUpdateSchema } from '@/modules/quests/types';
+import { PNJInteractionSchema } from '@/lib/types/pnj-types';
+import { MajorDecisionSchema } from '@/lib/types/decision-types';
+import { ClueInputSchema, DocumentInputSchema } from '@/lib/types/evidence-types';
+import { NewTransactionSchema } from '@/modules/economy/types';
+import { DynamicItemCreationPayloadSchema } from '@/lib/types/item-types';
 import type { GameEvent } from '@/lib/types';
 
 
