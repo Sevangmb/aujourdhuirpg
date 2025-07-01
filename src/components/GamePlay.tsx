@@ -3,8 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { StoryChoice, GameEvent } from '@/lib/types';
-import type { Enemy } from '@/modules/combat/types';
-import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions, generateCombatActions, summarizeGameEventsForAI } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions, generateCombatActions } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +15,6 @@ import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
 import CombatStatusDisplay from './CombatStatusDisplay';
-import type { CascadeResult } from '@/core/cascade/types';
 
 
 const GamePlay: React.FC = () => {
@@ -71,7 +69,12 @@ const GamePlay: React.FC = () => {
       const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
       const stateBasedActions = generatePlayerStateActions(finalState.player!);
       
-      const allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
+      let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
+
+      if (finalState.currentEnemy) {
+        allChoices = generateCombatActions(finalState.player, finalState.currentEnemy);
+      }
+
 
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
           scenarioText: aiOutput.scenarioText, 

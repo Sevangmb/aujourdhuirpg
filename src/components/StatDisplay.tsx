@@ -15,7 +15,7 @@ const statIcons: Record<string, React.ElementType> = {
   Energie: Zap,
   Stress: CloudFog,
   Force: Dumbbell,
-  Dexterite: Hand,
+  Dexterite: UserCog, // Using UserCog as a stand-in for Hand
   Constitution: Heart,
   Intelligence: Brain,
   Perception: Crosshair,

@@ -12,6 +12,7 @@ export type {
     Progression,
     Alignment,
     SkillDetail,
+    SkillCategory,
 } from '@/lib/types';
 
 // Example of a module-specific type

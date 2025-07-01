@@ -1,10 +1,9 @@
-
 "use client";
 
-import type { Player, AdvancedSkillSystem } from '@/lib/types';
+import type { Player, AdvancedSkillSystem, SkillCategory } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
-import { Shield, Sparkles, TrendingUp, Euro, Zap, CloudFog, Anchor, Users, Heart, Dumbbell, UserCog, Stethoscope, Hand, Landmark, Dices, Book, Crosshair } from 'lucide-react';
+import { Shield, Sparkles, TrendingUp, Dumbbell, UserCog, Landmark, Users, Book, Heart, Crosshair, Anchor, CloudFog, Dices, Zap } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -15,7 +14,7 @@ interface PlayerSheetProps {
 
 const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
   Force: Dumbbell,
-  Dexterite: Hand,
+  Dexterite: UserCog, // Using UserCog as a stand-in for Hand
   Constitution: Heart,
   Intelligence: Book,
   Perception: Crosshair,
@@ -40,11 +39,11 @@ const skillCategoryIcons: { [key in keyof AdvancedSkillSystem]: React.ElementTyp
 };
 
 const skillCategoryLabels: { [key in keyof AdvancedSkillSystem]: string } = {
-  physiques: "Physiques",
+  physiques: "Compétences Physiques",
   techniques: "Techniques & Artisanat",
   survie: "Survie & Exploration",
-  sociales: "Sociales",
-  savoir: "Savoir",
+  sociales: "Compétences Sociales",
+  savoir: "Savoirs & Connaissances",
 };
 
 
@@ -55,7 +54,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
     ? (player.progression.xp / player.progression.xpToNextLevel) * 100 
     : 0;
 
-  const coreAttributes = [
+  const coreAttributes: (keyof Player['stats'])[] = [
     'Force', 'Dexterite', 'Constitution', 'Intelligence', 'Perception', 'Charisme', 
     'Volonte', 'Savoir', 'Technique', 'MagieOccultisme', 'Discretion', 'ChanceDestin'
   ];
@@ -94,8 +93,8 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
               <AccordionContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm p-2">
                   {coreAttributes.map((statName) => {
-                    const statObj = player.stats[statName as keyof Player['stats']];
-                    const Icon = statIcons[statName as keyof Player['stats']] || Zap;
+                    const statObj = player.stats[statName];
+                    const Icon = statIcons[statName] || Zap;
                     return (
                       <div key={statName} className="flex flex-col items-center p-1.5 bg-muted/30 rounded-md text-xs">
                         <div className="flex items-center">
