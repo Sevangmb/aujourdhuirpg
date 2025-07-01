@@ -578,7 +578,7 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
         return "L'action n'a pas eu de conséquences mécaniques notables à narrer.";
     }
 
-    return summaries.join('\n');
+    return summaries.join(' ');
 }
 
 export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice | { text: string }, gameEvents?: GameEvent[], cascadeResult?: CascadeResult | null): any | null {
@@ -665,7 +665,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       }
 
       if (summaries.length > 0) {
-          cascadeSummary = "Analyses contextuelles supplémentaires:\n" + summaries.join("\n");
+          cascadeSummary = "Analyses contextuelles supplémentaires: " + summaries.join(" ");
       }
   }
 
@@ -1038,3 +1038,5 @@ export function generateCombatActions(player: Player, enemy: Enemy): StoryChoice
 
     return actions;
 }
+
+    
