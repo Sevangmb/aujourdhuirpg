@@ -27,10 +27,16 @@ function determineConnectionType(p: HistoricalPersonality): ModernIdentity['conn
   return 'other';
 }
 
-function generateModernName(historicalName: string, connectionType: ModernIdentity['connectionType']): string {
+function generateContactName(historicalName: string, connectionType: ModernIdentity['connectionType'], era: GameEra): string {
     const nameParts = historicalName.split(' ');
     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : historicalName;
+    
+    if (era !== 'Époque Contemporaine') {
+        const firstNames = ["Jean", "Guillaume", "Pierre", "Marie", "Jeanne", "Louis", "Catherine"];
+        return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastName}`;
+    }
 
+    // Existing contemporary logic
     if (connectionType === 'descendant') {
         const firstNames = ["Léo", "Marie", "Jean", "Camille", "Alex", "Jules"];
         return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastName}-Leclerc`;
@@ -44,60 +50,90 @@ function generateModernName(historicalName: string, connectionType: ModernIdenti
     return `Alex ${lastName}`;
 }
 
-function generateModernProfession(historical: HistoricalPersonality, connectionType: ModernIdentity['connectionType']): string {
+function generateContactProfession(historical: HistoricalPersonality, connectionType: ModernIdentity['connectionType'], era: GameEra): string {
     const mainOccupation = historical.occupation?.[0] || 'figure';
+
+    if (era !== 'Époque Contemporaine') {
+        if (connectionType === 'descendant') return `Gardien(ne) de l'héritage de ${historical.name}`;
+        if (connectionType === 'guardian') return `Chroniqueur et érudit étudiant l'oeuvre de ${historical.name}`;
+        return `Artisan de la guilde des ${mainOccupation}s`;
+    }
     
+    // Existing contemporary logic
     if (connectionType === 'descendant') return `Descendant(e) et gestionnaire du patrimoine de ${historical.name}`;
     if (connectionType === 'expert') return `Historien(ne) spécialiste de ${historical.name} et de son époque`;
     if (connectionType === 'guardian') return `Conservateur/Conservatrice du musée dédié à ${historical.name}`;
     return `Passionné(e) par l'histoire de ${mainOccupation}s comme ${historical.name}`;
 }
 
-function generateGreeting(modernName: string, historicalName: string): string {
+
+function generateGreeting(contactName: string, historicalName: string, era: GameEra): string {
+    if (era !== 'Époque Contemporaine') {
+         return `Salutations. Je suis ${contactName}. L'héritage de mon ancêtre, ${historicalName}, est encore palpable en ces lieux, n'est-ce pas ?`;
+    }
+  
   const greetings = [
-    `Bonjour, je suis ${modernName}. C'est fascinant de voir encore des gens s'intéresser à l'héritage de ${historicalName}.`,
-    `Vous semblez vous intéresser à ce lieu. Il a une grande importance pour ma famille, voyez-vous... Mon nom est ${modernName}.`,
-    `Pardon de vous déranger, mais j'ai remarqué votre intérêt. ${historicalName} a marqué cet endroit de son empreinte. Je m'appelle ${modernName}.`
+    `Bonjour, je suis ${contactName}. C'est fascinant de voir encore des gens s'intéresser à l'héritage de ${historicalName}.`,
+    `Vous semblez vous intéresser à ce lieu. Il a une grande importance pour ma famille, voyez-vous... Mon nom est ${contactName}.`,
+    `Pardon de vous déranger, mais j'ai remarqué votre intérêt. ${historicalName} a marqué cet endroit de son empreinte. Je m'appelle ${contactName}.`
   ];
   return greetings[Math.floor(Math.random() * greetings.length)];
 }
+
 
 function adaptHistoricalFigure(historical: HistoricalPersonality, playerEra: GameEra): ModernIdentity {
     const playerEraYears = ERA_YEARS[playerEra];
     const historicalBirthYear = historical.birth?.year;
     const historicalDeathYear = historical.death?.year;
 
-    if (playerEra !== 'Époque Contemporaine' && historicalBirthYear && historicalDeathYear) {
-        const isAlive = historicalBirthYear <= playerEraYears.end && historicalDeathYear >= playerEraYears.start;
-        if (isAlive) {
-            const ageInEra = Math.floor(Math.random() * (historicalDeathYear - historicalBirthYear) * 0.5 + (historicalDeathYear - historicalBirthYear) * 0.25);
-            return {
-                name: historical.name,
-                age: Math.max(20, Math.min(80, ageInEra)),
-                profession: historical.occupation?.join(', ') || 'Figure publique',
-                connectionType: 'self',
-                greeting: `Bonjour, je suis ${historical.name}. Que me vaut l'honneur de votre visite en cette année de grâce ?`,
-                personality: ["authentique", "historique"],
-            };
-        }
+    // Case 1: The historical figure is alive and a contemporary of the player's era.
+    if (historicalBirthYear && historicalDeathYear && historicalBirthYear <= playerEraYears.end && historicalDeathYear >= playerEraYears.start) {
+        const ageInEra = Math.floor(Math.random() * (historicalDeathYear - historicalBirthYear) * 0.5 + (historicalDeathYear - historicalBirthYear) * 0.25);
+        return {
+            name: historical.name,
+            age: Math.max(20, Math.min(80, ageInEra)),
+            profession: historical.occupation?.join(', ') || 'Figure publique',
+            connectionType: 'self',
+            greeting: `Bonjour, je suis ${historical.name}. Que me vaut l'honneur de votre visite en cette année de grâce ?`,
+            personality: ["authentique", "historique"],
+        };
     }
-
-    const connectionType = determineConnectionType(historical);
-    const modernName = generateModernName(historical.name, connectionType);
     
-    let age = 60;
-    if (connectionType === 'descendant') age = Math.floor(Math.random() * 20) + 45;
-    if (connectionType === 'expert') age = Math.floor(Math.random() * 30) + 40;
-    if (connectionType === 'guardian') age = Math.floor(Math.random() * 25) + 35;
+    // Case 2: The player is in the modern day, meeting a contact related to a past figure.
+    if (playerEra === 'Époque Contemporaine') {
+        const connectionType = determineConnectionType(historical);
+        const contactName = generateContactName(historical.name, connectionType, playerEra);
+        
+        let age = 60;
+        if (connectionType === 'descendant') age = Math.floor(Math.random() * 20) + 45;
+        if (connectionType === 'expert') age = Math.floor(Math.random() * 30) + 40;
+        if (connectionType === 'guardian') age = Math.floor(Math.random() * 25) + 35;
 
-    return {
-        name: modernName,
-        age: age,
-        profession: generateModernProfession(historical, connectionType),
-        connectionType: connectionType,
-        greeting: generateGreeting(modernName, historical.name),
-        personality: ["cultivée", "discrète", "passionnée"],
-    };
+        return {
+            name: contactName,
+            age: age,
+            profession: generateContactProfession(historical, connectionType, playerEra),
+            connectionType: connectionType,
+            greeting: generateGreeting(contactName, historical.name, playerEra),
+            personality: ["cultivée", "discrète", "passionnée"],
+        };
+    }
+    
+    // Case 3: The player is in a historical era, and the figure is from a *previous* historical era.
+    else {
+        const connectionType = 'descendant';
+        const contactName = generateContactName(historical.name, connectionType, playerEra);
+        const contactProfession = generateContactProfession(historical, connectionType, playerEra);
+
+        return {
+            name: contactName,
+            age: Math.floor(Math.random() * 30) + 25,
+            profession: contactProfession,
+            connectionType,
+            greeting: generateGreeting(contactName, historical.name, playerEra),
+            personality: ["érudit", "réservé"],
+        };
+    }
 }
 
 

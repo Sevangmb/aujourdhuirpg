@@ -32,6 +32,7 @@ const generateHistoricalContactPrompt = ai.definePrompt({
     prompt: `
         Vous êtes un maître de jeu et un scénariste pour un RPG textuel se déroulant à l'époque : **{{playerEra}}**.
         Votre tâche est d'enrichir un contact non-joueur (PNJ) en générant des informations fascinantes et des pistes de jeu.
+        **Il est impératif d'éviter tout anachronisme.** Tous les secrets, faits et quêtes que vous générez doivent être crédibles et cohérents avec l'époque **{{playerEra}}**.
 
         Le joueur a rencontré le contact suivant :
         - **Nom du Contact** : {{{modern.name}}} ({{{modern.age}}} ans)
