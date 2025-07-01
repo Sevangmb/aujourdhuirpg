@@ -87,19 +87,34 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
 const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider.`;
 
 const PROMPT_CORE_TASK = `
-**Tâche Principale : Raconter l'Histoire, Suggérer la Suite, et Gérer le Monde**
-Votre mission a quatre volets :
-1.  **Générer le 'scenarioText' (Narration) :** Le moteur de jeu a déjà calculé les conséquences de l'action du joueur (\`gameEvents\`). Votre tâche est de transformer ces événements bruts en une description narrative captivante en HTML. Ne répétez PAS les événements, mais intégrez-les de manière transparente et immersive dans votre récit.
-2.  **Générer des Choix Guidés (Actions Créatives et Adaptatives) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ \`choices\` avec 4 ou 5 objets \`StoryChoice\` RICHES, UNIQUES, et MÉMORABLES.
-    - **Basé sur le Contexte et les Compétences :** Analysez l'environnement actuel du joueur, ses compétences, son inventaire et le \`cascadeResult\` pour proposer des actions pertinentes.
-    - **ÉVITEZ LE GÉNÉRIQUE :** Ne proposez PAS d'actions comme "Explorer", "Observer les environs", "Parler à quelqu'un". Soyez SPÉCIFIQUE (ex: "Utiliser votre appareil photo vintage pour capturer le reflet des pavés", "Négocier un portrait contre une anecdote").
-    - **Structure Complète :** Chaque choix doit être un objet JSON complet.
-3.  **Générer une Recommandation Stratégique (Optionnel) :** En tant que MJ, analysez la situation globale du joueur et remplissez le champ optionnel 'aiRecommendation' avec un conseil stratégique.
-4.  **Agir en tant que Maître de Jeu :** En fonction de la narration, vous pouvez maintenant proposer des changements concrets au monde du jeu.
-    - **Si un PNJ propose un travail :** Utilisez le champ \`newQuests\` pour créer une nouvelle quête de type "job".
-    - **Si le joueur découvre un corps :** Utilisez \`newClues\` pour générer un indice "observation d'objet".
-    - **Si le joueur trouve un portefeuille :** Utilisez \`newItems\` pour l'objet "portefeuille" et \`newTransactions\` pour l'argent trouvé.
-    - **Remplissez les champs appropriés** (\`newQuests\`, \`newPNJs\`, \`questUpdates\`, etc.) uniquement lorsque cela est justifié par l'histoire que vous racontez. Sinon, laissez-les vides.
+**Tâche Principale : Raconter, Suggérer, et Animer le Monde**
+Votre mission est quadruple :
+
+1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur (\`gameEvents\`). Transformez ces événements bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits.
+
+2.  **Générer des Choix Créatifs et Uniques (choices) :** C'est la partie la plus importante. Vous DEVEZ générer 4 à 5 actions possibles pour le joueur qui sont MÉMORABLES, CRÉATIVES, et SPÉCIFIQUES au contexte.
+    - **EXIGENCES STRICTES POUR LES CHOIX :**
+        - **UTILISEZ L'INVENTAIRE :** Proposez des actions qui utilisent les objets du joueur de manière ingénieuse.
+        - **ADAPTEZ-VOUS À L'ÉTAT PHYSIQUE :** Si le joueur est fatigué ou affamé, les choix doivent le refléter.
+        - **PROPOSEZ DE LA VARIÉTÉ :** Offrez un éventail de risques et de récompenses.
+        - **SOYEZ SPÉCIFIQUE :** Ne vous contentez pas d'un verbe, décrivez l'action.
+    - **À INTERDIRE FORMELLEMENT (Actions trop génériques) :**
+        - ❌ "Explorer les environs"
+        - ❌ "Observer les alentours"
+        - ❌ "Parler à quelqu'un"
+        - ❌ "Chercher des informations"
+    - **EXEMPLES D'ACTIONS ATTENDUES (Contextuelles et créatives) :**
+        - ✅ "Négocier un portrait au fusain contre une anecdote sur Picasso." (Social + Compétence)
+        - ✅ "Utiliser votre smartphone pour géolocaliser les œuvres de street art cachées dans la ruelle." (Inventaire + Exploration)
+        - ✅ "Capturer le reflet des pavés mouillés avec votre appareil photo vintage." (Inventaire + Créativité)
+
+3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. En fonction de votre narration, vous pouvez proposer des changements concrets.
+    - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête de type "job".
+    - Si le joueur découvre un corps, utilisez \`newClues\` pour générer un indice.
+    - Si le joueur trouve un portefeuille, utilisez \`newItems\` et \`newTransactions\`.
+    - **Remplissez les champs** (\`newQuests\`, \`newPNJs\`, \`questUpdates\`, etc.) **uniquement** si cela est logiquement justifié par le récit. Sinon, laissez-les vides.
+
+4.  **Donner un Conseil Stratégique (aiRecommendation) :** Si pertinent, analysez la situation globale du joueur (argent bas, quête importante) et donnez un conseil via le champ optionnel \`aiRecommendation\`.
 `;
 
 const PROMPT_CASCADE_INSTRUCTIONS = `
