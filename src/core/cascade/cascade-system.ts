@@ -1,5 +1,5 @@
 import type { StoryChoice, GameState } from '@/lib/types';
-import type { CascadeResult, EnrichedContext } from './types';
+import type { CascadeResult, EnrichedContext, ModuleEnrichmentResult } from './types';
 import { cascadeManager } from './cascade-manager';
 
 /**
@@ -11,31 +11,25 @@ import { cascadeManager } from './cascade-manager';
 function determineRelevantModules(choice: StoryChoice): string[] {
   const choiceText = choice.text.toLowerCase();
   const choiceType = choice.type;
+  const modules = new Set<string>();
 
   // Specific keyword triggers
   if (choiceText.includes('livre') || choiceText.includes('bibliothèque') || choiceText.includes('rechercher') || choiceText.includes('lire')) {
-    return ['livre'];
+    modules.add('livre');
   }
   if (choiceType === 'job' || choiceText.includes('manger') || choiceText.includes('cuisiner') || choiceText.includes('restaurant')) {
-    return ['cuisine'];
+    modules.add('cuisine');
   }
   if (choiceText.includes('enquêter') || choiceText.includes('chercher des indices')) {
-      return ['culture_locale']; // Could be a future 'investigation' module
+      modules.add('culture_locale');
+  }
+  
+  // Always add a general cultural analysis for context, unless it's a very specific action already covered
+  if(modules.size === 0 || choiceType === 'exploration' || choiceType === 'observation' || choiceType === 'social') {
+      modules.add('culture_locale');
   }
 
-  // General triggers based on action type
-  switch (choiceType) {
-    case 'social':
-      // Could trigger a future 'social_dynamics' module
-      return ['culture_locale']; 
-    case 'exploration':
-      return ['culture_locale'];
-    case 'observation':
-       return ['culture_locale'];
-    default:
-      // Default to a general analysis for other actions
-      return ['culture_locale'];
-  }
+  return Array.from(modules);
 }
 
 /**
@@ -65,23 +59,42 @@ function buildBaseContext(state: GameState, action: StoryChoice): EnrichedContex
  * @returns A promise that resolves to the combined results of the cascade, or null if no modules were triggered.
  */
 export async function runCascadeForAction(state: GameState, action: StoryChoice): Promise<CascadeResult | null> {
-    const modulesToRun = determineRelevantModules(action);
-    if (modulesToRun.length === 0) {
+    const rootModulesToRun = determineRelevantModules(action);
+    if (rootModulesToRun.length === 0) {
         return null;
     }
 
     const baseContext = buildBaseContext(state, action);
     
-    // For now, we run the first relevant module. This can be expanded to run multiple in parallel and merge results.
-    const rootModuleId = modulesToRun[0];
-
     try {
-        const cascadeResult = await cascadeManager.enrichWithCascade(baseContext, rootModuleId);
-        return cascadeResult;
+        const cascadePromises = rootModulesToRun.map(rootModuleId => 
+            cascadeManager.enrichWithCascade(baseContext, rootModuleId)
+        );
+        
+        const allResults = await Promise.all(cascadePromises);
+
+        // Merge the results from all parallel cascades into one
+        const mergedResults: Map<string, ModuleEnrichmentResult> = new Map();
+        const mergedExecutionChains = new Set<string>();
+
+        for (const result of allResults) {
+            result.results.forEach((value, key) => {
+                mergedResults.set(key, value);
+            });
+            result.executionChain.forEach(moduleId => {
+                mergedExecutionChains.add(moduleId);
+            });
+        }
+        
+        const finalResult: CascadeResult = {
+            results: mergedResults,
+            executionChain: Array.from(mergedExecutionChains), // Note: this doesn't preserve inter-cascade order, but that's ok.
+        };
+
+        return finalResult;
+
     } catch (error) {
-        console.error(`Error during cascade execution for root module "${rootModuleId}":`, error);
-        // In a production environment, you might want to return a partial result or specific error object.
-        // For now, we return null to allow the game to continue without enriched context.
+        console.error(`Error during parallel cascade execution:`, error);
         return null;
     }
 }
