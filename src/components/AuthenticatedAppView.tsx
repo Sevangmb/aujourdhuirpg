@@ -64,7 +64,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
   const handleCharacterCreate = useCallback(async (playerData: FullCharacterFormData) => {
     setAppMode('loading');
     try {
-      const locationData = await getPositionData(playerData.startingLocation);
+      const locationData = await getPositionData(playerData.startingLocation, playerData.era);
 
       let hydratedPlayer = hydratePlayer({
           ...playerData, uid: user.uid, isAnonymous: user.isAnonymous,

@@ -1,6 +1,7 @@
+
 'use server';
 
-import type { Position, Zone } from '../lib/types/game-types';
+import type { Position, Zone, GameEra } from '../lib/types';
 import { fetchWikipediaSummary } from './wikipedia-service';
 import { fetchNearbyPoisFromOSM, type GetNearbyPoisServiceOutput } from './osm-service'; // Import GetNearbyPoisServiceOutput for pois type
 import { z } from 'zod'; // Import z from zod
@@ -19,19 +20,7 @@ const OverpassPoiSchemaInternal = z.object({
 type OverpassPoiInternal = z.infer<typeof OverpassPoiSchemaInternal>;
 
 
-// Stub function for image generation, to be implemented later
-async function generateLocationImage(placeName: string): Promise<string | undefined> {
-  console.log(`generateLocationImage called for: ${placeName}`);
-  try {
-    const result = await generateLocationImageFlow({ placeName });
-    return result.imageUrl || undefined;
-  } catch (error) {
-    console.warn(`Failed to generate image for ${placeName}:`, error);
-    return undefined;
-  }
-}
-
-export async function getPositionData(placeName: string): Promise<Position> {
+export async function getPositionData(placeName: string, era: GameEra): Promise<Position> {
   const wikipediaData = await fetchWikipediaSummary(placeName);
 
   if (!wikipediaData || typeof wikipediaData.latitude !== 'number' || typeof wikipediaData.longitude !== 'number') {
@@ -72,7 +61,13 @@ export async function getPositionData(placeName: string): Promise<Position> {
   }
 
   if (!imageUrl && placeName) {
-    imageUrl = await generateLocationImage(placeName);
+    try {
+        const result = await generateLocationImageFlow({ placeName, era });
+        imageUrl = result.imageUrl || undefined;
+    } catch (error) {
+        console.warn(`Failed to generate image for ${placeName} in era ${era}:`, error);
+        imageUrl = undefined;
+    }
   }
 
   return {
