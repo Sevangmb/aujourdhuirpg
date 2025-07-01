@@ -594,13 +594,15 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       return acc;
   }, {} as Record<keyof PlayerStats, number>);
 
-  const flatSkills = (Object.keys(player.skills) as Array<keyof AdvancedSkillSystem>).reduce((acc, category) => {
-      const skillsInCategory = player.skills[category];
-      for (const skillName in skillsInCategory) {
-          acc[`${category}.${skillName}`] = skillsInCategory[skillName].level;
-      }
-      return acc;
-  }, {} as Record<string, number>);
+  const nestedSkills = (Object.keys(player.skills) as Array<keyof AdvancedSkillSystem>).reduce((acc, category) => {
+    const skillsInCategory = player.skills[category];
+    const subSkills: Record<string, number> = {};
+    for (const skillName in skillsInCategory) {
+        subSkills[skillName] = skillsInCategory[skillName].level;
+    }
+    acc[category] = subSkills;
+    return acc;
+  }, {} as Record<keyof AdvancedSkillSystem, Record<string, number>>);
 
   const playerInputForAI = {
       name: player.name,
@@ -610,7 +612,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       era: player.era,
       background: player.background,
       stats: flatStats,
-      skills: flatSkills,
+      skills: nestedSkills,
       physiology: player.physiology,
       traitsMentalStates: player.traitsMentalStates,
       progression: player.progression,
@@ -676,7 +678,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: gameEventsSummary,
-    cascadeResult: cascadeSummary,
+    cascadeResult: cascadeSummary.replace(/[\n\r]/g, ' '),
   };
 }
 
@@ -1038,5 +1040,3 @@ export function generateCombatActions(player: Player, enemy: Enemy): StoryChoice
 
     return actions;
 }
-
-    

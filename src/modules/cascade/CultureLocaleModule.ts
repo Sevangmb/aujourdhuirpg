@@ -13,7 +13,7 @@ export class CultureLocaleModule implements EnrichmentModule {
 
     // Sanitize the summary to prevent JSON parsing errors from complex whitespace or special characters.
     const sanitizedSummary = (wikiData?.summary || 'Aucune information culturelle trouvée.')
-        .replace(/[^\x00-\x7F]/g, "") // Remove non-ASCII characters
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove C0 and C1 control characters
         .replace(/\s+/g, ' ') // Collapse whitespace
         .trim();
 
