@@ -1,13 +1,11 @@
 
-
-
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
 import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
-import { getMasterItemById } from './items';
+import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
@@ -730,3 +728,5 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxA
     }
     return contextualChoices;
 }
+
+    
