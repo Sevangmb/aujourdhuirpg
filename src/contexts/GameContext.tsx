@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI } from '@/lib/types';
 import type { AdaptedContact, HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
@@ -36,7 +36,7 @@ interface GameContextData {
   weather: AsyncData<WeatherData>;
   locationImage: { url: string | null; loading: boolean; error: string | null };
   geoIntelligence: AsyncData<GeoIntelligence>;
-  pois: AsyncData<Position[]>;
+  pois: AsyncData<EnhancedPOI[]>;
 }
 
 interface GameContextType {

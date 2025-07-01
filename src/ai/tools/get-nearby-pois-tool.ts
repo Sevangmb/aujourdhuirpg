@@ -10,31 +10,30 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
-import type { GetNearbyPoisServiceInput, GetNearbyPoisServiceOutput } from '@/services/osm-service';
+import type { EnhancedPOI } from '@/lib/types';
 
-
-const OverpassPoiSchema = z.object({
-  name: z.string().optional().describe('The name of the POI.'),
-  type: z.string().describe('The primary type/category of the POI (e.g., restaurant, museum, shop).'),
-  subtype: z.string().optional().describe('A more specific subtype if available (e.g., italian_restaurant, art_museum, supermarket).'),
-  tags: z.record(z.string()).optional().describe('Raw OSM tags associated with the POI.'),
-});
-// No need to export OverpassPoi type if not used externally from this file
 
 const GetNearbyPoisInputSchema = z.object({
   latitude: z.number().describe("The player's current latitude."),
   longitude: z.number().describe("The player's current longitude."),
   radius: z.number().min(50).max(5000).optional().default(500).describe('Search radius in meters (default 500m). Max 5000m.'),
-  poiType: z.string().optional().describe('Optional: Type of POI to search for (e.g., "restaurant", "hotel", "museum", "shop", "tourism", "amenity"). Can be a general category or a specific OpenStreetMap tag value.'),
   limit: z.number().min(1).max(15).optional().default(7).describe('Maximum number of POIs to return (default 7, max 15).'),
 });
 export type GetNearbyPoisInput = z.infer<typeof GetNearbyPoisInputSchema>;
 
+const EnhancedPoiToolOutputSchema = z.object({
+  name: z.string().optional(),
+  establishmentType: z.string().describe('The general category of the establishment (e.g., food_beverage, retail).'),
+  subCategory: z.string().describe('A more specific category (e.g., restaurant, bookstore).'),
+  summary: z.string().optional().describe('A brief description of the POI.'),
+});
+
 const GetNearbyPoisOutputSchema = z.object({
-  pois: z.array(OverpassPoiSchema).describe('A list of nearby POIs found.'),
-  message: z.string().optional().describe('A summary message, e.g., if no POIs were found or an error occurred.'),
+  pois: z.array(EnhancedPoiToolOutputSchema).describe('A list of nearby POIs found.'),
+  message: z.string().optional().describe('A summary message, e.g., if no POIs were found.'),
 });
 export type GetNearbyPoisOutput = z.infer<typeof GetNearbyPoisOutputSchema>;
+
 
 export const getNearbyPoisTool = ai.defineTool(
   {
@@ -45,10 +44,19 @@ export const getNearbyPoisTool = ai.defineTool(
     outputSchema: GetNearbyPoisOutputSchema,
   },
   async (input: GetNearbyPoisInput): Promise<GetNearbyPoisOutput> => {
-    // The input for the tool (GetNearbyPoisInput) is compatible with GetNearbyPoisServiceInput
-    const serviceOutput: GetNearbyPoisServiceOutput = await fetchNearbyPoisFromOSM(input);
+    const enhancedPois: EnhancedPOI[] = await fetchNearbyPoisFromOSM(input);
     
-    // The output from the service (GetNearbyPoisServiceOutput) is compatible with GetNearbyPoisOutput
-    return serviceOutput;
+    if (enhancedPois.length === 0) {
+        return { pois: [], message: 'No points of interest found at this location.' };
+    }
+    
+    const toolPois = enhancedPois.map(poi => ({
+        name: poi.name,
+        establishmentType: poi.establishmentType,
+        subCategory: poi.subCategory,
+        summary: poi.summary
+    }));
+    
+    return { pois: toolPois };
   }
 );

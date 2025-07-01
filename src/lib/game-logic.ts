@@ -1,4 +1,5 @@
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem } from './types';
+
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
@@ -30,7 +31,7 @@ export function getInitialScenario(player: Player): Scenario {
 export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
-  | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
+  | { type: 'SET_NEARBY_POIS'; payload: EnhancedPOI[] | null }
   | { type: 'UPDATE_PLAYER_DATA', payload: Player }
   | { type: 'UPDATE_INVENTORY_ITEM', payload: { instanceId: string; enrichedObject: EnrichedObject } };
 
@@ -439,28 +440,16 @@ export function checkForLocationBasedEvents(newLocation: Position, gameState: Ga
   return triggeredActions;
 }
 
-export async function fetchPoisForCurrentLocation(playerLocation: Position): Promise<Position[] | null> {
+export async function fetchPoisForCurrentLocation(playerLocation: Position): Promise<EnhancedPOI[] | null> {
   if (!playerLocation) return null;
   try {
     const poisFromService = await fetchNearbyPoisFromOSM({
         latitude: playerLocation.latitude,
         longitude: playerLocation.longitude,
         radius: 500,
-        limit: 10
+        limit: 15
     });
-    if (!poisFromService || (poisFromService.message && poisFromService.pois.length === 0)) return [];
-    
-    return poisFromService.pois.map(poi => ({
-      latitude: poi.lat ?? playerLocation.latitude,
-      longitude: poi.lon ?? playerLocation.longitude,
-      name: poi.name || "Lieu Inconnu",
-      summary: poi.tags?.description || poi.type,
-      zone: { name: poi.subtype || poi.type || "Zone" },
-      tags: poi.tags,
-    })).filter(poi => {
-        if (poisFromService.pois.length === 1) return true;
-        return !(poi.latitude === playerLocation.latitude && poi.longitude === playerLocation.longitude);
-    });
+    return poisFromService;
   } catch (error) {
     console.error("Error fetching new POIs:", error);
     return null;

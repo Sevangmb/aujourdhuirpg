@@ -5,6 +5,7 @@ import type { StoryChoice, ActionType } from './choice-types';
 import type { Quest, PNJ, DynamicItemCreationPayload } from '.';
 import type { HistoricalContact } from '../modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
+import type { EnhancedPOI } from './poi-types';
 
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {
@@ -61,7 +62,7 @@ export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
   currentEnemy?: Enemy | null;
-  nearbyPois: Position[] | null;
+  nearbyPois: EnhancedPOI[] | null;
   gameTimeInMinutes: number;
   journal: JournalEntry[];
   toneSettings: ToneSettings;
