@@ -524,6 +524,18 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
         tags: player.currentLocation.tags,
       },
       toneSettings: player.toneSettings,
+      // --- NEW ENRICHED CONTEXT ---
+      keyInventoryItems: player.inventory
+        .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
+        .map(item => item.name),
+      recentActionTypes: gameState.journal
+        ?.slice(-3)
+        .map(entry => entry.type) || [],
+      physiologicalState: {
+        needsFood: player.physiology.basic_needs.hunger.level < 40,
+        needsRest: player.stats.Energie.value < 30,
+        isThirsty: player.physiology.basic_needs.thirst.level < 40
+      },
   };
   
   const cascadeData = cascadeResult ? {

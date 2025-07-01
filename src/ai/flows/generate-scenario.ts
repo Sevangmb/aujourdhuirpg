@@ -90,12 +90,12 @@ const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter l'Histoire, Suggérer la Suite, et Gérer le Monde**
 Votre mission a quatre volets :
 1.  **Générer le 'scenarioText' (Narration) :** Le moteur de jeu a déjà calculé les conséquences de l'action du joueur (\`gameEvents\`). Votre tâche est de transformer ces événements bruts en une description narrative captivante en HTML. Ne répétez PAS les événements, mais intégrez-les de manière transparente et immersive dans votre récit.
-2.  **Générer des Choix Guidés (Actions Adaptatives) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ \`choices\` avec 3 ou 4 objets \`StoryChoice\` riches et variés.
-    - **Basé sur le Contexte et les Compétences :** Analysez l'environnement actuel du joueur, ses compétences et le \`cascadeResult\` pour proposer des actions pertinentes.
-    - **Variété :** Proposez un mélange d'actions (observation, action, social, etc.). Évitez les choix génériques comme "Continuer".
+2.  **Générer des Choix Guidés (Actions Créatives et Adaptatives) :** C'est une partie cruciale. Pour guider le joueur, peuplez le champ \`choices\` avec 4 ou 5 objets \`StoryChoice\` RICHES, UNIQUES, et MÉMORABLES.
+    - **Basé sur le Contexte et les Compétences :** Analysez l'environnement actuel du joueur, ses compétences, son inventaire et le \`cascadeResult\` pour proposer des actions pertinentes.
+    - **ÉVITEZ LE GÉNÉRIQUE :** Ne proposez PAS d'actions comme "Explorer", "Observer les environs", "Parler à quelqu'un". Soyez SPÉCIFIQUE (ex: "Utiliser votre appareil photo vintage pour capturer le reflet des pavés", "Négocier un portrait contre une anecdote").
     - **Structure Complète :** Chaque choix doit être un objet JSON complet.
 3.  **Générer une Recommandation Stratégique (Optionnel) :** En tant que MJ, analysez la situation globale du joueur et remplissez le champ optionnel 'aiRecommendation' avec un conseil stratégique.
-4.  **NOUVEAU - Agir en tant que Maître de Jeu :** En fonction de la narration, vous pouvez maintenant proposer des changements concrets au monde du jeu.
+4.  **Agir en tant que Maître de Jeu :** En fonction de la narration, vous pouvez maintenant proposer des changements concrets au monde du jeu.
     - **Si un PNJ propose un travail :** Utilisez le champ \`newQuests\` pour créer une nouvelle quête de type "job".
     - **Si le joueur découvre un corps :** Utilisez \`newClues\` pour générer un indice "observation d'objet".
     - **Si le joueur trouve un portefeuille :** Utilisez \`newItems\` pour l'objet "portefeuille" et \`newTransactions\` pour l'argent trouvé.
@@ -133,6 +133,24 @@ const PROMPT_GUIDING_PRINCIPLES = `
   - **Expertise (30-60€):** Tâches complexes nécessitant un niveau de compétence notable (25-50) (ex: rédiger un article technique, enquêter sur une piste difficile).
   - **Consulting (60-150€+):** Tâches de très haut niveau nécessitant une compétence avancée (>50) ou une combinaison de compétences rares (ex: décrypter des données complexes, négocier un accord commercial).
   Analysez les compétences du joueur (objet \`player.skills\`) pour proposer des jobs appropriés et fixer une récompense juste.
+
+- **EXPLOITATION DU CONTEXTE JOUEUR :** Les actions que vous proposez DOIVENT être intelligentes et contextuelles.
+  {{#if player.keyInventoryItems}}
+  🎒 **OBJETS DISPONIBLES :** {{player.keyInventoryItems}}. Créez des actions qui utilisent ces objets de manière créative et logique.
+  {{/if}}
+  {{#if player.physiologicalState.needsFood}}
+  🍽️ **JOUEUR AFFAMÉ :** Proposez au moins une action pour que le joueur puisse manger ou trouver de la nourriture.
+  {{/if}}
+  {{#if player.physiologicalState.isThirsty}}
+  💧 **JOUEUR ASSOIFFÉ :** Proposez au moins une action pour que le joueur puisse boire.
+  {{/if}}
+  {{#if player.physiologicalState.needsRest}}
+  😴 **JOUEUR FATIGUÉ :** Proposez des actions moins coûteuses en énergie ou qui permettent de se reposer.
+  {{/if}}
+  {{#if player.recentActionTypes}}
+  🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions différents.
+  {{/if}}
+
 - **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez les instructions spécifiques ci-dessous pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
 ${PROMPT_CASCADE_INSTRUCTIONS}
 - **RÈGLE D'OR :** Vous êtes le narrateur. Le moteur de jeu est le maître des règles. **NE modifiez PAS l'état du jeu**. Votre seule sortie est le \`scenarioText\`, les \`choices\`, et l'éventuelle \`aiRecommendation\`.

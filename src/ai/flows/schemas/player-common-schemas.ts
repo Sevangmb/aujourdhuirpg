@@ -125,4 +125,12 @@ export const PlayerInputSchema = z.object({
   money: z.number(),
   currentLocation: LocationSchema,
   toneSettings: ToneSettingsSchema,
+  // --- ADDED NEW FIELDS for context ---
+  keyInventoryItems: z.array(z.string()).optional().describe("Liste des objets clés actuellement dans l'inventaire du joueur."),
+  recentActionTypes: z.array(z.string()).optional().describe("Les types des 3 dernières actions du joueur, pour éviter la répétition."),
+  physiologicalState: z.object({
+    needsFood: z.boolean(),
+    needsRest: z.boolean(),
+    isThirsty: z.boolean(),
+  }).optional().describe("État physiologique résumé du joueur pour guider les actions (faim, fatigue, soif)."),
 });
