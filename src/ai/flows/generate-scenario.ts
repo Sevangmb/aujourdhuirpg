@@ -33,6 +33,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
     return {
       scenarioText: `<p><strong>Fonctionnalité IA Indisponible</strong></p><p>La génération de scénario par l'IA est désactivée car la clé API nécessaire n'est pas configurée.</p>`,
       choices: [],
+      aiRecommendation: { focus: 'Erreur', reasoning: 'Clé API manquante.' },
     };
   }
   return generateScenarioFlow(input);
@@ -124,8 +125,8 @@ Le champ \`cascadeResult\` contient des informations contextuelles ultra-riches 
 Voici comment interpréter les données de la cascade :
 
 - **Si le module \`cuisine\` est présent dans \`cascadeResult.results\` :**
-  - **Narration :** Décrivez les odeurs, les pensées du personnage sur une recette, ou l'ambiance d'une cuisine ou d'un restaurant. Utilisez les \`cookingOpportunities\` pour enrichir l'histoire.
-  - **Choix :** Si \`cascadeResult.results.cuisine.data.cookableRecipes\` n'est pas vide, proposez un choix de type 'job' ou 'action' pour "Cuisiner [nom de la recette]". Si \`nearlyCookableRecipes\` existe, proposez un choix pour "Trouver les ingrédients manquants pour [nom de la recette]".
+  - **Narration :** Décrivez les odeurs, les pensées du personnage sur une recette, ou l'ambiance d'une cuisine ou d'un restaurant. Intégrez le \`nutritionalStatus\` dans les pensées du personnage (ex: "Vous sentez votre estomac gargouiller, une analyse rapide de votre état vous rappelle que vous manquez de protéines."). Utilisez les \`cookingOpportunities\` pour enrichir l'histoire.
+  - **Choix :** Si \`cascadeResult.results.cuisine.data.cookableRecipes\` est présent et non vide, proposez un choix pour "Cuisiner [nom de la recette]". Si \`cascadeResult.results.cuisine.data.nearlyCookableRecipes\` est présent et non vide, proposez un choix pour "Trouver les ingrédients manquants pour [nom de la recette]". Utilisez les \`nutritionalRecommendations\` pour créer des choix d'action ciblés, comme "Chercher un restaurant qui sert un plat riche en [nutriment recommandé]".
 
 - **Si le module \`culture_locale\` est présent dans \`cascadeResult.results\` :**
   - **Narration :** Intégrez un détail historique ou culturel du \`summary\` dans les pensées du personnage ou dans la description d'un bâtiment. Par exemple : "En passant devant la fontaine, vous vous souvenez avoir lu que..."
@@ -321,6 +322,7 @@ const generateScenarioFlow = ai.defineFlow(
        return {
          scenarioText: "<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p>",
          choices: [],
+         aiRecommendation: { focus: 'Erreur', reasoning: 'Erreur critique du modèle IA.' },
        };
     }
   }
