@@ -192,7 +192,7 @@ ${PROMPT_ACTION_AND_EFFECTS}
 
 // --- NEW SCHEMAS FOR CONTEXT ---
 const PoiContextSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   type: z.string(),
   subCategory: z.string(),
   availableServices: z.array(z.string()),
