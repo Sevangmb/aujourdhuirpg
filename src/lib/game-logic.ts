@@ -1,5 +1,6 @@
 
 
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
@@ -307,6 +308,19 @@ export async function processPlayerAction(
   
   const tempPlayerState = JSON.parse(JSON.stringify(player)) as Player;
 
+  // Handle specific action types like using an item from inventory
+  if (choice.id.startsWith('use_item_')) {
+    const instanceId = choice.id.replace('use_item_', '');
+    const itemToUse = player.inventory.find(i => i.instanceId === instanceId);
+    if (itemToUse) {
+        events.push({ type: 'ITEM_USED', instanceId: itemToUse.instanceId, itemName: itemToUse.name, description: `Utilisation de ${itemToUse.name}` });
+        if (itemToUse.type === 'consumable') {
+            events.push({ type: 'ITEM_REMOVED', itemId: itemToUse.id, itemName: itemToUse.name, quantity: 1 });
+        }
+    }
+  }
+
+
   // --- LOG ACTION & TIME ---
   events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost });
   events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
@@ -457,11 +471,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 
   const { player } = gameState;
 
-  // Flatten stats for AI
-  const flatStats = Object.fromEntries(
-    Object.entries(player.stats).map(([key, statObj]) => [key, statObj.value])
-  );
-  
   // Create a simplified, nested skill object for the AI, matching the Zod schema
   const simplifiedSkills = Object.fromEntries(
     Object.entries(player.skills).map(([category, skills]) => [
@@ -483,8 +492,8 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       origin: player.origin,
       era: player.era || 'Époque Contemporaine',
       background: player.background,
-      stats: flatStats,
-      skills: simplifiedSkills, // Sending simplified, nested skills
+      stats: Object.fromEntries(Object.entries(player.stats).map(([k, v]) => [k, v.value])),
+      skills: simplifiedSkills, 
       physiology: player.physiology,
       traitsMentalStates: player.traitsMentalStates,
       progression: player.progression,
@@ -526,7 +535,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
   let cascadeSummary = "Aucune analyse contextuelle supplémentaire disponible.";
   if (cascadeResult && cascadeResult.results) {
       const summaries: string[] = [];
-      // Cuisine Module Summary
       if (cascadeResult.results.has('cuisine')) {
           const cuisineData = cascadeResult.results.get('cuisine')?.data;
           if (cuisineData) {
@@ -538,14 +546,12 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
               }
           }
       }
-      // Culture Locale Module Summary
       if (cascadeResult.results.has('culture_locale')) {
           const cultureData = cascadeResult.results.get('culture_locale')?.data;
           if (cultureData && cultureData.summary && !cultureData.summary.includes('Aucune information')) {
               summaries.push(`- Contexte Culturel Local: ${cultureData.summary}`);
           }
       }
-      // Livre Module Summary
       if (cascadeResult.results.has('livre')) {
           const livreData = cascadeResult.results.get('livre')?.data;
           if (livreData && livreData.foundBooks && livreData.foundBooks.length > 0) {
@@ -559,7 +565,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       }
   }
 
-  // --- NEW: POI Context for AI ---
   const nearbyEstablishments = gameState.nearbyPois?.map(poi => ({
     name: poi.name,
     type: poi.establishmentType,
@@ -588,7 +593,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
 }
 
 /**
- * NEW: Converts AI-generated proposals into a list of concrete GameEvents.
+ * Converts AI-generated proposals into a list of concrete GameEvents.
  * This acts as a security and validation layer between the AI and the game engine.
  * @param aiOutput The output from the generateScenario AI flow.
  * @returns An array of GameEvent objects.
@@ -728,4 +733,78 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxA
       }
     }
     return contextualChoices;
+}
+
+/**
+ * Generates utility actions based on player's state (hunger, thirst, health) and inventory.
+ * @param player The current player object.
+ * @returns An array of StoryChoice objects for using available items.
+ */
+export function generatePlayerStateActions(player: Player): StoryChoice[] {
+    const choices: StoryChoice[] = [];
+    if (!player) return choices;
+
+    const { inventory, physiology, stats } = player;
+
+    // Check hunger
+    if (physiology.basic_needs.hunger.level < 50) {
+        const foodItems = inventory.filter(item => item.type === 'consumable' && item.physiologicalEffects?.hunger);
+        if (foodItems.length > 0) {
+            const bestFood = foodItems[0];
+            choices.push({
+                id: `use_item_${bestFood.instanceId}`,
+                text: `Manger: ${bestFood.name}`,
+                description: `Consommer ${bestFood.name} pour calmer votre faim.`,
+                iconName: 'Utensils',
+                type: 'action',
+                mood: 'social',
+                energyCost: 1,
+                timeCost: 5,
+                consequences: ['Soulagement de la faim'],
+                physiologicalEffects: bestFood.physiologicalEffects,
+            });
+        }
+    }
+
+    // Check thirst
+    if (physiology.basic_needs.thirst.level < 60) {
+        const drinkItems = inventory.filter(item => item.type === 'consumable' && item.physiologicalEffects?.thirst);
+         if (drinkItems.length > 0) {
+            const bestDrink = drinkItems[0];
+            choices.push({
+                id: `use_item_${bestDrink.instanceId}`,
+                text: `Boire: ${bestDrink.name}`,
+                description: `Consommer ${bestDrink.name} pour étancher votre soif.`,
+                iconName: 'Utensils',
+                type: 'action',
+                mood: 'social',
+                energyCost: 1,
+                timeCost: 2,
+                consequences: ['Soulagement de la soif'],
+                physiologicalEffects: bestDrink.physiologicalEffects,
+            });
+        }
+    }
+    
+    // Check low health
+    if (stats.Sante.value < (stats.Sante.max || 100) * 0.7) {
+        const healingItems = inventory.filter(item => item.type === 'consumable' && item.effects?.Sante && (item.effects.Sante as unknown as number) > 0);
+        if (healingItems.length > 0) {
+            const bestHeal = healingItems[0];
+            choices.push({
+                id: `use_item_${bestHeal.instanceId}`,
+                text: `Utiliser: ${bestHeal.name}`,
+                description: `Utiliser ${bestHeal.name} pour soigner vos blessures.`,
+                iconName: 'Heart',
+                type: 'action',
+                mood: 'social',
+                energyCost: 1,
+                timeCost: 3,
+                consequences: ['Récupération de santé'],
+                statEffects: bestHeal.effects as Partial<Record<keyof PlayerStats, number>>,
+            });
+        }
+    }
+
+    return choices;
 }
