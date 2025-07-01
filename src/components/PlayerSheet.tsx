@@ -14,7 +14,7 @@ interface PlayerSheetProps {
 
 const statIcons: { [key in keyof Player['stats']]?: React.ElementType } = {
   Force: Dumbbell,
-  Dexterite: UserCog, // Using UserCog as a stand-in for Hand
+  Dexterite: UserCog,
   Constitution: Heart,
   Intelligence: Book,
   Perception: Crosshair,
