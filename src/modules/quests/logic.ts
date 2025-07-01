@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Contains the core business logic for the Quest module.
  */
@@ -26,7 +27,7 @@ export function handleAddQuest(state: GameState, questData: Omit<Quest, 'id' | '
         id: uuidv4(),
         dateAdded: nowISO,
         status: mutableQuestData.status || 'active', // Default to 'active' if not provided
-        objectives: mutableQuestData.objectives.map(obj => ({ ...obj, id: uuidv4() }))
+        objectives: mutableQuestData.objectives.map(obj => ({ ...obj, id: obj.id || uuidv4() }))
     };
 
     const newQuestLog = [...(state.player.questLog || []), newQuest];

@@ -82,9 +82,9 @@ export class NewsQuestGenerator {
       type: 'secondary',
       status: 'inactive',
       objectives: [
-        { description: `Collecter des informations sur "${extractKeyEntity(article)}"`, isCompleted: false },
-        { description: 'Interroger les témoins potentiels dans le quartier concerné', isCompleted: false },
-        { description: 'Trouver des preuves ou indices matériels', isCompleted: false }
+        { id: uuidv4(), description: `Collecter des informations sur "${extractKeyEntity(article)}"`, isCompleted: false },
+        { id: uuidv4(), description: 'Interroger les témoins potentiels dans le quartier concerné', isCompleted: false },
+        { id: uuidv4(), description: 'Trouver des preuves ou indices matériels', isCompleted: false }
       ],
       rewardDescription: `Récompenses pour la résolution du mystère.`,
       rewards: rewards,
