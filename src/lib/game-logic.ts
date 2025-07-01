@@ -1,6 +1,5 @@
-
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent, EnrichedObject } from './types';
-import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
+import { applyStatChanges, addItemToInventory, removeItemFromInventory, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
@@ -10,15 +9,7 @@ import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
-
-// --- Constants for Game Logic ---
-const HUNGER_DECAY_PER_MINUTE = 0.05;
-const THIRST_DECAY_PER_MINUTE = 0.08;
-const HUNGER_DECAY_PER_ENERGY_POINT = 0.1;
-const THIRST_DECAY_PER_ENERGY_POINT = 0.15;
-const ITEM_XP_GAIN_ON_SUCCESSFUL_USE = 10;
-const PLAYER_XP_GAIN_ON_SUCCESSFUL_SKILL_CHECK = 5;
-
+import { addXp } from '@/modules/player/logic';
 
 // --- Initial Scenario ---
 export function getInitialScenario(player: Player): Scenario {
@@ -74,9 +65,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                     return { ...currentState, player: { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } } };
                 
                 case 'XP_GAINED': {
-                    const {newProgression} = addXP(player.progression, event.amount);
+                    const { newProgression } = addXp(player.progression, event.amount);
                     return { ...currentState, player: { ...player, progression: newProgression } };
                 }
+
+                case 'PLAYER_LEVELED_UP':
+                    // The newProgression from XP_GAINED already includes the level up.
+                    // This event is now for notifications/side effects, not state changes here.
+                    return currentState;
                 
                 case 'ITEM_ADDED':
                     return { ...currentState, player: { ...player, inventory: addItemToInventory(player.inventory, event.itemId, event.quantity, player.currentLocation) } };

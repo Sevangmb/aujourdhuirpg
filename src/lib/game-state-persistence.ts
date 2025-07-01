@@ -25,7 +25,7 @@ import {
 } from '@/data/initial-game-data';
 import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
-import { calculateXpToNextLevel } from './player-state-helpers';
+import { calculateXpToNextLevel } from '@/modules/player/logic';
 import { deepmerge } from 'deepmerge-ts';
 import { v4 as uuidv4 } from 'uuid';
 

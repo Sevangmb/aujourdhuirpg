@@ -6,6 +6,7 @@ import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Pr
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { calculateXpToNextLevel } from '@/modules/player/logic';
 
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
@@ -53,15 +54,10 @@ export const initialPhysiology: AdvancedPhysiologySystem = {
 
 export const initialTraitsMentalStates: TraitsMentalStates = ["Prudent", "Observateur"];
 
-const calculateXpToNextLevelForInitial = (level: number): number => {
-  if (level <= 0) level = 1;
-  return level * 100 + 50 * (level -1) * level;
-};
-
 export const initialProgression: Progression = {
   level: 1,
   xp: 0,
-  xpToNextLevel: calculateXpToNextLevelForInitial(1),
+  xpToNextLevel: calculateXpToNextLevel(1),
   perks: [],
 };
 
