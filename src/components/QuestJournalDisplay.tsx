@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { CircleDot, CircleCheck, CircleX, BookUser, Landmark, Swords, Users, Speech, Lightbulb, ShieldAlert, History, MapPin, Info, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale/fr';
+import { getMasterItemById } from '@/data/items';
 
 interface QuestJournalDisplayProps {
   player: Player;
@@ -76,25 +77,28 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
           </Accordion>
         )}
       </CardContent>
- {(quest.rewardDescription || typeof quest.moneyReward === 'number') && (
-        <CardFooter className="text-xs p-2.5 pt-1">
-            <p>
-                <span className="font-semibold">Récompense:</span>
-                {quest.rewardDescription ? ` ${quest.rewardDescription}` : ""}
-                {typeof quest.moneyReward === 'number' ? ` ${quest.moneyReward}€` : ""}
-            </p>
-        </CardFooter>
-      )}
- {quest.status === 'completed' && quest.dateCompleted && (
-        <CardFooter className="text-xs p-2.5 pt-0 text-green-600">
-            Terminée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
-        </CardFooter>
-      )}
-       {quest.status === 'failed' && quest.dateCompleted && (
-        <CardFooter className="text-xs p-2.5 pt-0 text-red-600">
-            Échouée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
-        </CardFooter>
-      )}
+        {(quest.rewardDescription || quest.rewards) && (
+            <CardFooter className="text-xs p-2.5 pt-1 flex-col items-start space-y-1">
+                <p className="font-semibold">Récompense:</p>
+                <div className="pl-2">
+                    {quest.rewardDescription && <p className="italic text-muted-foreground">"{quest.rewardDescription}"</p>}
+                    {quest.rewards?.money && <p>+ {quest.rewards.money}€</p>}
+                    {quest.rewards?.xp && <p>+ {quest.rewards.xp} XP</p>}
+                    {quest.rewards?.reputation && <p>+ {quest.rewards.reputation} Réputation</p>}
+                    {quest.rewards?.items && quest.rewards.items.map(item => <p key={item.itemId}>+ {item.quantity}x {getMasterItemById(item.itemId)?.name || item.itemId}</p>)}
+                </div>
+            </CardFooter>
+        )}
+        {quest.status === 'completed' && quest.dateCompleted && (
+                <CardFooter className="text-xs p-2.5 pt-0 text-green-600">
+                    Terminée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
+                </CardFooter>
+            )}
+        {quest.status === 'failed' && quest.dateCompleted && (
+            <CardFooter className="text-xs p-2.5 pt-0 text-red-600">
+                Échouée le: {format(new Date(quest.dateCompleted), 'dd/MM/yy', { locale: fr })}
+            </CardFooter>
+        )}
     </Card>
   );
 };
