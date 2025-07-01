@@ -1,5 +1,5 @@
 import type { EnrichmentModule, EnrichedContext, ModuleEnrichmentResult, ModuleDependency } from '@/core/cascade/types';
-import { fetchRecipesByArea } from '@/services/recipe-service';
+import { fetchRecipesByArea } from '@/data-sources/food/themealdb-api';
 import type { EnrichedRecipe } from '@/lib/types';
 
 // A simple map for demonstration purposes. This would be more sophisticated.

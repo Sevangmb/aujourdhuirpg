@@ -5,7 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { fetchRecipesByArea } from '@/services/recipe-service';
+import { fetchRecipesByArea } from '@/data-sources/food/themealdb-api';
 import type { EnrichedRecipe } from '@/lib/types';
 
 const GetRecipesInputSchema = z.object({

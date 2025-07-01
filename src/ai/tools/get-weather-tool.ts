@@ -9,8 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { fetchRawWeatherData, interpretWeatherCode } from '@/services/weather-service';
-import type { RawWeatherData } from '@/services/weather-service';
+import { fetchRawWeatherData, interpretWeatherCode } from '@/data-sources/environment/open-meteo-api';
+import type { RawWeatherData } from '@/data-sources/environment/open-meteo-api';
 
 const GetWeatherInputSchema = z.object({
   latitude: z.number().describe('The latitude for the weather forecast.'),

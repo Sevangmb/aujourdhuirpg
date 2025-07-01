@@ -1,9 +1,10 @@
 
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
-import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
+import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck } from './skill-check';
@@ -512,7 +513,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
         tags: player.currentLocation.tags,
       },
       toneSettings: player.toneSettings,
-      // --- NEW ENRICHED CONTEXT ---
+      // --- ADDED NEW FIELDS for context ---
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
         .map(item => item.name),

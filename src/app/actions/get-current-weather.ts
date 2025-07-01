@@ -3,8 +3,8 @@
 
 import { z } from 'zod';
 import * as LucideIcons from 'lucide-react';
-import { fetchRawWeatherData, interpretWeatherCode } from '@/services/weather-service';
-import type { RawWeatherData } from '@/services/weather-service';
+import { fetchRawWeatherData, interpretWeatherCode } from '@/data-sources/environment/open-meteo-api';
+import type { RawWeatherData } from '@/data-sources/environment/open-meteo-api';
 
 const WeatherDataSchema = z.object({
   temperature: z.number(),

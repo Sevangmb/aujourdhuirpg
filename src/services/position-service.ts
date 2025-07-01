@@ -2,8 +2,8 @@
 'use server';
 
 import type { Position, Zone, GameEra } from '../lib/types';
-import { fetchWikipediaSummary } from './wikipedia-service';
-import { fetchNearbyPoisFromOSM, type GetNearbyPoisServiceOutput } from './osm-service'; // Import GetNearbyPoisServiceOutput for pois type
+import { fetchWikipediaSummary } from '@/data-sources/culture/wikipedia-api';
+import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 import { z } from 'zod'; // Import z from zod
 import { generateLocationImage as generateLocationImageFlow } from '@/ai/flows/generate-location-image-flow';
 
@@ -35,8 +35,8 @@ export async function getPositionData(placeName: string, era: GameEra): Promise<
   let highlights: string[] = [];
 
   try {
-    const osmPoisResponse = await fetchNearbyPoisFromOSM({ latitude, longitude, radius: 500, limit: 10 });
-    const pois = osmPoisResponse.pois;
+    const pois = await fetchNearbyPoisFromOSM({ latitude, longitude, radius: 500, limit: 10 });
+    
 
     if (pois && pois.length > 0) {
       const distinctPoiNames: Set<string> = new Set();
@@ -52,7 +52,7 @@ export async function getPositionData(placeName: string, era: GameEra): Promise<
       if (firstNamedPoiWithTags) {
         zoneData = {
           name: firstNamedPoiWithTags.name!,
-          description: firstNamedPoiWithTags.tags!.description || firstNamedPoiWithTags.type || firstNamedPoiWithTags.tags!.amenity || firstNamedPoiWithTags.tags!.shop || firstNamedPoiWithTags.tags!.tourism,
+          description: firstNamedPoiWithTags.tags!.description || firstNamedPoiWithTags.establishmentType || firstNamedPoiWithTags.tags!.amenity || firstNamedPoiWithTags.tags!.shop || firstNamedPoiWithTags.tags!.tourism,
         };
       }
     }

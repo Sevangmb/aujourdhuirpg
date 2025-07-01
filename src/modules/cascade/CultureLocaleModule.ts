@@ -1,5 +1,5 @@
 import type { EnrichmentModule, EnrichedContext, ModuleEnrichmentResult, ModuleDependency } from '@/core/cascade/types';
-import { fetchWikipediaSummary } from '@/services/wikipedia-service';
+import { fetchWikipediaSummary } from '@/data-sources/culture/wikipedia-api';
 
 export class CultureLocaleModule implements EnrichmentModule {
   readonly id = 'culture_locale';

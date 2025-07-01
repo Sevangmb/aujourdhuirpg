@@ -9,8 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { fetchTopHeadlines } from '@/services/news-service';
-import type { GetNewsServiceInput, GetNewsServiceOutput } from '@/services/news-service';
+import { fetchTopHeadlines } from '@/data-sources/news/news-api';
+import type { GetNewsServiceInput, GetNewsServiceOutput } from '@/data-sources/news/news-api';
 
 const NewsArticleSchema = z.object({
   title: z.string().describe('The headline of the news article.'),

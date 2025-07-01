@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
+import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
 import type { EnhancedPOI } from '@/lib/types';
 
 

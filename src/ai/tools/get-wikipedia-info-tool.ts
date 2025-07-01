@@ -9,8 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { fetchWikipediaSummary } from '@/services/wikipedia-service';
-import type { WikipediaInfoServiceOutput } from '@/services/wikipedia-service';
+import { fetchWikipediaSummary } from '@/data-sources/culture/wikipedia-api';
+import type { WikipediaInfoServiceOutput } from '@/data-sources/culture/wikipedia-api';
 
 const WikipediaInfoInputSchema = z.object({
   searchTerm: z.string().describe('The term to search for on Wikipedia (e.g., "Eiffel Tower", "Louis XIV").'),
