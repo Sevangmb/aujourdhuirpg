@@ -5,7 +5,7 @@
  * stats, and situational factors against a difficulty target.
  */
 
-import type { AdvancedSkillSystem, PlayerStats, IntelligentItem, AdvancedPhysiologySystem } from './types';
+import type { AdvancedSkillSystem, PlayerStats, IntelligentItem, AdvancedPhysiologySystem, SkillDetail } from './types';
 
 export type DegreeOfSuccess = 'critical_failure' | 'failure' | 'success' | 'critical_success';
 
@@ -16,8 +16,8 @@ export interface SkillCheckResult {
   skillUsed: string;
   baseSkillValue: number;
   statModifierValue: number;
-  itemModifierValue: number; // New: total bonus from items
-  itemContributions: { name: string; bonus: number }[]; // New: breakdown of item bonuses
+  itemModifierValue: number; 
+  itemContributions: { name: string; bonus: number }[];
   situationalModifierValue: number;
   effectiveScore: number;
   totalAchieved: number;
@@ -36,17 +36,17 @@ const skillCategoryToStatMap: { [key in keyof AdvancedSkillSystem]: keyof Player
   survival: 'Intelligence',
 };
 
-function getSkillValueByPath(skills: AdvancedSkillSystem, path: string): number {
+function getSkillValueByPath(skills: AdvancedSkillSystem, path: string): SkillDetail {
     const pathParts = path.split('.');
-    if (pathParts.length !== 2) return 0;
+    if (pathParts.length !== 2) return { level: 0, xp: 0, xpToNext: 0 };
 
     const [category, subSkill] = pathParts as [keyof AdvancedSkillSystem, string];
     const categorySkills = skills[category];
 
-    if (categorySkills && typeof (categorySkills as any)[subSkill] === 'number') {
+    if (categorySkills && typeof (categorySkills as any)[subSkill] === 'object') {
         return (categorySkills as any)[subSkill];
     }
-    return 0;
+    return { level: 0, xp: 0, xpToNext: 0 };
 }
 
 const getPhysiologyPenalty = (physiology: AdvancedPhysiologySystem): number => {
@@ -65,6 +65,19 @@ const getPhysiologyPenalty = (physiology: AdvancedPhysiologySystem): number => {
     else if (thirst.level < 60) penalty -= 3;
     
     return penalty;
+};
+
+function getSpecializationBonus(skills: AdvancedSkillSystem, skillPath: string): number {
+  const categoryName = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
+  if (!skills[categoryName]) return 0;
+
+  const categorySkills = skills[categoryName];
+  const skillValues = Object.values(categorySkills).map((skill: any) => skill.level);
+  if (skillValues.length === 0) return 0;
+
+  const avgCategoryLevel = skillValues.reduce((a, b) => a + b, 0) / skillValues.length;
+  // +1 bonus for every 10 average points in the category
+  return Math.floor(avgCategoryLevel / 10);
 };
 
 
@@ -89,15 +102,16 @@ export function performSkillCheck(
   situationalModifiers: number = 0,
   physiology: AdvancedPhysiologySystem
 ): SkillCheckResult {
-  const baseSkillValue = getSkillValueByPath(skills, skillPath);
+  const skillDetail = getSkillValueByPath(skills, skillPath);
+  const baseSkillValue = skillDetail.level;
   const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
 
   const controllingStatName = skillCategoryToStatMap[category];
   const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
-  // Rebalanced Stat Modifier: Less powerful than original /10. 
-  const statModifierValue = Math.floor(Math.max(0, controllingStatValue - 50) / 5);
+  
+  // Rebalanced Stat Modifier (logarithmic style curve)
+  const statModifierValue = controllingStatValue > 50 ? Math.floor(Math.sqrt(controllingStatValue - 50) * 2) : 0;
 
-  // Calculate total modifier from all items in inventory
   const itemContributions: { name: string; bonus: number }[] = [];
   const itemModifierValue = inventory.reduce((total, item) => {
     if (item.skillModifiers && item.skillModifiers[skillPath]) {
@@ -108,13 +122,14 @@ export function performSkillCheck(
     return total;
   }, 0);
 
-  // Cap the bonus from items to prevent it from becoming game-breaking.
+  // Capped item bonus
   const cappedItemModifierValue = Math.min(itemModifierValue, 15);
   
-  // Apply penalties from physiology (rebalanced to be more gradual).
   const physiologicalModifiers = getPhysiologyPenalty(physiology);
+  
+  const specializationBonus = getSpecializationBonus(skills, skillPath);
 
-  const totalModifier = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers;
+  const totalModifier = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + specializationBonus;
   const rollValue = Math.floor(Math.random() * 100) + 1;
   const totalAchieved = rollValue + totalModifier;
 
@@ -137,9 +152,9 @@ export function performSkillCheck(
     skillUsed: skillPath,
     baseSkillValue,
     statModifierValue,
-    itemModifierValue: cappedItemModifierValue, // Return the capped value
+    itemModifierValue: cappedItemModifierValue,
     itemContributions,
-    situationalModifierValue: situationalModifiers + physiologicalModifiers,
+    situationalModifierValue: situationalModifiers + physiologicalModifiers + specializationBonus,
     effectiveScore: totalModifier,
     totalAchieved,
     difficultyTarget,
@@ -167,12 +182,13 @@ export function calculateSuccessProbability(
   situationalModifiers: number = 0,
   physiology: AdvancedPhysiologySystem
 ): number {
-  const baseSkillValue = getSkillValueByPath(skills, skillPath);
+  const skillDetail = getSkillValueByPath(skills, skillPath);
+  const baseSkillValue = skillDetail.level;
   const category = skillPath.split('.')[0] as keyof AdvancedSkillSystem;
 
   const controllingStatName = skillCategoryToStatMap[category];
   const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
-  const statModifierValue = Math.floor(Math.max(0, controllingStatValue - 50) / 5);
+  const statModifierValue = controllingStatValue > 50 ? Math.floor(Math.sqrt(controllingStatValue - 50) * 2) : 0;
 
   const itemModifierValue = inventory.reduce((total, item) => {
     if (item.skillModifiers && item.skillModifiers[skillPath]) {
@@ -183,8 +199,10 @@ export function calculateSuccessProbability(
   const cappedItemModifierValue = Math.min(itemModifierValue, 15);
 
   const physiologicalModifiers = getPhysiologyPenalty(physiology);
+  
+  const specializationBonus = getSpecializationBonus(skills, skillPath);
 
-  const effectiveScore = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers;
+  const effectiveScore = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + specializationBonus;
   const requiredRoll = difficultyTarget - effectiveScore;
   const successChance = 101 - requiredRoll;
 

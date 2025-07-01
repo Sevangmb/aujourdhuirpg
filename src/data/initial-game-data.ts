@@ -1,12 +1,11 @@
-
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem } from '@/lib/types';
+import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem, SkillDetail } from '@/lib/types';
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { calculateXpToNextLevel } from '@/modules/player/logic';
+import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
 
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
@@ -23,13 +22,48 @@ export const initialPlayerStats: PlayerStats = {
   Inspiration: { value: 10 },
 };
 
-// UPDATED to new AdvancedSkillSystem structure
+const createSkillDetail = (level: number): SkillDetail => ({
+    level: level,
+    xp: 0,
+    xpToNext: getSkillUpgradeCost(level),
+});
+
 export const initialSkills: AdvancedSkillSystem = {
-  cognitive: { analysis: 5, memory: 5, creativity: 5, logic: 5, observation: 10 },
-  social: { persuasion: 10, empathy: 5, leadership: 5, networking: 5, cultural_adaptation: 5 },
-  physical: { endurance: 5, agility: 5, stealth: 5, strength: 5, dexterity: 5 },
-  technical: { technology: 10, investigation: 5, languages: 5, finance: 5, crafting: 5 },
-  survival: { streetwise: 10, wilderness: 5, medical: 5, navigation: 5, adaptation: 5 },
+  cognitive: { 
+    analysis: createSkillDetail(5), 
+    memory: createSkillDetail(5), 
+    creativity: createSkillDetail(5), 
+    logic: createSkillDetail(5), 
+    observation: createSkillDetail(10) 
+  },
+  social: { 
+    persuasion: createSkillDetail(10), 
+    empathy: createSkillDetail(5), 
+    leadership: createSkillDetail(5), 
+    networking: createSkillDetail(5), 
+    cultural_adaptation: createSkillDetail(5) 
+  },
+  physical: { 
+    endurance: createSkillDetail(5), 
+    agility: createSkillDetail(5), 
+    stealth: createSkillDetail(5), 
+    strength: createSkillDetail(5), 
+    dexterity: createSkillDetail(5) 
+  },
+  technical: { 
+    technology: createSkillDetail(10), 
+    investigation: createSkillDetail(5), 
+    languages: createSkillDetail(5), 
+    finance: createSkillDetail(5), 
+    crafting: createSkillDetail(5) 
+  },
+  survival: { 
+    streetwise: createSkillDetail(10), 
+    wilderness: createSkillDetail(5), 
+    medical: createSkillDetail(5), 
+    navigation: createSkillDetail(5), 
+    adaptation: createSkillDetail(5) 
+  },
 };
 
 // NEW: Initial physiology data

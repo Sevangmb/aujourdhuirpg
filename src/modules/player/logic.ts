@@ -2,7 +2,7 @@
  * @fileOverview Contains the core business logic for the Player module.
  * This will eventually replace parts of lib/player-state-helpers.ts.
  */
-import type { Player, Progression, AdvancedSkillSystem, PlayerStats } from './types';
+import type { Player, Progression, AdvancedSkillSystem, PlayerStats, SkillDetail } from './types';
 import type { GameEvent } from '@/lib/types';
 
 export function calculateXpToNextLevel(level: number): number {
@@ -10,7 +10,51 @@ export function calculateXpToNextLevel(level: number): number {
   return level * 100 + 50 * (level - 1) * level;
 }
 
-export function addXp(currentProgression: Progression, xpGained: number): { newProgression: Progression, events: GameEvent[] } {
+export function getSkillUpgradeCost(currentLevel: number): number {
+  if (currentLevel <= 0) currentLevel = 1;
+  // Formula from user's plan
+  return Math.floor(currentLevel * currentLevel * 1.5) + 20;
+}
+
+export function applySkillXp(currentSkills: AdvancedSkillSystem, skillPath: string, xpGained: number): { updatedSkills: AdvancedSkillSystem, leveledUp: boolean, newLevel?: number } {
+  const newSkills = JSON.parse(JSON.stringify(currentSkills));
+  const pathParts = skillPath.split('.');
+  
+  if (pathParts.length !== 2) {
+    return { updatedSkills: newSkills, leveledUp: false };
+  }
+
+  const [category, subSkill] = pathParts as [keyof AdvancedSkillSystem, string];
+  const skillCategory = newSkills[category];
+  if (!skillCategory || !(subSkill in skillCategory)) {
+    return { updatedSkills: newSkills, leveledUp: false };
+  }
+
+  const skill: SkillDetail = (skillCategory as any)[subSkill];
+  
+  skill.xp += xpGained;
+  let leveledUp = false;
+  let newLevel: number | undefined;
+
+  while (skill.xp >= skill.xpToNext) {
+    leveledUp = true;
+    skill.level += 1;
+    skill.xp -= skill.xpToNext;
+    skill.xpToNext = getSkillUpgradeCost(skill.level);
+    newLevel = skill.level;
+  }
+
+  (newSkills[category] as any)[subSkill] = skill;
+
+  return { updatedSkills: newSkills, leveledUp, newLevel };
+}
+
+export function getSkillXp(difficulty: number, success: boolean): number {
+  const baseXP = Math.floor(difficulty / 10);
+  return success ? baseXP : Math.floor(baseXP / 2);
+}
+
+export function addPlayerXp(currentProgression: Progression, xpGained: number): { newProgression: Progression, events: GameEvent[] } {
   const newProgression = { ...currentProgression };
   const events: GameEvent[] = [];
 
@@ -48,26 +92,4 @@ export function applyStatChanges(currentStats: PlayerStats, changes: Partial<Rec
     }
   }
   return newStats;
-}
-
-
-export function applySkillGains(currentSkills: AdvancedSkillSystem, gains: Record<string, number>): { updatedSkills: AdvancedSkillSystem, notifications: string[] } {
-    const newSkills = JSON.parse(JSON.stringify(currentSkills)); // Deep copy
-    const notifications: string[] = [];
-
-    for (const skillPath in gains) {
-        if (Object.prototype.hasOwnProperty.call(gains, skillPath)) {
-            const pathParts = skillPath.split('.');
-            if (pathParts.length === 2) {
-                const [category, subSkill] = pathParts as [keyof AdvancedSkillSystem, string];
-                const categorySkills = newSkills[category];
-                if (categorySkills && typeof (categorySkills as any)[subSkill] === 'number') {
-                    (categorySkills as any)[subSkill] += gains[skillPath];
-                    const skillName = subSkill.charAt(0).toUpperCase() + subSkill.slice(1).replace(/_/g, ' ');
-                    notifications.push(`${skillName} a augmenté de +${gains[skillPath]}.`);
-                }
-            }
-        }
-    }
-    return { updatedSkills: newSkills, notifications };
 }

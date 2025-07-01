@@ -29,6 +29,8 @@ export type GameEvent =
   | { type: 'PLAYER_PHYSIOLOGY_CHANGE'; stat: 'hunger' | 'thirst'; change: number; finalValue: number; }
   | { type: 'XP_GAINED'; amount: number; }
   | { type: 'PLAYER_LEVELED_UP'; newLevel: number; }
+  | { type: 'SKILL_XP_AWARDED', skill: string, amount: number }
+  | { type: 'SKILL_LEVELED_UP', skill: string, newLevel: number }
   | { type: 'ITEM_ADDED'; itemId: string; itemName: string; quantity: number; }
   | { type: 'DYNAMIC_ITEM_ADDED'; payload: DynamicItemCreationPayload }
   | { type: 'ITEM_REMOVED'; itemId: string; itemName: string; quantity: number; }

@@ -1,5 +1,5 @@
 
-import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem } from './types';
+import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem, SkillDetail } from './types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -25,7 +25,7 @@ import {
 } from '@/data/initial-game-data';
 import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
-import { calculateXpToNextLevel } from '@/modules/player/logic';
+import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
 import { deepmerge } from 'deepmerge-ts';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -57,24 +57,34 @@ export async function saveGameState(uid: string, characterId: string, state: Gam
   return result;
 }
 
-function migrateSkills(oldSkills: any): AdvancedSkillSystem {
-    const newSkills = JSON.parse(JSON.stringify(initialSkills)); // Deep copy of the initial structure
-    if (!oldSkills || typeof oldSkills !== 'object' || Array.isArray(oldSkills)) {
+function migrateSkills(savedSkills: any): AdvancedSkillSystem {
+    const newSkills = JSON.parse(JSON.stringify(initialSkills));
+    if (!savedSkills || typeof savedSkills !== 'object' || Array.isArray(savedSkills)) {
         return newSkills;
     }
 
-    // Check if it's already the new structure
-    if ('cognitive' in oldSkills && 'social' in oldSkills) {
-        return deepmerge(newSkills, oldSkills);
+    // Check if it's already the new structure by checking if a skill is an object with a 'level' property
+    if (savedSkills.cognitive && typeof savedSkills.cognitive.analysis === 'object' && savedSkills.cognitive.analysis !== null && 'level' in savedSkills.cognitive.analysis) {
+        return deepmerge(newSkills, savedSkills);
     }
-    
-    // Map old flat skills to new nested structure
-    if (typeof oldSkills.Informatique === 'number') newSkills.technical.technology = oldSkills.Informatique;
-    if (typeof oldSkills.Discretion === 'number') newSkills.physical.stealth = oldSkills.Discretion;
-    if (typeof oldSkills.Dialogue === 'number') newSkills.social.persuasion = oldSkills.Dialogue;
-    if (typeof oldSkills.Perception === 'number') newSkills.cognitive.observation = oldSkills.Perception;
-    if (typeof oldSkills.Survie === 'number') newSkills.survival.wilderness = oldSkills.Survie;
 
+    // It's the old format (numbers), so we migrate
+    for (const category in savedSkills) {
+        if (Object.prototype.hasOwnProperty.call(savedSkills, category) && (newSkills as any)[category]) {
+            for (const skillName in savedSkills[category]) {
+                if (Object.prototype.hasOwnProperty.call(savedSkills[category], skillName) && (newSkills as any)[category][skillName]) {
+                    const level = savedSkills[category][skillName];
+                    if(typeof level === 'number') {
+                         (newSkills as any)[category][skillName] = {
+                            level: level,
+                            xp: 0,
+                            xpToNext: getSkillUpgradeCost(level)
+                        };
+                    }
+                }
+            }
+        }
+    }
     return newSkills;
 }
 

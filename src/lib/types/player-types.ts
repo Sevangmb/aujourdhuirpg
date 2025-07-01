@@ -31,44 +31,55 @@ export type PlayerStats = {
 };
 
 
+export interface SkillDetail {
+  level: number;
+  xp: number;
+  xpToNext: number;
+}
+
+export interface SkillCategory {
+    [key: string]: SkillDetail;
+}
+
 // --- NEW ADVANCED SKILL SYSTEM ---
 export interface AdvancedSkillSystem {
-  cognitive: {
-    analysis: number;
-    memory: number;
-    creativity: number;
-    logic: number;
-    observation: number;
+  cognitive: SkillCategory & {
+    analysis: SkillDetail;
+    memory: SkillDetail;
+    creativity: SkillDetail;
+    logic: SkillDetail;
+    observation: SkillDetail;
   };
-  social: {
-    persuasion: number;
-    empathy: number;
-    leadership: number;
-    networking: number;
-    cultural_adaptation: number;
+  social: SkillCategory & {
+    persuasion: SkillDetail;
+    empathy: SkillDetail;
+    leadership: SkillDetail;
+    networking: SkillDetail;
+    cultural_adaptation: SkillDetail;
   };
-  physical: {
-    endurance: number;
-    agility: number;
-    stealth: number;
-    strength: number;
-    dexterity: number;
+  physical: SkillCategory & {
+    endurance: SkillDetail;
+    agility: SkillDetail;
+    stealth: SkillDetail;
+    strength: SkillDetail;
+    dexterity: SkillDetail;
   };
-  technical: {
-    technology: number;
-    investigation: number;
-    languages: number;
-    finance: number;
-    crafting: number;
+  technical: SkillCategory & {
+    technology: SkillDetail;
+    investigation: SkillDetail;
+    languages: SkillDetail;
+    finance: SkillDetail;
+    crafting: SkillDetail;
   };
-  survival: {
-    streetwise: number;
-    wilderness: number;
-    medical: number;
-    navigation: number;
-    adaptation: number;
+  survival: SkillCategory & {
+    streetwise: SkillDetail;
+    wilderness: SkillDetail;
+    medical: SkillDetail;
+    navigation: SkillDetail;
+    adaptation: SkillDetail;
   };
 }
+
 
 // DEPRECATED, but kept for type compatibility during transition
 export type Skills = Record<string, number>;
