@@ -23,7 +23,6 @@ import {
     Activity,
     Save,
     LogOut,
-    SlidersHorizontal,
     Briefcase,
     BookOpen,
     Search,
@@ -44,7 +43,6 @@ import GeoIntelligenceDisplay from './GeoIntelligenceDisplay'; // Import new com
 import FinancialsDisplay from './FinancialsDisplay'; // Import new component
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import HistoricalContactsBook from './HistoricalContactsBook';
-import ToneSettingsDialog from './ToneSettingsDialog'; // Import ToneSettingsDialog
 import JournalDisplay from './JournalDisplay';
 
 
@@ -62,7 +60,6 @@ const AppMenubar: React.FC = () => {
         geoIntelligence,
     } = gameState.contextualData;
     
-    const [isToneSettingsOpen, setIsToneSettingsOpen] = React.useState(false);
     const player = gameState?.player;
 
     const onToggleFullScreen = () => {
@@ -109,10 +106,6 @@ const AppMenubar: React.FC = () => {
                 <span className="sr-only sm:not-sr-only sm:ml-1">Paramètres</span>
             </MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onSelect={(e) => { e.preventDefault(); setIsToneSettingsOpen(true); }}>
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Tonalité Narrative
-                </MenubarItem>
                 <MenubarItem onClick={onToggleFullScreen}>
                     <Maximize className="mr-2 h-4 w-4" /> Plein écran
                 </MenubarItem>
@@ -248,10 +241,6 @@ const AppMenubar: React.FC = () => {
             </MenubarContent>
         </MenubarMenu>
         </Menubar>
-        <ToneSettingsDialog
-            isOpen={isToneSettingsOpen}
-            onOpenChange={setIsToneSettingsOpen}
-        />
     </>
     );
 };
