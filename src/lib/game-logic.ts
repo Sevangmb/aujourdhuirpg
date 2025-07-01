@@ -40,216 +40,214 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, player: { ...state.player, inventory: newInventory } };
     }
     case 'APPLY_GAME_EVENTS': {
-        // This is the new core of the reducer. It processes the event list from the logic layer.
-        let nextState = state;
-        for (const event of action.payload) {
-            let player = nextState.player;
-            if (!player) continue;
+      let nextState = state;
+      const eventQueue = [...action.payload]; // Initialize queue with incoming events
 
-            switch (event.type) {
-                case 'PLAYER_STAT_CHANGE': {
-                    const statToChange = player.stats[event.stat as keyof PlayerStats];
-                    if (statToChange) {
-                        const maxValue = statToChange.max !== undefined ? statToChange.max : event.finalValue;
-                        const clampedValue = Math.max(0, Math.min(event.finalValue, maxValue));
-                        const newStat = { ...statToChange, value: clampedValue };
-                        const newStats = { ...player.stats, [event.stat]: newStat };
-                        player = { ...player, stats: newStats };
-                    }
-                    break;
-                }
-                 case 'PLAYER_PHYSIOLOGY_CHANGE':
-                    player = { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } };
-                    break;
-                case 'MOMENTUM_UPDATED':
-                    player = { ...player, momentum: event.newMomentum };
-                    break;
-                case 'XP_GAINED': {
-                    const { newProgression, events: xpEvents } = addPlayerXp(player.progression, event.amount);
-                    player = { ...player, progression: newProgression };
-                    if (xpEvents.length > 0) {
-                        nextState = gameReducer(nextState, { type: 'APPLY_GAME_EVENTS', payload: xpEvents });
-                        player = nextState.player!;
-                    }
-                    break;
-                }
-                 case 'SKILL_XP_AWARDED': {
-                    const { updatedSkills, leveledUp, newLevel } = applySkillXp(player.skills, event.skill, event.amount);
-                    player = { ...player, skills: updatedSkills };
-                    if (leveledUp && newLevel) {
-                        const skillName = event.skill.split('.')[1] || event.skill;
-                        const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Votre compétence ${skillName} a atteint le niveau ${newLevel} !` }};
-                        nextState = gameReducer({ ...nextState, player }, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
-                        player = nextState.player!;
-                    }
-                    break;
-                }
-                case 'PLAYER_LEVELED_UP': {
-                    const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Félicitations ! Vous avez atteint le niveau ${event.newLevel} !` }};
-                    nextState = gameReducer(nextState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
-                    player = nextState.player!;
-                    break;
-                }
-                case 'ITEM_ADDED':
-                    player = { ...player, inventory: addItemToInventory(player.inventory, event.itemId, event.quantity, player.currentLocation) };
-                    break;
-                case 'DYNAMIC_ITEM_ADDED': {
-                    const { baseItemId, overrides } = event.payload;
-                    player = { ...player, inventory: addItemToInventory(player.inventory, baseItemId, 1, player.currentLocation, overrides) };
-                    break;
-                }
-                case 'ITEM_REMOVED': {
-                    const { updatedInventory } = removeItemFromInventory(player.inventory, event.itemId, event.quantity);
-                    player = { ...player, inventory: updatedInventory };
-                    break;
-                }
-                case 'ITEM_USED': {
-                    const nowISO = new Date().toISOString();
-                    const updatedInventory = player.inventory.map(item => {
-                        if (item.instanceId === event.instanceId) {
-                            return { ...item, memory: { ...item.memory, usageHistory: [...item.memory.usageHistory, { timestamp: nowISO, event: event.description, locationName: player.currentLocation.name }] } };
-                        }
-                        return item;
-                    });
-                    player = { ...player, inventory: updatedInventory };
-                    break;
-                }
-                case 'ITEM_XP_GAINED': {
-                  const newInventory = player.inventory.map(item => {
-                    if (item.instanceId === event.instanceId) {
-                      return { ...item, itemXp: item.itemXp + event.xp };
-                    }
-                    return item;
-                  });
-                  player = { ...player, inventory: newInventory };
-                  break;
-                }
-                case 'ITEM_LEVELED_UP': {
-                  const newInventory = player.inventory.map(item => {
-                    if (item.instanceId === event.instanceId) {
-                      const updatedItem = { ...item, itemLevel: event.newLevel, itemXp: event.newXp };
-                      if (event.newXpToNextLevel) {
-                        updatedItem.xpToNextItemLevel = event.newXpToNextLevel;
-                      }
-                      return updatedItem;
-                    }
-                    return item;
-                  });
-                  player = { ...player, inventory: newInventory };
-                  break;
-                }
-                case 'ITEM_EVOLVED': {
-                  const itemIndex = player.inventory.findIndex(i => i.instanceId === event.instanceId);
-                  if (itemIndex === -1) break;
-                  const evolvedMasterItem = getMasterItemById(event.newItemId);
-                  if (!evolvedMasterItem) break;
-                  
-                  const nowISO = new Date().toISOString();
-                  const newInventory = [...player.inventory];
-                  const originalItem = player.inventory[itemIndex];
-                  
-                  const evolvedItem: IntelligentItem = {
-                      ...evolvedMasterItem,
-                      instanceId: originalItem.instanceId,
-                      quantity: 1,
-                      condition: { durability: 100 },
-                      itemLevel: 1,
-                      itemXp: 0,
-                      xpToNextItemLevel: evolvedMasterItem.xpToNextItemLevel,
-                      memory: { 
-                          ...originalItem.memory, 
-                          evolution_history: [...(originalItem.memory.evolution_history || []), { fromItemId: originalItem.id, toItemId: evolvedMasterItem.id, atLevel: originalItem.itemLevel, timestamp: nowISO }] 
-                      },
-                      contextual_properties: { local_value: evolvedMasterItem.economics.base_value, legal_status: 'legal', social_perception: 'normal', utility_rating: 50 },
-                  };
-                  newInventory[itemIndex] = evolvedItem;
-                  player = { ...player, inventory: newInventory };
-                  break;
-                }
-                case 'PLAYER_TRAVELS': {
-                    const newLocation: Position = event.destination;
-                    const newInventory = player.inventory.map(item => updateItemContextualProperties(item, newLocation));
-                    nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.duration };
-                    player = { ...player, currentLocation: newLocation, inventory: newInventory };
-                    break;
-                }
-                case 'MONEY_CHANGED':
-                    nextState = handleMoneyChange(nextState, event.amount, event.description);
-                    player = nextState.player!;
-                    break;
-                case 'QUEST_ADDED':
-                    nextState = handleAddQuest(nextState, event.quest);
-                    player = nextState.player!;
-                    break;
-                case 'QUEST_STATUS_CHANGED':
-                    nextState = handleQuestStatusChange(nextState, event.questId, event.newStatus);
-                    player = nextState.player!;
-                    break;
-                case 'QUEST_OBJECTIVE_CHANGED':
-                    nextState = handleQuestObjectiveChange(nextState, event.questId, event.objectiveId, event.completed);
-                    player = nextState.player!;
-                    break;
-                case 'PNJ_ENCOUNTERED': {
-                    const nowISO = new Date().toISOString();
-                    const newPNJ: PNJ = { ...event.pnj, id: uuidv4(), firstEncountered: player.currentLocation.name, lastSeen: nowISO };
-                    player = { ...player, encounteredPNJs: [...(player.encounteredPNJs || []), newPNJ] };
-                    break;
-                }
-                case 'HISTORICAL_CONTACT_ADDED':
-                    nextState = handleAddHistoricalContact(nextState, event.payload as HistoricalContact);
-                    player = nextState.player!;
-                    break;
-                case 'PNJ_RELATION_CHANGED': {
-                    const nowISO = new Date().toISOString();
-                    const newPNJs = player.encounteredPNJs.map(p =>
-                        p.id === event.pnjId ? { ...p, dispositionScore: event.finalDisposition, lastSeen: nowISO } : p
-                    );
-                    player = { ...player, encounteredPNJs: newPNJs };
-                    break;
-                }
-                case 'COMBAT_STARTED':
-                    nextState = handleCombatStarted(nextState, event.enemy);
-                    player = nextState.player!;
-                    break;
-                case 'COMBAT_ENDED':
-                    nextState = handleCombatEnded(nextState);
-                    player = nextState.player!;
-                    break;
-                case 'COMBAT_ACTION':
-                    nextState = handleCombatAction(nextState, event.target, event.newHealth);
-                    player = nextState.player!;
-                    break;
-                case 'GAME_TIME_PROGRESSED':
-                    nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.minutes };
-                    player = nextState.player!;
-                    break;
-                case 'JOURNAL_ENTRY_ADDED':
-                    nextState = { ...nextState, journal: [...(nextState.journal || []), { ...event.payload, id: uuidv4(), timestamp: nextState.gameTimeInMinutes, location: player.currentLocation }] };
-                    player = nextState.player!;
-                    break;
-                case 'SCENARIO_TEXT_SET':
-                    nextState = { ...nextState, currentScenario: { ...nextState.currentScenario, scenarioText: event.text, choices: [] } };
-                    player = nextState.player!;
-                    break;
-                // Events that don't change state but are for the AI to narrate
-                case 'SKILL_CHECK_RESULT':
-                case 'TEXT_EVENT':
-                case 'TRAVEL_EVENT':
-                case 'SKILL_LEVELED_UP':
-                    break;
-                default:
-                    break;
+      while (eventQueue.length > 0) {
+        const event = eventQueue.shift()!; // Process one event at a time
+        let player = nextState.player;
+        if (!player) continue;
+
+        switch (event.type) {
+          case 'PLAYER_STAT_CHANGE': {
+            const statToChange = player.stats[event.stat as keyof PlayerStats];
+            if (statToChange) {
+                const maxValue = statToChange.max !== undefined ? statToChange.max : event.finalValue;
+                const clampedValue = Math.max(0, Math.min(event.finalValue, maxValue));
+                const newStat = { ...statToChange, value: clampedValue };
+                const newStats = { ...player.stats, [event.stat]: newStat };
+                player = { ...player, stats: newStats };
             }
-            nextState = { ...nextState, player };
+            break;
+          }
+          case 'PLAYER_PHYSIOLOGY_CHANGE':
+            player = { ...player, physiology: { ...player.physiology, basic_needs: { ...player.physiology.basic_needs, [event.stat]: { ...player.physiology.basic_needs[event.stat], level: event.finalValue } } } };
+            break;
+          case 'MOMENTUM_UPDATED':
+            player = { ...player, momentum: event.newMomentum };
+            break;
+          case 'XP_GAINED': {
+            const { newProgression, events: xpEvents } = addPlayerXp(player.progression, event.amount);
+            player = { ...player, progression: newProgression };
+            if (xpEvents.length > 0) {
+                eventQueue.push(...xpEvents); // Add new events to the queue
+            }
+            break;
+          }
+          case 'SKILL_XP_AWARDED': {
+            const { updatedSkills, leveledUp, newLevel } = applySkillXp(player.skills, event.skill, event.amount);
+            player = { ...player, skills: updatedSkills };
+            if (leveledUp && newLevel) {
+                const skillName = event.skill.split('.')[1] || event.skill;
+                const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Votre compétence ${skillName} a atteint le niveau ${newLevel} !` }};
+                eventQueue.push(journalEntry); // Add new event to the queue
+            }
+            break;
+          }
+          case 'PLAYER_LEVELED_UP': {
+            const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'misc', text: `Félicitations ! Vous avez atteint le niveau ${event.newLevel} !` }};
+            eventQueue.push(journalEntry); // Add new event to the queue
+            break;
+          }
+          case 'ITEM_ADDED':
+            player = { ...player, inventory: addItemToInventory(player.inventory, event.itemId, event.quantity, player.currentLocation) };
+            break;
+          case 'DYNAMIC_ITEM_ADDED': {
+            const { baseItemId, overrides } = event.payload;
+            player = { ...player, inventory: addItemToInventory(player.inventory, baseItemId, 1, player.currentLocation, overrides) };
+            break;
+          }
+          case 'ITEM_REMOVED': {
+            const { updatedInventory } = removeItemFromInventory(player.inventory, event.itemId, event.quantity);
+            player = { ...player, inventory: updatedInventory };
+            break;
+          }
+          case 'ITEM_USED': {
+            const nowISO = new Date().toISOString();
+            const updatedInventory = player.inventory.map(item => {
+                if (item.instanceId === event.instanceId) {
+                    return { ...item, memory: { ...item.memory, usageHistory: [...item.memory.usageHistory, { timestamp: nowISO, event: event.description, locationName: player.currentLocation.name }] } };
+                }
+                return item;
+            });
+            player = { ...player, inventory: updatedInventory };
+            break;
+          }
+          case 'ITEM_XP_GAINED': {
+            const newInventory = player.inventory.map(item => {
+              if (item.instanceId === event.instanceId) {
+                return { ...item, itemXp: item.itemXp + event.xp };
+              }
+              return item;
+            });
+            player = { ...player, inventory: newInventory };
+            break;
+          }
+          case 'ITEM_LEVELED_UP': {
+            const newInventory = player.inventory.map(item => {
+              if (item.instanceId === event.instanceId) {
+                const updatedItem = { ...item, itemLevel: event.newLevel, itemXp: event.newXp };
+                if (event.newXpToNextLevel) {
+                  updatedItem.xpToNextItemLevel = event.newXpToNextLevel;
+                }
+                return updatedItem;
+              }
+              return item;
+            });
+            player = { ...player, inventory: newInventory };
+            break;
+          }
+          case 'ITEM_EVOLVED': {
+            const itemIndex = player.inventory.findIndex(i => i.instanceId === event.instanceId);
+            if (itemIndex === -1) break;
+            const evolvedMasterItem = getMasterItemById(event.newItemId);
+            if (!evolvedMasterItem) break;
+            
+            const nowISO = new Date().toISOString();
+            const newInventory = [...player.inventory];
+            const originalItem = player.inventory[itemIndex];
+            
+            const evolvedItem: IntelligentItem = {
+                ...evolvedMasterItem,
+                instanceId: originalItem.instanceId,
+                quantity: 1,
+                condition: { durability: 100 },
+                itemLevel: 1,
+                itemXp: 0,
+                xpToNextItemLevel: evolvedMasterItem.xpToNextItemLevel,
+                memory: { 
+                    ...originalItem.memory, 
+                    evolution_history: [...(originalItem.memory.evolution_history || []), { fromItemId: originalItem.id, toItemId: evolvedMasterItem.id, atLevel: originalItem.itemLevel, timestamp: nowISO }] 
+                },
+                contextual_properties: { local_value: evolvedMasterItem.economics.base_value, legal_status: 'legal', social_perception: 'normal', utility_rating: 50 },
+            };
+            newInventory[itemIndex] = evolvedItem;
+            player = { ...player, inventory: newInventory };
+            break;
+          }
+          case 'PLAYER_TRAVELS': {
+            const newLocation: Position = event.destination;
+            const newInventory = player.inventory.map(item => updateItemContextualProperties(item, newLocation));
+            nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.duration };
+            player = { ...player, currentLocation: newLocation, inventory: newInventory };
+            break;
+          }
+          case 'MONEY_CHANGED':
+            nextState = handleMoneyChange(nextState, event.amount, event.description);
+            player = nextState.player!;
+            break;
+          case 'QUEST_ADDED':
+            nextState = handleAddQuest(nextState, event.quest);
+            player = nextState.player!;
+            break;
+          case 'QUEST_STATUS_CHANGED':
+            nextState = handleQuestStatusChange(nextState, event.questId, event.newStatus);
+            player = nextState.player!;
+            break;
+          case 'QUEST_OBJECTIVE_CHANGED':
+            nextState = handleQuestObjectiveChange(nextState, event.questId, event.objectiveId, event.completed);
+            player = nextState.player!;
+            break;
+          case 'PNJ_ENCOUNTERED': {
+            const nowISO = new Date().toISOString();
+            const newPNJ: PNJ = { ...event.pnj, id: uuidv4(), firstEncountered: player.currentLocation.name, lastSeen: nowISO };
+            player = { ...player, encounteredPNJs: [...(player.encounteredPNJs || []), newPNJ] };
+            break;
+          }
+          case 'HISTORICAL_CONTACT_ADDED':
+            nextState = handleAddHistoricalContact(nextState, event.payload as HistoricalContact);
+            player = nextState.player!;
+            break;
+          case 'PNJ_RELATION_CHANGED': {
+            const nowISO = new Date().toISOString();
+            const newPNJs = player.encounteredPNJs.map(p =>
+                p.id === event.pnjId ? { ...p, dispositionScore: event.finalDisposition, lastSeen: nowISO } : p
+            );
+            player = { ...player, encounteredPNJs: newPNJs };
+            break;
+          }
+          case 'COMBAT_STARTED':
+            nextState = handleCombatStarted(nextState, event.enemy);
+            player = nextState.player!;
+            break;
+          case 'COMBAT_ENDED':
+            nextState = handleCombatEnded(nextState);
+            player = nextState.player!;
+            break;
+          case 'COMBAT_ACTION':
+            nextState = handleCombatAction(nextState, event.target, event.newHealth);
+            player = nextState.player!;
+            break;
+          case 'GAME_TIME_PROGRESSED':
+            nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.minutes };
+            player = nextState.player!;
+            break;
+          case 'JOURNAL_ENTRY_ADDED':
+            nextState = { ...nextState, journal: [...(nextState.journal || []), { ...event.payload, id: uuidv4(), timestamp: nextState.gameTimeInMinutes, location: player.currentLocation }] };
+            player = nextState.player!;
+            break;
+          case 'SCENARIO_TEXT_SET':
+            nextState = { ...nextState, currentScenario: { ...nextState.currentScenario, scenarioText: event.text, choices: [] } };
+            player = nextState.player!;
+            break;
+          case 'SKILL_CHECK_RESULT':
+          case 'TEXT_EVENT':
+          case 'TRAVEL_EVENT':
+          case 'SKILL_LEVELED_UP':
+            break;
+          default:
+            break;
         }
-        return nextState;
+        nextState = { ...nextState, player };
+      }
+      return nextState;
     }
     case 'SET_NEARBY_POIS':
       return { ...state, nearbyPois: action.payload };
     case 'SET_CURRENT_SCENARIO':
       return { ...state, currentScenario: action.payload };
     case 'UPDATE_PLAYER_DATA':
-        return { ...state, player: action.payload };
+      return { ...state, player: action.payload };
     default:
       return state;
   }
@@ -758,7 +756,7 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
                 choice.skillCheck.skill,
                 choice.skillCheck.difficulty,
                 player.inventory,
-                0,
+                0, // No situational modifier for probability check, just raw chance
                 player.physiology,
                 player.momentum
             );
