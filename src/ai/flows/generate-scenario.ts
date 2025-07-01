@@ -168,7 +168,6 @@ const PROMPT_GUIDING_PRINCIPLES = `
 
 - **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez les instructions spécifiques ci-dessous pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
 ${PROMPT_CASCADE_INSTRUCTIONS}
-- **RÈGLE D'OR :** Vous êtes le narrateur. Le moteur de jeu est le maître des règles. **NE modifiez PAS l'état du jeu**. Votre seule sortie est le \`scenarioText\`, les \`choices\`, et l'éventuelle \`aiRecommendation\`.
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', etc.) pour enrichir votre narration et générer des choix contextuels.
 `;
 
