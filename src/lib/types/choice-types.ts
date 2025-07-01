@@ -3,6 +3,7 @@ import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem, PlayerStats } from './player-types';
 import type { EstablishmentType } from './poi-types';
+import type { EnrichedRecipe } from './recipe-types';
 
 
 export const ACTION_TYPES = ["observation", "exploration", "social", "action", "reflection", "job"] as const;
@@ -14,7 +15,7 @@ export type MoodType = (typeof MOOD_TYPES)[number];
 // List of icon names for AI to choose from, matching the guide
 export const CHOICE_ICON_NAMES = [
   "Eye", "Search", "Compass", "Map", // Exploration/Observation
-  "MessageSquare", "Users", "Heart", // Social
+  "MessageSquare", "Users", "Heart", "GlassWater", // Social & Needs
   "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", // Action
   "Brain", "BookOpen", "Wind", "Feather", "Drama", "NotebookPen" // Reflection & Investigation
 ] as const;
@@ -43,4 +44,5 @@ export interface StoryChoice {
   successProbability?: number; // Optional field for displaying success chance
   economicImpact?: { cost: { min: number, max: number }, location: string };
   poiReference?: { osmId: string, serviceId: string, establishmentType: EstablishmentType };
+  craftingPayload?: { recipe: EnrichedRecipe };
 }

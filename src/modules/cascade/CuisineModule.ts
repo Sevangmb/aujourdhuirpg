@@ -1,3 +1,4 @@
+
 import type { EnrichmentModule, EnrichedContext, ModuleEnrichmentResult, ModuleDependency } from '@/core/cascade/types';
 import type { EnrichedRecipe } from '@/lib/types';
 
@@ -38,10 +39,12 @@ export class CuisineModule implements EnrichmentModule {
     const allRecipes: EnrichedRecipe[] = recettesData?.recipes || [];
     const playerIngredients: string[] = ingredientsData?.playerIngredients || [];
     
-    const cookableRecipes = allRecipes.map(recipe => ({
-      ...recipe,
-      cookability: this.canCookRecipe(recipe, playerIngredients)
-    })).filter(r => r.cookability.canCook);
+    const cookableRecipes = allRecipes
+      .map(recipe => ({
+        ...recipe,
+        cookability: this.canCookRecipe(recipe, playerIngredients)
+      }))
+      .filter(r => r.cookability.canCook);
 
     const nearlyCookableRecipes = allRecipes
       .map(recipe => ({...recipe, cookability: this.canCookRecipe(recipe, playerIngredients)}))
@@ -58,7 +61,7 @@ export class CuisineModule implements EnrichmentModule {
 
     const cuisineEnrichment = {
       message: "Analyse culinaire complète basée sur vos compétences, votre inventaire et l'environnement local.",
-      cookableRecipes: cookableRecipes.map(r => r.name),
+      cookableRecipes: cookableRecipes, // Pass the full recipe objects
       nearlyCookableRecipes: nearlyCookableRecipes.map(r => ({ name: r.name, missing: r.cookability.missing })),
       nutritionalStatus: nutrimentsData?.playerNeedsSummary || 'Non évalué.',
       nutritionalRecommendations: nutrimentsData?.recommendations || [],

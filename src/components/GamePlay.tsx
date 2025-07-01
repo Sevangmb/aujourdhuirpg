@@ -33,15 +33,15 @@ const GamePlay: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 1. Process the action in the game logic layer to get a list of deterministic events
-      const { events: deterministicEvents } = await processPlayerAction(gameState.player, gameState.currentEnemy || null, choice, weatherData);
+      // 1. Run the enrichment cascade based on the chosen action
+      const cascadeResult = await runCascadeForAction(gameState, choice);
+
+      // 2. Process the action in the game logic layer to get a list of deterministic events
+      const { events: deterministicEvents } = await processPlayerAction(gameState.player, gameState.currentEnemy || null, choice, weatherData, cascadeResult);
       
-      // 2. Apply events to a temporary state to get the state *after* the action, for the AI's context
+      // 3. Apply events to a temporary state to get the state *after* the action, for the AI's context
       const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: deterministicEvents });
 
-      // 3. Run the enrichment cascade
-      const cascadeResult = await runCascadeForAction(stateAfterAction, choice);
-      
       // 4. Prepare the input for the AI with the calculated events, the future state, and cascade results
       const inputForAI = prepareAIInput(stateAfterAction, choice, deterministicEvents, cascadeResult);
       if (!inputForAI) throw new Error("Failed to prepare AI input.");
@@ -60,19 +60,19 @@ const GamePlay: React.FC = () => {
       // We need to re-run the reducer on a temp variable to get the final state for choice generation
       const finalStateAfterAllEvents = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
       
-      // NEW: Generate actions based on the cascade result
+      // 9. Generate actions based on the cascade result
       const cascadeActions = generateCascadeBasedActions(cascadeResult, finalStateAfterAllEvents.player!);
 
       const poiActions = generateActionsForPOIs(finalStateAfterAllEvents.nearbyPois || [], finalStateAfterAllEvents.player!);
       const stateBasedActions = generatePlayerStateActions(finalStateAfterAllEvents.player!);
       
-      // 9. Enrich AI choices with calculated costs and probabilities
+      // 10. Enrich AI choices with calculated costs and probabilities
       const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateAfterAllEvents.player!);
       
-      // 10. Merge all choices
+      // 11. Merge all choices
       const allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
 
-      // 11. Set the new scenario from the AI's output, now with fully enriched and merged choices
+      // 12. Set the new scenario from the AI's output, now with fully enriched and merged choices
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { scenarioText: aiOutput.scenarioText, choices: allChoices, aiRecommendation: aiOutput.aiRecommendation } });
 
     } catch (error) {

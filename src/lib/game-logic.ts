@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
@@ -295,7 +295,8 @@ export async function processPlayerAction(
   player: Player,
   currentEnemy: Enemy | null,
   choice: StoryChoice,
-  weatherData: WeatherData | null
+  weatherData: WeatherData | null,
+  cascadeResult: CascadeResult | null,
 ): Promise<{
     events: GameEvent[];
 }> {
@@ -315,10 +316,44 @@ export async function processPlayerAction(
     }
   }
 
+  // Handle cooking action
+  if (choice.id.startsWith('cook_')) {
+    const recipeName = choice.id.replace('cook_', '').replace(/_/g, ' ');
+    const cuisineData = cascadeResult?.results.get('cuisine')?.data;
+    const recipe = cuisineData?.cookableRecipes?.find((r: EnrichedRecipe) => r.name === recipeName);
+
+    if (recipe) {
+        let totalHungerRestored = 0;
+        // Consume ingredients
+        for (const ingredient of recipe.ingredients) {
+            events.push({ type: 'ITEM_REMOVED', itemId: ingredient.name, itemName: ingredient.name, quantity: 1 });
+            totalHungerRestored += 5; // Base hunger restoration per ingredient
+        }
+        totalHungerRestored += 20; // Bonus for a full meal
+
+        // Create the new meal item
+        const mealPayload: DynamicItemCreationPayload = {
+            baseItemId: 'generic_meal_01',
+            overrides: {
+                name: recipe.name,
+                description: `Un plat délicieux de ${recipe.name}, préparé avec soin.`,
+                physiologicalEffects: { hunger: Math.min(100, totalHungerRestored) }
+            }
+        };
+        events.push({ type: 'DYNAMIC_ITEM_ADDED', payload: mealPayload });
+
+        // Grant XP
+        events.push({ type: 'SKILL_XP_AWARDED', skill: 'technical.crafting', amount: 15 });
+        events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: `Vous avez cuisiné : ${recipe.name}.` } });
+    }
+  }
+
 
   // --- LOG ACTION & TIME ---
   events.push({ type: 'GAME_TIME_PROGRESSED', minutes: choice.timeCost || 0 });
-  events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
+  if (!choice.id.startsWith('cook_')) { // Avoid duplicate journal entries for cooking
+    events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
+  }
 
 
   // --- PHYSIOLOGY, ENERGY & WEATHER EFFECTS (Rebalanced) ---
@@ -590,29 +625,23 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
   let cascadeSummary = "Aucune analyse contextuelle supplémentaire disponible.";
   if (cascadeResult && cascadeResult.results) {
       const summaries: string[] = [];
-      if (cascadeResult.results.has('cuisine')) {
-          const cuisineData = cascadeResult.results.get('cuisine')?.data;
-          if (cuisineData) {
-              if (cuisineData.cookingOpportunities && cuisineData.cookingOpportunities.length > 0) {
-                  summaries.push(`- Opportunités de Cuisine: ${cuisineData.cookingOpportunities.join(' ')}`);
-              }
-              if (cuisineData.nutritionalStatus) {
-                  summaries.push(`- Statut Nutritionnel: ${cuisineData.nutritionalStatus}`);
-              }
+      const cuisineData = cascadeResult.results.get('cuisine')?.data;
+      if (cuisineData) {
+          if (cuisineData.cookingOpportunities && cuisineData.cookingOpportunities.length > 0) {
+              summaries.push(`- Opportunités de Cuisine: ${cuisineData.cookingOpportunities.join(' ')}`);
+          }
+          if (cuisineData.nutritionalStatus) {
+              summaries.push(`- Statut Nutritionnel: ${cuisineData.nutritionalStatus}`);
           }
       }
-      if (cascadeResult.results.has('culture_locale')) {
-          const cultureData = cascadeResult.results.get('culture_locale')?.data;
-          if (cultureData && cultureData.summary && !cultureData.summary.includes('Aucune information')) {
-              summaries.push(`- Contexte Culturel Local: ${cultureData.summary}`);
-          }
+      const cultureData = cascadeResult.results.get('culture_locale')?.data;
+      if (cultureData && cultureData.summary && !cultureData.summary.includes('Aucune information')) {
+          summaries.push(`- Contexte Culturel Local: ${cultureData.summary}`);
       }
-      if (cascadeResult.results.has('livre')) {
-          const livreData = cascadeResult.results.get('livre')?.data;
-          if (livreData && livreData.foundBooks && livreData.foundBooks.length > 0) {
-              const bookTitles = (livreData.foundBooks as BookSearchResult[]).map(b => b.title).join(', ');
-              summaries.push(`- Recherche de Livres: Des informations sur les livres suivants ont été trouvées: ${bookTitles}.`);
-          }
+      const livreData = cascadeResult.results.get('livre')?.data;
+      if (livreData && livreData.foundBooks && livreData.foundBooks.length > 0) {
+          const bookTitles = (livreData.foundBooks as BookSearchResult[]).map(b => b.title).join(', ');
+          summaries.push(`- Recherche de Livres: Des informations sur les livres suivants ont été trouvées: ${bookTitles}.`);
       }
 
       if (summaries.length > 0) {
@@ -885,7 +914,7 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
                 id: `use_item_${bestDrink.instanceId}`,
                 text: `Boire: ${bestDrink.name}`,
                 description: `Consommer ${bestDrink.name} pour étancher votre soif.`,
-                iconName: 'Utensils',
+                iconName: 'GlassWater',
                 type: 'action',
                 mood: 'social',
                 energyCost: 1,
@@ -932,10 +961,10 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
     // 1. Check for Cuisine opportunities
     const cuisineResult = cascadeResult.results.get('cuisine');
     if (cuisineResult?.data?.cookableRecipes) {
-        for (const recipeName of cuisineResult.data.cookableRecipes) {
+        for (const recipe of (cuisineResult.data.cookableRecipes as EnrichedRecipe[])) {
             choices.push({
-                id: `cook_${recipeName.replace(/\s+/g, '_')}`,
-                text: `Cuisiner : ${recipeName}`,
+                id: `cook_${recipe.name.replace(/\s+/g, '_')}`,
+                text: `Cuisiner : ${recipe.name}`,
                 description: "Utiliser les ingrédients de votre inventaire pour préparer un plat délicieux et réconfortant.",
                 iconName: 'ChefHat',
                 type: 'action',
