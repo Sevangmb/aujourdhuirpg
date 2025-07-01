@@ -120,13 +120,19 @@ const GamePlay: React.FC = () => {
       <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6">
         {currentEnemy && <CombatStatusDisplay enemy={currentEnemy} />}
         <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
-        {!isLoading && (
+        {!isLoading && !currentEnemy && (
           <ChoiceSelectionDisplay
             choices={currentChoices}
             onSelectChoice={handleChoiceSelected}
             isLoading={isLoading}
             aiRecommendation={currentScenario.aiRecommendation || null}
           />
+        )}
+         {!isLoading && currentEnemy && (
+          <div className="text-center p-4">
+              <p className="font-bold text-destructive">LE COMBAT EST ENGAGÉ !</p>
+              <p className="text-muted-foreground text-sm">Le système de combat n'est pas encore implémenté.</p>
+          </div>
         )}
       </div>
 

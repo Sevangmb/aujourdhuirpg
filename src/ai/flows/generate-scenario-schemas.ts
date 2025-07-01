@@ -12,6 +12,7 @@ import { MajorDecisionSchema } from '@/lib/types/decision-types';
 import { ClueInputSchema, DocumentInputSchema } from '@/lib/types/evidence-types';
 import { NewTransactionSchema } from '@/modules/economy/types';
 import { DynamicItemCreationPayloadSchema } from '@/lib/types/item-types';
+import { EnemySchema } from '@/modules/combat/types';
 import type { GameEvent } from '@/lib/types';
 
 
@@ -36,8 +37,6 @@ export const StoryChoiceSchema = z.object({
   energyCost: z.number().describe("Le coût en énergie estimé pour le joueur (1-20)."),
   timeCost: z.number().describe("Le coût en temps estimé en minutes pour l'action (5-60)."),
   consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
-  isCombatAction: z.boolean().optional().describe("Indique si ce choix est une action de combat."),
-  combatActionType: z.enum(['attack', 'defend', 'flee', 'special']).optional().describe("Le type spécifique d'action de combat."),
   skillCheck: z.object({
       skill: z.string().describe("Le chemin de la compétence à tester (ex: 'cognitive.observation')."),
       difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
@@ -72,5 +71,7 @@ export const GenerateScenarioOutputSchema = z.object({
   newClues: z.array(ClueInputSchema).optional().describe("Génère de nouveaux indices pour le dossier d'enquête."),
   newDocuments: z.array(DocumentInputSchema).optional().describe("Génère de nouveaux documents à ajouter au dossier d'enquête."),
   majorDecisions: z.array(MajorDecisionSchema).optional().describe("Enregistre une décision majeure prise par le joueur."),
+  startCombat: z.array(EnemySchema).optional().describe("Introduit un ou plusieurs ennemis pour commencer un combat."),
+
 
 }).describe("Schéma de sortie pour le flux generateScenario. L'IA génère la narration, les choix, et peut proposer des changements d'état du jeu.");

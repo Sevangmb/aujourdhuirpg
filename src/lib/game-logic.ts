@@ -1,6 +1,7 @@
 
 
 
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
@@ -565,21 +566,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       }
   }
 
-  const nearbyEstablishments = gameState.nearbyPois?.map(poi => ({
-    name: poi.name,
-    type: poi.establishmentType,
-    subCategory: poi.subCategory,
-    availableServices: poi.services.map(s => s.name),
-    distance: Math.round(getDistanceInKm(player.currentLocation.latitude, player.currentLocation.longitude, poi.latitude, poi.longitude) * 1000),
-  }));
-
-  const contextualActions = generateActionsForPOIs(gameState.nearbyPois || [], player);
-  const suggestedContextualActions = contextualActions.map(action => ({
-    text: action.text,
-    description: action.description,
-    type: action.type,
-    estimatedCost: action.economicImpact?.cost,
-  }));
+  const suggestedContextualActions = generatePlayerStateActions(player);
 
   return {
     player: playerInputForAI,
@@ -587,7 +574,6 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: JSON.stringify(gameEvents || [], null, 2),
     cascadeResult: cascadeSummary,
-    nearbyEstablishments,
     suggestedContextualActions,
   };
 }
@@ -651,6 +637,12 @@ export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameE
         // The reducer will calculate the finalBalance. We just provide the change.
         events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description, finalBalance: 0 /* Placeholder */ });
     });
+  }
+  
+  if (aiOutput.startCombat) {
+      aiOutput.startCombat.forEach(enemyData => {
+          events.push({ type: 'COMBAT_STARTED', enemy: enemyData });
+      });
   }
 
   return events;

@@ -65,7 +65,7 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
         instructions.push("Distillez des indices subtils et maintenez une ambiance ambiguë. Privilégiez les non-dits et les questions en suspens. Proposez des choix liés à l'examen de détails, à la déduction et à la recherche d'informations cachées.");
         break;
       case 'Action':
-        instructions.push("Employez un style direct avec des phrases courtes et un rythme dynamique. Décrivez les mouvements et les impacts. Proposez des choix qui incitent à l'action rapide, à la prise de risque et à la confrontation physique. Si la situation le justifie, déclenchez un combat via 'combatEvent.startCombat'.");
+        instructions.push("Employez un style direct avec des phrases courtes et un rythme dynamique. Décrivez les mouvements et les impacts. Proposez des choix qui incitent à l'action rapide. Si la narration mène à un conflit, utilisez le champ 'startCombat' pour introduire un ennemi.");
         break;
       case 'Fantastique':
          instructions.push("Introduisez des éléments surnaturels ou magiques de manière subtile ou grandiose. Décrivez l'émerveillement, l'étrangeté. Proposez des choix qui permettent d'interagir avec le merveilleux, de découvrir des secrets anciens ou d'utiliser des capacités extraordinaires.");
@@ -91,28 +91,28 @@ const PROMPT_CORE_TASK = `
 **Tâche Principale : Raconter, Suggérer, et Animer le Monde**
 Votre mission est quadruple :
 
-1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur (\`gameEvents\`). Transformez cesévénements bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits.
+1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur (\`gameEvents\`). Transformez ces événements bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits.
 
-2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. En plus des actions contextuelles que le moteur de jeu pourrait générer (comme manger, boire, ou voyager vers un lieu proche), vous devez imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
+2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter un café...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
     - **EXIGENCES STRICTES POUR VOS CHOIX :**
         - **Pensez comme un scénariste :** Quels choix créeraient du drame, du mystère, ou révéleraient quelque chose sur le monde ou le personnage ?
         - **Utilisez les PNJ et l'intrigue :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
         - **Soyez spécifique :** Ne vous contentez pas d'un verbe, décrivez l'action de manière évocatrice.
-    - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique) :**
+    - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique du jeu) :**
         - ❌ "Explorer les environs", "Observer les alentours"
         - ❌ "Parler à quelqu'un" (Préférez "Confronter le marchand sur son mensonge")
-        - ❌ "Manger" ou "Boire" (Le moteur de jeu gère ça)
-        - ❌ "Aller à [lieu proche]" (Le moteur de jeu gère ça)
+        - ❌ "Manger", "Boire", "Aller à [lieu proche]" (Le moteur de jeu s'en occupe déjà)
+        - ❌ Ne créez **JAMAIS** de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.
     - **EXEMPLES D'ACTIONS ATTENDUES (Narratives et créatives) :**
         - ✅ "Utiliser votre compétence en observation pour déceler une incohérence dans le témoignage du garde."
         - ✅ "Proposer au musicien de rue de l'accompagner avec votre vieil harmonica, espérant attirer une audience... et peut-être des informations."
         - ✅ "Graver discrètement un symbole mystérieux sur le banc, un signe de reconnaissance pour une société secrète à laquelle vous appartenez."
 
 3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. En fonction de votre narration, vous pouvez proposer des changements concrets.
-    - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête de type "job".
-    - Si le joueur découvre un corps, utilisez \`newClues\` pour générer un indice.
+    - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête.
+    - Si le joueur découvre un corps, utilisez \`newClues\` et \`startCombat\` avec un ennemi "Rat d'égout agressif".
     - Si le joueur trouve un portefeuille, utilisez \`newItems\` et \`newTransactions\`.
-    - **Remplissez les champs** (\`newQuests\`, \`newPNJs\`, \`questUpdates\`, etc.) **uniquement** si cela est logiquement justifié par le récit. Sinon, laissez-les vides.
+    - **Remplissez les champs** (\`newQuests\`, \`startCombat\`, \`newPNJs\`, etc.) **uniquement** si cela est logiquement justifié par le récit. Sinon, laissez-les vides.
 
 4.  **Donner un Conseil Stratégique (aiRecommendation) :** Si pertinent, analysez la situation globale du joueur (argent bas, quête importante) et donnez un conseil via le champ optionnel \`aiRecommendation\`.
 `;
@@ -131,13 +131,6 @@ const PROMPT_GUIDING_PRINCIPLES = `
 
 - **CONTEXTE ENRICHI :** Vous recevez des données enrichies. Utilisez-les pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
   - **Cascade Modulaire :** ${PROMPT_CASCADE_INSTRUCTIONS}
-  - **Contexte Géographique :**
-    {{#if nearbyEstablishments}}
-    Les établissements suivants sont à proximité immédiate. Intègre-les NATURELLEMENT dans la narration et propose des actions uniques :
-    {{#each nearbyEstablishments}}
-    - **{{name}}** ({{subCategory}}), à environ {{distance}}m. Services notables: {{#each availableServices}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
-    {{/each}}
-    {{/if}}
   
   {{#if player.recentActionTypes}}
   🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions du joueur étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions narratifs différents. Le moteur de jeu ajoutera des actions utilitaires (manger, boire, etc.) si nécessaire.
@@ -194,7 +187,6 @@ const SuggestedActionContextSchema = z.object({
 // This is the schema for the data passed to the prompt, including internal fields.
 const PromptInputSchema = GenerateScenarioInputSchema.extend({ 
   toneInstructions: z.string(),
-  nearbyEstablishments: z.array(PoiContextSchema).optional(),
   suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
 });
 
@@ -257,7 +249,6 @@ const prologuePrompt = ai.definePrompt({
 
 // This is the schema for the data received by the flow from the client.
 const FlowInputSchema = GenerateScenarioInputSchema.extend({
-    nearbyEstablishments: z.array(PoiContextSchema).optional(),
     suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
 });
 
