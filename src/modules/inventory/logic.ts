@@ -2,7 +2,7 @@
  * @fileOverview Contains the core business logic for the Inventory module.
  */
 
-import type { PlayerStats, IntelligentItem, Position, MasterIntelligentItem, DynamicItemCreationPayload } from '@/lib/types';
+import type { PlayerStats, IntelligentItem, Position, MasterIntelligentItem, DynamicItemCreationPayload, GameEvent } from '@/lib/types';
 import { getMasterItemById } from '@/data/items';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,21 +19,14 @@ export function updateItemContextualProperties(item: IntelligentItem, location: 
   const baseValue = item.economics.base_value;
   let newLocalValue = baseValue;
 
-  // This is a placeholder for more complex logic.
-  // For example, a bottle of water could be more valuable in a hot climate.
-  // A lockpick set could be perceived as more suspicious in a high-security area.
-
-  // Example: Water is more valuable in hot areas. We don't have weather here, so let's use location name as a proxy.
   if (item.id === 'water_bottle_01' && location.name.toLowerCase().includes('marseille')) {
-    newLocalValue *= 1.5; // 50% more expensive in a hot city like Marseille
+    newLocalValue *= 1.5;
   }
 
-  // Example: A mysterious key might have higher utility in a historical district like "Le Marais".
   if (item.id === 'mysterious_key_01' && location.name.toLowerCase().includes('marais')) {
     newItem.contextual_properties.utility_rating = Math.min(100, (newItem.contextual_properties.utility_rating || 50) + 25);
   }
 
-  // Example: Lockpicks are more suspicious.
   if (item.id === 'lockpicks_01') {
       newItem.contextual_properties.social_perception = 'suspicious';
       newItem.contextual_properties.legal_status = 'restricted';
@@ -48,15 +41,11 @@ export function updateItemContextualProperties(item: IntelligentItem, location: 
 export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, location: Position, overrides?: DynamicItemCreationPayload['overrides']): IntelligentItem {
     const baseInstance: IntelligentItem = {
       ...masterItem,
-      
-      // Apply overrides if they exist
       name: overrides?.name || masterItem.name,
       description: overrides?.description || masterItem.description,
       effects: overrides?.effects ? { ...masterItem.effects, ...overrides.effects } : masterItem.effects,
       physiologicalEffects: overrides?.physiologicalEffects ? { ...masterItem.physiologicalEffects, ...overrides.physiologicalEffects } : masterItem.physiologicalEffects,
       skillModifiers: overrides?.skillModifiers ? { ...masterItem.skillModifiers, ...overrides.skillModifiers } : masterItem.skillModifiers,
-
-      // Default instance properties
       instanceId: uuidv4(),
       quantity: 1, 
       condition: { durability: 100 },
@@ -65,7 +54,7 @@ export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, l
       xpToNextItemLevel: masterItem.xpToNextItemLevel,
       memory: {
         acquiredAt: new Date().toISOString(),
-        acquisitionStory: `Trouvé à ${location.name}.`, // More appropriate for dynamic items
+        acquisitionStory: `Trouvé à ${location.name}.`,
         usageHistory: [],
       },
       contextual_properties: {
@@ -88,13 +77,11 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
 
   const newInventory = [...currentInventory];
   
-  // Overrides force creation of a new, unique item instance, ignoring stacking.
   if (overrides) {
       newInventory.push(createNewInstanceFromMaster(masterItem, location, overrides));
       return newInventory;
   }
   
-  // Standard logic for stackable items without overrides.
   if (masterItem.stackable) {
     const existingItemIndex = newInventory.findIndex(item => item.id === itemId);
     if (existingItemIndex > -1) {
@@ -103,7 +90,6 @@ export function addItemToInventory(currentInventory: IntelligentItem[], itemId: 
     }
   } 
   
-  // If not stackable, or stackable but not present, create new instances.
   for (let i = 0; i < quantityToAdd; i++) {
     newInventory.push(createNewInstanceFromMaster(masterItem, location));
   }
@@ -120,23 +106,71 @@ export function removeItemFromInventory(currentInventory: IntelligentItem[], ite
 
   if (itemIndex > -1) {
     const itemBeingRemoved = newInventory[itemIndex];
-    removedItemEffects = itemBeingRemoved.effects as Partial<Record<keyof PlayerStats, number>> | undefined; // Cast may be needed if effects type changes
+    removedItemEffects = itemBeingRemoved.effects as Partial<Record<keyof PlayerStats, number>> | undefined;
     removedItemName = itemBeingRemoved.name;
 
     if (itemBeingRemoved.stackable) {
         if (itemBeingRemoved.quantity <= quantityToRemove) {
-          // Remove the entire stack if quantity is not enough
           newInventory.splice(itemIndex, 1);
         } else {
-          // Otherwise, just decrease the quantity
           newInventory[itemIndex].quantity -= quantityToRemove;
         }
     } else {
-        // For non-stackable items, always remove the instance
         newInventory.splice(itemIndex, 1);
     }
   } else {
     console.warn(`Inventory Warning: Attempted to remove item not in inventory: ${itemIdToRemoveOrName}`);
   }
   return { updatedInventory: newInventory, removedItemEffects, removedItemName };
+}
+
+/**
+ * Calculates item XP gain and generates level-up or evolution events.
+ * @param item The item gaining XP.
+ * @param xpGained The amount of XP gained.
+ * @returns An array of game events resulting from the XP gain.
+ */
+export function grantXpToItem(item: IntelligentItem, xpGained: number): GameEvent[] {
+  if (item.xpToNextItemLevel === 0) return []; // Cannot gain XP
+
+  const events: GameEvent[] = [];
+  let currentXp = item.itemXp + xpGained;
+  let currentLevel = item.itemLevel;
+  let xpToNext = item.xpToNextItemLevel;
+
+  events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: xpGained });
+  
+  const masterItem = getMasterItemById(item.id);
+  
+  while (currentXp >= xpToNext) {
+    currentLevel += 1;
+    currentXp -= xpToNext;
+    xpToNext = Math.round(xpToNext * 1.5); // Increase next threshold
+    
+    events.push({ 
+      type: 'ITEM_LEVELED_UP', 
+      instanceId: item.instanceId, 
+      itemName: item.name, 
+      newLevel: currentLevel,
+      newXp: currentXp,
+      newXpToNextLevel: xpToNext
+    });
+
+    // Check for evolution
+    if (masterItem?.evolution && currentLevel >= masterItem.evolution.levelRequired) {
+      const evolvedMasterItem = getMasterItemById(masterItem.evolution.targetItemId);
+      if (evolvedMasterItem) {
+        events.push({
+          type: 'ITEM_EVOLVED',
+          instanceId: item.instanceId,
+          oldItemName: item.name,
+          newItemId: evolvedMasterItem.id,
+          newItemName: evolvedMasterItem.name,
+        });
+        break; // Stop leveling up as the item is being replaced
+      }
+    }
+  }
+  
+  return events;
 }
