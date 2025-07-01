@@ -36,7 +36,7 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
       aiRecommendation: { focus: 'Erreur', reasoning: 'Clé API manquante.' },
     };
   }
-  return generateScenarioFlow(input);
+  return generateScenarioFlow(input as any); // Cast as any because the input from game-logic has more fields
 }
 
 
@@ -209,16 +209,20 @@ const SuggestedActionContextSchema = z.object({
 
 // --- PROMPTS DEFINITION ---
 
+// This is the schema for the data passed to the prompt, including internal fields.
+const PromptInputSchema = GenerateScenarioInputSchema.extend({ 
+  toneInstructions: z.string(),
+  nearbyEstablishments: z.array(PoiContextSchema).optional(),
+  suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
+});
+
+
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema.extend({ 
-    toneInstructions: z.string(),
-    nearbyEstablishments: z.array(PoiContextSchema).optional(),
-    suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
-  })},
-  output: {schema: GenerateScenarioOutputSchema},
+  input: { schema: PromptInputSchema },
+  output: { schema: GenerateScenarioOutputSchema },
   config: {
     safetySettings: [
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -261,28 +265,29 @@ const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema.extend({ 
-    toneInstructions: z.string(),
-    nearbyEstablishments: z.array(PoiContextSchema).optional(),
-    suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
-  })},
-  output: {schema: GenerateScenarioOutputSchema},
+  input: { schema: PromptInputSchema },
+  output: { schema: GenerateScenarioOutputSchema },
   prompt: FULL_PROLOGUE_PROMPT,
 });
 
 
 // --- FLOW DEFINITION ---
 
+// This is the schema for the data received by the flow from the client.
+const FlowInputSchema = GenerateScenarioInputSchema.extend({
+    nearbyEstablishments: z.array(PoiContextSchema).optional(),
+    suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
+});
+
 const generateScenarioFlow = ai.defineFlow(
   {
     name: 'generateScenarioFlow',
-    inputSchema: GenerateScenarioInputSchema,
+    inputSchema: FlowInputSchema, // Use the extended schema to accept all fields
     outputSchema: GenerateScenarioOutputSchema,
   },
-  async (input: GenerateScenarioInput) => {
+  async (input) => {
     const toneInstructions = generateToneInstructions(input.player?.toneSettings);
-    // The input received by the flow already contains the enriched context fields
-    // from prepareAIInput, so we just pass them along.
+    // Construct the full object expected by the prompt
     const enrichedInput = { ...input, toneInstructions };
 
     const selectedPrompt = input.playerChoiceText === "[COMMENCER L'AVENTURE]"
@@ -290,7 +295,7 @@ const generateScenarioFlow = ai.defineFlow(
       : scenarioPrompt;
 
     try {
-      const {output} = await selectedPrompt(enrichedInput as any); // Cast as any to handle extended schema
+      const {output} = await selectedPrompt(enrichedInput); // No cast needed
 
       if (!output) {
         throw new Error("AI model did not return any output.");
