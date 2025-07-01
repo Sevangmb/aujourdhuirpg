@@ -102,9 +102,11 @@ Votre mission est quadruple :
         - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre", "Acheter Objet X" (Le moteur de jeu s'en occupe déjà via la logique contextuelle)
         - ❌ **Ne créez JAMAIS de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.**
     - **EXEMPLES D'ACTIONS ATTENDUES :**
-        - ✅ "Utiliser votre compétence en Pistage pour déceler une incohérence dans le témoignage du garde."
+        - ✅ "Utiliser votre compétence en **survie.pistage** pour déceler une incohérence dans le témoignage du garde."
         - ✅ "Proposer au musicien de rue de l'accompagner avec votre vieil harmonica, espérant attirer une audience... et peut-être des informations."
         - ✅ "Graver discrètement un symbole mystérieux sur le banc, un signe de reconnaissance pour une société secrète à laquelle vous appartenez."
+        - ✅ "Tenter de déverrouiller la vieille malle avec vos compétences en **techniques.contrefacon**."
+        - ✅ "Essayer de persuader le garde de vous laisser entrer en utilisant **sociales.persuasion**."
 
 3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. Si votre narration le justifie, proposez des changements concrets.
     - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête. Pour un 'job', proposez un 'requiredSkill' pertinent comme 'techniques.artisanat_general'.

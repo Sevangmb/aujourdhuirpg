@@ -13,7 +13,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Smartphone',
     stackable: false,
-    economics: { base_value: 300, rarity_multiplier: 1.0 }, // Rebalanced
+    economics: { base_value: 300, rarity_multiplier: 1.0 },
     xpToNextItemLevel: 0, // Ne peut pas évoluer
   },
   {
@@ -23,7 +23,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'Wallet',
     stackable: false,
-    economics: { base_value: 8, rarity_multiplier: 0.8 }, // Rebalanced
+    economics: { base_value: 8, rarity_multiplier: 0.8 },
     xpToNextItemLevel: 0,
   },
   {
@@ -45,7 +45,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true,
     effects: { Energie: 10 },
     physiologicalEffects: { hunger: 25 },
-    economics: { base_value: 2, rarity_multiplier: 0.5 }, // Rebalanced
+    economics: { base_value: 2, rarity_multiplier: 0.5 },
     xpToNextItemLevel: 0,
   },
   {
@@ -67,9 +67,9 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'NotebookPen',
     stackable: false,
-    economics: { base_value: 6, rarity_multiplier: 0.7 }, // Rebalanced
+    economics: { base_value: 6, rarity_multiplier: 0.7 },
     xpToNextItemLevel: 50,
-    skillModifiers: { 'cognitive.memory': 5 },
+    skillModifiers: { 'savoir.histoire': 5 },
   },
    {
     id: 'map_paris_01',
@@ -119,7 +119,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'CircleDollarSign',
     stackable: true,
-    economics: { base_value: 45, rarity_multiplier: 3.0 }, // Rebalanced
+    economics: { base_value: 45, rarity_multiplier: 3.0 },
     xpToNextItemLevel: 0,
   },
   {
@@ -129,7 +129,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Laptop',
     stackable: false,
-    economics: { base_value: 450, rarity_multiplier: 2.2 }, // Rebalanced
+    economics: { base_value: 450, rarity_multiplier: 2.2 },
     xpToNextItemLevel: 0,
   },
   {
@@ -139,7 +139,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'wearable',
     iconName: 'Shirt', 
     stackable: false,
-    economics: { base_value: 75, rarity_multiplier: 1.5 }, // Rebalanced
+    economics: { base_value: 75, rarity_multiplier: 1.5 },
     xpToNextItemLevel: 250, // This jacket could become iconic
     combatStats: { defense: 2 },
   },
@@ -161,7 +161,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Pill',
     stackable: true,
     effects: { Sante: 5 },
-    economics: { base_value: 5, rarity_multiplier: 1.3 }, // Rebalanced
+    economics: { base_value: 5, rarity_multiplier: 1.3 },
     xpToNextItemLevel: 0,
   },
   {
@@ -169,7 +169,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     name: 'Lampe Torche',
     description: 'Une lampe torche LED compacte mais puissante. Nécessite des piles (non incluses... ou peut-être si !).',
     type: 'tool',
-    iconName: 'Torus', // Using Torus as a stand-in for Flashlight if not available
+    iconName: 'Torus',
     stackable: false,
     economics: { base_value: 12, rarity_multiplier: 1.0 },
     xpToNextItemLevel: 0,
@@ -182,7 +182,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Wrench',
     stackable: false,
     economics: { base_value: 20, rarity_multiplier: 1.4 },
-    skillModifiers: { 'technical.crafting': 5 },
+    skillModifiers: { 'techniques.artisanat_general': 5 },
     xpToNextItemLevel: 0,
   },
   {
@@ -201,7 +201,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     name: 'Carte SIM Prépayée',
     description: 'Une carte SIM avec un crédit de communication limité.',
     type: 'electronic',
-    iconName: 'Router', // Placeholder icon
+    iconName: 'Router',
     stackable: false,
     economics: { base_value: 10, rarity_multiplier: 1.0 },
     xpToNextItemLevel: 0,
@@ -210,7 +210,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     id: 'lighter_01',
     name: 'Briquet',
     description: 'Un simple briquet. Utile pour... allumer des choses.',
-    type: 'tool', // Could also be misc
+    type: 'tool',
     iconName: 'Flame',
     stackable: false,
     economics: { base_value: 2, rarity_multiplier: 0.6 },
@@ -224,7 +224,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'KeySquare',
     stackable: false,
     economics: { base_value: 30, rarity_multiplier: 2.0 },
-    skillModifiers: { 'physical.dexterity': 10 },
+    skillModifiers: { 'techniques.contrefacon': 10 },
     xpToNextItemLevel: 0,
   },
   {
@@ -244,9 +244,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'consumable',
     iconName: 'ChefHat',
     stackable: true,
-    economics: { base_value: 20, rarity_multiplier: 1.0 }, // Value comes from ingredients + effort
+    economics: { base_value: 20, rarity_multiplier: 1.0 },
     xpToNextItemLevel: 0,
-    // Effects will be added dynamically by the AI
   },
   {
     id: 'vintage_camera_01',
@@ -255,13 +254,12 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'Camera',
     stackable: false,
-    economics: { base_value: 60, rarity_multiplier: 1.8 }, // Rebalanced
+    economics: { base_value: 60, rarity_multiplier: 1.8 },
     xpToNextItemLevel: 100, // This item can evolve!
     evolution: {
       levelRequired: 2,
       targetItemId: 'chronicler_camera_01',
     },
-    skillModifiers: { 'cognitive.observation': 5 },
   },
   {
     id: 'chronicler_camera_01',
@@ -270,9 +268,8 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'Camera',
     stackable: false,
-    economics: { base_value: 600, rarity_multiplier: 2.5 }, // Rebalanced
+    economics: { base_value: 600, rarity_multiplier: 2.5 },
     xpToNextItemLevel: 250,
-    skillModifiers: { 'cognitive.observation': 10, 'technical.investigation': 5 },
   },
 ];
 

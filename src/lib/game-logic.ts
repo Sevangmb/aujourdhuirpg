@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe, DegreeOfSuccess } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
-import { handleCombatAction, handleCombatEnded, handleCombatStarted, processCombatTurn } from '@/modules/combat/logic';
+import { calculateDamage } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
@@ -163,6 +163,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             };
             newInventory[itemIndex] = evolvedItem;
             player = { ...player, inventory: newInventory };
+            const journalEntry: GameEvent = { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'event', text: `Votre ${event.oldItemName} a évolué en ${event.newItemName} !` } };
+            eventQueue.push(journalEntry);
             break;
           }
           case 'PLAYER_TRAVELS': {
@@ -207,16 +209,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             break;
           }
           case 'COMBAT_STARTED':
-            nextState = handleCombatStarted(nextState, event.enemy);
+            nextState = { ...nextState, currentEnemy: event.enemy };
             player = nextState.player!;
             break;
           case 'COMBAT_ENDED':
-            nextState = handleCombatEnded(nextState);
+            nextState = { ...nextState, currentEnemy: null };
             player = nextState.player!;
             break;
           case 'COMBAT_ACTION':
-            nextState = handleCombatAction(nextState, event.target, event.newHealth);
-            player = nextState.player!;
+            if (event.target === 'player' && player) {
+                const newSante = { ...player.stats.Sante, value: event.newHealth };
+                player = { ...player, stats: { ...player.stats, Sante: newSante } };
+            } else if (event.target === 'enemy' && nextState.currentEnemy) {
+                nextState = { ...nextState, currentEnemy: { ...nextState.currentEnemy, health: event.newHealth } };
+                player = nextState.player!;
+            }
             break;
           case 'GAME_TIME_PROGRESSED':
             nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.minutes };
@@ -278,6 +285,82 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
 
   return { modifier, reason };
 }
+
+export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
+    const events: GameEvent[] = [];
+
+    // --- Player's Turn ---
+    if (choice.combatActionType === 'attack') {
+        const weapon = player.inventory.find(i => i.type === 'tool' && i.combatStats?.damage) || 
+                       { id: "unarmed", name: "Poings", combatStats: { damage: 1 } };
+        let skillToUse: string;
+
+        if (weapon.id.includes('knife') || weapon.id.includes('sword')) {
+            skillToUse = 'physiques.arme_blanche';
+        } else if (weapon.id.includes('gun') || weapon.id.includes('pistol')) { // Future-proofing
+            skillToUse = 'physiques.arme_a_feu';
+        } else {
+            skillToUse = 'physiques.combat_mains_nues';
+        }
+
+        const attackCheck = performSkillCheck(player.skills, player.stats, skillToUse, enemy.defense, player.inventory, 0, player.physiology, player.momentum);
+        events.push({ ...attackCheck, type: 'SKILL_CHECK_RESULT' });
+
+        if (attackCheck.success) {
+            const playerDamage = calculateDamage(player.stats, weapon.combatStats!.damage!, enemy.defense, attackCheck.degreeOfSuccess);
+            const newEnemyHealth = enemy.health - playerDamage;
+
+            events.push({ type: 'COMBAT_ACTION', attacker: player.name, target: 'enemy', damage: playerDamage, newHealth: newEnemyHealth, action: `attaque avec ${weapon.name}` });
+
+            if (newEnemyHealth <= 0) {
+                events.push({ type: 'COMBAT_ENDED', winner: 'player' });
+                const xpGained = (enemy.attack + enemy.defense) * 2;
+                events.push({ type: 'XP_GAINED', amount: xpGained });
+                if (Math.random() < 0.7) {
+                    const moneyDropped = Math.floor(Math.random() * (enemy.attack * 2)) + 5;
+                    events.push({ type: 'MONEY_CHANGED', amount: moneyDropped, finalBalance: player.money + moneyDropped, description: `Butin sur ${enemy.name}` });
+                }
+                return { events };
+            }
+        } else {
+             events.push({ type: 'TEXT_EVENT', text: `${player.name} rate son attaque !` });
+        }
+
+    } else if (choice.id.startsWith('combat_use_item_')) {
+        const instanceId = choice.id.replace('combat_use_item_', '');
+        const item = player.inventory.find(i => i.instanceId === instanceId);
+        if (item && item.effects?.Sante) {
+            events.push({ type: 'ITEM_REMOVED', itemId: item.id, itemName: item.name, quantity: 1 });
+            const newHealth = Math.min(player.stats.Sante.max!, player.stats.Sante.value + (item.effects.Sante as any));
+            events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Sante', change: (item.effects.Sante as any), finalValue: newHealth });
+            events.push({ type: 'TEXT_EVENT', text: `${player.name} utilise ${item.name} et récupère de la santé.` });
+        }
+    } else if (choice.combatActionType === 'flee') {
+        const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.esquive', 60, player.inventory, 0, player.physiology, player.momentum);
+        events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
+        if (skillCheckResult.success) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'player' });
+            return { events };
+        } else {
+             events.push({ type: 'TEXT_EVENT', text: `La fuite de ${player.name} échoue !` });
+        }
+    }
+
+    // --- Enemy's Turn (if combat is not over) ---
+    const enemyAttackPower = enemy.attack;
+    const playerDefense = (player.stats.Constitution.value / 10) + (player.stats.Dexterite.value / 15);
+    const enemyDamage = Math.max(1, enemyAttackPower - playerDefense);
+    const newPlayerHealth = player.stats.Sante.value - enemyDamage;
+
+    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: Math.round(enemyDamage), newHealth: newPlayerHealth, action: 'riposte' });
+
+    if (newPlayerHealth <= 0) {
+        events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
+    }
+
+    return { events };
+}
+
 
 export async function processExplorationAction(
   player: Player,
@@ -372,15 +455,7 @@ export async function processExplorationAction(
     const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
     const skillCheckResult = performSkillCheck(tempPlayerState.skills, tempPlayerState.stats, skill, difficulty, tempPlayerState.inventory, weatherModifier, tempPlayerState.physiology, tempPlayerState.momentum);
 
-    events.push({
-        type: 'SKILL_CHECK_RESULT',
-        skill: skill,
-        success: skillCheckResult.success,
-        degree: skillCheckResult.degreeOfSuccess,
-        roll: skillCheckResult.rollValue,
-        total: skillCheckResult.totalAchieved,
-        difficulty: skillCheckResult.difficultyTarget,
-    });
+    events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
     
     const newMomentum = { ...tempPlayerState.momentum };
     if (skillCheckResult.success) {
