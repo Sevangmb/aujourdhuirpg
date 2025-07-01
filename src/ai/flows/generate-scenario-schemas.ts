@@ -14,6 +14,13 @@ import { NewTransactionSchema } from '@/modules/economy/types';
 import { DynamicItemCreationPayloadSchema } from '@/lib/types/item-types';
 import { EnemySchema } from '@/modules/combat/types';
 
+const SuggestedActionSchema = z.object({
+  text: z.string(),
+  description: z.string(),
+  type: z.string(),
+  estimatedCost: z.object({ min: z.number(), max: z.number() }).optional(),
+});
+
 // --- Main Input Schema ---
 export const GenerateScenarioInputSchema = z.object({
   player: PlayerInputSchema.describe("L'objet complet contenant toutes les informations sur le joueur."),
@@ -21,6 +28,7 @@ export const GenerateScenarioInputSchema = z.object({
   gameEvents: z.string().describe("Une chaîne de caractères résumant les événements de jeu que le moteur a calculés. L'IA DOIT raconter ces événements de manière immersive."),
   previousScenarioText: z.string().describe('Le contexte du scénario précédent (le texte HTML du scénario précédent).'),
   cascadeResult: z.string().optional().describe("Un résumé textuel des informations contextuelles générées par les modules de la cascade. L'IA doit utiliser ce contexte pour sa narration."),
+  suggestedContextualActions: z.array(SuggestedActionSchema).optional().describe("Liste des actions contextuelles (basées sur le lieu, les objets, etc.) déjà générées par la logique du jeu. L'IA ne doit pas les recréer.")
 }).describe("Schéma d'entrée pour le flux generateScenario. L'IA est un narrateur, pas un décideur.");
 
 
@@ -57,7 +65,7 @@ export const GenerateScenarioOutputSchema = z.object({
     reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
-  choices: z.array(StoryChoiceSchema).describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite.").optional(),
+  choices: z.array(StoryChoiceSchema).optional().describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite."),
   
   newQuests: z.array(QuestInputSchema).optional().describe("Propose de nouvelles quêtes à ajouter au journal du joueur."),
   questUpdates: z.array(QuestUpdateSchema).optional().describe("Propose des mises à jour de quêtes existantes (ex: objectif complété)."),

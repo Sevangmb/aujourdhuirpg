@@ -40,12 +40,12 @@ export function getCurrentDateTimeFormatted(): string {
   return now.toLocaleString(undefined, options); // Use browser's default locale
 }
 
-const dayMapping = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const dayMapping = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 /**
  * Parses a day string like "Mon-Fri" or "Sat,Sun" into an array of day indices.
  * @param daysOfWeek The string to parse.
- * @returns An array of day indices (0=Mon, 1=Tue, ...).
+ * @returns An array of day indices (0=Sun, 1=Mon, ...).
  */
 function parseDays(daysOfWeek: string): number[] {
     const activeDays: number[] = [];
@@ -76,13 +76,13 @@ function parseDays(daysOfWeek: string): number[] {
  * @param availability An object containing openingHours and daysOfWeek strings.
  * @returns True if the service is available, false otherwise.
  */
-export function isShopOpen(totalMinutes: number, availability: { openingHours?: string; daysOfWeek?: string; }): boolean {
-    if (!availability.openingHours && !availability.daysOfWeek) {
+export function isShopOpen(totalMinutes: number, availability?: { openingHours?: string; daysOfWeek?: string; }): boolean {
+    if (!availability || (!availability.openingHours && !availability.daysOfWeek)) {
         return true; // Always available if no schedule is specified
     }
     
     const minutesInDay = 24 * 60;
-    const currentDayIndex = Math.floor(totalMinutes / minutesInDay) % 7; // 0=Mon, 1=Tue...
+    const currentDayIndex = new Date(new Date(0).getTime() + totalMinutes * 60000).getUTCDay(); // 0=Sun, 1=Mon...
     const currentMinuteOfDay = totalMinutes % minutesInDay;
 
     // Check day of week
@@ -95,7 +95,7 @@ export function isShopOpen(totalMinutes: number, availability: { openingHours?: 
 
     // Check opening hours
     if (availability.openingHours) {
-        if (availability.openingHours.toLowerCase() === '24/7') return true;
+        if (availability.openingHours.toLowerCase() === '24/7' || availability.openingHours === '00:00-23:59') return true;
         
         const parts = availability.openingHours.split('-').map(s => s.trim());
         if (parts.length !== 2) return true; // Malformed, assume open

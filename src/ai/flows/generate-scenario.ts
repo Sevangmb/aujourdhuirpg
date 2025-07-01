@@ -99,7 +99,7 @@ Votre mission est quadruple :
     - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique) :**
         - ❌ "Explorer les environs", "Observer les alentours"
         - ❌ "Parler à quelqu'un" (Préférez "Confronter le marchand sur son mensonge")
-        - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre", "Acheter Objet X" (Le moteur de jeu s'en occupe déjà via la logique contextuelle)
+        - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre", "Acheter Objet X" (Le moteur de jeu s'en occupe déjà via la logique contextuelle. Voir la liste dans \`suggestedContextualActions\`.)
         - ❌ **Ne créez JAMAIS de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.**
     - **EXEMPLES D'ACTIONS ATTENDUES :**
         - ✅ "Utiliser votre compétence en **survie.pistage** pour déceler une incohérence dans le témoignage du garde."
@@ -117,6 +117,18 @@ Votre mission est quadruple :
 4.  **Donner un Conseil Stratégique (aiRecommendation) :** Si pertinent, analysez la situation et donnez un conseil via le champ optionnel \`aiRecommendation\`.
 `;
 
+const PROMPT_CONTEXTUAL_ACTIONS_INSTRUCTIONS = `
+**Contexte des Actions Logiques (Facultatif)**
+Le moteur de jeu a déjà identifié les actions contextuelles suivantes.
+{{#if suggestedContextualActions}}
+Actions déjà proposées par la logique du jeu :
+{{#each suggestedContextualActions}}
+- {{this.text}}
+{{/each}}
+**Ne reproposez PAS ces actions.** Concentrez-vous sur des choix NARRATIFS et CRÉATIFS qui ne sont pas de simples interactions mécaniques.
+{{/if}}
+`;
+
 const PROMPT_CASCADE_INSTRUCTIONS = `
 **EXPLOITATION DU CONTEXTE DE LA CASCADE (TRÈS IMPORTANT)**
 Le champ \`cascadeResult\` contient un résumé des informations générées par des modules spécialisés. **Utilisez ces informations pour enrichir votre narration et créer une ambiance cohérente.** Par exemple, si le résumé mentionne une opportunité de cuisiner, vous pouvez décrire l'odeur des épices dans l'air. Si le résumé mentionne un fait culturel, intégrez-le dans la description des lieux. Le moteur de jeu génère déjà les actions logiques (comme "Cuisiner le plat X"), votre rôle n'est donc **PAS** de créer ces actions, mais de créer une atmosphère qui les justifie.
@@ -128,6 +140,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 {{{toneInstructions}}}
 - **CONTEXTE ENRICHI :** Utilisez toutes les données fournies pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
   - **Cascade Modulaire :** ${PROMPT_CASCADE_INSTRUCTIONS}
+  - **Actions Logiques :** ${PROMPT_CONTEXTUAL_ACTIONS_INSTRUCTIONS}
   
   {{#if player.recentActionTypes}}
   🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions du joueur étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions narratifs différents.

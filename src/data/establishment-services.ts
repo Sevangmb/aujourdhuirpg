@@ -9,7 +9,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Un sandwich frais pour satisfaire votre faim',
       cost: { min: 4, max: 8 },
       duration: 3,
-      availability: { openingHours: '6:00-19:00', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '06:00-19:00', daysOfWeek: 'Mon-Sat' }
     },
     {
       id: 'buy_pastry',
@@ -17,7 +17,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Croissant, pain au chocolat ou autre délice matinal',
       cost: { min: 1, max: 3 },
       duration: 2,
-      availability: { openingHours: '6:00-12:00', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '06:00-12:00', daysOfWeek: 'Mon-Sun' }
     },
     {
       id: 'order_birthday_cake',
@@ -26,7 +26,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 25, max: 80 },
       duration: 10,
       requirements: [{ type: 'advance_notice', value: '24h' }],
-      availability: { openingHours: '8:00-18:00', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '08:00-18:00', daysOfWeek: 'Mon-Sat' }
     }
   ],
   
@@ -38,7 +38,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Saucisses fraîches du jour, spécialité locale',
       cost: { min: 8, max: 15 },
       duration: 5,
-      availability: { openingHours: '8:00-19:00', daysOfWeek: 'Tue-Sat' }
+      availability: { openingHours: '08:00-19:00', daysOfWeek: 'Tue-Sat' }
     },
     {
       id: 'buy_meat_selection',
@@ -46,7 +46,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Choisir et faire préparer une belle pièce de bœuf ou porc',
       cost: { min: 15, max: 45 },
       duration: 8,
-      availability: { openingHours: '8:00-19:00', daysOfWeek: 'Tue-Sat' }
+      availability: { openingHours: '08:00-19:00', daysOfWeek: 'Tue-Sat' }
     },
     {
       id: 'get_cooking_advice',
@@ -54,7 +54,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Obtenir les secrets du boucher pour réussir votre plat',
       cost: { min: 0, max: 0 },
       duration: 5,
-      availability: { openingHours: '8:00-19:00', daysOfWeek: 'Tue-Sat' }
+      availability: { openingHours: '08:00-19:00', daysOfWeek: 'Tue-Sat' }
     }
   ],
   
@@ -66,7 +66,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Explorer les dernières tendances en mobilier',
       cost: { min: 0, max: 0 },
       duration: 15,
-      availability: { openingHours: '9:00-19:00', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '09:00-19:00', daysOfWeek: 'Mon-Sat' }
     },
     {
       id: 'buy_small_furniture',
@@ -74,7 +74,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Lampe, coussin, ou petit meuble pour embellir votre espace',
       cost: { min: 20, max: 150 },
       duration: 10,
-      availability: { openingHours: '9:00-19:00', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '09:00-19:00', daysOfWeek: 'Mon-Sat' }
     },
     {
       id: 'order_custom_furniture',
@@ -83,7 +83,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 300, max: 2000 },
       duration: 25,
       requirements: [{ type: 'deposit', value: '30%' }, { type: 'delivery_time', value: '6-8 semaines' }],
-      availability: { openingHours: '9:00-19:00', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '09:00-19:00', daysOfWeek: 'Mon-Sat' }
     }
   ],
   
@@ -95,7 +95,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Une nuit de repos dans un lit confortable',
       cost: { min: 60, max: 200 },
       duration: 5,
-      availability: { openingHours: '24/7', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '00:00-23:59', daysOfWeek: 'Mon-Sun' }
     },
     {
       id: 'take_power_nap',
@@ -104,7 +104,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 0, max: 0 },
       duration: 30,
       requirements: [{ type: 'stealth_check', difficulty: 40 }],
-      availability: { openingHours: '24/7', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '00:00-23:59', daysOfWeek: 'Mon-Sun' }
     },
     {
       id: 'use_hotel_services',
@@ -112,7 +112,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Spa, restaurant, ou conciergerie selon disponibilité',
       cost: { min: 15, max: 80 },
       duration: 45,
-      availability: { openingHours: '7:00-22:00', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '07:00-22:00', daysOfWeek: 'Mon-Sun' }
     }
   ],
   
@@ -124,7 +124,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Parcourir les appartements disponibles dans le quartier',
       cost: { min: 0, max: 0 },
       duration: 20,
-      availability: { openingHours: '9:00-18:00', daysOfWeek: 'Mon-Fri' }
+      availability: { openingHours: '09:00-18:00', daysOfWeek: 'Mon-Fri' }
     },
     {
       id: 'schedule_apartment_visit',
@@ -133,7 +133,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 0, max: 0 },
       duration: 10,
       requirements: [{ type: 'appointment', value: 'required' }],
-      availability: { openingHours: '9:00-18:00', daysOfWeek: 'Mon-Fri' }
+      availability: { openingHours: '09:00-18:00', daysOfWeek: 'Mon-Fri' }
     },
     {
       id: 'rent_apartment',
@@ -146,7 +146,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
         { type: 'deposit', value: '1-2 mois de loyer' },
         { type: 'guarantor', value: 'recommended' }
       ],
-      availability: { openingHours: '9:00-18:00', daysOfWeek: 'Mon-Fri' }
+      availability: { openingHours: '09:00-18:00', daysOfWeek: 'Mon-Fri' }
     }
   ],
   
@@ -158,7 +158,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Expresso, cappuccino ou café au lait selon votre humeur',
       cost: { min: 2, max: 5 },
       duration: 3,
-      availability: { openingHours: '7:00-19:00', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '07:00-19:00', daysOfWeek: 'Mon-Sun' }
     },
     {
       id: 'work_with_wifi',
@@ -167,7 +167,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 5, max: 10 }, // Coût d'une consommation
       duration: 120,
       requirements: [{ type: 'laptop', value: 'recommended' }],
-      availability: { openingHours: '7:00-19:00', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '07:00-19:00', daysOfWeek: 'Mon-Sun' }
     },
     {
       id: 'people_watch',
@@ -175,7 +175,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Art de vivre parisien : contempler la vie urbaine',
       cost: { min: 3, max: 8 },
       duration: 45,
-      availability: { openingHours: '7:00-22:00', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '07:00-22:00', daysOfWeek: 'Mon-Sun' }
     }
   ],
   
@@ -187,7 +187,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Aspirine, pansements, désinfectant...',
       cost: { min: 3, max: 15 },
       duration: 5,
-      availability: { openingHours: '8:30-19:30', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '08:30-19:30', daysOfWeek: 'Mon-Sat' }
     },
     {
       id: 'health_consultation',
@@ -195,7 +195,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       description: 'Consultation gratuite pour des maux bénins',
       cost: { min: 0, max: 0 },
       duration: 10,
-      availability: { openingHours: '8:30-19:30', daysOfWeek: 'Mon-Sat' }
+      availability: { openingHours: '08:30-19:30', daysOfWeek: 'Mon-Sat' }
     }
   ],
   
@@ -208,7 +208,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 0, max: 2 }, // Frais éventuels
       duration: 2,
       requirements: [{ type: 'bank_card', value: 'required' }],
-      availability: { openingHours: '24/7', daysOfWeek: 'Mon-Sun' }
+      availability: { openingHours: '00:00-23:59', daysOfWeek: 'Mon-Sun' }
     },
     {
       id: 'meet_advisor',
@@ -217,7 +217,7 @@ export const ESTABLISHMENT_SERVICES: Record<string, POIService[]> = {
       cost: { min: 0, max: 0 },
       duration: 30,
       requirements: [{ type: 'appointment', value: 'recommended' }],
-      availability: { openingHours: '9:00-17:00', daysOfWeek: 'Mon-Fri' }
+      availability: { openingHours: '09:00-17:00', daysOfWeek: 'Mon-Fri' }
     }
   ]
 };
