@@ -47,8 +47,8 @@ const geoIntelligencePrompt = ai.definePrompt({
 
     ANALYSE DE LA ZONE :
     - socialClass : Quel est le profil social dominant ? (populaire, bourgeois, bohème, business, mixte, résidentiel, inconnu)
-    - criminalityLevel : Sur une échelle de 0 (très sûr) à 100 (très dangereux), quel est le niveau de criminalité ressenti ?
-    - cultureScore : Sur une échelle de 0 à 100, évaluez la richesse culturelle (musées, théâtres, galeries, etc.).
+    - criminalityLevel : Quel est le niveau de criminalité ressenti ? Choisissez parmi : très_sûr, calme, normal, tendu, dangereux, inconnu.
+    - cultureScore : Évaluez la richesse culturelle. Choisissez parmi : faible, modéré, riche, exceptionnel, inconnu.
     - economicActivity : Listez 2-3 activités économiques clés (ex: "Tourisme", "Finance", "Artisanat", "Restauration").
     - historicalAnecdote : Racontez une anecdote historique intéressante et peu connue sur ce lieu ou son quartier.
     - dominantAtmosphere : Décrivez l'ambiance générale en quelques mots (ex: "Vibrant et bruyant", "Calme et verdoyant").

@@ -12,8 +12,8 @@ export const GenerateGeoIntelligenceInputSchema = z.object({
 
 const AreaAnalysisSchema = z.object({
   socialClass: z.enum(['populaire', 'bourgeois', 'bohème', 'business', 'mixte', 'résidentiel', 'inconnu']).describe("Classification sociale dominante du quartier."),
-  criminalityLevel: z.number().min(0).max(100).describe("Estimation du niveau de criminalité (0=très sûr, 100=très dangereux)."),
-  cultureScore: z.number().min(0).max(100).describe("Score représentant la richesse culturelle du lieu (musées, théâtres, etc.)."),
+  criminalityLevel: z.enum(['très_sûr', 'calme', 'normal', 'tendu', 'dangereux', 'inconnu']).describe("Niveau de criminalité ressenti."),
+  cultureScore: z.enum(['faible', 'modéré', 'riche', 'exceptionnel', 'inconnu']).describe("Richesse culturelle du lieu."),
   economicActivity: z.array(z.string()).describe("Liste des types d'activités économiques dominantes (ex: 'Tourisme', 'Finance', 'Artisanat')."),
   historicalAnecdote: z.string().describe("Une anecdote historique ou un fait marquant sur le lieu."),
   dominantAtmosphere: z.string().describe("Description de l'ambiance générale du quartier (ex: 'Calme et résidentiel', 'Vibrant et touristique')."),

@@ -118,15 +118,13 @@ const GeoIntelligenceDisplay: React.FC<GeoIntelligenceDisplayProps> = ({ data, i
             <span className="flex items-center"><Briefcase className="w-4 h-4 mr-2 text-muted-foreground" />Activités</span>
             <span className="font-semibold">{areaAnalysis.economicActivity.join(', ')}</span>
           </div>
-          <div>
-            <span className="flex items-center text-sm font-medium mb-1"><ShieldCheck className="w-4 h-4 mr-2 text-muted-foreground" />Niveau de Sécurité</span>
-            <Progress value={100 - areaAnalysis.criminalityLevel} className="h-2" />
-            <p className="text-xs text-right text-muted-foreground mt-1">{100 - areaAnalysis.criminalityLevel}% (Sûr)</p>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center"><ShieldCheck className="w-4 h-4 mr-2 text-muted-foreground" />Niveau de Sécurité</span>
+            <span className="font-semibold capitalize">{areaAnalysis.criminalityLevel.replace(/_/g, ' ')}</span>
           </div>
-           <div>
-            <span className="flex items-center text-sm font-medium mb-1"><Landmark className="w-4 h-4 mr-2 text-muted-foreground" />Score Culturel</span>
-            <Progress value={areaAnalysis.cultureScore} className="h-2" />
-            <p className="text-xs text-right text-muted-foreground mt-1">{areaAnalysis.cultureScore}%</p>
+           <div className="flex items-center justify-between">
+            <span className="flex items-center"><Landmark className="w-4 h-4 mr-2 text-muted-foreground" />Richesse Culturelle</span>
+            <span className="font-semibold capitalize">{areaAnalysis.cultureScore.replace(/_/g, ' ')}</span>
           </div>
           <Accordion type="single" collapsible>
             <AccordionItem value="anecdote">
