@@ -1,6 +1,6 @@
 
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties } from '@/modules/inventory/logic';
@@ -527,17 +527,41 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       },
   };
   
-  const cascadeData = cascadeResult ? {
-    executionChain: cascadeResult.executionChain,
-    results: Array.from(cascadeResult.results.entries()).reduce((acc, [key, value]) => {
-      (acc as any)[key] = {
-        data: value.data,
-        enrichmentLevel: value.enrichmentLevel,
-        executionTime: value.executionTime,
-      };
-      return acc;
-    }, {}),
-  } : null;
+  let cascadeSummary = "Aucune analyse contextuelle supplémentaire disponible.";
+  if (cascadeResult && cascadeResult.results) {
+      const summaries: string[] = [];
+      // Cuisine Module Summary
+      if (cascadeResult.results.has('cuisine')) {
+          const cuisineData = cascadeResult.results.get('cuisine')?.data;
+          if (cuisineData) {
+              if (cuisineData.cookingOpportunities && cuisineData.cookingOpportunities.length > 0) {
+                  summaries.push(`- Opportunités de Cuisine: ${cuisineData.cookingOpportunities.join(' ')}`);
+              }
+              if (cuisineData.nutritionalStatus) {
+                  summaries.push(`- Statut Nutritionnel: ${cuisineData.nutritionalStatus}`);
+              }
+          }
+      }
+      // Culture Locale Module Summary
+      if (cascadeResult.results.has('culture_locale')) {
+          const cultureData = cascadeResult.results.get('culture_locale')?.data;
+          if (cultureData && cultureData.summary && !cultureData.summary.includes('Aucune information')) {
+              summaries.push(`- Contexte Culturel Local: ${cultureData.summary}`);
+          }
+      }
+      // Livre Module Summary
+      if (cascadeResult.results.has('livre')) {
+          const livreData = cascadeResult.results.get('livre')?.data;
+          if (livreData && livreData.foundBooks && livreData.foundBooks.length > 0) {
+              const bookTitles = (livreData.foundBooks as BookSearchResult[]).map(b => b.title).join(', ');
+              summaries.push(`- Recherche de Livres: Des informations sur les livres suivants ont été trouvées: ${bookTitles}.`);
+          }
+      }
+
+      if (summaries.length > 0) {
+          cascadeSummary = "Analyses contextuelles supplémentaires:\n" + summaries.join("\n");
+      }
+  }
 
   // --- NEW: POI Context for AI ---
   const nearbyEstablishments = gameState.nearbyPois?.map(poi => ({
@@ -561,7 +585,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: JSON.stringify(gameEvents || [], null, 2),
-    cascadeResult: cascadeData ? JSON.stringify(cascadeData, null, 2) : "{}",
+    cascadeResult: cascadeSummary,
     nearbyEstablishments,
     suggestedContextualActions,
   };

@@ -120,23 +120,7 @@ Votre mission est quadruple :
 
 const PROMPT_CASCADE_INSTRUCTIONS = `
 **EXPLOITATION DU CONTEXTE DE LA CASCADE (TRÈS IMPORTANT)**
-Le champ \`cascadeResult\` contient des informations contextuelles ultra-riches générées par des modules spécialisés. Votre tâche est d'utiliser ces informations pour rendre votre narration vivante et pour créer des choix pertinents.
-
-Voici comment interpréter les données de la cascade :
-
-- **Si le module \`cuisine\` est présent dans \`cascadeResult.results\` :**
-  - **Narration :** Décrivez les odeurs, les pensées du personnage sur une recette, ou l'ambiance d'une cuisine ou d'un restaurant. Intégrez le \`nutritionalStatus\` dans les pensées du personnage (ex: "Vous sentez votre estomac gargouiller, une analyse rapide de votre état vous rappelle que vous manquez de protéines."). Utilisez les \`cookingOpportunities\` pour enrichir l'histoire.
-  - **Choix :** Si \`cascadeResult.results.cuisine.data.cookableRecipes\` est présent et non vide, proposez un choix pour "Cuisiner [nom de la recette]". Si \`cascadeResult.results.cuisine.data.nearlyCookableRecipes\` est présent et non vide, proposez un choix pour "Trouver les ingrédients manquants pour [nom de la recette]". Utilisez les \`nutritionalRecommendations\` pour créer des choix d'action ciblés, comme "Chercher un restaurant qui sert un plat riche en [nutriment recommandé]".
-
-- **Si le module \`culture_locale\` est présent dans \`cascadeResult.results\` :**
-  - **Narration :** Intégrez un détail historique ou culturel du \`summary\` dans les pensées du personnage ou dans la description d'un bâtiment. Par exemple : "En passant devant la fontaine, vous vous souvenez avoir lu que..."
-  - **Choix :** Proposez un choix d'exploration lié à l'anecdote culturelle, comme "Chercher plus d'informations sur [détail historique]".
-
-- **Si le module \`livre\` est présent dans \`cascadeResult.results\` :**
-  - **Narration :** Décrivez le personnage en train de chercher ou trouver des livres. Mentionnez les titres trouvés dans \`cascadeResult.results.livre.data.foundBooks\`.
-  - **Choix :** Pour chaque livre pertinent trouvé, proposez un choix de type 'action' pour "Lire le livre : [titre du livre]" ou "Acheter le livre : [titre du livre]". S'il n'y a pas de livres, proposez un choix pour "Continuer les recherches".
-
-- **Pour tous les modules :** Lisez les messages et les données fournies et laissez-les inspirer votre récit. Si des opportunités sont listées, essayez de les transformer en choix d'action.
+Le champ \`cascadeResult\` contient un résumé textuel des informations contextuelles générées par des modules spécialisés. Votre tâche est d'utiliser ces informations pour rendre votre narration vivante et pour créer des choix pertinents. Intégrez ces informations naturellement dans le récit et inspirez-vous d'elles pour créer des choix d'action. Par exemple, si une opportunité de cuisine est listée, proposez un choix pour cuisiner. Si un contexte culturel est donné, proposez un choix pour explorer cet aspect. Si des livres sont mentionnés, proposez un choix pour les lire ou les acheter.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -193,7 +177,7 @@ const PROMPT_ACTION_AND_EFFECTS = `
 **Action du Joueur et Conséquences Calculées par le Moteur :**
 1.  **Action Saisie :** '{{{playerChoiceText}}}'
 2.  **Événements Déterministes à Raconter (Format JSON) :** {{{gameEvents}}} (Intégrez-les de manière immersive dans la narration).
-3.  **Contexte de la Cascade (JSON Format) :** {{{cascadeResult}}} (Utilisez-le pour la narration et les choix comme indiqué dans les principes directeurs).
+3.  **Contexte de la Cascade (Texte) :** {{{cascadeResult}}} (Utilisez ces informations pour la narration et les choix).
 
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.
 `;
