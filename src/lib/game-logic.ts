@@ -271,23 +271,33 @@ export function getWeatherModifier(skillPath: string, weatherData: WeatherData |
   }
 
   const weatherDesc = weatherData.description.toLowerCase();
+  const skill = skillPath.split('.').pop() || '';
   let modifier = 0;
-  let reason = "";
-
-  const isBadWeather = weatherDesc.includes('pluie') || weatherDesc.includes('brouillard') || weatherDesc.includes('neige') || weatherDesc.includes('orage');
   
-  if (skillPath.includes('observation') || skillPath.includes('navigation')) {
-    if (isBadWeather) {
-      modifier = -10;
-      reason = `Le mauvais temps (${weatherData.description}) pénalise cette action.`;
-    }
+  // Fog effects
+  if (weatherDesc.includes('brouillard')) {
+    if (skill === 'stealth') modifier += 15;
+    if (skill === 'navigation') modifier -= 10;
+    if (skill === 'observation') modifier -= 8;
+  }
+  // Rain effects
+  else if (weatherDesc.includes('pluie') || weatherDesc.includes('averses')) {
+    if (skill === 'stealth') modifier += 10;
+    if (skill === 'observation') modifier -= 5;
+    if (skill === 'social') modifier -= 3; // a bit strange, but following the plan
+  }
+  // Sunny effects
+  else if (weatherDesc.includes('dégagé')) {
+    if (skill === 'endurance') modifier -= 3;
+    // 'moral' is a stat (Humeur), not a skill, so it cannot be handled here.
+    // This function only returns a modifier for the current skill check.
   }
 
-  if (skillPath.includes('stealth')) {
-    if (isBadWeather) {
-      modifier = 10;
-      reason = `Le mauvais temps (${weatherData.description}) favorise cette action.`;
-    }
+  let reason = "";
+  if (modifier > 0) {
+    reason = `Le temps (${weatherData.description}) favorise cette action.`;
+  } else if (modifier < 0) {
+    reason = `Le temps (${weatherData.description}) pénalise cette action.`;
   }
 
   return { modifier, reason };
