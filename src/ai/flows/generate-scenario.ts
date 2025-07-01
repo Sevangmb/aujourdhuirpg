@@ -21,7 +21,7 @@ import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
 } from './generate-scenario-schemas';
-import type { ToneSettings, BookSearchResult } from '@/lib/types';
+import type { ToneSettings, BookSearchResult, GameTone } from '@/lib/types';
 
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
@@ -39,6 +39,69 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
   return generateScenarioFlow(input); 
 }
 
+const toneDetails: Record<GameTone, Record<string, string>> = {
+    Humoristique: {
+        style: "Langage vif, jeu de mots, exagérations, rythme rapide avec pauses comiques.",
+        ambiance: "Ambiance légère, situations absurdes, détails cocasses, caricatures.",
+        dialogues: "Sarcastiques, moqueurs, malicieux, ironie omniprésente.",
+        actions: "Proposer des quêtes farfelues, des énigmes absurdes, et des choix permettant l'improvisation ou la plaisanterie.",
+    },
+    Action: {
+        style: "Phrases courtes, verbes d’action, rythme haletant, parfois brutal.",
+        ambiance: "Description cinématographique, scènes vives, mouvements rapides, sons percutants.",
+        dialogues: "Directs, cris, ordres, échanges brefs.",
+        actions: "Proposer des choix qui incitent à l'action rapide (combat, sauvetage, poursuite). Si la narration mène à un conflit, utiliser le champ 'startCombat'.",
+    },
+    Romantique: {
+        style: "Langage métaphorique, images sensorielles, rythme fluide, moments calmes.",
+        ambiance: "Atmosphère intime, descriptions sensuelles, mise en valeur des sentiments.",
+        dialogues: "Doux, tendres, pleins d’émotions, souvent des silences lourds.",
+        actions: "Suggérer des choix contemplatifs, comme savourer un moment, admirer une vue, ou engager une conversation intime.",
+    },
+    Dramatique: {
+        style: "Style solennel, vocabulaire lourd, rythme posé, phrases longues.",
+        ambiance: "Ambiance pesante, descriptions détaillées des émotions et conflits internes.",
+        dialogues: "Lourds, réfléchis, chargés de sentiments, parfois conflictuels.",
+        actions: "Mettre en scène des conflits moraux, des trahisons, des sacrifices, et des choix aux conséquences lourdes.",
+    },
+    Mystérieux: {
+        style: "Style elliptique, ambigu, rythme variable, phrases incomplètes ou suggestives.",
+        ambiance: "Atmosphère trouble, suspens latent, indices subtils.",
+        dialogues: "Allusifs, cryptiques, réponses évasives, questions ouvertes.",
+        actions: "Proposer des choix liés à l'enquête, au déchiffrage d’énigmes, à l'infiltration et à la recherche d’indices.",
+    },
+    Épique: {
+        style: "Langage noble, solennel, rythme majestueux, phrases longues et rythmées.",
+        ambiance: "Panorama vaste, descriptions panoramiques et héroïques, évocations de grandeur.",
+        dialogues: "Solennels, rituels, discours héroïques, prononcés avec gravité.",
+        actions: "Orienter vers de grandes quêtes, des batailles épiques, des alliances et des actes héroïques.",
+    },
+    "Science-Fiction": {
+        style: "Langage précis, parfois jargon technique, rythmé selon la scène (rapide en action, posé en réflexion).",
+        ambiance: "Décors high-tech, monde futuriste, ambiances souvent froides ou mystérieuses.",
+        dialogues: "Logiques, rationnels, parfois distants ou froids, utilisant un jargon technologique.",
+        actions: "Suggérer des choix liés à l'exploration spatiale, la résolution d’énigmes technologiques, ou des conflits interstellaires.",
+    },
+    Fantastique: {
+        style: "Langage poétique, évocateur, rythme variable, passages atmosphériques.",
+        ambiance: "Décors oniriques, détails magiques, ambiance à la fois belle et inquiétante.",
+        dialogues: "Parfois cryptiques, poétiques, évocateurs, souvent mystérieux.",
+        actions: "Proposer des quêtes magiques, des interactions avec des créatures surnaturelles, ou la résolution de malédictions.",
+    },
+    Thriller: {
+        style: "Style court, incisif, rythmé, phrases nerveuses.",
+        ambiance: "Ambiance tendue, atmosphère oppressante, description des réactions psychologiques.",
+        dialogues: "Nerveux, paranoïaques, interrogatifs, parfois agressifs.",
+        actions: "Mener vers des enquêtes, des poursuites, le déjouement de complots, la manipulation ou le sabotage.",
+    },
+    Horreur: {
+        style: "Langage sensoriel, sombre, souvent lent pour créer la tension, phrases évocatrices.",
+        ambiance: "Atmosphère oppressante, descriptions de la peur, du corps, de l’angoisse.",
+        dialogues: "Murmures, cris, voix brisées, propos désespérés, folie latente.",
+        actions: "Proposer des choix liés à la survie face à des monstres, la fuite de lieux maudits ou la résolution de mystères macabres.",
+    },
+};
+
 
 function generateToneInstructions(toneSettings: ToneSettings | undefined): string {
   if (!toneSettings || Object.keys(toneSettings).length === 0) {
@@ -46,41 +109,40 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
   }
 
   const instructions: string[] = [];
-  const sortedTones = Object.entries(toneSettings).sort(([, a], [, b]) => b - a);
+  const sortedTones = Object.entries(toneSettings)
+    .sort(([, a], [, b]) => b - a)
+    .filter(([, value]) => value > 0);
 
-  const primaryTone = sortedTones[0];
+  const primaryToneEntry = sortedTones[0];
   
-  if (primaryTone && primaryTone[1] > 55) { // Main tone must be significant
-    switch (primaryTone[0]) {
-      case 'Horreur':
-        instructions.push("Adoptez un style narratif sombre et oppressant. Utilisez un vocabulaire qui évoque le malaise et la tension. Décrivez les ombres, les bruits étranges. Proposez des choix liés à l'investigation du danger ou à la confrontation avec l'inconnu.");
-        break;
-      case 'Romance':
-        instructions.push("Utilisez un style poétique et sensoriel. Décrivez les émotions, les regards, les atmosphères avec des métaphores. Proposez des choix contemplatifs, comme savourer un moment, admirer une vue, ou engager une conversation intime.");
-        break;
-      case 'Humour':
-        instructions.push("Créez des situations cocasses et légères. Utilisez des dialogues pleins d'esprit et des descriptions ironiques. Proposez des choix qui permettent d'improviser, de faire une blague ou de prendre une situation à la légère.");
-        break;
-      case 'Mystère':
-        instructions.push("Distillez des indices subtils et maintenez une ambiance ambiguë. Privilégiez les non-dits et les questions en suspens. Proposez des choix liés à l'examen de détails, à la déduction et à la recherche d'informations cachées.");
-        break;
-      case 'Action':
-        instructions.push("Employez un style direct avec des phrases courtes et un rythme dynamique. Décrivez les mouvements et les impacts. Proposez des choix qui incitent à l'action rapide. Si la narration mène à un conflit, utilisez le champ 'startCombat' pour introduire un ennemi.");
-        break;
-      case 'Fantastique':
-         instructions.push("Introduisez des éléments surnaturels ou magiques de manière subtile ou grandiose. Décrivez l'émerveillement, l'étrangeté. Proposez des choix qui permettent d'interagir avec le merveilleux, de découvrir des secrets anciens ou d'utiliser des capacités extraordinaires.");
-        break;
-      case 'Science Fiction':
-         instructions.push("Intégrez des concepts technologiques avancés, des dilemmes futuristes ou des rencontres extraterrestres. Utilisez un vocabulaire technique mais évocateur. Proposez des choix liés à l'utilisation de la technologie, à l'exploration spatiale ou à des questionnements sur l'humanité.");
-        break;
+  if (primaryToneEntry && primaryToneEntry[1] > 60) {
+    const primaryToneName = primaryToneEntry[0] as GameTone;
+    const details = toneDetails[primaryToneName];
+    if(details) {
+        instructions.push(`Le ton principal est **${primaryToneName}**. Adoptez les caractéristiques suivantes :`);
+        instructions.push(`- **Style & Rythme :** ${details.style}`);
+        instructions.push(`- **Ambiance & Descriptions :** ${details.ambiance}`);
+        instructions.push(`- **Dialogues :** ${details.dialogues}`);
+        instructions.push(`- **Types de Choix à Proposer :** ${details.actions}`);
     }
+  }
+
+  const secondaryTones = sortedTones.slice(1, 3).filter(([, value]) => value > 40);
+  if (secondaryTones.length > 0) {
+      instructions.push("\n**Influences Secondaires :**");
+      secondaryTones.forEach(([toneName, value]) => {
+          const details = toneDetails[toneName as GameTone];
+          if(details) {
+            instructions.push(`- **${toneName} (${value}%)**: Intégrez subtilement des éléments de son style: *${details.style}*`);
+          }
+      });
   }
 
   if (instructions.length === 0) {
     return "Le style narratif doit être équilibré et neutre.";
   }
 
-  return `**Instructions de Tonalité Spécifiques :** ${instructions.join(' ')}`;
+  return `**Instructions de Tonalité Spécifiques :**\n${instructions.join('\n')}`;
 }
 
 const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.`;
