@@ -13,7 +13,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Smartphone',
     stackable: false,
-    economics: { base_value: 150, rarity_multiplier: 1.0 },
+    economics: { base_value: 300, rarity_multiplier: 1.0 }, // Rebalanced
     xpToNextItemLevel: 0, // Ne peut pas évoluer
   },
   {
@@ -23,7 +23,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'Wallet',
     stackable: false,
-    economics: { base_value: 5, rarity_multiplier: 0.8 },
+    economics: { base_value: 8, rarity_multiplier: 0.8 }, // Rebalanced
     xpToNextItemLevel: 0,
   },
   {
@@ -45,7 +45,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true,
     effects: { Energie: 10 },
     physiologicalEffects: { hunger: 25 },
-    economics: { base_value: 3, rarity_multiplier: 0.5 },
+    economics: { base_value: 2, rarity_multiplier: 0.5 }, // Rebalanced
     xpToNextItemLevel: 0,
   },
   {
@@ -67,7 +67,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'NotebookPen',
     stackable: false,
-    economics: { base_value: 4, rarity_multiplier: 0.7 },
+    economics: { base_value: 6, rarity_multiplier: 0.7 }, // Rebalanced
     xpToNextItemLevel: 50,
     skillModifiers: { 'cognitive.memory': 5 },
   },
@@ -119,7 +119,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'misc',
     iconName: 'CircleDollarSign',
     stackable: true,
-    economics: { base_value: 50, rarity_multiplier: 3.0 },
+    economics: { base_value: 45, rarity_multiplier: 3.0 }, // Rebalanced
     xpToNextItemLevel: 0,
   },
   {
@@ -129,7 +129,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'electronic',
     iconName: 'Laptop',
     stackable: false,
-    economics: { base_value: 200, rarity_multiplier: 2.2 },
+    economics: { base_value: 450, rarity_multiplier: 2.2 }, // Rebalanced
     xpToNextItemLevel: 0,
   },
   {
@@ -139,7 +139,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'wearable',
     iconName: 'Shirt', 
     stackable: false,
-    economics: { base_value: 40, rarity_multiplier: 1.5 },
+    economics: { base_value: 75, rarity_multiplier: 1.5 }, // Rebalanced
     xpToNextItemLevel: 250, // This jacket could become iconic
     combatStats: { defense: 2 },
   },
@@ -161,7 +161,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     iconName: 'Pill',
     stackable: true,
     effects: { Sante: 5 },
-    economics: { base_value: 10, rarity_multiplier: 1.3 },
+    economics: { base_value: 5, rarity_multiplier: 1.3 }, // Rebalanced
     xpToNextItemLevel: 0,
   },
   {
@@ -255,7 +255,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'Camera',
     stackable: false,
-    economics: { base_value: 80, rarity_multiplier: 1.8 },
+    economics: { base_value: 60, rarity_multiplier: 1.8 }, // Rebalanced
     xpToNextItemLevel: 100, // This item can evolve!
     evolution: {
       levelRequired: 2,
@@ -270,7 +270,7 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     type: 'tool',
     iconName: 'Camera',
     stackable: false,
-    economics: { base_value: 250, rarity_multiplier: 2.5 },
+    economics: { base_value: 600, rarity_multiplier: 2.5 }, // Rebalanced
     xpToNextItemLevel: 250,
     skillModifiers: { 'cognitive.observation': 10, 'technical.investigation': 5 },
   },

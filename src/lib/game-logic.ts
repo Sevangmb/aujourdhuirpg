@@ -284,9 +284,9 @@ export async function processPlayerAction(
   events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
 
 
-  // --- PHYSIOLOGY & ENERGY ---
-  const hungerDecay = (choice.timeCost * 0.1) + (choice.energyCost * 0.2);
-  const thirstDecay = (choice.timeCost * 0.2) + (choice.energyCost * 0.1);
+  // --- PHYSIOLOGY & ENERGY (Rebalanced) ---
+  const hungerDecay = (choice.timeCost * 0.05) + (choice.energyCost * 0.1);
+  const thirstDecay = (choice.timeCost * 0.08) + (choice.energyCost * 0.08);
   
   tempPlayerState.stats.Energie.value -= choice.energyCost;
   events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -choice.energyCost, finalValue: tempPlayerState.stats.Energie.value });

@@ -49,6 +49,25 @@ function getSkillValueByPath(skills: AdvancedSkillSystem, path: string): number 
     return 0;
 }
 
+const getPhysiologyPenalty = (physiology: AdvancedPhysiologySystem): number => {
+    let penalty = 0;
+    const { hunger, thirst } = physiology.basic_needs;
+    // Hunger penalties (gradual)
+    if (hunger.level < 10) penalty -= 12;
+    else if (hunger.level < 30) penalty -= 8;
+    else if (hunger.level < 50) penalty -= 5;
+    else if (hunger.level < 70) penalty -= 2;
+
+    // Thirst penalties (more severe)
+    if (thirst.level < 10) penalty -= 15;
+    else if (thirst.level < 20) penalty -= 10;
+    else if (thirst.level < 40) penalty -= 6;
+    else if (thirst.level < 60) penalty -= 3;
+    
+    return penalty;
+};
+
+
 /**
  * Performs a skill check for a player using a D100 + modifiers vs. difficulty system.
  *
@@ -75,7 +94,8 @@ export function performSkillCheck(
 
   const controllingStatName = skillCategoryToStatMap[category];
   const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
-  const statModifierValue = Math.floor(controllingStatValue / 10);
+  // Rebalanced Stat Modifier: Less powerful than original /10. 
+  const statModifierValue = Math.floor(Math.max(0, controllingStatValue - 50) / 5);
 
   // Calculate total modifier from all items in inventory
   const itemContributions: { name: string; bonus: number }[] = [];
@@ -87,17 +107,14 @@ export function performSkillCheck(
     }
     return total;
   }, 0);
-  
-  // --- NEW: Apply penalties from physiology ---
-  let physiologicalModifiers = 0;
-  if (physiology.basic_needs.hunger.level < 20) {
-      physiologicalModifiers -= 10; // Hunger penalty
-  }
-  if (physiology.basic_needs.thirst.level < 20) {
-      physiologicalModifiers -= 15; // Dehydration is more severe
-  }
 
-  const totalModifier = baseSkillValue + statModifierValue + itemModifierValue + situationalModifiers + physiologicalModifiers;
+  // Cap the bonus from items to prevent it from becoming game-breaking.
+  const cappedItemModifierValue = Math.min(itemModifierValue, 15);
+  
+  // Apply penalties from physiology (rebalanced to be more gradual).
+  const physiologicalModifiers = getPhysiologyPenalty(physiology);
+
+  const totalModifier = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers;
   const rollValue = Math.floor(Math.random() * 100) + 1;
   const totalAchieved = rollValue + totalModifier;
 
@@ -120,7 +137,7 @@ export function performSkillCheck(
     skillUsed: skillPath,
     baseSkillValue,
     statModifierValue,
-    itemModifierValue,
+    itemModifierValue: cappedItemModifierValue, // Return the capped value
     itemContributions,
     situationalModifierValue: situationalModifiers + physiologicalModifiers,
     effectiveScore: totalModifier,
@@ -155,7 +172,7 @@ export function calculateSuccessProbability(
 
   const controllingStatName = skillCategoryToStatMap[category];
   const controllingStatValue = controllingStatName ? (stats[controllingStatName]?.value || 0) : 0;
-  const statModifierValue = Math.floor(controllingStatValue / 10);
+  const statModifierValue = Math.floor(Math.max(0, controllingStatValue - 50) / 5);
 
   const itemModifierValue = inventory.reduce((total, item) => {
     if (item.skillModifiers && item.skillModifiers[skillPath]) {
@@ -163,16 +180,11 @@ export function calculateSuccessProbability(
     }
     return total;
   }, 0);
+  const cappedItemModifierValue = Math.min(itemModifierValue, 15);
 
-  let physiologicalModifiers = 0;
-  if (physiology.basic_needs.hunger.level < 20) {
-      physiologicalModifiers -= 10;
-  }
-  if (physiology.basic_needs.thirst.level < 20) {
-      physiologicalModifiers -= 15;
-  }
+  const physiologicalModifiers = getPhysiologyPenalty(physiology);
 
-  const effectiveScore = baseSkillValue + statModifierValue + itemModifierValue + situationalModifiers + physiologicalModifiers;
+  const effectiveScore = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers;
   const requiredRoll = difficultyTarget - effectiveScore;
   const successChance = 101 - requiredRoll;
 
