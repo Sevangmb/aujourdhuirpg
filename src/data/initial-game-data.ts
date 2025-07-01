@@ -1,11 +1,12 @@
 /**
  * @fileOverview Centralized initial game data constants.
  */
-import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem, SkillDetail, MomentumSystem } from '@/lib/types';
+import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Progression, Alignment, IntelligentItem, Quest, PNJ, MajorDecision, Clue, GameDocument, ToneSettings, Transaction, HistoricalContact, AdvancedPhysiologySystem, SkillDetail, MomentumSystem, Scenario } from '@/lib/types';
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
+import { montmartreInitialChoices } from './choices';
 
 // --- Initial Player Data ---
 export const initialPlayerStats: PlayerStats = {
@@ -168,3 +169,11 @@ export const initialInvestigationNotes: string = "Aucune note d'enquête pour le
 
 // --- Other Game Constants ---
 export const UNKNOWN_STARTING_PLACE_NAME = "Lieu de Départ Inconnu";
+
+// --- Initial Scenario ---
+export function getInitialScenario(player: Player): Scenario {
+  return {
+    scenarioText: `<p>Bienvenue, ${player.name}. L'aventure commence... Que faites-vous ?</p>`,
+    choices: montmartreInitialChoices,
+  };
+}

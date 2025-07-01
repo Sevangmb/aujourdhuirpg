@@ -1,4 +1,5 @@
 
+
 import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem, SkillDetail } from '@/lib/types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
@@ -23,8 +24,8 @@ import {
   initialHistoricalContacts,
   initialPhysiology,
   initialMomentum,
+  getInitialScenario,
 } from '@/data/initial-game-data';
-import { getInitialScenario } from './game-logic';
 import { saveGameStateToLocal } from '@/services/localStorageService';
 import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
 import { deepmerge } from 'deepmerge-ts';
