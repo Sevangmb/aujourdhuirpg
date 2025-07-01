@@ -21,7 +21,6 @@ import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
 } from './generate-scenario-schemas';
-import { ACTION_TYPES, MOOD_TYPES, CHOICE_ICON_NAMES } from '@/lib/types/choice-types';
 import type { ToneSettings } from '@/lib/types';
 
 
@@ -82,6 +81,8 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
 
   return `**Instructions de Tonalité Spécifiques :** ${instructions.join(' ')}`;
 }
+
+// --- PROMPT COMPONENTS ---
 
 const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français. Votre rôle est de raconter, pas de décider.`;
 
@@ -154,6 +155,8 @@ ${PROMPT_PLAYER_CONTEXT}
 ${PROMPT_ACTION_AND_EFFECTS}
 `;
 
+// --- PROMPTS DEFINITION ---
+
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
@@ -171,9 +174,7 @@ const scenarioPrompt = ai.definePrompt({
   prompt: FULL_PROMPT,
 });
 
-const PROLOGUE_PROMPT = `
-${PROMPT_INTRO}
-
+const PROLOGUE_PROMPT_TASK = `
 **Tâche Principale : Écrire un Prologue Captivant**
 Vous commencez une nouvelle aventure de JDR textuel. Écrivez une scène d'introduction (un prologue) engageante en français pour un personnage avec les détails suivants :
 
@@ -195,14 +196,22 @@ Plantez le décor en fonction de l'Époque et du Lieu de Départ. Présentez le 
 Générez uniquement le 'scenarioText' et 'choices' pour le début de l'aventure.
 `;
 
+const FULL_PROLOGUE_PROMPT = `
+${PROMPT_INTRO}
+${PROLOGUE_PROMPT_TASK}
+`;
+
 const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
   input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
   output: {schema: GenerateScenarioOutputSchema},
-  prompt: PROLOGUE_PROMPT,
+  prompt: FULL_PROLOGUE_PROMPT,
 });
+
+
+// --- FLOW DEFINITION ---
 
 const generateScenarioFlow = ai.defineFlow(
   {
@@ -239,3 +248,5 @@ const generateScenarioFlow = ai.defineFlow(
     }
   }
 );
+
+    
