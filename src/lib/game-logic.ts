@@ -35,7 +35,7 @@ export type GameAction =
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
   | { type: 'UPDATE_PLAYER_DATA', payload: Player }
-  | { type: 'UPDATE_INVENTORY_ITEM', payload: { instanceId: string; enrichedObject: EnrichedObject } }; // New action
+  | { type: 'UPDATE_INVENTORY_ITEM', payload: { instanceId: string; enrichedObject: EnrichedObject } };
 
 
 export function gameReducer(state: GameState, action: GameAction): GameState {

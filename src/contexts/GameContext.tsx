@@ -41,13 +41,14 @@ interface GameContextType {
   gameState: GameState & { contextualData: GameContextData };
   dispatch: React.Dispatch<GameAction>;
   isGameActive: boolean;
+  isLoading: boolean;
   user: User;
 
   handleManualSave: () => void;
   handleExitToSelection: () => void;
   handleSignOut: () => void;
   handleInitiateTravel: (destination: Position) => void;
-  handleExamineItem: (instanceId: string) => Promise<void>; // New function
+  handleExamineItem: (instanceId: string) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -76,7 +77,7 @@ export const GameProvider: React.FC<{
   // --- MODAL AND INTERACTION STATE ---
   const [encounter, setEncounter] = useState<AdaptedContact | null>(null);
   const [travelDestination, setTravelDestination] = useState<Position | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Loading state for async context actions
+  const [isLoading, setIsLoading] = useState(false); // Generic loading state for async context actions
 
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -313,6 +314,7 @@ export const GameProvider: React.FC<{
     gameState: { ...gameState, contextualData },
     dispatch,
     isGameActive: !!gameState?.player,
+    isLoading,
     user,
     handleManualSave: () => handleSaveGame('manual'),
     handleExitToSelection: onExitToSelection,

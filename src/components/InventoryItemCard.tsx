@@ -2,15 +2,15 @@
 "use client";
 
 import React from 'react';
-import type { IntelligentItem, EnrichedObject } from '@/lib/types'; // EnrichedObject import
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // CardFooter import
+import type { IntelligentItem, EnrichedObject } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import * as LucideIcons from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Euro, Star, Microscope, Shield, BarChart, Gem, Book, Dna } from 'lucide-react'; // Added new icons
-import { Button } from '@/components/ui/button'; // Button import
-import { useGame } from '@/contexts/GameContext'; // useGame import
+import { Euro, Star, Microscope, Shield, BarChart, Gem, Book, Dna } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useGame } from '@/contexts/GameContext';
 
 interface InventoryItemCardProps {
   item: IntelligentItem;
@@ -20,7 +20,7 @@ const StatTooltip: React.FC<{ title: string; children: React.ReactNode; icon: Re
     <TooltipProvider>
         <Tooltip>
             <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground p-1 rounded-md hover:bg-muted">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground p-1 rounded-md hover:bg-muted cursor-help">
                     <Icon className="w-3 h-3"/>
                     <span>{title}</span>
                 </div>
@@ -33,7 +33,7 @@ const StatTooltip: React.FC<{ title: string; children: React.ReactNode; icon: Re
 );
 
 const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
-  const { handleExamineItem } = useGame();
+  const { handleExamineItem, isLoading } = useGame();
   const enrichedItem = item as EnrichedObject;
 
   const IconComponent = (LucideIcons as any)[item.iconName] || LucideIcons.Package;
@@ -149,7 +149,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
         )}
       </CardContent>
       <CardFooter className="p-2 border-t">
-        <Button variant="ghost" size="sm" className="w-full h-8" onClick={() => handleExamineItem(item.instanceId)} disabled={!!enrichedItem.enrichmentMetadata}>
+        <Button variant="ghost" size="sm" className="w-full h-8" onClick={() => handleExamineItem(item.instanceId)} disabled={!!enrichedItem.enrichmentMetadata || isLoading}>
             <Microscope className="w-4 h-4 mr-2"/>
             {enrichedItem.enrichmentMetadata ? 'Analysé' : 'Examiner'}
         </Button>

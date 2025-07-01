@@ -24,7 +24,7 @@ export class ObjectCascadeManager {
 
     // 1. Determine which modules to use based on the object's type
     const relevantModules = this.determineRelevantModules(baseObject.type);
-    console.log(`📋 Selected modules: ${relevantModules.join(', ')}`);
+    console.log(`📋 Selected modules for type "${baseObject.type}": ${relevantModules.join(', ')}`);
 
     // 2. Execute all relevant modules in a predefined sequence
     let enrichedObject: EnrichedObject = { ...baseObject };
@@ -41,6 +41,8 @@ export class ObjectCascadeManager {
         } catch (error) {
             console.error(`❌ Error in module ${moduleId}:`, error);
         }
+      } else {
+        console.warn(`Module [${moduleId}] not found for object enrichment.`);
       }
     }
 
@@ -66,7 +68,7 @@ export class ObjectCascadeManager {
   private determineRelevantModules(
     objectType: BaseObject['type']
   ): string[] {
-    const moduleMap: Record<string, string[]> = {
+    const moduleMap: Partial<Record<BaseObject['type'], string[]>> = {
       weapon: [
         'proprietes_armes',
         'valeur_economique',
@@ -74,24 +76,25 @@ export class ObjectCascadeManager {
         'historique_objet',
       ],
       armor: [
-        'proprietes_armure', // Placeholder for a future module
         'valeur_economique',
         'enchantements',
         'historique_objet',
       ],
-      potion: [
-        'proprietes_alchimie', // Placeholder
+       wearable: [ // For items like jackets
         'valeur_economique',
+        'enchantements',
         'historique_objet',
       ],
       tool: [
-        'proprietes_outils', // Placeholder
         'valeur_economique',
         'historique_objet',
       ],
     };
 
-    return moduleMap[objectType] || ['valeur_economique', 'historique_objet'];
+    // For any other type, apply a generic set of modules
+    const genericModules = ['valeur_economique', 'historique_objet'];
+
+    return moduleMap[objectType] || genericModules;
   }
 
   /**

@@ -2,13 +2,13 @@
  * @fileOverview Defines the core types for the Object Cascade Enrichment system.
  */
 
-import type { GameState } from '@/lib/types';
+import type { Player } from '@/lib/types';
 
 // The simplified object that enters the cascade
 export interface BaseObject {
   id: string; // The instanceId of the item
   name: string;
-  type: 'weapon' | 'armor' | 'potion' | 'tool' | 'misc';
+  type: 'weapon' | 'armor' | 'potion' | 'tool' | 'misc' | 'electronic' | 'consumable' | 'key' | 'quest' | 'wearable';
   subtype?: string;
   quality?: 'poor' | 'common' | 'fine' | 'superior' | 'masterwork' | 'legendary';
   [key: string]: any; // Allow other properties to pass through
@@ -16,7 +16,7 @@ export interface BaseObject {
 
 // The context provided to each enrichment module
 export type ObjectEnrichmentContext = {
-  player: GameState['player'];
+  player: Player;
   // Future context properties can be added here, e.g., world state, location, etc.
 };
 
