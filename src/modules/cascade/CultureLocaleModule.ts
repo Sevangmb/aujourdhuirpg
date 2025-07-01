@@ -1,4 +1,3 @@
-
 import type { EnrichmentModule, EnrichedContext, ModuleEnrichmentResult, ModuleDependency } from '@/core/cascade/types';
 import { fetchWikipediaSummary } from '@/services/wikipedia-service';
 

@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Le cœur de l'architecture en cascade. Ce gestionnaire enregistre les modules,
  * résout leurs dépendances, et exécute la chaîne d'enrichissement dans le bon ordre.

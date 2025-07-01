@@ -3,40 +3,46 @@
  * This establishes the contract for all modules and the engine.
  */
 
-import type { GameState } from '@/lib/types';
-import type { GameEvent } from '@/lib/types';
+import type { Player, StoryChoice, GameEvent } from '@/lib/types';
 
-/**
- * The result of a module's execution within the cascade.
- */
-export interface ModuleResult {
-  success: boolean;
-  events?: GameEvent[];
-  [key: string]: any; // Allows modules to return custom data
+/** The context passed to each enrichment module. */
+export type EnrichedContext = {
+    player: Player;
+    action: {
+        type: StoryChoice['type'];
+        payload: StoryChoice;
+    };
+    // The results of modules that this module depends on.
+    dependencyResults?: {
+        [moduleId: string]: ModuleEnrichmentResult;
+    };
+};
+
+/** The result of a single enrichment module's execution. */
+export interface ModuleEnrichmentResult {
+    moduleId: string;
+    data: any; // The enriched data produced by the module.
+    enrichmentLevel: 'basic' | 'detailed' | 'comprehensive';
+    dependenciesUsed: { [moduleId: string]: ModuleEnrichmentResult };
+    executionTime: number; // in ms
 }
 
-/**
- * An instance of a module, containing its logic.
- */
-export interface ModuleInstance {
-  execute(state: GameState, payload?: any): Promise<ModuleResult>;
+/** Defines a dependency for a module. */
+export interface ModuleDependency {
+    moduleId: string;
+    required: boolean;
+    enrichmentLevel: 'basic' | 'detailed' | 'comprehensive'; // The level of data needed from the dependency.
 }
 
-/**
- * The definition of a module for registration in the cascade system.
- */
-export interface CascadeModule {
-  name: string;
-  dependencies?: string[];
-  load(): Promise<ModuleInstance>;
+/** The interface that all enrichment modules must implement. */
+export interface EnrichmentModule {
+    readonly id: string;
+    readonly dependencies: ModuleDependency[];
+    enrich(context: EnrichedContext): Promise<ModuleEnrichmentResult>;
 }
 
-/**
- * The final result of a full cascade execution for a given action.
- */
-export interface CascadeResult<T = any> {
-  success: boolean;
-  data?: T;
-  errors?: { module: string; message: string }[];
-  modules_executed: string[];
+/** The final, aggregated result of a full cascade execution. */
+export interface CascadeResult {
+    results: Map<string, ModuleEnrichmentResult>;
+    executionChain: string[];
 }

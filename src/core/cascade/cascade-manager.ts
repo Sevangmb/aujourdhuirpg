@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Centralized instance of the DependencyChainManager.
  * This file initializes the manager and registers all available enrichment modules.

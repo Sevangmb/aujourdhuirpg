@@ -1,4 +1,3 @@
-
 import type { EnrichmentModule, EnrichedContext, ModuleEnrichmentResult, ModuleDependency } from '@/core/cascade/types';
 import { fetchRecipesByArea } from '@/services/recipe-service';
 import type { EnrichedRecipe } from '@/lib/types';
