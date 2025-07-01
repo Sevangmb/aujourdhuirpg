@@ -2,6 +2,8 @@
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem, PlayerStats } from './player-types';
+import type { EstablishmentType } from './poi-types';
+
 
 export const ACTION_TYPES = ["observation", "exploration", "social", "action", "reflection", "job"] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
@@ -39,4 +41,6 @@ export interface StoryChoice {
   physiologicalEffects?: { hunger?: number; thirst?: number };
   statEffects?: Partial<Record<keyof PlayerStats, number>>;
   successProbability?: number; // Optional field for displaying success chance
+  economicImpact?: { cost: { min: number, max: number }, location: string };
+  poiReference?: { osmId: string, serviceId: string, establishmentType: EstablishmentType };
 }

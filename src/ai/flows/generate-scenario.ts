@@ -166,8 +166,16 @@ const PROMPT_GUIDING_PRINCIPLES = `
   🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions différents.
   {{/if}}
 
-- **CONTEXTE ENRICHI :** Vous recevez des données enrichies par un système en cascade. Utilisez les instructions spécifiques ci-dessous pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
-${PROMPT_CASCADE_INSTRUCTIONS}
+- **CONTEXTE ENRICHI :** Vous recevez des données enrichies. Utilisez-les pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
+  - **Cascade Modulaire :** ${PROMPT_CASCADE_INSTRUCTIONS}
+  - **Contexte Géographique :**
+    {{#if nearbyEstablishments}}
+    Les établissements suivants sont à proximité immédiate. Intègre-les NATURELLEMENT dans la narration et propose des actions uniques :
+    {{#each nearbyEstablishments}}
+    - **{{name}}** ({{subCategory}}), à environ {{distance}}m. Services notables: {{#each availableServices}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
+    {{/each}}
+    {{/if}}
+
 - **UTILISATION DES OUTILS POUR L'INSPIRATION :** Utilisez les outils disponibles ('getWeatherTool', 'getNearbyPoisTool', etc.) pour enrichir votre narration et générer des choix contextuels.
 `;
 
@@ -197,13 +205,34 @@ ${PROMPT_PLAYER_CONTEXT}
 ${PROMPT_ACTION_AND_EFFECTS}
 `;
 
+// --- NEW SCHEMAS FOR CONTEXT ---
+const PoiContextSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  subCategory: z.string(),
+  availableServices: z.array(z.string()),
+  distance: z.number(),
+});
+
+const SuggestedActionContextSchema = z.object({
+  text: z.string(),
+  description: z.string(),
+  type: z.string(),
+  estimatedCost: z.object({ min: z.number(), max: z.number() }).optional(),
+});
+
+
 // --- PROMPTS DEFINITION ---
 
 const scenarioPrompt = ai.definePrompt({
   name: 'generateScenarioPrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
+  input: {schema: GenerateScenarioInputSchema.extend({ 
+    toneInstructions: z.string(),
+    nearbyEstablishments: z.array(PoiContextSchema).optional(),
+    suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
+  })},
   output: {schema: GenerateScenarioOutputSchema},
   config: {
     safetySettings: [
@@ -247,7 +276,11 @@ const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
-  input: {schema: GenerateScenarioInputSchema.extend({ toneInstructions: z.string() })},
+  input: {schema: GenerateScenarioInputSchema.extend({ 
+    toneInstructions: z.string(),
+    nearbyEstablishments: z.array(PoiContextSchema).optional(),
+    suggestedContextualActions: z.array(SuggestedActionContextSchema).optional(),
+  })},
   output: {schema: GenerateScenarioOutputSchema},
   prompt: FULL_PROLOGUE_PROMPT,
 });
@@ -263,6 +296,8 @@ const generateScenarioFlow = ai.defineFlow(
   },
   async (input: GenerateScenarioInput) => {
     const toneInstructions = generateToneInstructions(input.player?.toneSettings);
+    // The input received by the flow already contains the enriched context fields
+    // from prepareAIInput, so we just pass them along.
     const enrichedInput = { ...input, toneInstructions };
 
     const selectedPrompt = input.playerChoiceText === "[COMMENCER L'AVENTURE]"
@@ -270,7 +305,7 @@ const generateScenarioFlow = ai.defineFlow(
       : scenarioPrompt;
 
     try {
-      const {output} = await selectedPrompt(enrichedInput);
+      const {output} = await selectedPrompt(enrichedInput as any); // Cast as any to handle extended schema
 
       if (!output) {
         throw new Error("AI model did not return any output.");

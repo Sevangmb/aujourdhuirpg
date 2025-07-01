@@ -538,12 +538,31 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     }, {}),
   } : null;
 
+  // --- NEW: POI Context for AI ---
+  const nearbyEstablishments = gameState.nearbyPois?.map(poi => ({
+    name: poi.name,
+    type: poi.establishmentType,
+    subCategory: poi.subCategory,
+    availableServices: poi.services.map(s => s.name),
+    distance: Math.round(getDistanceInKm(player.currentLocation.latitude, player.currentLocation.longitude, poi.latitude, poi.longitude) * 1000),
+  }));
+
+  const contextualActions = generateActionsForPOIs(gameState.nearbyPois || [], player);
+  const suggestedContextualActions = contextualActions.map(action => ({
+    text: action.text,
+    description: action.description,
+    type: action.type,
+    estimatedCost: action.economicImpact?.cost,
+  }));
+
   return {
     player: playerInputForAI,
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
     gameEvents: JSON.stringify(gameEvents || [], null, 2),
     cascadeResult: cascadeData ? JSON.stringify(cascadeData, null, 2) : "{}",
+    nearbyEstablishments,
+    suggestedContextualActions,
   };
 }
 
@@ -672,6 +691,15 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, maxA
           energyCost: Math.round(service.duration / 10) + Math.ceil(distance * 5) + 1, // Estimate energy cost
           timeCost: service.duration + travelTime,
           consequences: ['Interaction sociale', `Coût: ${service.cost.min}-${service.cost.max}€`],
+          economicImpact: {
+              cost: service.cost,
+              location: poi.name,
+          },
+          poiReference: {
+              osmId: poi.osmId,
+              serviceId: service.id,
+              establishmentType: poi.establishmentType,
+          },
           // Skill checks for POI actions can be added in the future
         };
         contextualChoices.push(choice);
