@@ -1,69 +1,42 @@
-
 /**
- * @fileOverview Ce fichier définit les interfaces et les types de base pour le système d'architecture modulaire en cascade.
- * Il établit le contrat que tous les modules d'enrichissement et le gestionnaire de dépendances doivent respecter.
+ * @fileOverview Defines the core types for the modular cascade architecture.
+ * This establishes the contract for all modules and the engine.
  */
 
-import type { Player, StoryChoice } from '@/lib/types';
+import type { GameState } from '@/lib/types';
+import type { GameEvent } from '@/lib/types';
 
 /**
- * A simplified action representation for the cascade context.
+ * The result of a module's execution within the cascade.
  */
-export interface GameActionForCascade {
-  type: string; // e.g., 'job', 'exploration'
-  payload: StoryChoice | any;
-}
-
-
-/**
- * Le contexte enrichi qui est passé et enrichi par chaque module de la cascade.
- */
-export interface EnrichedContext {
-  player: Player; 
-  action: GameActionForCascade; 
-  
-  // Les résultats des dépendances sont injectés ici par le DependencyChainManager
-  dependencyResults?: {
-    [moduleId: string]: ModuleEnrichmentResult;
-  };
-  
-  // D'autres contextes peuvent être ajoutés par les modules
-  [key: string]: any; 
+export interface ModuleResult {
+  success: boolean;
+  events?: GameEvent[];
+  [key: string]: any; // Allows modules to return custom data
 }
 
 /**
- * Représente la dépendance d'un module envers un autre.
+ * An instance of a module, containing its logic.
  */
-export interface ModuleDependency {
-  moduleId: string;
-  required: boolean;
-  enrichmentLevel: 'basic' | 'detailed' | 'comprehensive';
+export interface ModuleInstance {
+  execute(state: GameState, payload?: any): Promise<ModuleResult>;
 }
 
 /**
- * Le contrat que chaque module d'enrichissement doit implémenter.
+ * The definition of a module for registration in the cascade system.
  */
-export interface EnrichmentModule {
-  readonly id: string;
-  readonly dependencies: ModuleDependency[];
-  enrich(context: EnrichedContext): Promise<ModuleEnrichmentResult>;
+export interface CascadeModule {
+  name: string;
+  dependencies?: string[];
+  load(): Promise<ModuleInstance>;
 }
 
 /**
- * Le résultat produit par un seul module d'enrichissement.
+ * The final result of a full cascade execution for a given action.
  */
-export interface ModuleEnrichmentResult {
-  moduleId: string;
-  data: any; // Les données spécifiques produites par le module
-  enrichmentLevel: 'basic' | 'detailed' | 'comprehensive';
-  dependenciesUsed: { [moduleId: string]: ModuleEnrichmentResult }; // Une copie des dépendances utilisées
-  executionTime: number; // Temps d'exécution en ms
-}
-
-/**
- * Le résultat final de l'exécution d'une cascade complète pour un module racine.
- */
-export interface CascadeResult {
-  results: Map<string, ModuleEnrichmentResult>;
-  executionChain: string[];
+export interface CascadeResult<T = any> {
+  success: boolean;
+  data?: T;
+  errors?: { module: string; message: string }[];
+  modules_executed: string[];
 }
