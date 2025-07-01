@@ -13,7 +13,7 @@ import Image from 'next/image';
 import { defaultAvatarUrl } from '@/data/initial-game-data';
 import type { GameTone, ToneSettings, GameEra } from '@/lib/types';
 import { AVAILABLE_TONES, AVAILABLE_ERAS } from '@/lib/types';
-import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { generatePlayerAvatar } from '@/ai/flows/generate-player-avatar-flow';
 import { predefinedLocationsByCountry, countries } from '@/data/locations';
@@ -48,7 +48,7 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
   const [background, setBackground] = useState('');
   const [error, setError] = useState('');
   const [toneSettings, setToneSettings] = useState<ToneSettings>(
-    AVAILABLE_TONES.reduce((acc, tone) => ({ ...acc, [tone]: 50 }), {})
+    AVAILABLE_TONES.reduce((acc, tone) => ({ ...acc, [tone]: false }), {})
   );
 
   // Avatar state
@@ -61,8 +61,8 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
     setStartingLocation(predefinedLocationsByCountry[origin][0]);
   }, [origin]);
 
-  const handleToneSliderChange = (tone: GameTone, value: number[]) => {
-    setToneSettings(prev => ({ ...prev, [tone]: value[0] }));
+  const handleToneSwitchChange = (tone: GameTone, checked: boolean) => {
+    setToneSettings(prev => ({ ...prev, [tone]: checked }));
   };
 
   const handleGenerateAvatar = async () => {
@@ -195,16 +195,20 @@ const CharacterCreationForm: React.FC<CharacterCreationFormProps> = ({ onCharact
                 </div>
                  <div className="pt-2">
                     <Label className="flex items-center text-md mb-2"><Palette className="mr-2 h-4 w-4" /> Tonalité Narrative</Label>
-                    <div className="space-y-3">
-                        {AVAILABLE_TONES.map(tone => (
-                            <div key={tone} className="space-y-1">
-                                <div className="flex justify-between items-center">
-                                    <Label htmlFor={`slider-${tone}`} className="text-xs">{tone}</Label>
-                                    <span className="text-xs text-muted-foreground w-8 text-right">{toneSettings[tone] ?? 50}%</span>
-                                </div>
-                                <Slider id={`slider-${tone}`} min={0} max={100} step={1} value={[toneSettings[tone] ?? 50]} onValueChange={(v) => handleToneSliderChange(tone, v)} disabled={isSubmitting} />
-                            </div>
-                        ))}
+                    <div className="space-y-2">
+                      {AVAILABLE_TONES.map(tone => (
+                          <div key={tone} className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <Label htmlFor={`switch-${tone}`} className="text-sm font-medium">
+                                  {tone}
+                              </Label>
+                              <Switch
+                                  id={`switch-${tone}`}
+                                  checked={toneSettings[tone] ?? false}
+                                  onCheckedChange={(checked) => handleToneSwitchChange(tone, checked)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                      ))}
                     </div>
                 </div>
             </div>

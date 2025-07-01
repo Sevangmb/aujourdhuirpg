@@ -14,44 +14,23 @@ export const LocationSchema = z.object({
   tags: z.record(z.string()).optional().describe('Tags bruts décrivant le lieu (ex: { "cuisine": "italian" }).'),
 });
 
-// UPDATED to AdvancedSkillSystem structure
+// This simplified schema is for the AI, which only needs the level number.
 export const SkillsSchema = z.object({
-  cognitive: z.object({
-    analysis: z.number(),
-    memory: z.number(),
-    creativity: z.number(),
-    logic: z.number(),
-    observation: z.number(),
-  }),
-  social: z.object({
-    persuasion: z.number(),
-    empathy: z.number(),
-    leadership: z.number(),
-    networking: z.number(),
-    cultural_adaptation: z.number(),
-  }),
-  physical: z.object({
-    endurance: z.number(),
-    agility: z.number(),
-    stealth: z.number(),
-    strength: z.number(),
-    dexterity: z.number(),
-  }),
-  technical: z.object({
-    technology: z.number(),
-    investigation: z.number(),
-    languages: z.number(),
-    finance: z.number(),
-    crafting: z.number(),
-  }),
-  survival: z.object({
-    streetwise: z.number(),
-    wilderness: z.number(),
-    medical: z.number(),
-    navigation: z.number(),
-    adaptation: z.number(),
-  }),
+  physiques: z.record(z.number()),
+  techniques: z.record(z.number()),
+  survie: z.record(z.number()),
+  sociales: z.record(z.number()),
+  savoir: z.record(z.number()),
 });
+
+export const PlayerStatsSchema = z.object({
+    Force: z.number(), Dexterite: z.number(), Constitution: z.number(),
+    Intelligence: z.number(), Perception: z.number(), Charisme: z.number(),
+    Volonte: z.number(), Savoir: z.number(), Technique: z.number(),
+    MagieOccultisme: z.number(), Discretion: z.number(), ChanceDestin: z.number(),
+    Sante: z.number(), Energie: z.number(), Stress: z.number()
+});
+
 
 export const TraitsMentalStatesSchema = z.array(z.string());
 
@@ -87,13 +66,13 @@ export const IntelligentItemInputSchema = z.object({
 
 export const ToneSettingsSchema = z.object(
   AVAILABLE_TONES.reduce((acc, tone) => {
-    acc[tone] = z.number().min(0).max(100);
+    acc[tone] = z.boolean();
     return acc;
-  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
+  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodBoolean>)
 ).partial();
 
 
-// NEW: A comprehensive player schema for AI input
+// A comprehensive player schema for AI input
 export const PlayerInputSchema = z.object({
   name: z.string(),
   gender: z.string(),
@@ -101,7 +80,7 @@ export const PlayerInputSchema = z.object({
   origin: z.string(),
   era: z.string(),
   background: z.string(),
-  stats: z.record(z.string(), z.number()),
+  stats: PlayerStatsSchema,
   skills: SkillsSchema,
   physiology: z.object({
     basic_needs: z.object({
@@ -116,7 +95,6 @@ export const PlayerInputSchema = z.object({
   money: z.number(),
   currentLocation: LocationSchema,
   toneSettings: ToneSettingsSchema,
-  // --- ADDED NEW FIELDS for context ---
   keyInventoryItems: z.array(z.string()).optional().describe("Liste des objets clés actuellement dans l'inventaire du joueur."),
   recentActionTypes: z.array(z.string()).optional().describe("Les types des 3 dernières actions du joueur, pour éviter la répétition."),
   physiologicalState: z.object({

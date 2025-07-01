@@ -104,43 +104,31 @@ const toneDetails: Record<GameTone, Record<string, string>> = {
 
 
 function generateToneInstructions(toneSettings: ToneSettings | undefined): string {
-  if (!toneSettings || Object.keys(toneSettings).length === 0) {
+  if (!toneSettings) {
+    return "Le style narratif doit être équilibré et neutre.";
+  }
+
+  const activeTones = (Object.entries(toneSettings) as [GameTone, boolean][])
+    .filter(([, isActive]) => isActive)
+    .map(([toneName]) => toneName);
+
+  if (activeTones.length === 0) {
     return "Le style narratif doit être équilibré et neutre.";
   }
 
   const instructions: string[] = [];
-  const sortedTones = Object.entries(toneSettings)
-    .sort(([, a], [, b]) => b - a)
-    .filter(([, value]) => value > 0);
+  instructions.push(`Le style narratif doit combiner les caractéristiques des tonalités suivantes:`);
 
-  const primaryToneEntry = sortedTones[0];
-  
-  if (primaryToneEntry && primaryToneEntry[1] > 60) {
-    const primaryToneName = primaryToneEntry[0] as GameTone;
-    const details = toneDetails[primaryToneName];
-    if(details) {
-        instructions.push(`Le ton principal est **${primaryToneName}**. Adoptez les caractéristiques suivantes :`);
-        instructions.push(`- **Style & Rythme :** ${details.style}`);
-        instructions.push(`- **Ambiance & Descriptions :** ${details.ambiance}`);
-        instructions.push(`- **Dialogues :** ${details.dialogues}`);
-        instructions.push(`- **Types de Choix à Proposer :** ${details.actions}`);
+  activeTones.forEach(toneName => {
+    const details = toneDetails[toneName];
+    if (details) {
+      instructions.push(`\n**Pour le ton '${toneName}' :**`);
+      instructions.push(`- **Style & Rythme :** ${details.style}`);
+      instructions.push(`- **Ambiance & Descriptions :** ${details.ambiance}`);
+      instructions.push(`- **Dialogues :** ${details.dialogues}`);
+      instructions.push(`- **Types de Choix à Proposer :** ${details.actions}`);
     }
-  }
-
-  const secondaryTones = sortedTones.slice(1, 3).filter(([, value]) => value > 40);
-  if (secondaryTones.length > 0) {
-      instructions.push("\n**Influences Secondaires :**");
-      secondaryTones.forEach(([toneName, value]) => {
-          const details = toneDetails[toneName as GameTone];
-          if(details) {
-            instructions.push(`- **${toneName} (${value}%)**: Intégrez subtilement des éléments de son style: *${details.style}*`);
-          }
-      });
-  }
-
-  if (instructions.length === 0) {
-    return "Le style narratif doit être équilibré et neutre.";
-  }
+  });
 
   return `**Instructions de Tonalité Spécifiques :**\n${instructions.join('\n')}`;
 }
@@ -317,8 +305,16 @@ const generateScenarioFlow = ai.defineFlow(
       if (!output) {
         throw new Error("AI model did not return any output.");
       }
-      if (!output.choices) {
-        output.choices = [];
+      if (!output.choices || output.choices.length === 0) {
+        output.choices = [{
+          id: 'look_around',
+          text: "Observer les alentours",
+          description: "Prendre un moment pour analyser la situation et chercher de nouvelles options.",
+          iconName: "Eye",
+          type: 'observation',
+          mood: 'contemplative',
+          consequences: ['Nouvelles informations', 'Pas de changement majeur']
+        }];
       }
       return output;
 
@@ -326,7 +322,15 @@ const generateScenarioFlow = ai.defineFlow(
        console.error('Error in generateScenarioFlow calling prompt:', error);
        return {
          scenarioText: "<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p>",
-         choices: [],
+         choices: [{
+          id: 'retry_action',
+          text: "Réessayer l'action précédente",
+          description: "Tenter de relancer la dernière action pour voir si l'IA répond cette fois.",
+          iconName: 'Zap',
+          type: 'action',
+          mood: 'adventurous',
+          consequences: ['Peut fonctionner', 'Peut échouer à nouveau']
+        }],
          aiRecommendation: { focus: 'Erreur', reasoning: 'Erreur critique du modèle IA.' },
        };
     }

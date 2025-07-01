@@ -175,7 +175,7 @@ export const initialPlayerMoney: number = 50;
 export const initialTransactionLog: Transaction[] = [];
 
 export const initialToneSettings: ToneSettings = AVAILABLE_TONES.reduce((acc, tone) => {
-  acc[tone] = 50;
+  acc[tone] = false;
   return acc;
 }, {} as ToneSettings);
 
