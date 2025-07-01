@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest, PNJ } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, HistoricalContact, AdaptedContact, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject } from '@/lib/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, fetchPoisForCurrentLocation, prepareAIInput } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
@@ -20,6 +20,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { HistoricalEncounterModal } from '@/components/HistoricalEncounterModal';
 import { TravelModal } from '@/components/TravelModal';
+import { objectCascadeManager } from '@/core/objects/object-cascade-manager';
+
 
 // Helper types for managing async data
 type AsyncData<T> = {
@@ -45,6 +47,7 @@ interface GameContextType {
   handleExitToSelection: () => void;
   handleSignOut: () => void;
   handleInitiateTravel: (destination: Position) => void;
+  handleExamineItem: (instanceId: string) => Promise<void>; // New function
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -271,6 +274,39 @@ export const GameProvider: React.FC<{
     toast({ title: "Occasion manquée...", duration: 4000 });
     setEncounter(null);
   };
+  
+  const handleExamineItem = async (instanceId: string) => {
+    if (!gameState.player) return;
+
+    const itemToExamine = gameState.player.inventory.find(i => i.instanceId === instanceId);
+    if (!itemToExamine) {
+        toast({ variant: 'destructive', title: 'Erreur', description: "L'objet n'a pas été trouvé dans votre inventaire." });
+        return;
+    }
+
+    try {
+        setIsLoading(true);
+        toast({ title: 'Analyse en cours...', description: `Examen de ${itemToExamine.name}...` });
+
+        const enrichedObject = await objectCascadeManager.enrichObject(
+            itemToExamine,
+            { player: gameState.player }
+        );
+
+        dispatch({
+            type: 'UPDATE_INVENTORY_ITEM',
+            payload: { instanceId, enrichedObject }
+        });
+
+        toast({ title: 'Analyse terminée !', description: `${itemToExamine.name} a révélé ses secrets.` });
+
+    } catch (error) {
+        console.error("Error during object enrichment:", error);
+        toast({ variant: 'destructive', title: "Erreur d'analyse", description: `Impossible d'examiner l'objet.` });
+    } finally {
+        setIsLoading(false);
+    }
+  };
 
 
   const value: GameContextType = {
@@ -282,6 +318,7 @@ export const GameProvider: React.FC<{
     handleExitToSelection: onExitToSelection,
     handleSignOut: onSignOut,
     handleInitiateTravel,
+    handleExamineItem,
   };
 
   return (

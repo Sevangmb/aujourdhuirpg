@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, HistoricalContact, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, Enemy, GameEvent, EnrichedObject } from './types';
 import { calculateXpToNextLevel, applyStatChanges, addItemToInventory, removeItemFromInventory, addXP, applySkillGains, updateItemContextualProperties, createNewInstanceFromMaster } from './player-state-helpers';
 import { fetchNearbyPoisFromOSM } from '@/services/osm-service';
 import { parsePlayerAction, type ParsedAction } from './action-parser';
@@ -34,13 +34,21 @@ export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'SET_NEARBY_POIS'; payload: Position[] | null }
-  | { type: 'UPDATE_PLAYER_DATA', payload: Player };
+  | { type: 'UPDATE_PLAYER_DATA', payload: Player }
+  | { type: 'UPDATE_INVENTORY_ITEM', payload: { instanceId: string; enrichedObject: EnrichedObject } }; // New action
 
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (!state.player) return state;
 
   switch (action.type) {
+    case 'UPDATE_INVENTORY_ITEM': {
+      if (!state.player) return state;
+      const newInventory = state.player.inventory.map(item =>
+        item.instanceId === action.payload.instanceId ? action.payload.enrichedObject : item
+      );
+      return { ...state, player: { ...state.player, inventory: newInventory } };
+    }
     case 'APPLY_GAME_EVENTS': {
         // This is the new core of the reducer. It processes the event list from the logic layer.
         return action.payload.reduce((currentState, event) => {
