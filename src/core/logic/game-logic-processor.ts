@@ -75,6 +75,21 @@ export class GameLogicProcessor {
       roll: result.rollValue, total: result.totalAchieved, difficulty: result.difficultyTarget,
     });
     
+    // Update Momentum
+    const newMomentum = { ...player.momentum };
+    if (result.success) {
+      newMomentum.consecutive_successes += 1;
+      newMomentum.consecutive_failures = 0;
+      newMomentum.momentum_bonus = Math.min(5, newMomentum.consecutive_successes);
+      newMomentum.desperation_bonus = 0;
+    } else {
+      newMomentum.consecutive_failures += 1;
+      newMomentum.consecutive_successes = 0;
+      newMomentum.desperation_bonus = Math.min(10, newMomentum.consecutive_failures * 2);
+      newMomentum.momentum_bonus = 0;
+    }
+    events.push({ type: 'MOMENTUM_UPDATED', newMomentum });
+
     // Award skill XP based on result
     const xpGained = result.success ? 10 : 3;
     events.push({ type: 'SKILL_XP_AWARDED', skill, amount: xpGained });
@@ -125,7 +140,7 @@ export class GameLogicProcessor {
 
     const travelNarrativeResult = await generateTravelEvent({
         travelMode: mode, origin, destination, gameTimeInMinutes: state.gameTimeInMinutes,
-        playerStats: player.stats, playerSkills: player.skills,
+        playerStats: player.stats as any, playerSkills: player.skills,
     });
     const travelNarrative = travelNarrativeResult.narrative;
     

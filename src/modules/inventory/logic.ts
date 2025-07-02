@@ -171,5 +171,10 @@ export function grantXpToItem(item: IntelligentItem, xpGained: number): GameEven
     }
   }
   
+  // If no level up, just update the XP
+  if (events.length === 0) {
+      item.itemXp = currentXp;
+  }
+  
   return events;
 }

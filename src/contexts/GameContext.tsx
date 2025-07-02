@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth';
 import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI } from '@/lib/types';
 import type { AdaptedContact } from '@/modules/historical/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, enrichAIChoicesWithLogic, generateActionsForPOIs, generatePlayerStateActions, generateCascadeBasedActions, summarizeGameEventsForAI } from '@/lib/game-logic';
+import { gameReducer, enrichAIChoicesWithLogic } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -219,44 +219,23 @@ export const GameProvider: React.FC<{
     setIsLoading(true);
   
     try {
-      // STEP 1: Process logic & prepare AI context
       const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, choice);
   
-      // STEP 2: Call AI with prepared context
       const aiOutput = await generateScenario(aiContext);
       
-      // STEP 3: Convert AI output to game events
       const aiGeneratedEvents = orchestrator.aiContextPreparer.convertAIOutputToEvents(aiOutput);
   
-      // STEP 4: Combine all events and calculate the final state for the *next* turn.
       const allEvents = [...gameLogicResult.gameEvents, ...aiGeneratedEvents];
-      const stateAfterAllEvents = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
-  
-      // STEP 5: Dispatch all state changes at once.
+
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
-  
-      // STEP 6: Generate all choices for the *next* turn based on the new state
-      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], stateAfterAllEvents.player!);
+
+      const finalGameState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
       
-      let allChoices: StoryChoice[];
-      // If combat is active, generate combat-specific choices
-      if (stateAfterAllEvents.currentEnemy) {
-          allChoices = [
-              { id: 'attack', text: 'Attaquer', description: 'Attaquer l\'ennemi avec votre meilleure arme.', iconName: 'Sword', type: 'action', mood: 'adventurous', energyCost: 10, timeCost: 0, consequences: ['Dégâts infligés'], isCombatAction: true, combatActionType: 'attack' },
-              { id: 'flee', text: 'Fuir', description: 'Tenter de s\'échapper du combat.', iconName: 'Wind', type: 'action', mood: 'adventurous', energyCost: 15, timeCost: 0, consequences: ['Évasion possible'], isCombatAction: true, combatActionType: 'flee', skillCheck: { skill: 'physiques.esquive', difficulty: 40 } },
-          ];
-      } else {
-        // Otherwise, generate standard contextual choices
-        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, stateAfterAllEvents.player!);
-        const poiActions = generateActionsForPOIs(stateAfterAllEvents.nearbyPois || [], stateAfterAllEvents.player!, stateAfterAllEvents.gameTimeInMinutes);
-        const stateBasedActions = generatePlayerStateActions(stateAfterAllEvents.player!);
-        allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
-      }
-  
-      // STEP 7: Dispatch the new scenario content for the UI
+      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalGameState.player!);
+      
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
           scenarioText: aiOutput.scenarioText, 
-          choices: allChoices, 
+          choices: enrichedAIChoices, 
           aiRecommendation: aiOutput.aiRecommendation 
       }});
       
@@ -282,7 +261,6 @@ export const GameProvider: React.FC<{
   const handleConfirmTravel = (mode: 'walk' | 'metro' | 'taxi') => {
     if (!travelDestination || !gameState || !gameState.player) return;
     
-    // This now just simulates a choice selection. The logic is handled by the orchestrator.
     const travelChoice: StoryChoice = {
         id: `travel_${travelDestination.name.replace(/\s+/g, '_')}`,
         text: `Voyager vers ${travelDestination.name} en ${mode}.`,
@@ -290,10 +268,9 @@ export const GameProvider: React.FC<{
         type: 'action',
         iconName: 'Compass',
         mood: 'adventurous',
-        energyCost: 0, // Costs will be calculated by the logic processor
-        timeCost: 0,   // Costs will be calculated by the logic processor
+        energyCost: 0, 
+        timeCost: 0,   
         consequences: ['Changement de lieu'],
-        // The orchestrator will use these properties to trigger the travel logic
         travelChoiceInfo: {
             destination: travelDestination,
             mode: mode

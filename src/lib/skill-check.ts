@@ -156,7 +156,7 @@ export function performSkillCheck(
   const cappedItemModifierValue = Math.min(itemModifierValue, 15);
   
   const physiologicalModifiers = getPhysiologyPenalty(physiology, stats);
-  const momentumBonus = momentum.momentum_bonus + momentum.desperation_bonus;
+  const momentumBonus = momentum.momentum_bonus - momentum.desperation_bonus; // Desperation is a negative modifier in the context of a bonus
   const luckModifier = Math.floor(stats.ChanceDestin.value / 10);
 
   const totalModifier = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + momentumBonus + luckModifier;
@@ -216,7 +216,7 @@ export function calculateSuccessProbability(
   const cappedItemModifierValue = Math.min(itemModifierValue, 15);
 
   const physiologicalModifiers = getPhysiologyPenalty(physiology, stats);
-  const momentumBonus = momentum.momentum_bonus + momentum.desperation_bonus;
+  const momentumBonus = momentum.momentum_bonus - momentum.desperation_bonus;
   const luckModifier = Math.floor(stats.ChanceDestin.value / 10);
 
   const effectiveScore = baseSkillValue + statModifierValue + cappedItemModifierValue + situationalModifiers + physiologicalModifiers + momentumBonus + luckModifier;
