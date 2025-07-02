@@ -1,5 +1,5 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe, DegreeOfSuccess } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
-import { calculateDamage, handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
+import { calculateDamage, handleCombatAction, handleCombatEnded, handleCombatStarted, summarizeCombatEvents } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
@@ -23,7 +23,7 @@ export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
   | { type: 'SET_NEARBY_POIS'; payload: EnhancedPOI[] | null }
-  | { type: 'UPDATE_PLAYER_DATA', payload: Player }
+  | { type: 'UPDATE_PLAYER_DATA', payload: Partial<Player> }
   | { type: 'UPDATE_INVENTORY_ITEM', payload: { instanceId: string; enrichedObject: EnrichedObject } };
 
 
@@ -32,7 +32,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
   switch (action.type) {
     case 'UPDATE_PLAYER_DATA':
-        return { ...state, player: action.payload };
+        return { ...state, player: { ...state.player, ...action.payload} };
     case 'UPDATE_INVENTORY_ITEM': {
       if (!state.player) return state;
       const newInventory = state.player.inventory.map(item =>
@@ -117,8 +117,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           case 'ITEM_XP_GAINED': {
             const itemIndex = player.inventory.findIndex(i => i.instanceId === event.instanceId);
             if (itemIndex > -1) {
-              const newInventory = [...player.inventory];
-              const itemToUpdate = { ...newInventory[itemIndex] };
+              const itemToUpdate = { ...player.inventory[itemIndex] };
               const xpEvents = grantXpToItem(itemToUpdate, event.xp);
               eventQueue.push(...xpEvents);
             }
@@ -128,7 +127,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const newInventory = player.inventory.map(item => {
               if (item.instanceId === event.instanceId) {
                 const updatedItem = { ...item, itemLevel: event.newLevel, itemXp: event.newXp };
-                if (event.newXpToNextLevel) {
+                if (event.newXpToNextLevel !== undefined) {
                   updatedItem.xpToNextItemLevel = event.newXpToNextLevel;
                 }
                 return updatedItem;
@@ -321,7 +320,7 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
                 events.push({ type: 'XP_GAINED', amount: xpGained });
                 if (Math.random() < 0.7) {
                     const moneyDropped = Math.floor(Math.random() * (enemy.attack * 2)) + 5;
-                    events.push({ type: 'MONEY_CHANGED', amount: moneyDropped, finalBalance: player.money + moneyDropped, description: `Butin sur ${enemy.name}` });
+                    events.push({ type: 'MONEY_CHANGED', amount: moneyDropped, description: `Butin sur ${enemy.name}` });
                 }
                 return { events };
             }
@@ -383,8 +382,6 @@ export async function processExplorationAction(
 }> {
   const events: GameEvent[] = [];
   
-  const tempPlayerState = JSON.parse(JSON.stringify(player)) as Player;
-
   if (choice.id.startsWith('use_item_')) {
     const instanceId = choice.id.replace('use_item_', '');
     const itemToUse = player.inventory.find(i => i.instanceId === instanceId);
@@ -404,7 +401,10 @@ export async function processExplorationAction(
     if (recipe) {
         let totalHungerRestored = 0;
         for (const ingredient of recipe.ingredients) {
-            events.push({ type: 'ITEM_REMOVED', itemId: ingredient.name, itemName: ingredient.name, quantity: 1 });
+            const playerIng = player.inventory.find(i => i.name.toLowerCase().includes(ingredient.name.toLowerCase()));
+            if (playerIng) {
+                events.push({ type: 'ITEM_REMOVED', itemId: playerIng.id, itemName: playerIng.name, quantity: 1 });
+            }
             totalHungerRestored += 5;
         }
         totalHungerRestored += 20;
@@ -432,13 +432,12 @@ export async function processExplorationAction(
   const thirstDecay = ((choice.timeCost || 0) * 0.08) + ((choice.energyCost || 0) * 0.08);
 
   const totalEnergyChange = -(choice.energyCost || 0);
-  const newEnergy = tempPlayerState.stats.Energie.value + totalEnergyChange;
-  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: totalEnergyChange, finalValue: newEnergy });
+  events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: totalEnergyChange, finalValue: player.stats.Energie.value + totalEnergyChange });
 
-  const newHunger = tempPlayerState.physiology.basic_needs.hunger.level - hungerDecay;
+  const newHunger = player.physiology.basic_needs.hunger.level - hungerDecay;
   events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'hunger', change: -hungerDecay, finalValue: newHunger });
   
-  const newThirst = tempPlayerState.physiology.basic_needs.thirst.level - thirstDecay;
+  const newThirst = player.physiology.basic_needs.thirst.level - thirstDecay;
   events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: 'thirst', change: -thirstDecay, finalValue: newThirst });
 
 
@@ -456,15 +455,14 @@ export async function processExplorationAction(
   if (choice.statEffects) {
     for (const [stat, value] of Object.entries(choice.statEffects)) {
         const statKey = stat as keyof PlayerStats;
-        const finalValue = tempPlayerState.stats[statKey].value + value;
-        events.push({ type: 'PLAYER_STAT_CHANGE', stat: statKey, change: value, finalValue: finalValue });
+        events.push({ type: 'PLAYER_STAT_CHANGE', stat: statKey, change: value, finalValue: player.stats[statKey].value + value });
     }
   }
   
   if (choice.skillCheck) {
     const { skill, difficulty } = choice.skillCheck;
     const { modifier: weatherModifier } = getWeatherModifier(skill, weatherData);
-    const skillCheckResult = performSkillCheck(tempPlayerState.skills, tempPlayerState.stats, skill, difficulty, tempPlayerState.inventory, weatherModifier, tempPlayerState.physiology, tempPlayerState.momentum);
+    const skillCheckResult = performSkillCheck(player.skills, player.stats, skill, difficulty, player.inventory, weatherModifier, player.physiology, player.momentum);
 
     events.push({
         type: 'SKILL_CHECK_RESULT',
@@ -476,7 +474,7 @@ export async function processExplorationAction(
         difficulty: skillCheckResult.difficultyTarget,
     });
     
-    const newMomentum = { ...tempPlayerState.momentum };
+    const newMomentum = { ...player.momentum };
     if (skillCheckResult.success) {
       newMomentum.consecutive_successes += 1;
       newMomentum.consecutive_failures = 0;
@@ -505,7 +503,7 @@ export async function processExplorationAction(
       let totalPlayerXPGain = 10;
       
       for (const itemContribution of skillCheckResult.itemContributions) {
-        const item = tempPlayerState.inventory.find((i: IntelligentItem) => i.name === itemContribution.name);
+        const item = player.inventory.find((i: IntelligentItem) => i.name === itemContribution.name);
         if (item) {
           events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: 10 });
         }
@@ -534,7 +532,13 @@ export async function processPlayerAction(
     events: GameEvent[];
 }> {
     if (currentEnemy) {
-        return processCombatTurn(player, currentEnemy, choice);
+        const { events } = processCombatTurn(player, currentEnemy, choice);
+        const finalEvents: GameEvent[] = [...events];
+        if (events.some(e => e.type === 'COMBAT_ENDED')) {
+            const combatSummary = summarizeCombatEvents(events, player.name, currentEnemy.name);
+            finalEvents.push({ type: 'TEXT_EVENT', text: combatSummary });
+        }
+        return { events: finalEvents };
     } else {
         return processExplorationAction(player, choice, weatherData, cascadeResult);
     }
@@ -551,7 +555,7 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
     for (const event of events) {
         switch (event.type) {
             case 'COMBAT_ACTION':
-                summaries.push(`- Au combat, ${event.attacker} a attaqué ${event.target === 'player' ? 'le joueur' : 'l\'ennemi'} avec ${event.action}, infligeant ${event.damage} dégâts. Nouvelle santé: ${event.newHealth}.`);
+                summaries.push(`- Au combat, ${event.attacker} a attaqué ${event.target === 'player' ? 'le joueur' : 'l\'ennemi'} avec ${event.action}, infligeant ${event.damage} dégâts.`);
                 break;
             case 'COMBAT_ENDED':
                  summaries.push(`- Le combat est terminé. Le vainqueur est : ${event.winner}.`);
@@ -564,7 +568,7 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
                 break;
             case 'PLAYER_STAT_CHANGE':
                 if (Math.abs(event.change) > 0) {
-                   summaries.push(`- Statistique modifiée: ${event.stat} ${event.change > 0 ? '+' : ''}${event.change} (Nouveau total: ${event.finalValue}).`);
+                   summaries.push(`- Statistique modifiée: ${event.stat} ${event.change > 0 ? '+' : ''}${event.change}.`);
                 }
                 break;
             case 'XP_GAINED':
@@ -583,10 +587,13 @@ function summarizeGameEventsForAI(events: GameEvent[]): string {
                 summaries.push(`- ÉVOLUTION: ${event.oldItemName} est devenu ${event.newItemName} !`);
                 break;
             case 'MONEY_CHANGED':
-                 summaries.push(`- Transaction: ${event.amount > 0 ? '+' : ''}${event.amount.toFixed(2)}€ (${event.description}). Nouveau solde: ${event.finalBalance.toFixed(2)}€.`)
+                 summaries.push(`- Transaction: ${event.amount > 0 ? '+' : ''}${event.amount.toFixed(2)}€ (${event.description}).`)
                 break;
             case 'TEXT_EVENT':
-                summaries.push(`- Événement narratif: ${event.text}`);
+                summaries.push(`- ${event.text}`);
+                break;
+            case 'TRAVEL_EVENT':
+                summaries.push(`- Pendant le voyage: ${event.narrative}`);
                 break;
             default:
                 break;
@@ -669,24 +676,21 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
       const cuisineData = cascadeResult.results.get('cuisine')?.data;
       if (cuisineData) {
           if (cuisineData.cookingOpportunities && cuisineData.cookingOpportunities.length > 0) {
-              summaries.push(`- Opportunités de Cuisine: ${cuisineData.cookingOpportunities.join(' ')}`);
-          }
-          if (cuisineData.nutritionalStatus) {
-              summaries.push(`- Statut Nutritionnel: ${cuisineData.nutritionalStatus}`);
+              summaries.push(`Opportunités de Cuisine: ${cuisineData.cookingOpportunities.join(' ')}`);
           }
       }
       const cultureData = cascadeResult.results.get('culture_locale')?.data;
       if (cultureData && cultureData.summary && !cultureData.summary.includes('Aucune information')) {
-          summaries.push(`- Contexte Culturel Local: ${cultureData.summary}`);
+          summaries.push(`Contexte Culturel Local: ${cultureData.summary}`);
       }
       const livreData = cascadeResult.results.get('livre')?.data;
       if (livreData && livreData.foundBooks && livreData.foundBooks.length > 0) {
           const bookTitles = (livreData.foundBooks as BookSearchResult[]).map(b => b.title).join(', ');
-          summaries.push(`- Recherche de Livres: Des informations sur les livres suivants ont été trouvées: ${bookTitles}.`);
+          summaries.push(`Recherche de Livres: Des informations sur les livres suivants ont été trouvées: ${bookTitles}.`);
       }
 
       if (summaries.length > 0) {
-          cascadeSummary = "Analyses contextuelles supplémentaires: " + summaries.join(" ");
+          cascadeSummary = "Analyses contextuelles: " + summaries.join(" ");
       }
   }
 
@@ -704,7 +708,7 @@ export function prepareAIInput(gameState: GameState, playerChoice: StoryChoice |
     player: playerInputForAI,
     playerChoiceText: playerChoice.text,
     previousScenarioText: gameState.currentScenario?.scenarioText || '',
-    gameEvents: gameEventsSummary,
+    gameEvents: gameEventsSummary.replace(/[\n\r]/g, ' '),
     cascadeResult: cascadeSummary.replace(/[\n\r]/g, ' '),
     suggestedContextualActions,
   };
@@ -760,7 +764,7 @@ export function convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameE
 
   if (aiOutput.newTransactions) {
     aiOutput.newTransactions.forEach(txData => {
-        events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description, finalBalance: 0 });
+        events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description });
     });
   }
   
@@ -1067,22 +1071,4 @@ export function generateCombatActions(player: Player, enemy: Enemy): StoryChoice
     });
 
     return actions;
-}
-
-export function summarizeCombatEvents(events: GameEvent[], playerName: string, enemyName: string): string {
-    const summaryLines: string[] = [];
-
-    for (const event of events) {
-        if (event.type === 'COMBAT_ACTION') {
-            const attacker = event.attacker === playerName ? 'Vous' : event.attacker;
-            const target = event.target === 'player' ? 'vous' : enemyName;
-            summaryLines.push(`${attacker} ${event.action.replace(playerName, 'vous').replace(enemyName, 'l\'ennemi')} et infligez ${event.damage} points de dégâts à ${target}.`);
-        } else if (event.type === 'TEXT_EVENT') {
-            summaryLines.push(event.text);
-        } else if (event.type === 'SKILL_CHECK_RESULT' && !event.success) {
-            summaryLines.push(`Votre tentative de ${event.skill.split('.')[1].replace(/_/g, ' ')} a échoué !`);
-        }
-    }
-    
-    return summaryLines.join('\n');
 }

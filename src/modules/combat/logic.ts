@@ -18,24 +18,18 @@ export function calculateDamage(attackerStats: Player['stats'], weaponDamage: nu
     const baseAttack = (attackerStats.Force.value / 5) + (attackerStats.Dexterite.value / 10);
     const totalAttackPower = baseAttack + weaponDamage;
     
-    // Defense reduces damage, but not to zero
     const mitigatedDamage = Math.max(1, totalAttackPower - (defenderDefense / 2));
     
-    // Apply critical success/failure modifiers
     let finalDamage = mitigatedDamage;
     if (successDegree === 'critical_success') {
         finalDamage *= 1.5;
     }
     
-    // Add randomness (+/- 15%)
-    const randomFactor = (Math.random() * 0.3) - 0.15; // from -0.15 to +0.15
+    const randomFactor = (Math.random() * 0.3) - 0.15;
     finalDamage *= (1 + randomFactor);
     
     return Math.round(Math.max(1, finalDamage));
 }
-
-// Note: The main combat turn processing logic is in lib/game-logic.ts 
-// to avoid circular dependencies with the event system and skill checks.
 
 export function handleCombatStarted(state: GameState, enemy: Enemy): GameState {
     const journalEntry: GameEvent = { 
@@ -64,4 +58,22 @@ export function handleCombatAction(state: GameState, target: 'player' | 'enemy',
         return { ...state, currentEnemy: { ...state.currentEnemy, health: newHealth } };
     }
     return state;
+}
+
+export function summarizeCombatEvents(events: GameEvent[], playerName: string, enemyName: string): string {
+    const summaryLines: string[] = [];
+
+    for (const event of events) {
+        if (event.type === 'COMBAT_ACTION') {
+            const attacker = event.attacker === playerName ? 'Vous' : event.attacker;
+            const target = event.target === 'player' ? 'vous' : enemyName;
+            summaryLines.push(`${attacker} ${event.action.replace(playerName, 'vous').replace(enemyName, 'l\'ennemi')} et infligez ${event.damage} points de dégâts à ${target}.`);
+        } else if (event.type === 'TEXT_EVENT') {
+            summaryLines.push(event.text);
+        } else if (event.type === 'SKILL_CHECK_RESULT' && !event.success) {
+            summaryLines.push(`Votre tentative de ${event.skill.split('.')[1].replace(/_/g, ' ')} a échoué !`);
+        }
+    }
+    
+    return summaryLines.join('\n');
 }

@@ -8,7 +8,7 @@ import * as LucideIcons from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Euro, Star, Microscope, Shield, BarChart, Gem, Book, Dna } from 'lucide-react';
+import { Euro, Star, Microscope, Shield, BarChart, Gem, Book, Dna, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGame } from '@/contexts/GameContext';
 
@@ -34,6 +34,8 @@ const StatTooltip: React.FC<{ title: string; children: React.ReactNode; icon: Re
 
 const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
   const { handleExamineItem, isLoading } = useGame();
+  const [isExamining, setIsExamining] = React.useState(false);
+
   const enrichedItem = item as EnrichedObject;
 
   const IconComponent = (LucideIcons as any)[item.iconName] || LucideIcons.Package;
@@ -46,6 +48,12 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
     : localValue < baseValue 
     ? 'text-red-600 bg-red-100/50' 
     : 'text-muted-foreground bg-muted/50';
+
+  const onExamineClick = async () => {
+      setIsExamining(true);
+      await handleExamineItem(item.instanceId);
+      setIsExamining(false);
+  }
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow duration-150 flex flex-col">
@@ -149,9 +157,9 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item }) => {
         )}
       </CardContent>
       <CardFooter className="p-2 border-t">
-        <Button variant="ghost" size="sm" className="w-full h-8" onClick={() => handleExamineItem(item.instanceId)} disabled={!!enrichedItem.enrichmentMetadata || isLoading}>
-            <Microscope className="w-4 h-4 mr-2"/>
-            {enrichedItem.enrichmentMetadata ? 'Analysé' : 'Examiner'}
+        <Button variant="ghost" size="sm" className="w-full h-8" onClick={onExamineClick} disabled={!!enrichedItem.enrichmentMetadata || isLoading || isExamining}>
+            {isExamining ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Microscope className="w-4 h-4 mr-2"/>}
+            {enrichedItem.enrichmentMetadata ? 'Analysé' : (isExamining ? 'Analyse...' : 'Examiner')}
         </Button>
       </CardFooter>
     </Card>

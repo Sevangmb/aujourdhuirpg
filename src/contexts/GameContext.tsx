@@ -7,7 +7,7 @@ import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, Gam
 import type { AdaptedContact, HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, prepareAIInput } from '@/lib/game-logic';
+import { gameReducer, prepareAIInput, convertAIOutputToEvents } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,7 +16,7 @@ import { generateLocationImage as generateLocationImageService } from '@/ai/flow
 import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow';
 import { findAndAdaptHistoricalContactsForLocation } from '@/modules/historical/service';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
-import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
+import { generateScenario } from '@/ai/flows/generate-scenario';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,6 +47,7 @@ interface GameContextType {
   dispatch: React.Dispatch<GameAction>;
   isGameActive: boolean;
   isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   user: User;
 
   handleManualSave: () => void;
@@ -151,25 +152,26 @@ export const GameProvider: React.FC<{
         dispatch({ type: 'SET_NEARBY_POIS', payload: data });
     }).catch(e => setContextualData(s => ({ ...s, pois: { data: null, loading: false, error: (e as Error).message } })));
 
-    if (Math.random() > 0.15) return;
-    findAndAdaptHistoricalContactsForLocation(location.name, era).then(potentialContacts => {
-        const knownContactNames = new Set(gameState.player?.historicalContacts?.map(c => c.historical.name));
-        const newContacts = potentialContacts.filter(c => !knownContactNames.has(c.historical.name));
-        if (newContacts.length > 0) {
-            setEncounter(newContacts[Math.floor(Math.random() * newContacts.length)]);
-        }
-    });
+    if (Math.random() > 0.85) { // Reduced chance to avoid being too spammy
+        findAndAdaptHistoricalContactsForLocation(location.name, era).then(potentialContacts => {
+            const knownContactNames = new Set(gameState.player?.historicalContacts?.map(c => c.historical.name));
+            const newContacts = potentialContacts.filter(c => !knownContactNames.has(c.historical.name));
+            if (newContacts.length > 0) {
+                setEncounter(newContacts[Math.floor(Math.random() * newContacts.length)]);
+            }
+        });
+    }
 
   }, [gameState.player?.currentLocation.name, gameState.player?.era]);
   
   // --- NEWS QUEST GENERATION LOGIC ---
-  const lastCheckedDay = useRef(0);
+  const lastCheckedDay = useRef(Math.floor((gameState?.gameTimeInMinutes || 0) / 1440));
   const generateAndAddNewQuests = useCallback(async () => {
     if (!gameState?.player) return;
 
     try {
         const newsData = await fetchTopHeadlines({ country: 'fr', category: 'general', pageSize: 10 });
-        if (newsData.status !== 'ok' || newsData.articles.length === 0) return;
+        if (newsData.status !== 'ok' || !newsData.articles || newsData.articles.length === 0) return;
 
         const generator = new NewsQuestGenerator();
         const questPromises = newsData.articles.map(article => generator.generateQuestFromNews(article));
@@ -189,7 +191,7 @@ export const GameProvider: React.FC<{
                     type: 'JOURNAL_ENTRY_ADDED',
                     payload: {
                         type: 'event',
-                        text: `En lisant les nouvelles du matin, plusieurs pistes intéressantes ont attiré votre attention. (Nouvelles quêtes disponibles dans votre journal)`
+                        text: `En lisant les nouvelles du matin, plusieurs pistes intéressantes ont attiré votre attention.`
                     }
                 });
 
@@ -245,10 +247,10 @@ export const GameProvider: React.FC<{
       }
   
       if (gameState.player.money < cost) {
-          toast({ variant: "destructive", title: "Fonds insuffisants" }); return;
+          toast({ variant: "destructive", title: "Fonds insuffisants" }); setIsLoading(false); return;
       }
       if (gameState.player.stats.Energie.value < energy) {
-          toast({ variant: "destructive", title: "Trop fatigué" }); return;
+          toast({ variant: "destructive", title: "Trop fatigué" }); setIsLoading(false); return;
       }
       
       const travelNarrative = (await generateTravelEvent({
@@ -264,16 +266,19 @@ export const GameProvider: React.FC<{
           { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'location_change', text: `Voyage vers ${travelDestination.name} en ${mode}.` } },
       ];
       if (cost > 0) {
-          travelEvents.push({ type: 'MONEY_CHANGED', amount: -cost, finalBalance: gameState.player.money - cost, description: `Transport en ${mode} vers ${travelDestination.name}` });
+          travelEvents.push({ type: 'MONEY_CHANGED', amount: -cost, description: `Transport en ${mode} vers ${travelDestination.name}` });
       }
       if (travelNarrative) {
           travelEvents.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
       }
       
-      const stateAfterTravel = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: travelEvents });
+      let tempState = gameState;
+      travelEvents.forEach(event => {
+        tempState = { ...tempState, player: { ...tempState.player!, ...gameReducer(tempState, { type: 'APPLY_GAME_EVENTS', payload: [event] }).player } };
+      });
       
       const arrivalChoice = { text: `[Arrivée à ${travelDestination.name}]` } as StoryChoice;
-      const aiInput = prepareAIInput(stateAfterTravel, arrivalChoice, travelEvents);
+      const aiInput = prepareAIInput(tempState, arrivalChoice, travelEvents, null);
       if (!aiInput) throw new Error("Could not prepare AI input for arrival.");
   
       const arrivalScenario = await generateScenario(aiInput);
@@ -331,7 +336,7 @@ export const GameProvider: React.FC<{
   };
 
   const handleIgnoreContact = () => {
-    toast({ title: "Occasion manquée...", duration: 4000 });
+    toast({ title: "Occasion manquée...", duration: 2000 });
     setEncounter(null);
   };
   
@@ -346,7 +351,7 @@ export const GameProvider: React.FC<{
 
     try {
         setIsLoading(true);
-        toast({ title: 'Analyse en cours...', description: `Examen de ${itemToExamine.name}...` });
+        toast({ title: 'Analyse en cours...', description: `Examen de ${itemToExamine.name}...`, duration: 2000 });
 
         const enrichedObject = await objectCascadeManager.enrichObject(
             itemToExamine,
@@ -374,6 +379,7 @@ export const GameProvider: React.FC<{
     dispatch,
     isGameActive: !!gameState?.player,
     isLoading,
+    setIsLoading,
     user,
     handleManualSave: () => handleSaveGame('manual'),
     handleExitToSelection: onExitToSelection,
@@ -397,8 +403,7 @@ export const GameProvider: React.FC<{
           origin={gameState.player.currentLocation}
           destination={travelDestination}
           onConfirmTravel={handleConfirmTravel}
-          playerMoney={gameState.player.money}
-          playerEnergy={gameState.player.stats.Energie.value}
+          player={gameState.player}
         />
       )}
     </GameContext.Provider>

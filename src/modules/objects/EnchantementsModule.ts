@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Enrichment module to assess the magical potential of an object.
  */
@@ -11,12 +12,13 @@ import type {
   CurrentEnchantment,
   MaterialInfo,
 } from '@/core/objects/object-types';
+import type { EnrichedObject } from '@/lib/types';
 
 export class EnchantementsModule implements ObjectEnrichmentModule {
   readonly id = 'enchantements';
 
   async enrichObject(
-    object: BaseObject,
+    object: BaseObject | EnrichedObject,
     context: ObjectEnrichmentContext
   ): Promise<ObjectModuleResult> {
     console.log(`✨ Analyzing magical potential: ${object.name}`);
@@ -49,13 +51,13 @@ export class EnchantementsModule implements ObjectEnrichmentModule {
     };
   }
 
-  private assessEnchantmentPotential(object: BaseObject): {
+  private assessEnchantmentPotential(object: BaseObject | EnrichedObject): {
     slots: number;
     receptivity: number;
     schools: string[];
   } {
     let maxSlots = 1;
-    let receptivity = (object.material as MaterialInfo)?.magicalReceptivity || 10;
+    let receptivity = (object as EnrichedObject).material?.magicalReceptivity || 10;
     let compatibleSchools = ['enhancement'];
     const quality = object.quality || 'common';
 

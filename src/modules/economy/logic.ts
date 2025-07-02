@@ -29,6 +29,7 @@ export function handleMoneyChange(state: GameState, amount: number, description:
     if(description.toLowerCase().includes('achat')) category = 'shopping';
     if(description.toLowerCase().includes('transport')) category = 'transport';
     if(description.toLowerCase().includes('récompense')) category = 'quest_reward';
+    if(description.toLowerCase().includes('butin')) category = 'found_money';
 
 
     const newTransaction: Transaction = {

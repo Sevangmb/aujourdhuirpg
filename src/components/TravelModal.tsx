@@ -7,6 +7,7 @@ import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { PersonStanding, Train, Car, Coins, Clock, Zap } from 'lucide-react';
+import type { Player } from '@/lib/types';
 
 interface TravelModalProps {
   isOpen: boolean;
@@ -14,8 +15,7 @@ interface TravelModalProps {
   origin: Position;
   destination: Position;
   onConfirmTravel: (mode: 'walk' | 'metro' | 'taxi') => void;
-  playerMoney: number;
-  playerEnergy: number;
+  player: Player;
 }
 
 interface TravelOption {
@@ -33,12 +33,13 @@ export const TravelModal: React.FC<TravelModalProps> = ({
   origin,
   destination,
   onConfirmTravel,
-  playerMoney,
-  playerEnergy,
+  player
 }) => {
   if (!isOpen) return null;
 
   const distance = getDistanceInKm(origin.latitude, origin.longitude, destination.latitude, destination.longitude);
+  const playerMoney = player.money;
+  const playerEnergy = player.stats.Energie.value;
 
   const travelOptions: TravelOption[] = [
     {
