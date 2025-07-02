@@ -13,6 +13,7 @@ import '@/ai/flows/generate-geo-intelligence-flow.ts';
 // import '@/ai/flows/schemas/generate-geo-intelligence-schemas.ts';
 import '@/ai/flows/generate-save-summary-flow.ts';
 // import '@/ai/flows/schemas/generate-save-summary-schemas.ts';
+import '@/ai/flows/generate-investigation-summary-flow.ts';
 import '@/ai/flows/generate-travel-event-flow.ts';
 // import '@/ai/flows/schemas/generate-travel-event-schemas.ts';
 import '@/modules/historical/flows/generate-historical-contact-flow';

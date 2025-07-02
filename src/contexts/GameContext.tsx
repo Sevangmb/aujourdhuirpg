@@ -51,6 +51,7 @@ interface GameContextType {
   handleExitToSelection: () => void;
   handleSignOut: () => void;
   handleInitiateTravel: (destination: Position) => void;
+  handleUpdateInvestigationNotes: (newSummary: string) => void;
   handleExamineItem: (instanceId: string) => Promise<void>;
   handleChoiceSelected: (choice: StoryChoice) => Promise<void>;
 }
@@ -359,6 +360,10 @@ export const GameProvider: React.FC<{
     }
   };
 
+  const handleUpdateInvestigationNotes = (newSummary: string) => {
+    dispatch({ type: 'UPDATE_PLAYER_DATA', payload: { investigationNotes: newSummary } });
+  };
+
 
   const value: GameContextType = {
     gameState: { ...gameState, contextualData },
@@ -371,6 +376,7 @@ export const GameProvider: React.FC<{
     handleExitToSelection: onExitToSelection,
     handleSignOut: onSignOut,
     handleInitiateTravel,
+    handleUpdateInvestigationNotes,
     handleExamineItem,
     handleChoiceSelected,
   };
@@ -404,5 +410,3 @@ export const useGame = (): GameContextType => {
   }
   return context;
 };
-
-    

@@ -1,12 +1,17 @@
 
 "use client";
 
+import React, { useState } from 'react';
 import type { Player, Clue, GameDocument } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, FileText as DocumentIcon, Lightbulb, MessageSquare } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Search, FileText as DocumentIcon, Lightbulb, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
 import Image from "next/image";
 import { ScrollArea } from "./ui/scroll-area";
+import { Button } from './ui/button';
+import { useGame } from '@/contexts/GameContext';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface EvidenceLogDisplayProps {
   player: Player;
@@ -55,11 +60,50 @@ const DocumentCard: React.FC<{ documentItem: GameDocument }> = ({ documentItem }
 
 
 const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
+  const { handleUpdateInvestigationNotes } = useGame();
+  const { toast } = useToast();
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+
   if (!player) return <p className="p-4 text-muted-foreground">Données d'enquête non disponibles.</p>;
 
   const clues = player.clues || [];
   const documents = player.documents || [];
-  const investigationNotes = player.investigationNotes || "Aucune note d'enquête pour le moment.";
+  const investigationNotes = player.investigationNotes || "Aucune note d'enquête pour le moment. Collectez des indices et cliquez sur 'Synthétiser' pour obtenir une analyse de l'IA.";
+
+  const handleSynthesizeClick = async () => {
+    setIsSynthesizing(true);
+    toast({ title: "Analyse en cours...", description: "L'IA examine vos indices et documents..." });
+
+    try {
+      // Lazy import the server action
+      const { runInvestigationSynthesis } = await import('@/app/actions/run-investigation-synthesis');
+      
+      const result = await runInvestigationSynthesis({
+        playerName: player.name,
+        clues: clues.map(c => ({ title: c.title, description: c.description, type: c.type })),
+        documents: documents.map(d => ({ title: d.title, content: d.content, type: d.type })),
+        activeQuests: player.questLog.filter(q => q.status === 'active' && q.type !== 'job').map(q => q.title),
+        previousSummary: player.investigationNotes,
+      });
+
+      if (result.summary) {
+        handleUpdateInvestigationNotes(result.summary);
+        toast({ title: "Synthèse terminée !", description: "Votre dossier d'enquête a été mis à jour." });
+      } else {
+        throw new Error(result.error || "La synthèse a échoué sans message d'erreur spécifique.");
+      }
+    } catch (error) {
+      console.error("Failed to synthesize investigation:", error);
+      toast({
+        variant: 'destructive',
+        title: "Erreur de synthèse",
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsSynthesizing(false);
+    }
+  };
+
 
   return (
     <Tabs defaultValue="clues" className="w-full">
@@ -97,6 +141,12 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
                     </div>
                 </ScrollArea>
               </CardContent>
+              <CardFooter>
+                <Button onClick={handleSynthesizeClick} disabled={isSynthesizing || clues.length === 0} className="w-full">
+                  {isSynthesizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {isSynthesizing ? 'Analyse en cours...' : 'Synthétiser le Dossier'}
+                </Button>
+              </CardFooter>
             </Card>
         </TabsContent>
     </Tabs>
