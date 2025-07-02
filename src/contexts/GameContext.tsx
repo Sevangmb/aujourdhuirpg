@@ -228,12 +228,16 @@ export const GameProvider: React.FC<{
   
       const allEvents = [...gameLogicResult.gameEvents, ...aiGeneratedEvents];
 
+      // Apply all events to get the final state for this turn
+      const finalStateForTurn = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
+
+      // Enrich the AI's proposed choices with logic based on the *final* state
+      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateForTurn.player!);
+
+      // Now, dispatch all events to update the global state
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
 
-      const finalGameState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
-      
-      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalGameState.player!);
-      
+      // And set the new scenario with the logically-enriched choices
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
           scenarioText: aiOutput.scenarioText, 
           choices: enrichedAIChoices, 
@@ -243,6 +247,7 @@ export const GameProvider: React.FC<{
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";
       if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
+      console.error("Error in handleChoiceSelected:", error);
       toast({ variant: "destructive", title: "Erreur de Connexion avec l'IA", description: errorMessage });
     } finally {
         setIsLoading(false);

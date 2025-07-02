@@ -49,7 +49,8 @@ export function handleCombatStarted(state: GameState, enemy: Enemy): GameState {
         currentEnemy: { ...enemy, health: enemy.maxHealth },
     };
     
-    return gameReducer(newState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
+    // The reducer will handle adding the event to the journal
+    return newState;
 }
 
 export function handleCombatEnded(state: GameState): GameState {
@@ -58,7 +59,8 @@ export function handleCombatEnded(state: GameState): GameState {
         payload: { type: 'event', text: `Le combat est terminé.` } 
     };
     const newState = { ...state, currentEnemy: null };
-    return gameReducer(newState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
+     // The reducer will handle adding the event to the journal
+    return newState;
 }
 
 export function handleCombatAction(state: GameState, target: 'player' | 'enemy', newHealth: number): GameState {
@@ -70,21 +72,6 @@ export function handleCombatAction(state: GameState, target: 'player' | 'enemy',
         return { ...state, currentEnemy: { ...state.currentEnemy, health: newHealth } };
     }
     return state;
-}
-
-// A local, minimal reducer to apply journal entries within this module's logic
-function gameReducer(state: GameState, action: { type: 'APPLY_GAME_EVENTS'; payload: GameEvent[] }): GameState {
-  if (!state.player) return state;
-  let newState = { ...state };
-  for (const event of action.payload) {
-    if (event.type === 'JOURNAL_ENTRY_ADDED') {
-      newState = {
-        ...newState,
-        journal: [...(newState.journal || []), { ...event.payload, id: 'temp', timestamp: newState.gameTimeInMinutes, location: newState.player?.currentLocation }]
-      };
-    }
-  }
-  return newState;
 }
 
 export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
@@ -123,13 +110,18 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
     }
     
     // Enemy's Turn (if not defeated/escaped)
-    const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, 'success');
-    const newPlayerHealth = Math.max(0, player.stats.Sante.value - enemyDamage);
-    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: `attaque ${player.name}` });
+    const enemyAttackRoll = performSkillCheck(enemy.stats as any, {level: 10, xp: 0, xpToNext: 100}, 'physiques.arme_blanche', player.stats.Discretion.value, [], 0, {basic_needs: {hunger:{level:100}, thirst:{level:100}}}, {momentum_bonus:0});
+    if (enemyAttackRoll.success) {
+        const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, 'success');
+        const newPlayerHealth = Math.max(0, player.stats.Sante.value - enemyDamage);
+        events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: `attaque ${player.name}` });
 
-    if (newPlayerHealth <= 0) {
-        events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
-        events.push({ type: 'TEXT_EVENT', text: "Vous avez été vaincu..." });
+        if (newPlayerHealth <= 0) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
+            events.push({ type: 'TEXT_EVENT', text: "Vous avez été vaincu..." });
+        }
+    } else {
+         events.push({ type: 'TEXT_EVENT', text: `L'attaque de ${enemy.name} vous manque.` });
     }
 
     return { events };

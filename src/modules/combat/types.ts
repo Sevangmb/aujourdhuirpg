@@ -46,6 +46,4 @@ export type EnemyGameState = z.infer<typeof EnemySchema> & {
 
 // Override the base Zod schema for combat start to remove health/maxHealth ambiguity.
 // The AI will only provide maxHealth. The logic will set current health.
-export const StartCombatEnemySchema = EnemySchema.omit({ health: true, maxHealth: true }).extend({
-    maxHealth: z.number().describe("Santé maximale de l'ennemi."),
-});
+export const StartCombatEnemySchema = EnemySchema;
