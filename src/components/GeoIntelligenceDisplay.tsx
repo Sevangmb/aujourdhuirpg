@@ -10,7 +10,6 @@ import {
     Landmark,
     Briefcase,
     HeartHandshake,
-    Sparkles,
     Lightbulb,
     HelpCircle,
     BookOpen,
@@ -21,7 +20,6 @@ import {
     Key,
     UserCheck
 } from 'lucide-react';
-import { Progress } from './ui/progress';
 import { Skeleton } from './ui/skeleton';
 
 
@@ -146,7 +144,7 @@ const GeoIntelligenceDisplay: React.FC<GeoIntelligenceDisplayProps> = ({ data, i
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-           <Accordion type="multiple" className="w-full">
+           <Accordion type="multiple" className="w-full" defaultValue={['activities', 'safety']}>
             <AccordionItem value="activities">
               <AccordionTrigger className="text-sm"><ThumbsUp className="w-4 h-4 mr-2 text-muted-foreground" />Activités Idéales</AccordionTrigger>
               <AccordionContent>

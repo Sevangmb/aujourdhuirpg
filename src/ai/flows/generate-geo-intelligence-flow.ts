@@ -38,7 +38,7 @@ const geoIntelligencePrompt = ai.definePrompt({
     Votre mission est de fournir une analyse détaillée et immersive pour le lieu suivant : {{placeName}} ({{latitude}}, {{longitude}}).
 
     **Instructions Clés :**
-    1.  **Utilisez les outils :** Interrogez les outils \`getWikipediaInfoTool\`, \`getNearbyPoisTool\` et \`getNewsTool\` pour obtenir des informations factuelles sur le lieu, ses environs et l'actualité locale. Pour l'outil \`getNewsTool\`, utilisez le \`placeName\` comme mot-clé ('keywords').
+    1.  **Utilisez les outils :** Interrogez les outils \`getWikipediaInfoTool\`, \`getNearbyPoisTool\` et \`getNewsTool\` pour obtenir des informations factuelles sur le lieu, ses environs et l'actualité locale. Pour l'outil \`getNewsTool\`, utilisez le \`placeName\` comme **mot-clé** ('keywords').
     2.  **Analysez le quartier :** Si le lieu est un commerce spécifique (comme "Pomme de Pain", un café, etc.), basez votre analyse sur le quartier général où il se trouve, en utilisant les informations des outils pour le contexte.
     3.  **Plan de secours :** Si les outils ne retournent aucune information utile ou si le lieu est très générique, utilisez vos connaissances générales sur les villes françaises pour fournir une analyse plausible et crédible. Ne laissez PAS la réponse vide.
     4.  **Formatage :** Produisez une réponse JSON structurée qui suit précisément le schéma de sortie fourni, sans aucune exception.
