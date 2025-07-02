@@ -161,6 +161,8 @@ const PROMPT_GUIDING_PRINCIPLES = `
 {{{toneInstructions}}}
 - **CONTEXTE ENRICHI :** Utilisez toutes les données fournies (contexte du joueur, cascade, etc.) pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
 - **UTILISATION DES OUTILS :** Utilisez les outils disponibles ('getWeatherTool', etc.) pour enrichir votre narration lorsque cela est pertinent.
+- **FORMATAGE DES DIALOGUES :** Pour garantir la clarté, suivez ce format pour tous les dialogues : le nom du personnage en gras (\`<strong>\`), suivi de \` : \`, puis la réplique entre guillemets français \`« ... »\`.
+  **Exemple :** \`<p><strong>Marie :</strong> « Allons au marché. »</p>\`
 `;
 
 const PROMPT_CONTEXTUAL_INFO = `
