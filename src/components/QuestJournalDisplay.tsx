@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Player, Quest, PNJ, MajorDecision } from '@/lib/types';
@@ -276,3 +275,5 @@ const QuestJournalDisplay: React.FC<QuestJournalDisplayProps> = ({ player }) => 
 };
 
 export default QuestJournalDisplay;
+
+    

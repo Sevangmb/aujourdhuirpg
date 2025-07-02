@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Service for fetching recent news headlines using NewsAPI.org.
@@ -83,3 +82,5 @@ export async function fetchTopHeadlines(
     return { articles: [], status: 'error', message: `An unexpected error occurred while fetching news (service): ${error.message}` };
   }
 }
+
+    

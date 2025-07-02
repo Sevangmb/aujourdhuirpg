@@ -1,4 +1,3 @@
-
 import type { Quest, QuestRewards } from '@/modules/quests/types';
 import type { NewsArticle, NewsQuestType } from './types';
 import { v4 as uuidv4 } from 'uuid';
@@ -92,3 +91,5 @@ export class NewsQuestGenerator {
     return questData;
   }
 }
+
+    
