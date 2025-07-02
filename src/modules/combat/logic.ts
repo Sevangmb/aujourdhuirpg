@@ -40,9 +40,10 @@ export function handleCombatStarted(state: GameState, enemy: Enemy): GameState {
     const newState = {
         ...state,
         currentEnemy: enemy,
-        journal: [...state.journal, { ...journalEntry.payload, id: 'temp', timestamp: state.gameTimeInMinutes, location: state.player?.currentLocation }]
     };
-    return newState;
+    // Directly apply the journal entry via the reducer logic to avoid complex state management here
+    const tempStateWithJournal = gameReducer(newState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
+    return tempStateWithJournal;
 }
 
 export function handleCombatEnded(state: GameState): GameState {
@@ -58,6 +59,21 @@ export function handleCombatAction(state: GameState, target: 'player' | 'enemy',
         return { ...state, currentEnemy: { ...state.currentEnemy, health: newHealth } };
     }
     return state;
+}
+
+function gameReducer(state: GameState, action: { type: 'APPLY_GAME_EVENTS'; payload: GameEvent[] }): GameState {
+  // A minimal reducer to apply journal entries locally, as the full reducer is in game-logic.ts
+  if (!state.player) return state;
+  let newState = { ...state };
+  for (const event of action.payload) {
+    if (event.type === 'JOURNAL_ENTRY_ADDED') {
+      newState = {
+        ...newState,
+        journal: [...(newState.journal || []), { ...event.payload, id: 'temp', timestamp: newState.gameTimeInMinutes, location: newState.player?.currentLocation }]
+      };
+    }
+  }
+  return newState;
 }
 
 export function summarizeCombatEvents(events: GameEvent[], playerName: string, enemyName: string): string {

@@ -7,7 +7,7 @@ import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, Gam
 import type { AdaptedContact, HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, prepareAIInput, convertAIOutputToEvents } from '@/lib/game-logic';
+import { gameReducer, prepareAIInput, convertAIOutputToEvents, enrichAIChoicesWithLogic } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -274,7 +274,7 @@ export const GameProvider: React.FC<{
       
       let tempState = gameState;
       travelEvents.forEach(event => {
-        tempState = { ...tempState, player: { ...tempState.player!, ...gameReducer(tempState, { type: 'APPLY_GAME_EVENTS', payload: [event] }).player } };
+        tempState = { ...tempState, ...gameReducer(tempState, { type: 'APPLY_GAME_EVENTS', payload: [event] }) };
       });
       
       const arrivalChoice = { text: `[Arrivée à ${travelDestination.name}]` } as StoryChoice;
@@ -284,7 +284,16 @@ export const GameProvider: React.FC<{
       const arrivalScenario = await generateScenario(aiInput);
       
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: travelEvents });
-      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: arrivalScenario });
+
+      const finalEvents = convertAIOutputToEvents(arrivalScenario);
+      if (finalEvents.length > 0) {
+        dispatch({ type: 'APPLY_GAME_EVENTS', payload: finalEvents });
+      }
+      const finalState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: [...travelEvents, ...finalEvents] });
+      
+      const enrichedChoices = enrichAIChoicesWithLogic(arrivalScenario.choices || [], finalState.player!);
+
+      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { ...arrivalScenario, choices: enrichedChoices }});
   
     } catch (error) {
         let errorMessage = "Le voyage a été interrompu par une erreur inattendue.";

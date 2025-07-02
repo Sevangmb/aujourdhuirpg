@@ -39,7 +39,7 @@ export type GameEvent =
   | { type: 'ITEM_REMOVED'; itemId: string; itemName: string; quantity: number; }
   | { type: 'ITEM_USED'; instanceId: string; itemName: string; description: string; }
   | { type: 'ITEM_XP_GAINED'; instanceId: string; itemName: string; xp: number; }
-  | { type: 'ITEM_LEVELED_UP'; instanceId: string; itemName: string; newLevel: number; newXp?: number; newXpToNextLevel?: number; }
+  | { type: 'ITEM_LEVELED_UP'; instanceId: string; itemName: string; newLevel: number; newXp: number; newXpToNextLevel: number; }
   | { type: 'ITEM_EVOLVED'; instanceId: string; oldItemName: string; newItemId: string; newItemName: string; }
   | { type: 'QUEST_ADDED'; quest: Omit<Quest, 'id' | 'dateAdded'>; }
   | { type: 'QUEST_STATUS_CHANGED'; questId: string; newStatus: Quest['status']; }
@@ -49,7 +49,7 @@ export type GameEvent =
   | { type: 'COMBAT_STARTED'; enemy: Enemy; }
   | { type: 'COMBAT_ENDED'; winner: 'player' | 'enemy'; }
   | { type: 'COMBAT_ACTION'; attacker: string; target: 'player' | 'enemy'; damage: number; newHealth: number; action: string; }
-  | { type: 'MONEY_CHANGED'; amount: number; finalBalance: number; description: string; }
+  | { type: 'MONEY_CHANGED'; amount: number; description: string; }
   | { type: 'PLAYER_TRAVELS'; from: string; destination: Position; mode: string; duration: number; }
   | { type: 'TRAVEL_EVENT'; narrative: string; }
   | { type: 'HISTORICAL_CONTACT_ADDED'; payload: HistoricalContact; }

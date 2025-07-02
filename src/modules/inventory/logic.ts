@@ -52,7 +52,7 @@ export function createNewInstanceFromMaster(masterItem: MasterIntelligentItem, l
       condition: { durability: 100 },
       itemLevel: 1,
       itemXp: 0,
-      xpToNextItemLevel: masterItem.xpToNextItemLevel,
+      xpToNextItemLevel: masterItem.xpToNextItemLevel || 0,
       memory: {
         acquiredAt: new Date().toISOString(),
         acquisitionStory: `Trouvé à ${location.name}.`,
@@ -169,11 +169,6 @@ export function grantXpToItem(item: IntelligentItem, xpGained: number): GameEven
         break; // Stop leveling up as the item is being replaced
       }
     }
-  }
-
-  if (events.length === 0) {
-      // If no level up, just record the XP gain
-      events.push({ type: 'ITEM_XP_GAINED', instanceId: item.instanceId, itemName: item.name, xp: xpGained });
   }
   
   return events;

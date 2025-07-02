@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { StoryChoice, GameEvent } from '@/lib/types';
-import { processPlayerAction, enrichAIChoicesWithLogic, generateActionsForPOIs, generatePlayerStateActions, generateCascadeBasedActions } from '@/lib/game-logic';
+import { processPlayerAction, enrichAIChoicesWithLogic, generateActionsForPOIs, generatePlayerStateActions, generateCascadeBasedActions, generateCombatActions } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -30,15 +30,15 @@ const GamePlay: React.FC = () => {
     setIsLoading(true);
 
     try {
-        const cascadeResult = await runCascadeForAction(gameState, choice);
-        const { events: resultingEvents } = await processPlayerAction(gameState.player, currentEnemy, choice, weatherData, cascadeResult);
+        const cascadeResult = currentEnemy ? null : await runCascadeForAction(gameState, choice);
+        const { events: resultingEvents } = await processPlayerAction(gameState, currentEnemy, choice, weatherData, cascadeResult);
         
         dispatch({ type: 'APPLY_GAME_EVENTS', payload: resultingEvents });
 
         // Create a temporary state *after* events for AI input
         let tempStateForAI = gameState;
         resultingEvents.forEach(event => {
-            tempStateForAI = { ...tempStateForAI, player: { ...tempStateForAI.player!, ...gameReducer(tempStateForAI, { type: 'APPLY_GAME_EVENTS', payload: [event] }).player } };
+            tempStateForAI = { ...tempStateForAI, ...gameReducer(tempStateForAI, { type: 'APPLY_GAME_EVENTS', payload: [event] }) };
         });
 
         const aiInput = prepareAIInput(tempStateForAI, choice, resultingEvents, cascadeResult);
