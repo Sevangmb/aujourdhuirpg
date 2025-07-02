@@ -207,6 +207,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             player = { ...player, encounteredPNJs: newPNJs };
             break;
           }
+           case 'DECISION_LOGGED':
+              const newDecision: MajorDecision = { ...event.decision, id: uuidv4(), dateMade: new Date().toISOString() };
+              player = { ...player, decisionLog: [...(player.decisionLog || []), newDecision] };
+              break;
           case 'COMBAT_STARTED':
             nextState = handleCombatStarted(nextState, event.enemy);
             player = nextState.player!;
