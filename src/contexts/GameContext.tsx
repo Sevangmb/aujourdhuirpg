@@ -14,7 +14,6 @@ import { getCurrentWeather } from '@/app/actions/get-current-weather';
 import { generateLocationImage as generateLocationImageService } from '@/ai/flows/generate-location-image-flow';
 import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-flow';
 import { findAndAdaptHistoricalContactsForLocation } from '@/modules/historical/service';
-import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { generateScenario } from '@/ai/flows/generate-scenario';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -237,15 +236,17 @@ export const GameProvider: React.FC<{
         }
 
         // Get the final state after all events have been applied
-        const finalState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: [...gameLogicResult.gameEvents, ...aiGeneratedEvents] });
+        // This is tricky because dispatch is async. We'll manually apply events to a temporary state for choice generation.
+        let tempState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
+        tempState = gameReducer(tempState, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
         
         // Enrich AI choices with game logic (e.g., success probability)
-        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalState.player!);
+        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], tempState.player!);
         
         // Generate contextual choices from the game world
-        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, finalState.player!);
-        const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
-        const stateBasedActions = generatePlayerStateActions(finalState.player!);
+        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, tempState.player!);
+        const poiActions = generateActionsForPOIs(tempState.nearbyPois || [], tempState.player!, tempState.gameTimeInMinutes);
+        const stateBasedActions = generatePlayerStateActions(tempState.player!);
         
         let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
 

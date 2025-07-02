@@ -74,5 +74,3 @@ export const QuestUpdateSchema = z.object({
   })).optional().describe("Liste des objectifs dont le statut a changé."),
   newObjectiveDescription: z.string().optional().describe("Description d'un nouvel objectif ajouté à cette quête (rare). L'IA devrait préférer créer des sous-quêtes ou des quêtes séquentielles.")
 });
-
-    

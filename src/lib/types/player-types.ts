@@ -2,14 +2,14 @@
 import { z } from 'zod';
 import { AVAILABLE_TONES } from './tone-types';
 import type { IntelligentItem } from './item-types';
-import type { Quest } from '../modules/quests/types';
+import type { Quest } from '@/modules/quests/types';
 import type { PNJ } from './pnj-types';
 import type { MajorDecision } from './decision-types';
 import type { Clue, GameDocument } from './evidence-types';
 import type { ToneSettings } from './tone-types';
 import type { Position } from './game-types'; 
-import type { Transaction } from '../modules/economy/types';
-import type { HistoricalContact } from '../modules/historical/types';
+import type { Transaction } from '@/modules/economy/types';
+import type { HistoricalContact } from '@/modules/historical/types';
 import type { GameEra } from './era-types';
 import type { AdvancedPhysiologySystem } from './physiology-types';
 
@@ -172,13 +172,8 @@ export const LocationSchema = z.object({
 });
 
 // This simplified schema is for the AI, which only needs the level number.
-export const SkillsSchema = z.object({
-  physiques: z.record(z.number()),
-  techniques: z.record(z.number()),
-  survie: z.record(z.number()),
-  sociales: z.record(z.number()),
-  savoir: z.record(z.number()),
-});
+export const SkillsSchema = z.record(z.record(z.number())).describe("Un objet contenant les catégories de compétences, chacune avec un record des compétences et de leur niveau. e.g., { 'physiques': { 'combat_mains_nues': 10 } }");
+
 
 export const PlayerStatsSchema = z.object({
     Force: z.number(), Dexterite: z.number(), Constitution: z.number(),
@@ -223,9 +218,9 @@ export const IntelligentItemInputSchema = z.object({
 
 export const ToneSettingsSchema = z.object(
   AVAILABLE_TONES.reduce((acc, tone) => {
-    acc[tone] = z.number().min(0).max(100);
+    acc[tone] = z.boolean();
     return acc;
-  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodNumber>)
+  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodBoolean>)
 ).partial();
 
 

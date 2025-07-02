@@ -15,50 +15,44 @@ import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 export class GameLogicProcessor {
   
   async processAction(gameState: GameState, choice: StoryChoice): Promise<{
-    newGameState: GameState;
     gameEvents: GameEvent[];
   }> {
     if (!gameState.player) {
       console.warn("GameLogicProcessor: processAction called without a player.");
-      return { newGameState: gameState, gameEvents: [] };
+      return { gameEvents: [] };
     }
 
-    let newState = { ...gameState };
     const events: GameEvent[] = [];
 
     // Combat logic takes precedence
-    if (newState.currentEnemy) {
-        const combatResult = processCombatTurn(newState.player, newState.currentEnemy, choice);
+    if (gameState.currentEnemy) {
+        const combatResult = processCombatTurn(gameState.player, gameState.currentEnemy, choice);
         events.push(...combatResult.events);
-        // The reducer will apply these events to update state
-        return { newGameState: newState, gameEvents: events };
+        return { gameEvents: events };
     }
     
     // Non-combat logic
     if (choice.travelChoiceInfo) {
-      const travelResult = await this.processTravel(newState, choice, events);
-      newState = travelResult.newState;
+      await this.processTravel(gameState, choice, events);
     } else if (choice.economicImpact) {
-      const purchaseResult = this.processPurchase(newState, choice, events);
-      newState = purchaseResult.newState;
+      this.processPurchase(gameState, choice, events);
     } else if (choice.id.startsWith('use_item_')) {
-      const useResult = this.processUseItem(newState, choice, events);
-      newState = useResult.newState;
+      this.processUseItem(gameState, choice, events);
     }
 
     // Generic effects for most actions
-    this.applyGenericActionEffects(newState, choice, events);
+    this.applyGenericActionEffects(gameState, choice, events);
 
     // Apply skill check if present
     if (choice.skillCheck) {
-      this.processSkillCheck(newState, choice, events);
+      this.processSkillCheck(gameState, choice, events);
     }
 
-    return { newGameState: newState, gameEvents: events };
+    return { gameEvents: events };
   }
 
-  private processSkillCheck(state: GameState, choice: StoryChoice, events: GameEvent[]): { newState: GameState } {
-    if (!choice.skillCheck || !state.player) return { newState: state };
+  private processSkillCheck(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
+    if (!choice.skillCheck || !state.player) return;
 
     const { player } = state;
     const { skill, difficulty } = choice.skillCheck;
@@ -84,12 +78,10 @@ export class GameLogicProcessor {
         }
       });
     }
-
-    return { newState: state };
   }
   
-  private async processTravel(state: GameState, choice: StoryChoice, events: GameEvent[]): Promise<{ newState: GameState }> {
-    if (!choice.travelChoiceInfo || !state.player) return { newState: state };
+  private async processTravel(state: GameState, choice: StoryChoice, events: GameEvent[]): Promise<void> {
+    if (!choice.travelChoiceInfo || !state.player) return;
 
     const { destination, mode } = choice.travelChoiceInfo;
     const { player } = state;
@@ -113,48 +105,48 @@ export class GameLogicProcessor {
 
     if (player.money < cost || player.stats.Energie.value < energy) {
       events.push({ type: 'TEXT_EVENT', text: "Vous ne pouvez pas effectuer ce voyage." });
-      return { newState: state };
+      return;
     }
     
     if (cost > 0) {
       events.push({ type: 'MONEY_CHANGED', amount: -cost, description: `Transport en ${mode}` });
     }
 
-    const travelNarrative = (await generateTravelEvent({
+    const travelNarrativeResult = await generateTravelEvent({
         travelMode: mode, origin, destination, gameTimeInMinutes: state.gameTimeInMinutes,
         playerStats: player.stats, playerSkills: player.skills,
-    })).narrative;
-
+    });
+    const travelNarrative = travelNarrativeResult.narrative;
+    
     if (travelNarrative) {
       events.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
     }
 
     events.push({ type: 'PLAYER_TRAVELS', from: origin.name, destination: destination, mode: mode, duration: time });
     events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: player.stats.Energie.value - energy });
-    
-    return { newState: state };
   }
 
-  private processPurchase(state: GameState, choice: StoryChoice, events: GameEvent[]): { newState: GameState } {
-    if (!choice.economicImpact || !state.player) return { newState: state };
+  private processPurchase(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
+    if (!choice.economicImpact || !state.player) return;
 
     const cost = choice.economicImpact.cost.min; // Use min cost for simplicity
     if (state.player.money < cost) {
       events.push({ type: 'TEXT_EVENT', text: "Pas assez d'argent." });
-      return { newState: state };
+      return;
     }
     events.push({ type: 'MONEY_CHANGED', amount: -cost, description: `Achat: ${choice.text}` });
-    return { newState: state };
+    
+    // Here you could add the item to the inventory if the choice included an item ID
   }
 
-  private processUseItem(state: GameState, choice: StoryChoice, events: GameEvent[]): { newState: GameState } {
-    if (!state.player) return { newState: state };
+  private processUseItem(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
+    if (!state.player) return;
     
     const instanceId = choice.id.replace('use_item_', '');
     const item = state.player.inventory.find(i => i.instanceId === instanceId);
     if (!item) {
       events.push({ type: 'TEXT_EVENT', text: "Objet non trouvé." });
-      return { newState: state };
+      return;
     }
     
     events.push({ type: 'ITEM_USED', instanceId, itemName: item.name, description: `Utilisation de ${item.name}` });
@@ -168,11 +160,12 @@ export class GameLogicProcessor {
       }
       if (item.physiologicalEffects) {
         Object.entries(item.physiologicalEffects).forEach(([stat, value]) => {
-            events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: stat as 'hunger' | 'thirst', change: value, finalValue: state.player!.physiology.basic_needs[stat as 'hunger' | 'thirst'].level + value });
+            if (value === undefined) return;
+            const finalValue = state.player!.physiology.basic_needs[stat as 'hunger' | 'thirst'].level + value;
+            events.push({ type: 'PLAYER_PHYSIOLOGY_CHANGE', stat: stat as 'hunger' | 'thirst', change: value, finalValue });
         });
       }
     }
-    return { newState: state };
   }
 
   private applyGenericActionEffects(state: GameState, choice: StoryChoice, events: GameEvent[]): void {

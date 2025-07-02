@@ -1,5 +1,4 @@
 
-
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem, PlayerStats, Position } from './';
@@ -30,8 +29,8 @@ export interface StoryChoice {
   iconName: ChoiceIconName;
   type: ActionType;
   mood: MoodType;
-  energyCost?: number;
-  timeCost?: number; // in minutes
+  energyCost: number;
+  timeCost: number; // in minutes
   consequences: string[];
   isCombatAction?: boolean;
   combatActionType?: 'attack' | 'defend' | 'flee' | 'special';

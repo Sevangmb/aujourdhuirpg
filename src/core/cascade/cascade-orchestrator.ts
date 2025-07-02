@@ -31,7 +31,6 @@ export class CascadeOrchestrator {
     playerChoice: StoryChoice
   ): Promise<{
     gameLogicResult: {
-      newGameState: GameState;
       gameEvents: GameEvent[];
       cascadeResult: CascadeResult | null,
     };
@@ -41,13 +40,16 @@ export class CascadeOrchestrator {
     // 1. LOGIQUE MÉTIER PURE (pas d'IA)
     const gameLogicResult = await this.gameLogicProcessor.processAction(gameState, playerChoice);
     
+    // Apply the deterministic events to get the next state for the cascade
+    const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
+    
     // 2. ENRICHISSEMENT CONTEXTUEL VIA CASCADE
     // La cascade s'exécute sur l'état *après* la logique déterministe.
-    const cascadeResult = await runCascadeForAction(gameLogicResult.newGameState, playerChoice);
+    const cascadeResult = await runCascadeForAction(stateAfterLogic, playerChoice);
 
     // 3. PRÉPARATION DU CONTEXTE POUR L'IA NARRATIVE
     const aiContext = this.aiContextPreparer.prepareContext(
-      gameLogicResult.newGameState,
+      stateAfterLogic,
       gameLogicResult.gameEvents,
       cascadeResult,
       playerChoice
@@ -61,4 +63,17 @@ export class CascadeOrchestrator {
       aiContext
     };
   }
+}
+
+// Minimal reducer to apply events for state progression within the orchestrator
+function gameReducer(state: GameState, action: { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }): GameState {
+  // This is a simplified version of the main reducer. It's sufficient for the orchestrator's needs.
+  let newState = { ...state };
+  for (const event of action.payload) {
+      if (event.type === 'PLAYER_TRAVELS' && newState.player) {
+          newState = { ...newState, player: { ...newState.player, currentLocation: event.destination } };
+      }
+      // Add other critical state changes if needed for cascade dependencies
+  }
+  return newState;
 }

@@ -6,9 +6,10 @@
 
 import type { GameState, GameEvent, StoryChoice, Player, BookSearchResult, EnrichedRecipe, EnhancedPOI } from '@/lib/types';
 import type { CascadeResult } from './types';
-import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { generateActionsForPOIs, summarizeGameEventsForAI } from '@/lib/game-logic';
-import { AdvancedSkillSystem, PlayerStats } from '@/lib/types/player-types';
+import type { AdvancedSkillSystem, PlayerStats } from '@/lib/types/player-types';
+import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
+import type { Quest, PNJ } from '@/lib/types';
 
 export class AIContextPreparer {
   
@@ -47,7 +48,7 @@ export class AIContextPreparer {
     const flatStats = (Object.keys(player.stats) as Array<keyof PlayerStats>).reduce((acc, key) => {
         acc[key] = player.stats[key].value;
         return acc;
-    }, {} as Record<keyof PlayerStats, number>);
+    }, {} as Record<string, number>);
 
     const nestedSkills = (Object.keys(player.skills) as Array<keyof AdvancedSkillSystem>).reduce((acc, category) => {
         const skillsInCategory = player.skills[category];
@@ -124,8 +125,9 @@ export class AIContextPreparer {
     
     if (aiOutput.newQuests) {
         aiOutput.newQuests.forEach(questData => {
-            const questForEvent: Omit<Quest, 'id' | 'dateAdded' | 'status'> = {
+            const questForEvent: Omit<Quest, 'id' | 'dateAdded' > = {
                 ...questData,
+                status: 'inactive', // New quests from AI start as inactive/available
                 objectives: questData.objectives.map(desc => ({ id: '', description: desc, isCompleted: false }))
             };
             events.push({ type: 'QUEST_ADDED', quest: questForEvent });
