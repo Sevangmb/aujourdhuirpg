@@ -132,7 +132,7 @@ export const GameProvider: React.FC<{
     });
 
     setContextualData(s => ({ ...s, locationImage: { ...s.locationImage, loading: true } }));
-    generateLocationImageService({ placeName: location.name, era }).then(result => {
+    generateLocationImageService({ placeName: location.name, era: era }).then(result => {
       setContextualData(s => ({ ...s, locationImage: { url: result.imageUrl, loading: false, error: result.error || null }}));
     });
 

@@ -10,10 +10,11 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { GameEra } from '@/lib/types';
 
 const GenerateLocationImageInputSchema = z.object({
   placeName: z.string().describe("The name of the location to generate an image for."),
-  era: z.string().optional().describe("The historical era to depict, e.g., 'Renaissance', 'Moyen-Âge'. Defaults to contemporary."),
+  era: z.string().describe("The historical era to depict, e.g., 'Renaissance', 'Moyen-Âge'. Defaults to contemporary."),
 });
 export type GenerateLocationImageInput = z.infer<typeof GenerateLocationImageInputSchema>;
 
