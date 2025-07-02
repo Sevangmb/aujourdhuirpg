@@ -7,7 +7,6 @@ import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
-import { montmartreInitialChoices } from './choices';
 
 const createStat = (value: number, max?: number): { value: number, max?: number } => ({ value, max });
 
@@ -191,11 +190,3 @@ export const initialInvestigationNotes: string = "Aucune note d'enquête pour le
 
 // --- Other Game Constants ---
 export const UNKNOWN_STARTING_PLACE_NAME = "Lieu de Départ Inconnu";
-
-// --- Initial Scenario ---
-export function getInitialScenario(player: Player): Scenario {
-  return {
-    scenarioText: `<p>Bienvenue, ${player.name}. L'aventure commence... Que faites-vous ?</p>`,
-    choices: montmartreInitialChoices,
-  };
-}

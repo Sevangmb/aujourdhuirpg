@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import type { AdaptedContact } from '@/services/historical-contact-service';
+import type { AdaptedContact } from '@/modules/historical/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';

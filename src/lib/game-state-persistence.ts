@@ -23,7 +23,6 @@ import {
   initialHistoricalContacts,
   initialPhysiology,
   initialMomentum,
-  getInitialScenario,
 } from '@/data/initial-game-data';
 import { saveGameStateToLocal } from '@/services/localStorageService';
 import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
