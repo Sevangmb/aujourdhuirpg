@@ -142,46 +142,35 @@ Votre mission est quadruple :
 1.  **Raconter l'Histoire (scenarioText) :** Le moteur de jeu a calculé les conséquences de l'action du joueur et vous fournit un résumé textuel dans \`gameEvents\`. Transformez ces faits bruts en une description narrative captivante en HTML. Soyez immersif, n'énumérez pas les faits. Intégrez des dialogues lorsque c'est pertinent pour rendre la scène vivante.
 
 2.  **Générer des Choix NARRATIFS et CRÉATIFS (choices) :** C'est votre mission la plus importante. Le moteur de jeu génère déjà des actions contextuelles (manger, acheter...). Votre rôle est d'imaginer 3 à 4 actions possibles qui sont MÉMORABLES, CRÉATIVES, et qui FONT AVANCER L'HISTOIRE.
-    - **EXIGENCES STRICTES :**
-        - **Pensez comme un scénariste :** Quels choix créeraient du drame, du mystère, ou révéleraient quelque chose sur le monde ou le personnage ?
-        - **NE CALCULEZ PAS :** Ne remplissez PAS les champs mécaniques comme \`energyCost\`, \`timeCost\`, ou \`skillGains\`. Le moteur de jeu s'en chargera.
-        - **Soyez spécifique et inspiré :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
-    - **À INTERDIRE FORMELLEMENT (Actions trop génériques ou gérées par la logique) :**
-        - ❌ "Explorer les environs", "Observer les alentours"
-        - ❌ "Parler à quelqu'un" (Préférez "Confronter le marchand sur son mensonge")
-        - ❌ "Manger", "Boire", "Cuisiner", "Lire un livre", "Acheter Objet X" (Le moteur de jeu s'en occupe déjà via la logique contextuelle. Voir la liste dans \`suggestedContextualActions\`.)
-        - ❌ **Ne créez JAMAIS de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.**
-    - **EXEMPLES D'ACTIONS ATTENDUES :**
-        - ✅ "Utiliser votre compétence en **survie.pistage** pour déceler une incohérence dans le témoignage du garde."
-        - ✅ "Proposer au musicien de rue de l'accompagner avec votre vieil harmonica, espérant attirer une audience... et peut-être des informations."
-        - ✅ "Graver discrètement un symbole mystérieux sur le banc, un signe de reconnaissance pour une société secrète à laquelle vous appartenez."
-        - ✅ "Tenter de déverrouiller la vieille malle avec vos compétences en **techniques.contrefacon**."
-        - ✅ "Essayer de persuader le garde de vous laisser entrer en utilisant **sociales.persuasion**."
+    - **Pensez comme un scénariste :** Quels choix créeraient du drame, du mystère, ou révéleraient quelque chose sur le monde ou le personnage ?
+    - **NE CALCULEZ PAS :** Ne remplissez PAS les champs mécaniques comme \`energyCost\`, \`timeCost\`, ou \`skillGains\`. Le moteur de jeu s'en chargera.
+    - **Soyez spécifique et inspiré :** Proposez des interactions sociales inattendues, des actions pour faire avancer une quête, ou des décisions morales complexes.
+    - **Ne reproposez PAS les actions** déjà suggérées par la logique du jeu (voir \`suggestedContextualActions\`).
+    - **Ne créez JAMAIS de choix de combat (Attaquer, Fuir...). Utilisez le champ \`startCombat\` pour initier un combat si la narration l'exige.**
 
 3.  **Proposer des Changements au Monde (Événements de Jeu) :** Agissez comme un maître de jeu. Si votre narration le justifie, proposez des changements concrets.
     - Si un PNJ propose un travail, utilisez \`newQuests\` pour créer une quête. Pour un 'job', proposez un 'requiredSkill' pertinent comme 'techniques.artisanat_general'.
-    - **Si la narration mène à un combat inévitable, utilisez \`startCombat\` pour introduire un ou plusieurs ennemis. Le moteur de jeu gérera ensuite le combat.**
+    - Si la narration mène à un combat inévitable, utilisez \`startCombat\` pour introduire un ou plusieurs ennemis.
     - Si le joueur trouve un portefeuille, utilisez \`newItems\` et \`newTransactions\`.
-    - **Remplissez ces champs uniquement** si cela est logiquement justifié. Sinon, laissez-les vides.
+    - Remplissez ces champs uniquement si cela est logiquement justifié. Sinon, laissez-les vides.
 
 4.  **Donner un Conseil Stratégique (aiRecommendation) :** Si pertinent, analysez la situation et donnez un conseil via le champ optionnel \`aiRecommendation\`.
 `;
 
 const PROMPT_CONTEXTUAL_ACTIONS_INSTRUCTIONS = `
 **Contexte des Actions Logiques (Facultatif)**
-Le moteur de jeu a déjà identifié les actions contextuelles suivantes.
 {{#if suggestedContextualActions}}
-Actions déjà proposées par la logique du jeu :
+Le moteur de jeu a déjà identifié les actions contextuelles suivantes. Ne les reproposez PAS :
 {{#each suggestedContextualActions}}
 - {{this.text}}
 {{/each}}
-**Ne reproposez PAS ces actions.** Concentrez-vous sur des choix NARRATIFS et CRÉATIFS qui ne sont pas de simples interactions mécaniques.
+Concentrez-vous sur des choix NARRATIFS et CRÉATIFS qui ne sont pas de simples interactions mécaniques.
 {{/if}}
 `;
 
 const PROMPT_CASCADE_INSTRUCTIONS = `
-**EXPLOITATION DU CONTEXTE DE LA CASCADE (TRÈS IMPORTANT)**
-Le champ \`cascadeResult\` contient un résumé des informations générées par des modules spécialisés. **Utilisez ces informations pour enrichir votre narration et créer une ambiance cohérente.** Par exemple, si le résumé mentionne une opportunité de cuisiner, vous pouvez décrire l'odeur des épices dans l'air. Si le résumé mentionne un fait culturel, intégrez-le dans la description des lieux. Le moteur de jeu génère déjà les actions logiques (comme "Cuisiner le plat X"), votre rôle n'est donc **PAS** de créer ces actions, mais de créer une atmosphère qui les justifie.
+**Contexte de la Cascade (TRÈS IMPORTANT)**
+Le champ \`cascadeResult\` contient un résumé des informations générées par des modules spécialisés. Utilisez ces informations pour enrichir votre narration et créer une ambiance cohérente.
 `;
 
 const PROMPT_GUIDING_PRINCIPLES = `
@@ -191,12 +180,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 - **CONTEXTE ENRICHI :** Utilisez toutes les données fournies pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
   - **Cascade Modulaire :** ${PROMPT_CASCADE_INSTRUCTIONS}
   - **Actions Logiques :** ${PROMPT_CONTEXTUAL_ACTIONS_INSTRUCTIONS}
-  
-  {{#if player.recentActionTypes}}
-  🔄 **ÉVITEZ LA RÉPÉTITION :** Les dernières actions du joueur étaient de type : {{player.recentActionTypes}}. Proposez des types d'actions narratifs différents.
-  {{/if}}
-
-- **UTILISATION DES OUTILS :** Utilisez les outils disponibles ('getWeatherTool', etc.) pour enrichir votre narration et générer des choix contextuels.
+- **UTILISATION DES OUTILS :** Utilisez les outils disponibles ('getWeatherTool', etc.) pour enrichir votre narration.
 `;
 
 const PROMPT_PLAYER_CONTEXT = `
