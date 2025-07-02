@@ -5,7 +5,7 @@ import type { Position } from './game-types';
 import type { GameEra } from './era-types';
 
 
-export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'tool' | 'misc' | 'quest';
+export type InventoryItemType = 'wearable' | 'consumable' | 'key' | 'electronic' | 'tool' | 'misc' | 'quest' | 'weapon' | 'armor';
 export type LegalStatus = 'legal' | 'restricted' | 'illegal' | 'contextual';
 export type SocialReaction = 'normal' | 'admired' | 'suspicious' | 'feared';
 
@@ -34,7 +34,7 @@ export interface IntelligentItem {
   iconName: string; 
   quantity: number;
   stackable: boolean; 
-  effects?: Partial<PlayerStats>;
+  effects?: Partial<Record<keyof PlayerStats, number>>;
   physiologicalEffects?: {
     hunger?: number;
     thirst?: number;
@@ -101,7 +101,7 @@ export interface DynamicItemCreationPayload {
   overrides: {
     name?: string;
     description?: string;
-    effects?: Partial<PlayerStats>;
+    effects?: Partial<Record<keyof PlayerStats, number>>;
     skillModifiers?: Partial<Record<string, number>>;
     physiologicalEffects?: { hunger?: number; thirst?: number };
   };

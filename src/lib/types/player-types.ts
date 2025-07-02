@@ -203,7 +203,7 @@ export const IntelligentItemInputSchema = z.object({
   id: z.string().describe("L'identifiant de base de l'objet (le modèle)."),
   name: z.string().describe("Le nom de l'objet."),
   description: z.string().describe("La description de l'objet."),
-  type: z.enum(['wearable', 'consumable', 'key', 'electronic', 'tool', 'misc', 'quest']).describe("La catégorie de l'objet."),
+  type: z.enum(['wearable', 'consumable', 'key', 'electronic', 'tool', 'misc', 'quest', 'weapon', 'armor']).describe("La catégorie de l'objet."),
   quantity: z.number().describe("La quantité de cet objet."),
   condition: z.object({ durability: z.number() }).describe("L'état actuel de l'objet (100 = parfait)."),
   memory: z.object({

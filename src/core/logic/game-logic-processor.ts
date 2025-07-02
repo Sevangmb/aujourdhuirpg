@@ -8,7 +8,7 @@ import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, Player
 import { performSkillCheck } from '@/lib/skill-check';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
-import { processCombatTurn } from '@/lib/game-logic';
+import { processCombatTurn } from '@/modules/combat/logic';
 
 export class GameLogicProcessor {
   
@@ -21,11 +21,21 @@ export class GameLogicProcessor {
     }
 
     const events: GameEvent[] = [];
+    events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'player_action', text: choice.text } });
 
     // Combat logic takes precedence
     if (gameState.currentEnemy) {
         const combatResult = processCombatTurn(gameState.player, gameState.currentEnemy, choice);
         events.push(...combatResult.events);
+        // Check for combat end
+        const finalEnemyHealth = combatResult.events.reduce((health, event) => {
+            if(event.type === 'COMBAT_ACTION' && event.target === 'enemy') return event.newHealth;
+            return health;
+        }, gameState.currentEnemy.health);
+
+        if (finalEnemyHealth <= 0) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'player' });
+        }
         return { gameEvents: events };
     }
     
@@ -153,7 +163,7 @@ export class GameLogicProcessor {
       events.push({ type: 'ITEM_REMOVED', itemId: item.id, itemName: item.name, quantity: 1 });
       if (item.effects) {
         Object.entries(item.effects).forEach(([stat, value]) => {
-          events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value as number, finalValue: state.player!.stats[stat as keyof PlayerStats].value + (value as number) });
+          events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value, finalValue: state.player!.stats[stat as keyof PlayerStats].value + value });
         });
       }
       if (item.physiologicalEffects) {

@@ -1,3 +1,4 @@
+
 import type { StoryChoice, GameState } from '@/lib/types';
 import type { CascadeResult, EnrichedContext, ModuleEnrichmentResult } from './types';
 import { cascadeManager } from './cascade-manager';
@@ -37,7 +38,7 @@ function determineRelevantModules(choice: StoryChoice, state: GameState): string
   }
 
   // 3. General triggers (always add context for broad actions)
-  if(modules.size === 0 || choiceType === 'exploration' || choiceType === 'observation' || choiceType === 'social') {
+  if(modules.size === 0 && (choiceType === 'exploration' || choiceType === 'observation' || choiceType === 'social')) {
       modules.add('culture_locale');
   }
 

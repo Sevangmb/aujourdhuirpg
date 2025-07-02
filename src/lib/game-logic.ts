@@ -14,6 +14,8 @@ import { handleAddHistoricalContact } from '@/modules/historical/logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { isShopOpen } from '@/lib/utils/time-utils';
 import type { CascadeResult } from '@/core/cascade/types';
+import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
+import { processCombatTurn } from '@/modules/combat/logic';
 
 
 // --- Game Actions & Reducer ---
@@ -423,7 +425,7 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
     }
     
     if (stats.Sante.value < (stats.Sante.max || 100) * 0.7) {
-        const healingItems = inventory.filter(i => i.effects?.Sante && (i.effects.Sante as any) > 0);
+        const healingItems = inventory.filter(i => i.effects?.Sante && (i.effects.Sante as any).value > 0);
         if (healingItems.length > 0) {
             const bestHeal = healingItems[0];
             choices.push({
@@ -436,7 +438,7 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
                 energyCost: 1,
                 timeCost: 3,
                 consequences: ['Récupération de santé'],
-                statEffects: bestHeal.effects,
+                statEffects: bestHeal.effects as Record<string, number>,
             });
         }
     }
@@ -488,25 +490,6 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
 }
 
 
-// --- COMBAT LOGIC ---
-export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
-    const events: GameEvent[] = [];
-    
-    // Player action
-    if (choice.combatActionType === 'attack') {
-        const weapon = player.inventory.find(i => i.combatStats?.damage) || { name: 'Poings', combatStats: { damage: 2 }};
-        const damageDealt = 5; // Simplified
-        events.push({ type: 'COMBAT_ACTION', attacker: player.name, target: 'enemy', damage: damageDealt, newHealth: enemy.health - damageDealt, action: `attaque ${enemy.name} avec ${weapon.name}` });
-    }
-    // ... other combat actions
-    
-    // Enemy action (simplified)
-    const damageTaken = 3; // Simplified
-    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: damageTaken, newHealth: player.stats.Sante.value - damageTaken, action: `attaque ${player.name}` });
-
-    return { events };
-}
-
 export function summarizeGameEventsForAI(events: GameEvent[]): string {
     if (!events || events.length === 0) return "Aucun événement particulier ne s'est produit.";
     
@@ -521,7 +504,9 @@ export function summarizeGameEventsForAI(events: GameEvent[]): string {
                 summaries.push(event.text);
                 break;
             case 'PLAYER_STAT_CHANGE':
-                if(Math.abs(event.change) > 2) summaries.push(`Sa statistique '${event.stat}' a changé.`);
+                if(Math.abs(event.change) > 2 && event.stat !== 'Sante' && event.stat !== 'Energie') {
+                  summaries.push(`Sa statistique '${event.stat}' a changé.`);
+                }
                 break;
             case 'XP_GAINED':
                 summaries.push(`A gagné de l'expérience.`);
@@ -530,13 +515,13 @@ export function summarizeGameEventsForAI(events: GameEvent[]): string {
                 summaries.push(`A obtenu l'objet : ${event.itemName}.`);
                 break;
             case 'ITEM_REMOVED':
-                summaries.push(`A utilisé l'objet : ${event.itemName}.`);
+                summaries.push(`A utilisé ou perdu l'objet : ${event.itemName}.`);
                 break;
             case 'PLAYER_TRAVELS':
                 summaries.push(`A voyagé de ${event.from} à ${event.destination.name}.`);
                 break;
             case 'TRAVEL_EVENT':
-                summaries.push(event.narrative);
+                summaries.push(event.narrative.replace(/<p>|<\/p>/g, ''));
                 break;
             case 'COMBAT_STARTED':
                 summaries.push(`A engagé le combat avec ${event.enemy.name}.`);
@@ -544,7 +529,14 @@ export function summarizeGameEventsForAI(events: GameEvent[]): string {
             case 'COMBAT_ENDED':
                 summaries.push(`Le combat est terminé.`);
                 break;
+            case 'COMBAT_ACTION':
+                if (event.target === 'player') {
+                    summaries.push(`A été attaqué par ${event.attacker} et a subi des dégâts.`);
+                } else {
+                    summaries.push(`A attaqué ${event.target === 'enemy' ? 'l\'ennemi' : event.target} et a infligé des dégâts.`);
+                }
+                break;
         }
     }
-    return summaries.filter(Boolean).join('. ');
+    return summaries.filter(Boolean).join(' ');
 }

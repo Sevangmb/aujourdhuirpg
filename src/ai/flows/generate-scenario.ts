@@ -20,9 +20,8 @@ import { getBookDetailsTool } from '@/ai/tools/get-book-details-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
-  StoryChoiceSchema,
 } from './generate-scenario-schemas';
-import type { ToneSettings, BookSearchResult, GameTone } from '@/lib/types';
+import type { ToneSettings, GameTone } from '@/lib/types';
 
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
@@ -315,8 +314,6 @@ const generateScenarioFlow = ai.defineFlow(
           type: 'observation',
           mood: 'contemplative',
           consequences: ['Nouvelles informations', 'Pas de changement majeur'],
-          energyCost: 0,
-          timeCost: 0,
         }];
       }
       return output;
@@ -333,8 +330,6 @@ const generateScenarioFlow = ai.defineFlow(
           type: 'action',
           mood: 'adventurous',
           consequences: ['Peut fonctionner', 'Peut échouer à nouveau'],
-          energyCost: 0,
-          timeCost: 0,
         }],
          aiRecommendation: { focus: 'Erreur', reasoning: 'Erreur critique du modèle IA.' },
        };

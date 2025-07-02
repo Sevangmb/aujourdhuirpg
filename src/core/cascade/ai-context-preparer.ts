@@ -6,10 +6,11 @@
 
 import type { GameState, GameEvent, StoryChoice, Player, BookSearchResult, EnrichedRecipe, EnhancedPOI } from '@/lib/types';
 import type { CascadeResult } from './types';
-import { summarizeGameEventsForAI, generateActionsForPOIs } from '@/lib/game-logic';
+import { summarizeGameEventsForAI, generateActionsForPOIs, generateCascadeBasedActions, generatePlayerStateActions } from '@/lib/game-logic';
 import type { AdvancedSkillSystem, PlayerStats } from '@/lib/types/player-types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import type { Quest, PNJ } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class AIContextPreparer {
   
@@ -26,7 +27,12 @@ export class AIContextPreparer {
     const gameEventsSummary = summarizeGameEventsForAI(gameEvents);
     const cascadeSummary = this.summarizeCascadeResults(cascadeResult);
     
-    const contextualActions = generateActionsForPOIs(gameState.nearbyPois || [], gameState.player, gameState.gameTimeInMinutes);
+    const contextualActions = [
+        ...generateActionsForPOIs(gameState.nearbyPois || [], gameState.player, gameState.gameTimeInMinutes),
+        ...generatePlayerStateActions(gameState.player),
+        ...generateCascadeBasedActions(cascadeResult, gameState.player)
+    ];
+
     const suggestedContextualActions = contextualActions.map(action => ({
         text: action.text,
         description: action.description,
@@ -38,8 +44,8 @@ export class AIContextPreparer {
       player: this.preparePlayerContext(gameState.player),
       playerChoiceText: playerChoice.text,
       previousScenarioText: gameState.currentScenario?.scenarioText || "L'aventure commence.",
-      gameEvents: gameEventsSummary.replace(/[\n\r]/g, ' '),
-      cascadeResult: cascadeSummary.replace(/[\n\r]/g, ' '),
+      gameEvents: gameEventsSummary,
+      cascadeResult: cascadeSummary,
       suggestedContextualActions,
     };
   }
@@ -127,8 +133,8 @@ export class AIContextPreparer {
         aiOutput.newQuests.forEach(questData => {
             const questForEvent: Omit<Quest, 'id' | 'dateAdded' > = {
                 ...questData,
-                status: 'inactive', // New quests from AI start as inactive/available
-                objectives: questData.objectives.map(desc => ({ id: '', description: desc, isCompleted: false }))
+                status: questData.status || 'inactive',
+                objectives: questData.objectives.map(desc => ({ id: uuidv4(), description: desc, isCompleted: false }))
             };
             events.push({ type: 'QUEST_ADDED', quest: questForEvent });
         });
@@ -163,7 +169,11 @@ export class AIContextPreparer {
     }
 
     if (aiOutput.startCombat) {
-        aiOutput.startCombat.forEach(enemyData => events.push({ type: 'COMBAT_STARTED', enemy: enemyData }));
+      if (aiOutput.startCombat.length > 0) {
+        // For simplicity, we only start combat with the first enemy proposed by the AI
+        const enemy = { ...aiOutput.startCombat[0], health: aiOutput.startCombat[0].maxHealth };
+        events.push({ type: 'COMBAT_STARTED', enemy });
+      }
     }
 
     return events;

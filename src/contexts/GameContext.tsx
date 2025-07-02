@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth';
 import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI } from '@/lib/types';
 import type { AdaptedContact } from '@/modules/historical/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, enrichAIChoicesWithLogic, generateActionsForPOIs, generatePlayerStateActions, generateCascadeBasedActions } from '@/lib/game-logic';
+import { gameReducer, enrichAIChoicesWithLogic, generateActionsForPOIs, generatePlayerStateActions, generateCascadeBasedActions, summarizeGameEventsForAI } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -220,11 +220,14 @@ export const GameProvider: React.FC<{
 
     try {
         const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, choice);
+        
+        // Create a temporary state to correctly enrich choices later
+        const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
 
-        // First, apply the deterministic logic results to the state
+        // Dispatch the deterministic logic results to update the main state
         dispatch({ type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
         
-        // Then, generate the AI narration based on the prepared context
+        // Generate the AI narration based on the prepared context
         const aiOutput = await generateScenario(aiContext);
         
         // Convert AI proposals (new quests, items etc.) into game events
@@ -235,19 +238,14 @@ export const GameProvider: React.FC<{
            dispatch({ type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
         }
 
-        // Create a temporary state to correctly enrich choices
-        const stateAfterAllEvents = gameReducer(
-            gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents }),
-            { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents }
-        );
+        // Use the temporary state to enrich AI choices with game logic (e.g., success probability)
+        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], stateAfterLogic.player!);
         
-        // Enrich AI choices with game logic (e.g., success probability)
-        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], stateAfterAllEvents.player!);
-        
-        // Generate contextual choices from the game world
-        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, stateAfterAllEvents.player!);
-        const poiActions = generateActionsForPOIs(stateAfterAllEvents.nearbyPois || [], stateAfterAllEvents.player!, stateAfterAllEvents.gameTimeInMinutes);
-        const stateBasedActions = generatePlayerStateActions(stateAfterAllEvents.player!);
+        // Generate contextual choices from the game world based on the state *after* all events
+        const finalState = gameReducer(stateAfterLogic, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
+        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, finalState.player!);
+        const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
+        const stateBasedActions = generatePlayerStateActions(finalState.player!);
         
         let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
 

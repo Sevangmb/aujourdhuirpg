@@ -3,7 +3,7 @@
  * @fileOverview Contains the core business logic for the Combat module.
  */
 
-import type { GameState, GameEvent, Player, DegreeOfSuccess } from '@/lib/types';
+import type { GameState, GameEvent, Player, DegreeOfSuccess, StoryChoice } from '@/lib/types';
 import type { Enemy } from './types';
 
 /**
@@ -92,4 +92,22 @@ export function summarizeCombatEvents(events: GameEvent[], playerName: string, e
     }
     
     return summaryLines.join('\n');
+}
+
+export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
+    const events: GameEvent[] = [];
+    
+    // Player action
+    if (choice.combatActionType === 'attack') {
+        const weapon = player.inventory.find(i => i.combatStats?.damage) || { name: 'Poings', combatStats: { damage: 2 }};
+        const damageDealt = 5; // Simplified
+        events.push({ type: 'COMBAT_ACTION', attacker: player.name, target: 'enemy', damage: damageDealt, newHealth: enemy.health - damageDealt, action: `attaque ${enemy.name} avec ${weapon.name}` });
+    }
+    // ... other combat actions
+    
+    // Enemy action (simplified)
+    const damageTaken = 3; // Simplified
+    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: damageTaken, newHealth: player.stats.Sante.value - damageTaken, action: `attaque ${player.name}` });
+
+    return { events };
 }
