@@ -200,11 +200,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             player = nextState.player!;
             break;
           case 'PNJ_RELATION_CHANGED': {
-            const nowISO = new Date().toISOString();
-            const newPNJs = player.encounteredPNJs.map(p =>
-                p.id === event.pnjId ? { ...p, dispositionScore: event.finalDisposition, lastSeen: nowISO } : p
-            );
-            player = { ...player, encounteredPNJs: newPNJs };
+            const pnjToUpdate = player.encounteredPNJs.find(p => p.id === event.pnjId);
+            if(pnjToUpdate) {
+                const finalDisposition = pnjToUpdate.dispositionScore + event.change;
+                const newNote = event.note;
+
+                const newPNJs = player.encounteredPNJs.map(p =>
+                    p.id === event.pnjId ? { 
+                        ...p, 
+                        dispositionScore: finalDisposition, 
+                        lastSeen: new Date().toISOString(),
+                        notes: newNote ? [...(p.notes || []), newNote] : p.notes
+                    } : p
+                );
+                player = { ...player, encounteredPNJs: newPNJs };
+            }
             break;
           }
            case 'DECISION_LOGGED':

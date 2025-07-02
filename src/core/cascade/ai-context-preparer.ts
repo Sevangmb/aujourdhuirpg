@@ -87,6 +87,12 @@ export class AIContextPreparer {
       })),
       money: player.money,
       currentLocation: player.currentLocation,
+      encounteredPNJs: player.encounteredPNJs?.map(pnj => ({
+        id: pnj.id,
+        name: pnj.name,
+        description: pnj.description,
+        dispositionScore: pnj.dispositionScore,
+      })),
       toneSettings: player.toneSettings,
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
@@ -157,6 +163,12 @@ export class AIContextPreparer {
         aiOutput.newPNJs.forEach(pnjData => {
             const pnjForEvent: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'> = { ...pnjData, interactionHistory: [] };
             events.push({ type: 'PNJ_ENCOUNTERED', pnj: pnjForEvent });
+        });
+    }
+
+    if(aiOutput.pnjUpdates) {
+        aiOutput.pnjUpdates.forEach(update => {
+            events.push({ type: 'PNJ_RELATION_CHANGED', pnjId: update.pnjId, change: update.dispositionChange, note: update.newNote });
         });
     }
 

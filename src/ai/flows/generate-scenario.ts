@@ -150,6 +150,7 @@ Votre mission est simple et se déroule en trois temps :
 3.  **SUGGÉRER (champs optionnels) :** Si votre narration le justifie *logiquement*, vous pouvez proposer des événements.
     - Une rencontre inattendue ? Proposez un \`newPNJs\`.
     - Le joueur trouve un objet ? Proposez un \`newItems\`.
+    - Si l'interaction avec un PNJ connu (de \`player.encounteredPNJs\`) change votre relation, proposez une mise à jour via \`pnjUpdates\`.
     - Laissez ces champs vides la plupart du temps.
 
 **Principe d'Or : Vous êtes le conteur, pas le mécanicien.**
@@ -159,7 +160,7 @@ const PROMPT_GUIDING_PRINCIPLES = `
 **Principes Directeurs (TRÈS IMPORTANT) :**
 - **ADAPTATION NARRATIVE :** Suivez impérativement les instructions de tonalité ci-dessous.
 {{{toneInstructions}}}
-- **CONTEXTE ENRICHI :** Utilisez toutes les données fournies (contexte du joueur, cascade, etc.) pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
+- **CONTEXTE ENRICHI :** Utilisez toutes les données fournies (contexte du joueur, PNJ rencontrés, cascade, etc.) pour rendre votre narration VIVANTE, DÉTAILLÉE et COHÉRENTE.
 - **UTILISATION DES OUTILS :** Utilisez les outils disponibles ('getWeatherTool', etc.) pour enrichir votre narration lorsque cela est pertinent.
 - **FORMATAGE DES DIALOGUES :** Pour garantir la clarté, suivez ce format pour tous les dialogues : le nom du personnage en gras (\`<strong>\`), suivi de \` : \`, puis la réplique entre guillemets français \`« ... »\`.
   **Exemple :** \`<p><strong>Marie :</strong> « Allons au marché. »</p>\`

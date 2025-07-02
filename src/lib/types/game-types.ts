@@ -47,7 +47,7 @@ export type GameEvent =
   | { type: 'QUEST_STATUS_CHANGED'; questId: string; newStatus: Quest['status']; }
   | { type: 'QUEST_OBJECTIVE_CHANGED'; questId: string; objectiveId: string; completed: boolean; }
   | { type: 'PNJ_ENCOUNTERED'; pnj: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'>; }
-  | { type: 'PNJ_RELATION_CHANGED'; pnjId: string; change: number; finalDisposition: number; }
+  | { type: 'PNJ_RELATION_CHANGED'; pnjId: string; change: number; note?: string; }
   | { type: 'COMBAT_STARTED'; enemy: Enemy; }
   | { type: 'COMBAT_ENDED'; winner: 'player' | 'enemy'; }
   | { type: 'COMBAT_ACTION'; attacker: string; target: 'player' | 'enemy'; damage: number; newHealth: number; action: string; }
@@ -55,6 +55,7 @@ export type GameEvent =
   | { type: 'PLAYER_TRAVELS'; from: string; destination: Position; mode: string; duration: number; }
   | { type: 'TRAVEL_EVENT'; narrative: string; }
   | { type: 'HISTORICAL_CONTACT_ADDED'; payload: HistoricalContact; }
+  | { type: 'DECISION_LOGGED'; decision: Omit<MajorDecision, 'id' | 'dateMade'> }
   | { type: 'JOURNAL_ENTRY_ADDED'; payload: Omit<JournalEntry, 'id' | 'timestamp'>; }
   | { type: 'GAME_TIME_PROGRESSED'; minutes: number; }
   | { type: 'SCENARIO_TEXT_SET'; text: string; };

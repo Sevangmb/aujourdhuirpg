@@ -58,6 +58,13 @@ export const StoryChoiceSchema = z.object({
   statEffects: z.record(z.number()).optional().describe("Effets sur les statistiques du joueur après l'action. Ex: {'Energie': 5, 'Stress': -10}"),
 }).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.");
 
+
+export const PNJUpdateSchema = z.object({
+  pnjId: z.string().describe("ID du PNJ existant à mettre à jour."),
+  dispositionChange: z.number().describe("Changement dans le score de disposition (+10, -5, etc.)."),
+  newNote: z.string().optional().describe("Nouvelle note à ajouter sur le PNJ basée sur l'interaction.")
+});
+
 // --- Main Output Schema ---
 export const GenerateScenarioOutputSchema = z.object({
   scenarioText: z.string().describe('Le texte du scénario généré, formaté en HTML. Ce texte décrit le résultat de l\'action du joueur et prépare la scène pour la prochaine action.'),
@@ -72,6 +79,7 @@ export const GenerateScenarioOutputSchema = z.object({
   newQuests: z.array(QuestInputSchema).optional().describe("Propose de nouvelles quêtes à ajouter au journal du joueur."),
   questUpdates: z.array(QuestUpdateSchema).optional().describe("Propose des mises à jour de quêtes existantes (ex: objectif complété)."),
   newPNJs: z.array(PNJInteractionSchema).optional().describe("Introduit de nouveaux personnages non-joueurs dans la scène."),
+  pnjUpdates: z.array(PNJUpdateSchema).optional().describe("Propose des mises à jour de PNJ existants (ex: changement de disposition)."),
   newItems: z.array(DynamicItemCreationPayloadSchema).optional().describe("Introduit de nouveaux objets dans le jeu (ex: un objet trouvé)."),
   newTransactions: z.array(NewTransactionSchema).optional().describe("Génère des transactions financières (ex: trouver de l'argent, recevoir un paiement)."),
   newClues: z.array(ClueInputSchema).optional().describe("Génère de nouveaux indices pour le dossier d'enquête."),

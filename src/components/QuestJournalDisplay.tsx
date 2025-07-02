@@ -113,10 +113,12 @@ const QuestCard: React.FC<{ quest: Quest }> = ({ quest }) => {
 
 const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
   let relationColor = "text-yellow-600";
-  if (pnj.dispositionScore > 50) relationColor = "text-green-500";
-  else if (pnj.dispositionScore > 0) relationColor = "text-lime-600";
-  else if (pnj.dispositionScore < -50) relationColor = "text-red-600";
-  else if (pnj.dispositionScore < 0) relationColor = "text-orange-500";
+  let relationText = "Neutre";
+  
+  if (pnj.dispositionScore > 75) { relationColor = "text-green-500"; relationText = "Allié"; }
+  else if (pnj.dispositionScore > 25) { relationColor = "text-lime-600"; relationText = "Amical"; }
+  else if (pnj.dispositionScore < -75) { relationColor = "text-red-600"; relationText = "Hostile"; }
+  else if (pnj.dispositionScore < -25) { relationColor = "text-orange-500"; relationText = "Méfiance"; }
 
   return (
     <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow">
@@ -125,13 +127,7 @@ const PNJCard: React.FC<{ pnj: PNJ }> = ({ pnj }) => {
             <CardTitle className="text-md font-headline text-primary/90">{pnj.name}</CardTitle>
             <Badge variant="outline" className={relationColor}>
                 <Heart className="w-3 h-3 mr-1"/>
-                {
-                  pnj.dispositionScore > 75 ? "Allié" :
-                  pnj.dispositionScore > 25 ? "Amical" :
-                  pnj.dispositionScore > -25 ? "Neutre" :
-                  pnj.dispositionScore > -75 ? "Méfiance" :
-                  "Hostile"
-                }
+                {relationText}
             </Badge>
         </div>
         <CardDescription className="text-xs">{pnj.description}</CardDescription>
