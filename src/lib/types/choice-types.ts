@@ -1,7 +1,8 @@
 
+
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
-import type { AdvancedSkillSystem, PlayerStats } from './player-types';
+import type { AdvancedSkillSystem, PlayerStats, Position } from './';
 import type { EstablishmentType } from './poi-types';
 import type { EnrichedRecipe } from './recipe-types';
 
@@ -45,4 +46,9 @@ export interface StoryChoice {
   economicImpact?: { cost: { min: number, max: number }, location: string };
   poiReference?: { osmId: string, serviceId: string, establishmentType: EstablishmentType };
   craftingPayload?: { recipe: EnrichedRecipe };
+  // New property to specifically handle travel actions
+  travelChoiceInfo?: {
+      destination: Position;
+      mode: 'walk' | 'metro' | 'taxi';
+  }
 }

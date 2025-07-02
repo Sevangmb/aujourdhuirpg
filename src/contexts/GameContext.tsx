@@ -4,10 +4,9 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI } from '@/lib/types';
-import type { AdaptedContact, HistoricalContact } from '@/modules/historical/types';
-import type { Enemy } from '@/modules/combat/types';
+import type { AdaptedContact } from '@/modules/historical/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import { gameReducer, prepareAIInput, convertAIOutputToEvents, enrichAIChoicesWithLogic } from '@/lib/game-logic';
+import { gameReducer, enrichAIChoicesWithLogic, generateActionsForPOIs, generatePlayerStateActions, generateCascadeBasedActions } from '@/lib/game-logic';
 import { saveGameState } from '@/lib/game-state-persistence';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,7 +16,6 @@ import { generateGeoIntelligence } from '@/ai/flows/generate-geo-intelligence-fl
 import { findAndAdaptHistoricalContactsForLocation } from '@/modules/historical/service';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { generateScenario } from '@/ai/flows/generate-scenario';
-import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { v4 as uuidv4 } from 'uuid';
 
 import { HistoricalEncounterModal } from '@/components/HistoricalEncounterModal';
@@ -26,7 +24,7 @@ import { objectCascadeManager } from '@/core/objects/object-cascade-manager';
 import { fetchTopHeadlines } from '@/data-sources/news/news-api';
 import { NewsQuestGenerator } from '@/modules/news/news-quest-generator';
 import { fetchNearbyPoisFromOSM } from '@/data-sources/establishments/overpass-api';
-
+import { CascadeOrchestrator } from '@/core/cascade/cascade-orchestrator';
 
 // Helper types for managing async data
 type AsyncData<T> = {
@@ -55,6 +53,7 @@ interface GameContextType {
   handleSignOut: () => void;
   handleInitiateTravel: (destination: Position) => void;
   handleExamineItem: (instanceId: string) => Promise<void>;
+  handleChoiceSelected: (choice: StoryChoice) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -65,6 +64,9 @@ const initialContextualData: GameContextData = {
     geoIntelligence: { data: null, loading: false, error: null },
     pois: { data: null, loading: false, error: null },
 }
+
+// Singleton instance of the orchestrator
+const orchestrator = new CascadeOrchestrator();
 
 export const GameProvider: React.FC<{
   children: React.ReactNode;
@@ -213,6 +215,55 @@ export const GameProvider: React.FC<{
     }
   }, [gameState?.gameTimeInMinutes, gameState?.player, generateAndAddNewQuests]);
 
+  const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
+    if (isLoading || !gameState || !gameState.player) return;
+    setIsLoading(true);
+
+    try {
+        const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, choice);
+
+        // First, apply the deterministic logic results to the state
+        dispatch({ type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
+        
+        // Then, generate the AI narration based on the prepared context
+        const aiOutput = await generateScenario(aiContext);
+        
+        // Convert AI proposals (new quests, items etc.) into game events
+        const aiGeneratedEvents = orchestrator.aiContextPreparer.convertAIOutputToEvents(aiOutput);
+        
+        // Apply AI-generated events to the state
+        if (aiGeneratedEvents.length > 0) {
+           dispatch({ type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
+        }
+
+        // Get the final state after all events have been applied
+        const finalState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: [...gameLogicResult.gameEvents, ...aiGeneratedEvents] });
+        
+        // Enrich AI choices with game logic (e.g., success probability)
+        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalState.player!);
+        
+        // Generate contextual choices from the game world
+        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, finalState.player!);
+        const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
+        const stateBasedActions = generatePlayerStateActions(finalState.player!);
+        
+        let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
+
+        dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
+            scenarioText: aiOutput.scenarioText, 
+            choices: allChoices, 
+            aiRecommendation: aiOutput.aiRecommendation 
+        }});
+      
+    } catch (error) {
+      let errorMessage = "Impossible de générer le prochain scénario.";
+      if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
+      toast({ variant: "destructive", title: "Erreur de Connexion avec l'IA", description: errorMessage });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [gameState, dispatch, toast, isLoading, setIsLoading]);
+
   // --- ACTION HANDLERS ---
   const handleInitiateTravel = (destination: Position) => {
     if (!gameState?.player) return;
@@ -223,85 +274,27 @@ export const GameProvider: React.FC<{
     setTravelDestination(destination);
   };
   
-  const handleConfirmTravel = async (mode: 'walk' | 'metro' | 'taxi') => {
+  const handleConfirmTravel = (mode: 'walk' | 'metro' | 'taxi') => {
     if (!travelDestination || !gameState || !gameState.player) return;
-    setIsLoading(true);
+    
+    // This now just simulates a choice selection. The logic is handled by the orchestrator.
+    const travelChoice: StoryChoice = {
+        id: `travel_${travelDestination.name.replace(/\s+/g, '_')}`,
+        text: `Voyager vers ${travelDestination.name} en ${mode}.`,
+        description: `Choisir de se rendre à ${travelDestination.name}.`,
+        type: 'action',
+        iconName: 'Compass',
+        mood: 'adventurous',
+        consequences: ['Changement de lieu'],
+        // The orchestrator will use these properties to trigger the travel logic
+        travelChoiceInfo: {
+            destination: travelDestination,
+            mode: mode
+        }
+    };
+
     setTravelDestination(null);
-  
-    try {
-      const origin = gameState.player.currentLocation;
-      const distance = getDistanceInKm(origin.latitude, origin.longitude, travelDestination.latitude, travelDestination.longitude);
-      
-      let time = 0, cost = 0, energy = 0;
-      if (mode === 'walk') {
-          time = Math.round(distance * 12);
-          energy = Math.round(distance * 5) + 1;
-      } else if (mode === 'metro') {
-          time = Math.round(distance * 4 + 10);
-          cost = 1.90;
-          energy = Math.round(distance * 1) + 1;
-      } else { // taxi
-          time = Math.round(distance * 2 + 5);
-          cost = parseFloat((5 + distance * 1.5).toFixed(2));
-          energy = Math.round(distance * 0.5);
-      }
-  
-      if (gameState.player.money < cost) {
-          toast({ variant: "destructive", title: "Fonds insuffisants" }); setIsLoading(false); return;
-      }
-      if (gameState.player.stats.Energie.value < energy) {
-          toast({ variant: "destructive", title: "Trop fatigué" }); setIsLoading(false); return;
-      }
-      
-      const travelNarrative = (await generateTravelEvent({
-        travelMode: mode, origin, destination: travelDestination,
-        gameTimeInMinutes: gameState.gameTimeInMinutes,
-        playerStats: gameState.player.stats,
-        playerSkills: gameState.player.skills,
-      })).narrative;
-  
-      const travelEvents: GameEvent[] = [
-          { type: 'PLAYER_TRAVELS', from: origin.name, destination: travelDestination, mode, duration: time },
-          { type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: gameState.player.stats.Energie.value - energy },
-          { type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'location_change', text: `Voyage vers ${travelDestination.name} en ${mode}.` } },
-      ];
-      if (cost > 0) {
-          travelEvents.push({ type: 'MONEY_CHANGED', amount: -cost, description: `Transport en ${mode} vers ${travelDestination.name}` });
-      }
-      if (travelNarrative) {
-          travelEvents.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
-      }
-      
-      let tempState = gameState;
-      travelEvents.forEach(event => {
-        tempState = { ...tempState, ...gameReducer(tempState, { type: 'APPLY_GAME_EVENTS', payload: [event] }) };
-      });
-      
-      const arrivalChoice = { text: `[Arrivée à ${travelDestination.name}]` } as StoryChoice;
-      const aiInput = prepareAIInput(tempState, arrivalChoice, travelEvents, null);
-      if (!aiInput) throw new Error("Could not prepare AI input for arrival.");
-  
-      const arrivalScenario = await generateScenario(aiInput);
-      
-      dispatch({ type: 'APPLY_GAME_EVENTS', payload: travelEvents });
-
-      const finalEvents = convertAIOutputToEvents(arrivalScenario);
-      if (finalEvents.length > 0) {
-        dispatch({ type: 'APPLY_GAME_EVENTS', payload: finalEvents });
-      }
-      const finalState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: [...travelEvents, ...finalEvents] });
-      
-      const enrichedChoices = enrichAIChoicesWithLogic(arrivalScenario.choices || [], finalState.player!);
-
-      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { ...arrivalScenario, choices: enrichedChoices }});
-  
-    } catch (error) {
-        let errorMessage = "Le voyage a été interrompu par une erreur inattendue.";
-        if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
-        toast({ variant: "destructive", title: "Erreur de Voyage", description: errorMessage });
-    } finally {
-        setIsLoading(false);
-    }
+    handleChoiceSelected(travelChoice);
   };
   
   
@@ -322,7 +315,7 @@ export const GameProvider: React.FC<{
     };
     events.push({ type: 'PNJ_ENCOUNTERED', pnj: pnjData });
 
-    const historicalContactData: HistoricalContact = {
+    const historicalContactData = {
         id: uuidv4(),
         historical: contactToApproach.historical,
         modern: contactToApproach.modern,
@@ -395,6 +388,7 @@ export const GameProvider: React.FC<{
     handleSignOut: onSignOut,
     handleInitiateTravel,
     handleExamineItem,
+    handleChoiceSelected,
   };
 
   return (

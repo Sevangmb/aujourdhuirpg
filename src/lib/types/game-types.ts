@@ -1,4 +1,5 @@
 
+
 import type { Player, MomentumSystem } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
@@ -61,6 +62,7 @@ export type GameEvent =
 export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
+  choices: StoryChoice[]; // All available choices, including contextual ones
   currentEnemy?: Enemy | null;
   nearbyPois: EnhancedPOI[] | null;
   gameTimeInMinutes: number;
