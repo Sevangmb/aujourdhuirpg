@@ -180,7 +180,7 @@ export const GameProvider: React.FC<{
         const potentialQuests = (await Promise.all(questPromises)).filter((q): q is Omit<Quest, 'id' | 'dateAdded'> => q !== null);
 
         if (potentialQuests.length > 0) {
-            const existingQuestTitles = new Set(gameState.player.questLog.map(q => q.title));
+             const existingQuestTitles = new Set(gameState.player.questLog.map(q => q.title));
             const newQuests = potentialQuests.filter(q => !existingQuestTitles.has(q.title));
 
             if (newQuests.length > 0) {

@@ -1,6 +1,4 @@
 
-
-
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
@@ -16,6 +14,7 @@ import { handleAddHistoricalContact } from '@/modules/historical/logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { isShopOpen } from '@/lib/utils/time-utils';
 import type { CascadeResult } from '@/core/cascade/types';
+import type { WeatherData } from '@/app/actions/get-current-weather';
 
 // --- Game Actions & Reducer ---
 // This reducer now directly applies the effects of GameEvents calculated by the logic layer.
@@ -586,4 +585,36 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
       }
     }
     return contextualChoices;
+}
+
+export function getWeatherModifier(skillPath: string, weatherData: WeatherData | null): { modifier: number, reason: string } {
+  if (!weatherData) {
+    return { modifier: 0, reason: "" };
+  }
+
+  const weatherDesc = weatherData.description.toLowerCase();
+  const skill = skillPath.split('.').pop() || '';
+  let modifier = 0;
+  
+  // Fog effects
+  if (weatherDesc.includes('brouillard')) {
+    if (skill === 'stealth') modifier += 15;
+    if (skill === 'navigation') modifier -= 10;
+    if (skill === 'observation') modifier -= 8;
+  }
+  // Rain effects
+  else if (weatherDesc.includes('pluie') || weatherDesc.includes('averses')) {
+    if (skill === 'stealth') modifier += 10;
+    if (skill === 'observation') modifier -= 5;
+    if (skill === 'persuasion' || skill === 'networking') modifier -= 3;
+  }
+  
+  let reason = "";
+  if (modifier > 0) {
+    reason = `Le temps (${weatherData.description}) favorise cette action.`;
+  } else if (modifier < 0) {
+    reason = `Le temps (${weatherData.description}) pénalise cette action.`;
+  }
+
+  return { modifier, reason };
 }

@@ -1,5 +1,4 @@
 
-
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem, PlayerStats, Position } from './';
