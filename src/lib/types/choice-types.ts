@@ -34,7 +34,8 @@ export interface StoryChoice {
   timeCost: number; // in minutes
   consequences: string[];
   isCombatAction?: boolean;
-  combatActionType?: 'attack' | 'defend' | 'flee' | 'special';
+  combatActionType?: 'attack' | 'defend' | 'flee' | 'special' | 'use_item';
+  itemReference?: string; // e.g., instanceId of item to use
   skillCheck?: {
     skill: string; // e.g., "cognitive.observation", "physical.stealth". A path in AdvancedSkillSystem
     difficulty: number; // e.g., 60

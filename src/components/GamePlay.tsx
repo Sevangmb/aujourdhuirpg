@@ -10,6 +10,7 @@ import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
 import CombatStatusDisplay from './CombatStatusDisplay';
 import { useIsMobile } from '@/hooks/use-mobile';
+import CombatUI from './CombatUI';
 
 const GamePlay: React.FC = () => {
   const { gameState, isLoading, handleChoiceSelected } = useGame();
@@ -26,7 +27,7 @@ const GamePlay: React.FC = () => {
   }
 
   const availableChoices = currentEnemy 
-    ? gameState.choices.filter(c => c.isCombatAction)
+    ? [] // Combat choices are handled by CombatUI now
     : currentScenario.choices || [];
 
   return (
@@ -34,12 +35,17 @@ const GamePlay: React.FC = () => {
       <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6">
         {currentEnemy && <CombatStatusDisplay enemy={currentEnemy} />}
         <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
-        <ChoiceSelectionDisplay
-            choices={availableChoices}
-            onSelectChoice={handleChoiceSelected}
-            isLoading={isLoading}
-            aiRecommendation={currentEnemy ? null : currentScenario.aiRecommendation || null}
-          />
+        
+        {currentEnemy ? (
+          <CombatUI />
+        ) : (
+          <ChoiceSelectionDisplay
+              choices={availableChoices}
+              onSelectChoice={handleChoiceSelected}
+              isLoading={isLoading}
+              aiRecommendation={currentScenario.aiRecommendation || null}
+            />
+        )}
       </div>
 
       {!isMobile && <GameSidebar />}

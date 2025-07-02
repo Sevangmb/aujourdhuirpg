@@ -77,8 +77,11 @@ export function handleCombatAction(state: GameState, target: 'player' | 'enemy',
 export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
     const events: GameEvent[] = [];
     
+    let playerTurnTaken = false;
+
     // Player's Turn
     if (choice.combatActionType === 'attack') {
+        playerTurnTaken = true;
         const weapon = player.inventory.find(i => i.type === 'weapon' && i.combatStats?.damage) || { name: 'Poings', combatStats: { damage: 2 }};
         const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.arme_blanche', enemy.defense, player.inventory, 0, player.physiology, player.momentum);
         events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
@@ -98,6 +101,7 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
             events.push({ type: 'TEXT_EVENT', text: "Votre attaque manque sa cible !" });
         }
     } else if (choice.combatActionType === 'flee') {
+        playerTurnTaken = true;
         const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.esquive', 40, [], 0, player.physiology, player.momentum);
         events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
         if (skillCheckResult.success) {
@@ -107,21 +111,35 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
         } else {
             events.push({ type: 'TEXT_EVENT', text: "Votre tentative de fuite échoue !" });
         }
+    } else if (choice.combatActionType === 'use_item') {
+        playerTurnTaken = true;
+        const item = player.inventory.find(i => i.instanceId === choice.itemReference);
+        if (item && item.effects?.Sante) {
+            const healAmount = item.effects.Sante;
+            const newPlayerHealth = Math.min(player.stats.Sante.max!, player.stats.Sante.value + healAmount);
+            events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Sante', change: healAmount, finalValue: newPlayerHealth });
+            events.push({ type: 'ITEM_REMOVED', itemId: item.id, itemName: item.name, quantity: 1 });
+            events.push({ type: 'TEXT_EVENT', text: `Vous utilisez ${item.name} et récupérez ${healAmount} points de santé.` });
+        } else {
+             events.push({ type: 'TEXT_EVENT', text: "Vous ne pouvez pas utiliser cet objet en combat." });
+        }
     }
     
-    // Enemy's Turn (if not defeated/escaped)
-    const enemyAttackRoll = performSkillCheck(enemy.stats as any, {level: 10, xp: 0, xpToNext: 100}, 'physiques.arme_blanche', player.stats.Discretion.value, [], 0, {basic_needs: {hunger:{level:100}, thirst:{level:100}}}, {momentum_bonus:0});
-    if (enemyAttackRoll.success) {
-        const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, 'success');
-        const newPlayerHealth = Math.max(0, player.stats.Sante.value - enemyDamage);
-        events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: `attaque ${player.name}` });
+    // Enemy's Turn (if player acted and combat is not over)
+    if (playerTurnTaken) {
+        const enemyAttackRoll = performSkillCheck(enemy.stats as any, {level: 10, xp: 0, xpToNext: 100}, 'physiques.arme_blanche', player.stats.Discretion.value, [], 0, {basic_needs: {hunger:{level:100}, thirst:{level:100}}}, {momentum_bonus:0} as any);
+        if (enemyAttackRoll.success) {
+            const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, 'success');
+            const newPlayerHealth = Math.max(0, player.stats.Sante.value - enemyDamage);
+            events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: `attaque ${player.name}` });
 
-        if (newPlayerHealth <= 0) {
-            events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
-            events.push({ type: 'TEXT_EVENT', text: "Vous avez été vaincu..." });
+            if (newPlayerHealth <= 0) {
+                events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
+                events.push({ type: 'TEXT_EVENT', text: "Vous avez été vaincu..." });
+            }
+        } else {
+             events.push({ type: 'TEXT_EVENT', text: `L'attaque de ${enemy.name} vous manque.` });
         }
-    } else {
-         events.push({ type: 'TEXT_EVENT', text: `L'attaque de ${enemy.name} vous manque.` });
     }
 
     return { events };
