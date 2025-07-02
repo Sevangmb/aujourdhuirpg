@@ -46,7 +46,17 @@ const generateLocationImageFlow = ai.defineFlow(
     try {
       const {media, text} = await ai.generate({
         model: 'googleai/gemini-2.0-flash-preview-image-generation', 
-        prompt: `Generate a vibrant and picturesque, photorealistic image suitable for an immersive text-based RPG. The image must represent the following location: ${input.placeName}. The visual style should strongly reflect the historical period of: ${input.era || 'Époque Contemporaine'}. If the era is 'Époque Contemporaine', show a modern-day scene. If it's a historical era like 'Moyen-Âge' or 'Renaissance', the architecture, clothing of any visible people, and overall atmosphere must match that period. Capture an iconic or characteristic view. Avoid text overlays. The image should be suitable for a general audience.`,
+        prompt: `Generate a location image for a text-based RPG.
+Location Details:
+- Name: ${input.placeName}
+- Era: ${input.era || 'Époque Contemporaine'}
+
+Instructions for the image:
+- Style: Aim for a grounded, realistic, or slightly stylized realistic image. The aesthetic should be reminiscent of classic RPG illustrations found in books that use serif fonts like 'Literata'. Avoid overly cartoonish or anime styles. The image should feel like a painting or a high-quality photograph that fits a serious, narrative-driven game.
+- Composition: Capture an iconic, atmospheric, or characteristic view of the location. If it's a city, a street scene or landmark is ideal. If it's a natural place, a landscape view is best.
+- Era Coherence: The architecture, technology, clothing of any visible people, and overall atmosphere MUST strictly match the specified era.
+- NO TEXT or overlays on the image.
+- Image should be SFW (suitable for a general audience).`,
         config: {
           responseModalities: ['TEXT', 'IMAGE'], 
           safetySettings: [
