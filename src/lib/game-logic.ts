@@ -17,7 +17,6 @@ import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { processCombatTurn } from '@/modules/combat/logic';
 
-
 // --- Game Actions & Reducer ---
 // This reducer now directly applies the effects of GameEvents calculated by the logic layer.
 export type GameAction =
@@ -463,7 +462,8 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
                 timeCost: 30,
                 energyCost: 10,
                 consequences: ['Repas préparé', 'Gain de compétence'],
-                skillGains: { 'techniques.artisanat_general': 15 }
+                skillGains: { 'techniques.artisanat_general': 15 },
+                craftingPayload: { recipe }
             });
         }
     }

@@ -4,11 +4,12 @@
  * Calcule tous les effets déterministes des actions du joueur.
  */
 
-import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats } from '@/lib/types';
+import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats, DynamicItemCreationPayload } from '@/lib/types';
 import { performSkillCheck } from '@/lib/skill-check';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { processCombatTurn } from '@/modules/combat/logic';
+import { getMasterItemById } from '@/data/items';
 
 export class GameLogicProcessor {
   
@@ -46,6 +47,8 @@ export class GameLogicProcessor {
       this.processPurchase(gameState, choice, events);
     } else if (choice.id.startsWith('use_item_')) {
       this.processUseItem(gameState, choice, events);
+    } else if (choice.craftingPayload) {
+      this.processCrafting(gameState, choice, events);
     }
 
     // Generic effects for most actions
@@ -174,6 +177,70 @@ export class GameLogicProcessor {
         });
       }
     }
+  }
+
+  private processCrafting(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
+    if (!state.player || !choice.craftingPayload?.recipe) {
+      return;
+    }
+    const { recipe } = choice.craftingPayload;
+    const { player } = state;
+
+    // 1. Verify and collect ingredients to remove
+    const ingredientsToRemove: { itemId: string; quantity: number }[] = [];
+    const inventoryCopy = [...player.inventory];
+    let canCraft = true;
+
+    for (const recipeIngredient of recipe.ingredients) {
+      const ingredientNameLower = recipeIngredient.name.toLowerCase();
+      
+      const itemIndex = inventoryCopy.findIndex(invItem => 
+        invItem.name.toLowerCase().includes(ingredientNameLower) && invItem.quantity > 0
+      );
+      
+      if (itemIndex > -1) {
+        const playerItem = inventoryCopy[itemIndex];
+        ingredientsToRemove.push({ itemId: playerItem.id, quantity: 1 });
+        // Reduce quantity in copy to prevent using the same item for multiple ingredients
+        inventoryCopy[itemIndex] = { ...playerItem, quantity: playerItem.quantity - 1 };
+      } else {
+        canCraft = false;
+        break; // Missing an ingredient
+      }
+    }
+
+    if (!canCraft) {
+      events.push({ type: 'TEXT_EVENT', text: "Il vous manque des ingrédients pour cuisiner cela." });
+      return;
+    }
+    
+    // 2. Generate events to remove ingredients
+    for (const item of ingredientsToRemove) {
+      const masterItem = getMasterItemById(item.itemId);
+      if(masterItem) {
+          events.push({ type: 'ITEM_REMOVED', itemId: item.itemId, itemName: masterItem.name, quantity: item.quantity });
+      }
+    }
+
+    // 3. Generate event to add the crafted meal
+    const mealPayload: DynamicItemCreationPayload = {
+        baseItemId: 'generic_meal_01',
+        overrides: {
+            name: recipe.name,
+            description: `Un plat de ${recipe.name} que vous avez préparé. Ça sent délicieusement bon.`,
+            physiologicalEffects: { hunger: 50, thirst: 10 },
+        }
+    };
+    events.push({ type: 'DYNAMIC_ITEM_ADDED', payload: mealPayload });
+
+    // 4. Add skill XP gain for crafting
+    if (choice.skillGains) {
+        for(const [skill, amount] of Object.entries(choice.skillGains)) {
+            events.push({ type: 'SKILL_XP_AWARDED', skill, amount });
+        }
+    }
+
+    events.push({ type: 'TEXT_EVENT', text: `Vous avez réussi à cuisiner : ${recipe.name}!` });
   }
 
   private applyGenericActionEffects(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
