@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
-import { calculateDamage } from '@/modules/combat/logic';
+import { calculateDamage, handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
@@ -209,21 +209,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             break;
           }
           case 'COMBAT_STARTED':
-            nextState = { ...nextState, currentEnemy: event.enemy };
+            nextState = handleCombatStarted(nextState, event.enemy);
             player = nextState.player!;
             break;
           case 'COMBAT_ENDED':
-            nextState = { ...nextState, currentEnemy: null };
+            nextState = handleCombatEnded(nextState);
             player = nextState.player!;
             break;
           case 'COMBAT_ACTION':
-            if (event.target === 'player' && player) {
-                const newSante = { ...player.stats.Sante, value: event.newHealth };
-                player = { ...player, stats: { ...player.stats, Sante: newSante } };
-            } else if (event.target === 'enemy' && nextState.currentEnemy) {
-                nextState = { ...nextState, currentEnemy: { ...nextState.currentEnemy, health: event.newHealth } };
-                player = nextState.player!;
-            }
+            nextState = handleCombatAction(nextState, event.target, event.newHealth);
+            player = nextState.player!;
             break;
           case 'GAME_TIME_PROGRESSED':
             nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.minutes };
@@ -1072,4 +1067,22 @@ export function generateCombatActions(player: Player, enemy: Enemy): StoryChoice
     });
 
     return actions;
+}
+
+export function summarizeCombatEvents(events: GameEvent[], playerName: string, enemyName: string): string {
+    const summaryLines: string[] = [];
+
+    for (const event of events) {
+        if (event.type === 'COMBAT_ACTION') {
+            const attacker = event.attacker === playerName ? 'Vous' : event.attacker;
+            const target = event.target === 'player' ? 'vous' : enemyName;
+            summaryLines.push(`${attacker} ${event.action.replace(playerName, 'vous').replace(enemyName, 'l\'ennemi')} et infligez ${event.damage} points de dégâts à ${target}.`);
+        } else if (event.type === 'TEXT_EVENT') {
+            summaryLines.push(event.text);
+        } else if (event.type === 'SKILL_CHECK_RESULT' && !event.success) {
+            summaryLines.push(`Votre tentative de ${event.skill.split('.')[1].replace(/_/g, ' ')} a échoué !`);
+        }
+    }
+    
+    return summaryLines.join('\n');
 }

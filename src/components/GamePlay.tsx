@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { useState, useCallback } from 'react';
 import type { StoryChoice, GameEvent } from '@/lib/types';
-import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions, generateCombatActions } from '@/lib/game-logic';
+import { processPlayerAction, prepareAIInput, gameReducer, convertAIOutputToEvents, generateActionsForPOIs, generatePlayerStateActions, enrichAIChoicesWithLogic, generateCascadeBasedActions, generateCombatActions, summarizeCombatEvents } from '@/lib/game-logic';
 import ScenarioDisplay from './ScenarioDisplay';
 import { generateScenario, type GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { useToast } from "@/hooks/use-toast";
@@ -30,46 +31,67 @@ const GamePlay: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const cascadeResult = gameState.currentEnemy ? null : await runCascadeForAction(gameState, choice);
-      
-      const { events: deterministicEvents } = await processPlayerAction(
-        gameState.player, 
-        gameState.currentEnemy || null, 
-        choice, 
-        weatherData,
-        cascadeResult
-      );
-      
-      const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: deterministicEvents });
+      // --- COMBAT LOOP ---
+      if (currentEnemy) {
+        const { events: combatEvents } = await processPlayerAction(gameState.player, currentEnemy, choice, null, null);
+        
+        let stateAfterCombatTurn = gameState;
+        combatEvents.forEach(event => {
+            stateAfterCombatTurn = gameReducer(stateAfterCombatTurn, { type: 'APPLY_GAME_EVENTS', payload: [event] });
+        });
+        
+        const combatSummary = summarizeCombatEvents(combatEvents, gameState.player.name, currentEnemy.name);
+        dispatch({ type: 'APPLY_GAME_EVENTS', payload: combatEvents });
 
-      const inputForAI = prepareAIInput(stateAfterAction, choice, deterministicEvents, cascadeResult);
-      if (!inputForAI) throw new Error("Failed to prepare AI input.");
-      
-      const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
+        const isCombatOver = combatEvents.some(e => e.type === 'COMBAT_ENDED');
+        
+        if (isCombatOver) {
+            // Combat is over, call AI for a final narrative summary
+            const finalState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: combatEvents });
+            const aiInput = prepareAIInput(finalState, { text: `[FIN DU COMBAT: ${combatSummary}]` }, combatEvents);
+            if (!aiInput) throw new Error("Failed to prepare AI input for combat end.");
+            
+            const aiOutput = await generateScenario(aiInput);
+            dispatch({ type: 'SET_CURRENT_SCENARIO', payload: aiOutput });
+        } else {
+            // Combat continues, update scenario text locally without AI call
+            const updatedChoices = generateCombatActions(stateAfterCombatTurn.player!, stateAfterCombatTurn.currentEnemy!);
+            dispatch({ type: 'SET_CURRENT_SCENARIO', payload: {
+                scenarioText: `<p>${combatSummary.replace(/\n/g, '</p><p>')}</p>`,
+                choices: updatedChoices,
+            }});
+        }
 
-      const aiGeneratedEvents = convertAIOutputToEvents(aiOutput);
+      } 
+      // --- EXPLORATION LOOP ---
+      else {
+        const cascadeResult = await runCascadeForAction(gameState, choice);
+        const { events: deterministicEvents } = await processPlayerAction(gameState.player, null, choice, weatherData, cascadeResult);
+        const stateAfterAction = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: deterministicEvents });
 
-      const allEvents = [...deterministicEvents, ...aiGeneratedEvents];
-      dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
-      
-      const finalState = gameReducer(stateAfterAction, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
-      
-      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalState.player!);
-      const cascadeActions = generateCascadeBasedActions(cascadeResult, finalState.player!);
-      const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
-      const stateBasedActions = generatePlayerStateActions(finalState.player!);
-      
-      let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
+        const inputForAI = prepareAIInput(stateAfterAction, choice, deterministicEvents, cascadeResult);
+        if (!inputForAI) throw new Error("Failed to prepare AI input.");
+        
+        const aiOutput: GenerateScenarioOutput = await generateScenario(inputForAI);
 
-      if (finalState.currentEnemy) {
-        allChoices = generateCombatActions(finalState.player, finalState.currentEnemy);
+        const aiGeneratedEvents = convertAIOutputToEvents(aiOutput);
+        const allEvents = [...deterministicEvents, ...aiGeneratedEvents];
+        
+        const finalState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
+        
+        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalState.player!);
+        const cascadeActions = generateCascadeBasedActions(cascadeResult, finalState.player!);
+        const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
+        const stateBasedActions = generatePlayerStateActions(finalState.player!);
+        
+        let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
+
+        dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
+            scenarioText: aiOutput.scenarioText, 
+            choices: allChoices, 
+            aiRecommendation: aiOutput.aiRecommendation 
+        }});
       }
-
-      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
-          scenarioText: aiOutput.scenarioText, 
-          choices: allChoices, 
-          aiRecommendation: aiOutput.aiRecommendation 
-      }});
       
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";
@@ -78,7 +100,7 @@ const GamePlay: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [gameState, dispatch, toast, weatherData, isLoading]);
+  }, [gameState, dispatch, toast, weatherData, isLoading, currentEnemy]);
 
 
   if (!gameState || !gameState.player || !gameState.currentScenario) {

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Type definitions specific to the Combat module.
  */

@@ -3,7 +3,7 @@
  * @fileOverview Contains the core business logic for the Combat module.
  */
 
-import type { Player, DegreeOfSuccess } from '@/lib/types';
+import type { GameState, GameEvent, Player, DegreeOfSuccess } from '@/lib/types';
 import type { Enemy } from './types';
 
 /**
@@ -36,3 +36,32 @@ export function calculateDamage(attackerStats: Player['stats'], weaponDamage: nu
 
 // Note: The main combat turn processing logic is in lib/game-logic.ts 
 // to avoid circular dependencies with the event system and skill checks.
+
+export function handleCombatStarted(state: GameState, enemy: Enemy): GameState {
+    const journalEntry: GameEvent = { 
+        type: 'JOURNAL_ENTRY_ADDED', 
+        payload: { type: 'event', text: `Combat engagé avec ${enemy.name} !` } 
+    };
+    
+    const newState = {
+        ...state,
+        currentEnemy: enemy,
+        journal: [...state.journal, { ...journalEntry.payload, id: 'temp', timestamp: state.gameTimeInMinutes, location: state.player?.currentLocation }]
+    };
+    return newState;
+}
+
+export function handleCombatEnded(state: GameState): GameState {
+    return { ...state, currentEnemy: null };
+}
+
+export function handleCombatAction(state: GameState, target: 'player' | 'enemy', newHealth: number): GameState {
+    if (target === 'player' && state.player) {
+        const newSante = { ...state.player.stats.Sante, value: newHealth };
+        const newPlayer = { ...state.player, stats: { ...state.player.stats, Sante: newSante } };
+        return { ...state, player: newPlayer };
+    } else if (target === 'enemy' && state.currentEnemy) {
+        return { ...state, currentEnemy: { ...state.currentEnemy, health: newHealth } };
+    }
+    return state;
+}
