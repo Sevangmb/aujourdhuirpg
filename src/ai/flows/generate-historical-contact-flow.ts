@@ -32,6 +32,7 @@ const generateHistoricalContactPrompt = ai.definePrompt({
     prompt: `
         Vous êtes un maître de jeu et un scénariste pour un RPG textuel se déroulant à l'époque : **{{playerEra}}**.
         Votre tâche est d'enrichir un contact non-joueur (PNJ) en générant des informations fascinantes et des pistes de jeu.
+        **Il est impératif d'éviter tout anachronisme.** Tous les secrets, faits et quêtes que vous générez doivent être crédibles et cohérents avec l'époque **{{playerEra}}**.
 
         Le joueur a rencontré le contact suivant :
         - **Nom du Contact** : {{{modern.name}}} ({{{modern.age}}} ans)
@@ -44,7 +45,7 @@ const generateHistoricalContactPrompt = ai.definePrompt({
         - **Extrait biographique de référence** : {{{historical.extract}}}
 
         VOTRE MISSION :
-        En vous basant sur ce contexte, et en tenant compte que si le type de lien est "self", le contact EST la personnalité historique, générez une sortie JSON contenant :
+        En vous basant sur ce contexte, et en tenant compte que si le lien est "self", le contact EST la personnalité historique, générez une sortie JSON contenant :
         1.  **secrets (array of strings)** : Inventez 2 ou 3 secrets intrigants et peu connus que ce contact pourrait connaître.
         2.  **historicalFacts (array of strings)** : Extrayez ou reformulez 2 faits historiques intéressants et vérifiables que le contact pourrait partager.
         3.  **availableQuests (array of strings)** : Proposez 2 pistes de quêtes ou de "mini-mystères" que le contact pourrait donner au joueur.
