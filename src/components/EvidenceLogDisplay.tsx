@@ -2,56 +2,73 @@
 "use client";
 
 import React, { useState } from 'react';
-import type { Player, Clue, GameDocument } from "@/lib/types";
+import type { Player, Clue, GameDocument, ClueType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Search, FileText as DocumentIcon, Lightbulb, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, FileText, Lightbulb, MessageSquare, RefreshCw, Loader2, Camera, Scan, Fingerprint, AudioWaveform } from 'lucide-react';
 import Image from "next/image";
 import { ScrollArea } from "./ui/scroll-area";
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { useGame } from '@/contexts/GameContext';
 import { useToast } from '@/hooks/use-toast';
 
+const clueTypeIcons: Record<ClueType, React.ElementType> = {
+  photo: Camera,
+  testimony: MessageSquare,
+  text_extract: FileText,
+  object_observation: Scan,
+  digital_trace: Fingerprint,
+  audio_recording: AudioWaveform,
+  misc_clue: Lightbulb,
+};
 
-interface EvidenceLogDisplayProps {
-  player: Player;
-}
-
-const ClueCard: React.FC<{ clue: Clue }> = ({ clue }) => (
- <Card className="mb-3">
-    <CardHeader className="flex flex-row items-start gap-4 space-y-0 p-3">
-        {clue.imageUrl && (
-            <Image 
-                src={clue.imageUrl}
-                alt={`Image for ${clue.title}`}
-                width={60}
-                height={60}
-                className="aspect-square w-16 h-16 rounded-md object-cover"
-                data-ai-hint="evidence photo"
-            />
-        )}
-        <div className="space-y-1">
-            <CardTitle className="text-sm font-semibold">{clue.title}</CardTitle>
-            <CardDescription className="text-xs">Type: {clue.type} | Trouvé: {clue.dateFound ? new Date(clue.dateFound).toLocaleDateString('fr-FR') : 'N/A'}</CardDescription>
+const ClueCard: React.FC<{ clue: Clue }> = ({ clue }) => {
+  const Icon = clueTypeIcons[clue.type] || Lightbulb;
+  return (
+    <Card className="mb-3 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className="flex flex-row items-start gap-4 p-4">
+        <Icon className="w-6 h-6 text-primary shrink-0 mt-1" />
+        <div className="flex-grow">
+          <CardTitle className="text-md font-semibold">{clue.title}</CardTitle>
+          <CardDescription className="text-xs">
+            Trouvé le {clue.dateFound ? new Date(clue.dateFound).toLocaleDateString('fr-FR') : 'N/A'}
+            {clue.source && ` | Source: ${clue.source}`}
+          </CardDescription>
         </div>
-    </CardHeader>
-    <CardContent className="p-3 pt-0">
-        <p className="text-xs text-muted-foreground">{clue.description}</p>
-        {clue.source && <p className="text-xs mt-1"><span className="font-semibold">Source:</span> {clue.source}</p>}
-        {clue.keywords && clue.keywords.length > 0 && <p className="text-xs mt-1"><span className="font-semibold">Mots-clés:</span> {clue.keywords.join(', ')}</p>}
-    </CardContent>
- </Card>
-);
+      </CardHeader>
+      <CardContent className="px-4 pb-4 pt-0">
+        {clue.imageUrl && (
+          <div className="relative h-40 w-full mb-3 rounded-md overflow-hidden border">
+            <Image
+              src={clue.imageUrl}
+              alt={`Image de l'indice: ${clue.title}`}
+              fill
+              className="object-cover"
+              data-ai-hint="evidence photo"
+            />
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground">{clue.description}</p>
+        {clue.keywords && clue.keywords.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {clue.keywords.map(kw => <Badge key={kw} variant="secondary">{kw}</Badge>)}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const DocumentCard: React.FC<{ documentItem: GameDocument }> = ({ documentItem }) => (
- <Card className="mb-3">
-    <CardHeader className="p-3">
-        <CardTitle className="text-sm font-semibold">{documentItem.title}</CardTitle>
+ <Card className="mb-3 shadow-sm hover:shadow-md transition-shadow">
+    <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-md font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary"/>{documentItem.title}</CardTitle>
         <CardDescription className="text-xs">Type: {documentItem.type} | Acquis: {documentItem.dateAcquired ? new Date(documentItem.dateAcquired).toLocaleDateString('fr-FR') : 'N/A'}</CardDescription>
     </CardHeader>
-    <CardContent className="p-3 pt-0">
-        <ScrollArea className="max-h-40">
-            <div className="prose prose-sm dark:prose-invert text-xs p-1" dangerouslySetInnerHTML={{ __html: documentItem.content }}></div>
+    <CardContent className="p-4 pt-0">
+        <ScrollArea className="max-h-40 p-2 border rounded-md bg-muted/30">
+            <div className="prose prose-sm dark:prose-invert text-xs" dangerouslySetInnerHTML={{ __html: documentItem.content }}></div>
         </ScrollArea>
         {documentItem.source && <p className="text-xs mt-2 border-t pt-2"><span className="font-semibold">Source:</span> {documentItem.source}</p>}
     </CardContent>
@@ -59,7 +76,7 @@ const DocumentCard: React.FC<{ documentItem: GameDocument }> = ({ documentItem }
 );
 
 
-const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
+const EvidenceLogDisplay: React.FC<{ player: Player }> = ({ player }) => {
   const { handleUpdateInvestigationNotes } = useGame();
   const { toast } = useToast();
   const [isSynthesizing, setIsSynthesizing] = useState(false);
@@ -75,7 +92,6 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
     toast({ title: "Analyse en cours...", description: "L'IA examine vos indices et documents..." });
 
     try {
-      // Lazy import the server action
       const { runInvestigationSynthesis } = await import('@/app/actions/run-investigation-synthesis');
       
       const result = await runInvestigationSynthesis({
@@ -109,7 +125,7 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
     <Tabs defaultValue="clues" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="clues" className="text-xs sm:text-sm"><Lightbulb className="w-3 h-3 mr-1 sm:mr-2" />Indices ({clues.length})</TabsTrigger>
-          <TabsTrigger value="documents" className="text-xs sm:text-sm"><DocumentIcon className="w-3 h-3 mr-1 sm:mr-2" />Documents ({documents.length})</TabsTrigger>
+          <TabsTrigger value="documents" className="text-xs sm:text-sm"><FileText className="w-3 h-3 mr-1 sm:mr-2" />Documents ({documents.length})</TabsTrigger>
           <TabsTrigger value="summary" className="text-xs sm:text-sm"><MessageSquare className="w-3 h-3 mr-1 sm:mr-2" />Résumé</TabsTrigger>
         </TabsList>
 
@@ -142,7 +158,7 @@ const EvidenceLogDisplay: React.FC<EvidenceLogDisplayProps> = ({ player }) => {
                 </ScrollArea>
               </CardContent>
               <CardFooter>
-                <Button onClick={handleSynthesizeClick} disabled={isSynthesizing || clues.length === 0} className="w-full">
+                <Button onClick={handleSynthesizeClick} disabled={isSynthesizing || (clues.length === 0 && documents.length === 0)} className="w-full">
                   {isSynthesizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                   {isSynthesizing ? 'Analyse en cours...' : 'Synthétiser le Dossier'}
                 </Button>
