@@ -29,6 +29,7 @@ export interface POIService {
   duration: number; // minutes
   requirements?: ServiceRequirement[];
   availability: ServiceAvailability;
+  resultingItemId?: string; // ID of the item received after the service
 }
 
 export interface EnhancedPOI extends Position {

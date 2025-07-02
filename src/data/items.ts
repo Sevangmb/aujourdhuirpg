@@ -6,6 +6,7 @@
 import type { MasterIntelligentItem } from '@/lib/types';
 
 export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
+  // Starter Items
   {
     id: 'smartphone_01',
     name: 'Smartphone',
@@ -48,6 +49,67 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     economics: { base_value: 2, rarity_multiplier: 0.5 },
     xpToNextItemLevel: 0,
   },
+  {
+    id: 'vintage_camera_01',
+    name: 'Appareil Photo Vintage',
+    description: 'Un vieil appareil photo argentique. Il semble robuste et a certainement capturé de nombreuses histoires.',
+    type: 'tool',
+    iconName: 'Camera',
+    stackable: false,
+    economics: { base_value: 60, rarity_multiplier: 1.8 },
+    xpToNextItemLevel: 100, // This item can evolve!
+    evolution: {
+      levelRequired: 2,
+      targetItemId: 'chronicler_camera_01',
+    },
+  },
+  // POI Purchasable Items
+  {
+    id: 'sandwich_jambon_beurre_01',
+    name: 'Sandwich Jambon-Beurre',
+    description: 'Le classique parisien. Simple, efficace, délicieux.',
+    type: 'consumable',
+    iconName: 'Utensils',
+    stackable: true,
+    physiologicalEffects: { hunger: 45 },
+    economics: { base_value: 5, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
+  },
+  {
+    id: 'croissant_01',
+    name: 'Croissant au Beurre',
+    description: 'Un croissant feuilleté et doré, tout juste sorti du four.',
+    type: 'consumable',
+    iconName: 'Cookie',
+    stackable: true,
+    physiologicalEffects: { hunger: 15 },
+    economics: { base_value: 1.5, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
+  },
+  {
+    id: 'cafe_expresso_01',
+    name: 'Café Expresso',
+    description: 'Un café court et intense pour un coup de fouet immédiat.',
+    type: 'consumable',
+    iconName: 'GlassWater',
+    stackable: true,
+    effects: { Energie: 15 },
+    physiologicalEffects: { thirst: 10 },
+    economics: { base_value: 2.5, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
+  },
+  {
+    id: 'pansement_boite_01',
+    name: 'Boîte de Pansements',
+    description: 'Une boîte de pansements adhésifs pour les petites coupures.',
+    type: 'consumable',
+    iconName: 'BriefcaseMedical',
+    stackable: true,
+    effects: { Sante: 5 },
+    economics: { base_value: 4, rarity_multiplier: 1.0 },
+    xpToNextItemLevel: 0,
+  },
+  // Other General Items
   {
     id: 'water_bottle_01',
     name: 'Bouteille d\'eau',
@@ -246,20 +308,6 @@ export const ALL_MASTER_ITEMS: MasterIntelligentItem[] = [
     stackable: true,
     economics: { base_value: 20, rarity_multiplier: 1.0 },
     xpToNextItemLevel: 0,
-  },
-  {
-    id: 'vintage_camera_01',
-    name: 'Appareil Photo Vintage',
-    description: 'Un vieil appareil photo argentique. Il semble robuste et a certainement capturé de nombreuses histoires.',
-    type: 'tool',
-    iconName: 'Camera',
-    stackable: false,
-    economics: { base_value: 60, rarity_multiplier: 1.8 },
-    xpToNextItemLevel: 100, // This item can evolve!
-    evolution: {
-      levelRequired: 2,
-      targetItemId: 'chronicler_camera_01',
-    },
   },
   {
     id: 'chronicler_camera_01',

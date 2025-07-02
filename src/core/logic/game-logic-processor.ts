@@ -4,13 +4,15 @@
  * Calcule tous les effets déterministes des actions du joueur.
  */
 
-import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats, DynamicItemCreationPayload, WeatherData } from '@/lib/types';
+import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats, DynamicItemCreationPayload, WeatherData, EnhancedPOI } from '@/lib/types';
 import { performSkillCheck } from '@/lib/skill-check';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { processCombatTurn } from '@/modules/combat/logic';
 import { getMasterItemById } from '@/data/items';
 import { getWeatherModifier } from '@/lib/game-logic';
+import { ESTABLISHMENT_SERVICES } from '@/data/establishment-services';
+
 
 export class GameLogicProcessor {
   
@@ -44,8 +46,8 @@ export class GameLogicProcessor {
     // Non-combat logic
     if (choice.travelChoiceInfo) {
       await this.processTravel(gameState, choice, events);
-    } else if (choice.economicImpact) {
-      this.processPurchase(gameState, choice, events);
+    } else if (choice.poiReference) {
+      this.processPoiInteraction(gameState, choice, events);
     } else if (choice.id.startsWith('use_item_')) {
       this.processUseItem(gameState, choice, events);
     } else if (choice.craftingPayload) {
@@ -159,17 +161,45 @@ export class GameLogicProcessor {
     events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Energie', change: -energy, finalValue: player.stats.Energie.value - energy });
   }
 
-  private processPurchase(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
-    if (!choice.economicImpact || !state.player) return;
-
-    const cost = choice.economicImpact.cost.min; // Use min cost for simplicity
-    if (state.player.money < cost) {
-      events.push({ type: 'TEXT_EVENT', text: "Pas assez d'argent." });
+  private processPoiInteraction(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
+    if (!choice.poiReference || !state.player || !state.nearbyPois) return;
+  
+    const { player, nearbyPois } = state;
+    const { poiReference } = choice;
+  
+    const poi = nearbyPois.find(p => p.osmId === poiReference.osmId);
+    if (!poi) {
+      events.push({ type: 'TEXT_EVENT', text: "Ce lieu n'est plus disponible." });
       return;
     }
-    events.push({ type: 'MONEY_CHANGED', amount: -cost, description: `Achat: ${choice.text}` });
-    
-    // Here you could add the item to the inventory if the choice included an item ID
+  
+    const service = poi.services.find(s => s.id === poiReference.serviceId);
+    if (!service) {
+      events.push({ type: 'TEXT_EVENT', text: "Ce service n'est plus disponible." });
+      return;
+    }
+  
+    const cost = service.cost.min; // Use min cost for simplicity
+    if (player.money < cost) {
+      events.push({ type: 'TEXT_EVENT', text: `Vous n'avez pas assez d'argent. Il vous faut ${cost.toFixed(2)}€.` });
+      return;
+    }
+  
+    if (cost > 0) {
+      events.push({ type: 'MONEY_CHANGED', amount: -cost, description: `${service.name} à ${poi.name}` });
+    }
+  
+    if (service.resultingItemId) {
+      const masterItem = getMasterItemById(service.resultingItemId);
+      if (masterItem) {
+        events.push({
+          type: 'ITEM_ADDED',
+          itemId: masterItem.id,
+          itemName: masterItem.name,
+          quantity: 1
+        });
+      }
+    }
   }
 
   private processUseItem(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
