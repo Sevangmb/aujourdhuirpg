@@ -2,7 +2,7 @@
 import type { Player, MomentumSystem } from './player-types';
 import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
-import type { Quest, PNJ, DynamicItemCreationPayload } from '.';
+import type { Quest, PNJ, DynamicItemCreationPayload, MajorDecision } from '.';
 import type { HistoricalContact } from '../modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { EnhancedPOI } from './poi-types';

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI, Clue, GameDocument } from '@/lib/types';
 import type { AdaptedContact } from '@/modules/historical/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, enrichAIChoicesWithLogic } from '@/lib/game-logic';

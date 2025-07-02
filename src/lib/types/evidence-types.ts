@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export type ClueType = 'photo' | 'testimony' | 'text_extract' | 'object_observation' | 'digital_trace' | 'audio_recording' | 'misc_clue';
