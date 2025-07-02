@@ -3,17 +3,21 @@ import type { CascadeResult, EnrichedContext, ModuleEnrichmentResult } from './t
 import { cascadeManager } from './cascade-manager';
 
 /**
- * Determines which root module(s) to trigger for the cascade based on the player's choice.
+ * Determines which root module(s) to trigger for the cascade based on the player's action and location.
  * This mapping is central to the cascade system's ability to react to different actions.
  * @param choice The player's selected StoryChoice.
+ * @param state The current GameState.
  * @returns An array of root module IDs to execute.
  */
-function determineRelevantModules(choice: StoryChoice): string[] {
+function determineRelevantModules(choice: StoryChoice, state: GameState): string[] {
   const choiceText = choice.text.toLowerCase();
   const choiceType = choice.type;
   const modules = new Set<string>();
 
-  // Specific keyword triggers
+  // Use location type from the player's current location, which now should be the POI subCategory
+  const locationType = state.player?.currentLocation.zone?.name;
+
+  // 1. Keyword-based triggers from choice text (high priority)
   if (choiceText.includes('livre') || choiceText.includes('bibliothèque') || choiceText.includes('rechercher') || choiceText.includes('lire')) {
     modules.add('livre');
   }
@@ -23,14 +27,23 @@ function determineRelevantModules(choice: StoryChoice): string[] {
   if (choiceText.includes('enquêter') || choiceText.includes('chercher des indices')) {
       modules.add('culture_locale');
   }
-  
-  // Always add a general cultural analysis for context, unless it's a very specific action already covered
+
+  // 2. Location-based triggers (adds context based on where the player is)
+  if (locationType === 'librairie' || locationType === 'bibliotheque') {
+    modules.add('livre');
+  }
+  if (locationType === 'restaurant' || locationType === 'cafe' || locationType === 'boulangerie' || locationType === 'fast_food') {
+    modules.add('cuisine');
+  }
+
+  // 3. General triggers (always add context for broad actions)
   if(modules.size === 0 || choiceType === 'exploration' || choiceType === 'observation' || choiceType === 'social') {
       modules.add('culture_locale');
   }
 
   return Array.from(modules);
 }
+
 
 /**
  * Builds the initial context for the cascade from the current game state and action.
@@ -59,7 +72,7 @@ function buildBaseContext(state: GameState, action: StoryChoice): EnrichedContex
  * @returns A promise that resolves to the combined results of the cascade, or null if no modules were triggered.
  */
 export async function runCascadeForAction(state: GameState, action: StoryChoice): Promise<CascadeResult | null> {
-    const rootModulesToRun = determineRelevantModules(action);
+    const rootModulesToRun = determineRelevantModules(action, state);
     if (rootModulesToRun.length === 0) {
         return null;
     }

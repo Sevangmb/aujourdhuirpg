@@ -51,7 +51,7 @@ export async function getPositionData(placeName: string, era: GameEra): Promise<
       const firstNamedPoiWithTags = pois.find(p => p.name && p.tags);
       if (firstNamedPoiWithTags) {
         zoneData = {
-          name: firstNamedPoiWithTags.name!,
+          name: firstNamedPoiWithTags.subCategory,
           description: firstNamedPoiWithTags.tags!.description || firstNamedPoiWithTags.establishmentType || firstNamedPoiWithTags.tags!.amenity || firstNamedPoiWithTags.tags!.shop || firstNamedPoiWithTags.tags!.tourism,
         };
       }
