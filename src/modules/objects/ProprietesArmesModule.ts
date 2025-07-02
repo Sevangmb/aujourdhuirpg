@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Enrichment module to determine the physical and combat properties of a weapon.
  */
@@ -12,12 +13,13 @@ import type {
   CombatStats,
   CraftingDetails,
 } from '@/core/objects/object-types';
+import type { EnrichedObject } from '@/lib/types';
 
 export class ProprietesArmesModule implements ObjectEnrichmentModule {
   readonly id = 'proprietes_armes';
 
   async enrichObject(
-    object: BaseObject,
+    object: BaseObject | EnrichedObject,
     context: ObjectEnrichmentContext
   ): Promise<ObjectModuleResult> {
     console.log(`🗡️ Analyzing weapon properties: ${object.name}`);

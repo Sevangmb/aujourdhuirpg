@@ -297,3 +297,226 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
         return enrichedChoice;
     });
 }
+
+/**
+ * Summarizes a list of game events into a single, human-readable string for the AI.
+ * This is a critical function for separating game logic from AI narration.
+ * @param events The array of GameEvent objects.
+ * @returns A string summarizing the events.
+ */
+export function summarizeGameEventsForAI(events: GameEvent[]): string {
+  if (events.length === 0) {
+    return "Aucun événement particulier ne s'est produit.";
+  }
+
+  const summaries: string[] = [];
+
+  for (const event of events) {
+    switch (event.type) {
+      case 'SKILL_CHECK_RESULT':
+        summaries.push(`Résultat d'un test de compétence (${event.skill}): ${event.success ? 'réussite' : 'échec'}.`);
+        break;
+      case 'TEXT_EVENT':
+        summaries.push(event.text);
+        break;
+      case 'PLAYER_STAT_CHANGE':
+        if (Math.abs(event.change) > 2) { // Only report significant changes
+            summaries.push(`Votre stat de ${event.stat} a changé de ${event.change}.`);
+        }
+        break;
+       case 'PLAYER_PHYSIOLOGY_CHANGE':
+        if(event.stat === 'hunger') summaries.push(event.change > 0 ? 'Votre faim a été apaisée.' : 'Vous avez ressenti la faim.');
+        if(event.stat === 'thirst') summaries.push(event.change > 0 ? 'Votre soif a été étanchée.' : 'Vous avez ressenti la soif.');
+        break;
+      case 'XP_GAINED':
+        summaries.push(`Vous avez gagné ${event.amount} points d'expérience.`);
+        break;
+      case 'PLAYER_LEVELED_UP':
+        summaries.push(`Vous êtes monté au niveau ${event.newLevel} !`);
+        break;
+      case 'SKILL_LEVELED_UP':
+         summaries.push(`Votre compétence en ${event.skill} a atteint le niveau ${event.newLevel}.`);
+         break;
+      case 'ITEM_ADDED':
+        summaries.push(`Vous avez obtenu : ${event.itemName} (x${event.quantity}).`);
+        break;
+      case 'DYNAMIC_ITEM_ADDED':
+        summaries.push(`Vous avez obtenu un nouvel objet : ${event.payload.overrides.name || event.payload.baseItemId}.`);
+        break;
+      case 'ITEM_REMOVED':
+        summaries.push(`Vous avez utilisé ou perdu : ${event.itemName} (x${event.quantity}).`);
+        break;
+      case 'ITEM_EVOLVED':
+        summaries.push(`Votre ${event.oldItemName} a évolué en ${event.newItemName} !`);
+        break;
+      case 'QUEST_ADDED':
+        summaries.push(`Nouvelle quête ajoutée : "${event.quest.title}".`);
+        break;
+      case 'QUEST_STATUS_CHANGED':
+        summaries.push(`Le statut de votre quête a changé en : ${event.newStatus}.`);
+        break;
+      case 'MONEY_CHANGED':
+        summaries.push(`Votre argent a changé de ${event.amount.toFixed(2)}€ suite à : ${event.description}.`);
+        break;
+      case 'PLAYER_TRAVELS':
+        summaries.push(`Vous êtes arrivé à ${event.destination.name}.`);
+        break;
+      case 'COMBAT_STARTED':
+         summaries.push(`Un combat a commencé contre ${event.enemy.name}.`);
+         break;
+      case 'COMBAT_ACTION':
+         summaries.push(`${event.attacker} a attaqué, infligeant ${event.damage} dégâts.`);
+         break;
+      case 'COMBAT_ENDED':
+         summaries.push(`Le combat est terminé. Le vainqueur est : ${event.winner}.`);
+         break;
+      // Other cases can be added as needed. Default is to not summarize.
+    }
+  }
+
+  // Combine summaries into a single paragraph.
+  return summaries.join(' ');
+}
+
+
+export function generatePlayerStateActions(player: Player): StoryChoice[] {
+    const actions: StoryChoice[] = [];
+
+    // Action to eat if hungry
+    const foodItem = player.inventory.find(item => item.type === 'consumable' && item.physiologicalEffects?.hunger && item.physiologicalEffects.hunger > 0);
+    if (player.physiology.basic_needs.hunger.level < 60 && foodItem) {
+        actions.push({
+            id: `use_item_${foodItem.instanceId}`,
+            text: `Manger: ${foodItem.name}`,
+            description: `Manger ${foodItem.name} pour calmer votre faim.`,
+            iconName: 'Utensils',
+            type: 'action',
+            mood: 'social', // Placeholder, could be 'pragmatic'
+            energyCost: 1,
+            timeCost: 5,
+            consequences: [`Restaure la faim`, `Utilise 1x ${foodItem.name}`]
+        });
+    }
+
+    return actions;
+}
+
+export function generateCascadeBasedActions(cascadeResult: CascadeResult | null, player: Player): StoryChoice[] {
+    if (!cascadeResult) return [];
+
+    const actions: StoryChoice[] = [];
+    
+    // Cuisine Module Actions
+    const cuisineData = cascadeResult.results.get('cuisine')?.data;
+    if (cuisineData?.cookableRecipes) {
+        for (const recipe of (cuisineData.cookableRecipes as EnrichedRecipe[])) {
+            actions.push({
+                id: `craft_recipe_${recipe.id}`,
+                text: `Cuisiner: ${recipe.name}`,
+                description: `Utiliser vos ingrédients pour préparer un plat de ${recipe.name}.`,
+                iconName: 'ChefHat',
+                type: 'action',
+                mood: 'artistic',
+                energyCost: 15,
+                timeCost: 30,
+                consequences: [`Obtenir 1x ${recipe.name}`, 'Utilise des ingrédients'],
+                craftingPayload: { recipe },
+                skillGains: { 'survie.premiers_secours': 10 } // Placeholder for actual skill from recipe
+            });
+        }
+    }
+
+    // Livre Module Actions
+    const livreData = cascadeResult.results.get('livre')?.data;
+    if (livreData?.foundBooks && livreData.foundBooks.length > 0) {
+        const firstBook = livreData.foundBooks[0] as BookSearchResult;
+        actions.push({
+            id: `read_book_${firstBook.title.replace(/\s+/g, '_')}`,
+            text: `Lire: ${firstBook.title.substring(0, 25)}...`,
+            description: `Prendre le temps de lire le livre trouvé : "${firstBook.title}".`,
+            iconName: 'BookOpen',
+            type: 'reflection',
+            mood: 'contemplative',
+            energyCost: 2,
+            timeCost: 20,
+            consequences: ['Acquérir des connaissances', 'Gagner de l\'XP'],
+            skillGains: { 'savoir.histoire': 15 } // Example skill gain
+        });
+    }
+
+    return actions;
+}
+
+// --- POI ACTION GENERATION ---
+
+function getIconForService(serviceId: string): ChoiceIconName {
+    if (serviceId.includes('buy_sandwich') || serviceId.includes('buy_pastry')) return 'Utensils';
+    if (serviceId.includes('buy_')) return 'ShoppingCart';
+    if (serviceId.includes('order_')) return 'NotebookPen';
+    if (serviceId.includes('get_') || serviceId.includes('consultation')) return 'MessageSquare';
+    if (serviceId.includes('book_')) return 'Briefcase';
+    if (serviceId.includes('work_')) return 'Wrench';
+    if (serviceId.includes('people_watch') || serviceId.includes('browse_')) return 'Eye';
+    if (serviceId.includes('withdraw_')) return 'ShoppingCart';
+    if (serviceId.includes('visit')) return 'Compass';
+    if (serviceId.includes('take_power_nap')) return 'Zap'; // Using Zap for energy
+    if (serviceId.includes('use_hotel_services')) return 'Briefcase';
+
+    return 'Compass';
+}
+
+function getActionTypeForService(serviceId: string): ActionType {
+    if (serviceId.includes('buy_') || serviceId.includes('order_') || serviceId.includes('rent_') || serviceId.includes('withdraw_')) return 'action';
+    if (serviceId.includes('browse_') || serviceId.includes('people_watch') || serviceId.includes('visit')) return 'exploration';
+    if (serviceId.includes('get_') || serviceId.includes('consultation') || serviceId.includes('meet_')) return 'social';
+    if (serviceId.includes('book_') || serviceId.includes('work_') || serviceId.includes('use_hotel_services')) return 'job';
+    if (serviceId.includes('take_power_nap')) return 'reflection';
+
+    return 'action';
+}
+
+export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, gameTimeInMinutes?: number): StoryChoice[] {
+    const contextualChoices: StoryChoice[] = [];
+    if (!pois) return [];
+  
+    for (const poi of pois.slice(0, 8)) { // Limit total POIs considered
+      let actionsForThisPoi = 0;
+      for (const service of poi.services) {
+        if (actionsForThisPoi >= 1) break; // Limit actions to 1 per POI for clarity
+  
+        if (service.cost.min > player.money) {
+          continue; // Cannot afford
+        }
+
+        if(gameTimeInMinutes !== undefined && !isShopOpen(gameTimeInMinutes, service.availability)) {
+          continue; // Shop is closed
+        }
+  
+        const descriptionDistance = `à proximité`;
+
+        const choice: StoryChoice = {
+          id: `${poi.osmId}_${service.id}`,
+          text: `${service.name} (${poi.name})`,
+          description: `${service.description}, ${descriptionDistance}.`,
+          iconName: getIconForService(service.id),
+          type: getActionTypeForService(service.id),
+          mood: 'adventurous',
+          energyCost: Math.round(service.duration / 10) + 1,
+          timeCost: service.duration,
+          consequences: ['Interaction sociale', `Coût: ${service.cost.min}-${service.cost.max}€`],
+          economicImpact: {
+              cost: service.cost,
+              location: poi.name,
+          },
+          poiReference: {
+              osmId: poi.osmId,
+              serviceId: service.id,
+              establishmentType: poi.establishmentType,
+          },
+        };
+        contextualChoices.push(choice);
+        actionsForThisPoi++;
+      }
+    }
+    return contextualChoices;
+}
