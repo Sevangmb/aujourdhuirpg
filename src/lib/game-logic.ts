@@ -15,6 +15,7 @@ import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { isShopOpen } from '@/lib/utils/time-utils';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
+import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 
 // --- Game Actions & Reducer ---
 // This reducer now directly applies the effects of GameEvents calculated by the logic layer.
@@ -230,6 +231,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             nextState = { ...nextState, currentScenario: { ...nextState.currentScenario, scenarioText: event.text, choices: [] } };
             player = nextState.player!;
             break;
+          // Events that don't change state but are for the AI to narrate
           case 'SKILL_CHECK_RESULT':
           case 'TEXT_EVENT':
           case 'TRAVEL_EVENT':

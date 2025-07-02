@@ -114,22 +114,26 @@ export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryCho
     } else if (choice.combatActionType === 'use_item') {
         playerTurnTaken = true;
         const item = player.inventory.find(i => i.instanceId === choice.itemReference);
-        if (item && item.effects?.Sante) {
-            const healAmount = item.effects.Sante;
-            const newPlayerHealth = Math.min(player.stats.Sante.max!, player.stats.Sante.value + healAmount);
-            events.push({ type: 'PLAYER_STAT_CHANGE', stat: 'Sante', change: healAmount, finalValue: newPlayerHealth });
-            events.push({ type: 'ITEM_REMOVED', itemId: item.id, itemName: item.name, quantity: 1 });
-            events.push({ type: 'TEXT_EVENT', text: `Vous utilisez ${item.name} et récupérez ${healAmount} points de santé.` });
+        if (item && item.type === 'consumable' && item.effects?.Sante) {
+            events.push({ type: 'ITEM_USED', instanceId: item.instanceId, itemName: item.name, description: `Utilise ${item.name} pour se soigner en combat.` });
+            // The ITEM_USED event will be processed by the reducer to apply effects
         } else {
              events.push({ type: 'TEXT_EVENT', text: "Vous ne pouvez pas utiliser cet objet en combat." });
+             playerTurnTaken = false; // The turn was not successfully used
         }
     }
     
     // Enemy's Turn (if player acted and combat is not over)
     if (playerTurnTaken) {
-        const enemyAttackRoll = performSkillCheck(enemy.stats as any, {level: 10, xp: 0, xpToNext: 100}, 'physiques.arme_blanche', player.stats.Discretion.value, [], 0, {basic_needs: {hunger:{level:100}, thirst:{level:100}}}, {momentum_bonus:0} as any);
-        if (enemyAttackRoll.success) {
-            const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, 'success');
+        // A simplified representation of the enemy's skill system for the check
+        const enemySkills = { physiques: { arme_blanche: { level: enemy.attack, xp: 0, xpToNext: 100 } } };
+        // A simplified representation of the enemy's stats for the check
+        const enemyPlayerStats = { Dexterite: { value: enemy.stats.Dexterite }, Force: { value: enemy.stats.Force } };
+
+        const skillCheckResult = performSkillCheck(enemySkills as any, enemyPlayerStats as any, 'physiques.arme_blanche', player.stats.Discretion.value, [], 0, {basic_needs: {hunger:{level:100, satisfaction_quality: 100, cultural_craving: '', dietary_preferences: [], food_memories:[]}, thirst:{level:100, hydration_quality: 100, climate_adjustment: 0, beverage_tolerance: [], cultural_beverage_preference: ''}}}, {momentum_bonus:0, desperation_bonus: 0, consecutive_failures: 0, consecutive_successes: 0} as any);
+
+        if (skillCheckResult.success) {
+            const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, skillCheckResult.degreeOfSuccess);
             const newPlayerHealth = Math.max(0, player.stats.Sante.value - enemyDamage);
             events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: `attaque ${player.name}` });
 
