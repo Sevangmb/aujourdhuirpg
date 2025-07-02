@@ -60,34 +60,61 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
 
   return (
     <div>
-        <Card className="mb-4">
-            <CardHeader className="flex flex-row items-center gap-4 p-4">
+        <Card className="mb-4 shadow-none border-0">
+            <CardHeader className="flex flex-col sm:flex-row items-center gap-4 p-2">
               <Image 
-                src={player.avatarUrl || 'https://placehold.co/80x80.png'} 
+                src={player.avatarUrl || 'https://placehold.co/100x100.png'} 
                 alt={`Avatar de ${player.name}`} 
-                width={80} 
-                height={80} 
-                className="rounded-full border-2 border-primary aspect-square object-cover"
+                width={100} 
+                height={100} 
+                className="rounded-lg border-2 border-primary aspect-square object-cover"
                 data-ai-hint="character portrait"
                 unoptimized={!!player.avatarUrl && player.avatarUrl.startsWith('data:')}
               />
-              <div>
-                <CardTitle className="text-xl font-headline text-primary">{player.name}</CardTitle>
+              <div className='text-center sm:text-left'>
+                <CardTitle className="text-2xl font-headline text-primary">{player.name}</CardTitle>
                 <CardDescription>{player.age} ans | {player.gender} | {player.origin}</CardDescription>
+                <div className="mt-2">
+                  <Badge variant="outline">Niveau {player.progression.level}</Badge>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="px-4 pb-4 text-sm">
+            <CardContent className="px-2 pb-2 text-sm">
                <h4 className="font-semibold text-muted-foreground text-xs mb-1">Historique (RP)</h4>
-               <ScrollArea className="h-24 p-2 border rounded-md">
-                  <p className="whitespace-pre-wrap text-xs">{player.background}</p>
+               <ScrollArea className="h-24 p-3 border rounded-lg bg-background/50">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{player.background}</p>
                </ScrollArea>
             </CardContent>
           </Card>
       
-        <Accordion type="multiple" defaultValue={['stats', 'skills']} className="w-full">
+        <Accordion type="multiple" defaultValue={['progression', 'stats', 'skills']} className="w-full">
+            <AccordionItem value="progression">
+              <AccordionTrigger className='font-headline text-lg'>
+                <div className="flex items-center gap-2"><TrendingUp className="w-5 h-5" />Progression & Alignement</div>
+              </AccordionTrigger>
+              <AccordionContent className="p-2 text-sm space-y-4">
+                 <div>
+                    <div className="flex justify-between items-end mb-0.5">
+                        <h4 className="font-semibold text-muted-foreground text-sm">Expérience (XP)</h4>
+                        <p className="text-sm text-primary/80 font-semibold">{player.progression.xp} / {player.progression.xpToNextLevel}</p>
+                    </div>
+                    <Progress value={xpPercentage} className="w-full h-2.5" />
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <div className="flex-1 text-center p-2 bg-muted/30 rounded-lg">
+                        <h4 className="font-semibold text-muted-foreground text-xs">Chaos / Loi</h4>
+                        <p className="text-lg font-bold text-primary">{player.alignment.chaosLawful}</p>
+                    </div>
+                     <div className="flex-1 text-center p-2 bg-muted/30 rounded-lg">
+                        <h4 className="font-semibold text-muted-foreground text-xs">Bien / Mal</h4>
+                        <p className="text-lg font-bold text-primary">{player.alignment.goodEvil}</p>
+                    </div>
+                  </div>
+              </AccordionContent>
+            </AccordionItem>
             <AccordionItem value="stats">
-              <AccordionTrigger>
-                <div className="flex items-center gap-2"><Shield className="w-4 h-4" />Attributs</div>
+              <AccordionTrigger className='font-headline text-lg'>
+                <div className="flex items-center gap-2"><Shield className="w-5 h-5" />Attributs</div>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm p-2">
@@ -109,8 +136,8 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
             </AccordionItem>
             
             <AccordionItem value="skills">
-              <AccordionTrigger>
-                <div className="flex items-center gap-2"><Sparkles className="w-4 h-4" />Compétences</div>
+              <AccordionTrigger className='font-headline text-lg'>
+                <div className="flex items-center gap-2"><Sparkles className="w-5 h-5" />Compétences</div>
               </AccordionTrigger>
               <AccordionContent className="p-2">
                  <Accordion type="multiple" className="w-full">
@@ -128,7 +155,7 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                                 <AccordionContent>
                                     <div className="space-y-1 pt-2">
                                         {Object.entries(subSkills).map(([skill, value]) => (
-                                            <div key={skill} className="flex justify-between items-center p-1.5 text-xs">
+                                            <div key={skill} className="flex justify-between items-center p-1.5 text-sm">
                                                 <span className="font-medium capitalize">{skill.replace(/_/g, ' ')}</span>
                                                 <div className="text-right">
                                                   <span className="font-bold text-primary">{value.level}</span>
@@ -142,35 +169,6 @@ const PlayerSheet: React.FC<PlayerSheetProps> = ({ player }) => {
                         );
                     })}
                 </Accordion>
-              </AccordionContent>
-            </AccordionItem>
-            
-            <AccordionItem value="progression">
-              <AccordionTrigger>
-                <div className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Progression & Alignement</div>
-              </AccordionTrigger>
-              <AccordionContent className="p-2 text-sm space-y-4">
-                 <div>
-                    <h4 className="font-semibold text-muted-foreground text-xs">Niveau</h4>
-                    <p className="text-xl font-bold text-primary">{player.progression.level}</p>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-end mb-0.5">
-                        <h4 className="font-semibold text-muted-foreground text-xs">Expérience (XP)</h4>
-                        <p className="text-xs text-primary/80">{player.progression.xp} / {player.progression.xpToNextLevel}</p>
-                    </div>
-                    <Progress value={xpPercentage} className="w-full h-2.5" />
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <div className="flex-1">
-                        <h4 className="font-semibold text-muted-foreground text-xs">Chaos / Loi</h4>
-                        <p className="text-md text-center"> <span className="font-bold text-primary">{player.alignment.chaosLawful}</span></p>
-                    </div>
-                     <div className="flex-1">
-                        <h4 className="font-semibold text-muted-foreground text-xs">Bien / Mal</h4>
-                        <p className="text-md text-center"> <span className="font-bold text-primary">{player.alignment.goodEvil}</span></p>
-                    </div>
-                  </div>
               </AccordionContent>
             </AccordionItem>
         </Accordion>

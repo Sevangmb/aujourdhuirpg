@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Literata', serif;
 }
 
 @layer base {
   :root {
-    --background: 210 20% 96%; /* #F5F7FA - Very Light Cool Gray/Blue */
+    --background: 0 0% 94%; /* #F0F0F0 - Very Light Gray */
     --foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
 
-    --card: 210 20% 100%; /* #FFFFFF - White */
+    --card: 0 0% 100%; /* #FFFFFF - White */
     --card-foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
 
-    --popover: 210 20% 100%; /* #FFFFFF - White */
+    --popover: 0 0% 100%; /* #FFFFFF - White */
     --popover-foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
 
-    --primary: 220 50% 60%; /* #647ACB - Medium Slate Blue */
-    --primary-foreground: 0 0% 100%; /* #FFFFFF - White */
+    --primary: 120 60% 66%; /* #77DD77 - Muted Green */
+    --primary-foreground: 215 25% 15%; /* Darker text for green */
 
     --secondary: 210 20% 90%; /* #E0E5EB - Light Slate Gray */
     --secondary-foreground: 215 25% 20%; /* #293342 - Darker Slate Blue for secondary text */
@@ -26,7 +26,7 @@ body {
     --muted: 210 20% 85%; /* #D1D8E0 - Muted Slate Gray */
     --muted-foreground: 215 20% 45%; /* #64748B - Muted Slate Blue text */
 
-    --accent: 30 80% 60%; /* #F9A825 - Muted Orange */
+    --accent: 45 62% 52%; /* #D4AF37 - Soft Gold */
     --accent-foreground: 0 0% 10%; /* #1A1A1A - Very Dark Gray/Black */
 
     --destructive: 0 84.2% 60.2%;
@@ -34,26 +34,16 @@ body {
 
     --border: 210 20% 80%; /* #C2CBD6 - Slate Gray Border */
     --input: 210 20% 80%; /* #C2CBD6 - Slate Gray Input Border */
-    --ring: 220 50% 50%; /* #4B60B2 - Darker Slate Blue for focus rings */
+    --ring: 120 60% 50%; /* Darker Green for focus rings */
 
     --radius: 0.5rem;
 
-    /* Chart colors (defaults, can be adjusted if charts are used) */
+    /* Chart colors */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-
-    /* Sidebar specific colors */
-    --sidebar-background: 210 20% 98%; /* #F9FAFB - Almost White Blueish */
-    --sidebar-foreground: 215 25% 30%; /* #3E4C60 - Darker Slate Blue */
-    --sidebar-primary: 220 50% 55%; /* #536CC8 - Slightly darker primary for sidebar */
-    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White */
-    --sidebar-accent: 210 20% 92%; /* #E6EAF0 - Very Light Slate for hover */
-    --sidebar-accent-foreground: 215 25% 25%; /* #334155 - Dark Slate Blue */
-    --sidebar-border: 210 20% 85%; /* #D1D8E0 - Muted Slate Gray Border */
-    --sidebar-ring: 220 50% 45%; /* #3A53A5 - Even Darker Slate Blue Ring */
   }
 
   .dark {
@@ -66,8 +56,8 @@ body {
     --popover: 220 15% 20%; /* #292E38 - Darker Slate Popover */
     --popover-foreground: 210 20% 85%; /* #CCD1D9 - Light Cool Gray */
 
-    --primary: 220 50% 60%; /* #647ACB - Medium Slate Blue */
-    --primary-foreground: 0 0% 100%; /* #FFFFFF - White */
+    --primary: 120 50% 60%; /* Lighter Green for dark mode */
+    --primary-foreground: 0 0% 10%; /* #1A1A1A - Very Dark Gray/Black */
 
     --secondary: 220 15% 25%; /* #323843 - Medium Dark Slate */
     --secondary-foreground: 210 20% 80%; /* #C0C7CF - Lighter Cool Gray */
@@ -75,7 +65,7 @@ body {
     --muted: 220 15% 30%; /* #3B414D - Muted Dark Slate */
     --muted-foreground: 210 20% 60%; /* #8D99A8 - Muted Cool Gray Text */
 
-    --accent: 30 70% 55%; /* #F59E0B - Muted Orange (Darker) */
+    --accent: 45 70% 60%; /* Brighter Gold for dark mode */
     --accent-foreground: 0 0% 10%; /* #1A1A1A - Very Dark Gray/Black */
 
     --destructive: 0 70% 50%;
@@ -83,24 +73,14 @@ body {
 
     --border: 220 15% 30%; /* #3B414D - Muted Dark Slate Border */
     --input: 220 15% 30%; /* #3B414D - Muted Dark Slate Input Border */
-    --ring: 220 50% 50%; /* #4B60B2 - Darker Slate Blue for focus rings */
+    --ring: 120 50% 50%; /* Darker Green for focus rings */
 
     /* Chart colors for dark mode */
-    --chart-1: 220 70% 50%;
+    --chart-1: 120 70% 50%;
     --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
+    --chart-3: 45 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    
-    /* Sidebar specific colors for dark mode */
-    --sidebar-background: 220 15% 10%; /* #1A1D23 - Very Dark Slate */
-    --sidebar-foreground: 210 20% 90%; /* #DDE1E6 - Very Light Cool Gray */
-    --sidebar-primary: 220 50% 65%; /* #758DE0 - Lighter Primary for Dark Sidebar */
-    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White */
-    --sidebar-accent: 220 15% 20%; /* #292E38 - Darker Slate Card for hover */
-    --sidebar-accent-foreground: 210 20% 95%; /* #F0F2F5 - Almost White */
-    --sidebar-border: 220 15% 25%; /* #323843 - Medium Dark Slate Border */
-    --sidebar-ring: 220 50% 55%; /* #536CC8 - Lighter Ring for Dark Sidebar */
   }
 }
 
