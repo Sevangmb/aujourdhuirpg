@@ -7,6 +7,8 @@ import type { Quest, PNJ, DynamicItemCreationPayload } from '.';
 import type { HistoricalContact } from '../modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
 import type { EnhancedPOI } from './poi-types';
+import type { WeatherData } from '@/app/actions/get-current-weather';
+import type { GeoIntelligence } from './geo-intelligence-types';
 
 // This type represents the data for a scenario that the player is currently in.
 export type Scenario = {
@@ -62,7 +64,6 @@ export type GameEvent =
 export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
-  choices: StoryChoice[]; // All available choices, including contextual ones
   currentEnemy?: Enemy | null;
   nearbyPois: EnhancedPOI[] | null;
   gameTimeInMinutes: number;
@@ -116,3 +117,7 @@ export type Position = {
   poiHighlights?: string[];
   tags?: Record<string, string>;
 };
+
+// Re-exporting for use in GameContext, etc.
+export type { WeatherData };
+export type { GeoIntelligence };

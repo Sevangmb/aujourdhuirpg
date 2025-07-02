@@ -32,7 +32,7 @@ type AsyncData<T> = {
   error: string | null;
 };
 
-interface GameContextData {
+export interface GameContextData {
   weather: AsyncData<WeatherData>;
   locationImage: { url: string | null; loading: boolean; error: string | null };
   geoIntelligence: AsyncData<GeoIntelligence>;
@@ -220,7 +220,7 @@ export const GameProvider: React.FC<{
     setIsLoading(true);
   
     try {
-      const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, choice);
+      const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, contextualData, choice);
   
       const aiOutput = await generateScenario(aiContext);
       
@@ -228,16 +228,12 @@ export const GameProvider: React.FC<{
   
       const allEvents = [...gameLogicResult.gameEvents, ...aiGeneratedEvents];
 
-      // Apply all events to get the final state for this turn
       const finalStateForTurn = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
 
-      // Enrich the AI's proposed choices with logic based on the *final* state
       const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateForTurn.player!);
 
-      // Now, dispatch all events to update the global state
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
 
-      // And set the new scenario with the logically-enriched choices
       dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
           scenarioText: aiOutput.scenarioText, 
           choices: enrichedAIChoices, 
@@ -252,7 +248,7 @@ export const GameProvider: React.FC<{
     } finally {
         setIsLoading(false);
     }
-  }, [gameState, toast, isLoading]);
+  }, [gameState, contextualData, toast, isLoading]);
 
   // --- ACTION HANDLERS ---
   const handleInitiateTravel = (destination: Position) => {

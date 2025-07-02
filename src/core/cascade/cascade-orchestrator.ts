@@ -4,12 +4,14 @@
  * et sépare clairement la logique métier de l'IA narrative.
  */
 
-import type { GameState, StoryChoice, GameEvent } from '@/lib/types';
+import type { GameState, StoryChoice, GameEvent, WeatherData } from '@/lib/types';
 import type { CascadeResult, EnrichedContext } from './types';
 import { runCascadeForAction } from './cascade-system';
 import { GameLogicProcessor } from '../logic/game-logic-processor';
 import { AIContextPreparer } from './ai-context-preparer';
 import { gameReducer } from '@/lib/game-logic';
+import type { GameContextData } from '@/contexts/GameContext';
+
 
 export class CascadeOrchestrator {
   public gameLogicProcessor: GameLogicProcessor;
@@ -28,6 +30,7 @@ export class CascadeOrchestrator {
    */
   async processPlayerAction(
     gameState: GameState, 
+    contextualData: GameContextData,
     playerChoice: StoryChoice
   ): Promise<{
     gameLogicResult: {
@@ -38,7 +41,11 @@ export class CascadeOrchestrator {
   }> {
     
     // 1. LOGIQUE MÉTIER PURE (pas d'IA)
-    const { gameEvents } = await this.gameLogicProcessor.processAction(gameState, playerChoice);
+    const { gameEvents } = await this.gameLogicProcessor.processAction(
+      gameState, 
+      playerChoice,
+      contextualData.weather.data // Pass weather data to the logic processor
+    );
     
     // Apply the deterministic events to get the next state for the cascade
     const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameEvents });

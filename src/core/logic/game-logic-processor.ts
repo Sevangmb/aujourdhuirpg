@@ -4,16 +4,17 @@
  * Calcule tous les effets déterministes des actions du joueur.
  */
 
-import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats, DynamicItemCreationPayload } from '@/lib/types';
+import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats, DynamicItemCreationPayload, WeatherData } from '@/lib/types';
 import { performSkillCheck } from '@/lib/skill-check';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { processCombatTurn } from '@/modules/combat/logic';
 import { getMasterItemById } from '@/data/items';
+import { getWeatherModifier } from '@/lib/game-logic';
 
 export class GameLogicProcessor {
   
-  async processAction(gameState: GameState, choice: StoryChoice): Promise<{
+  async processAction(gameState: GameState, choice: StoryChoice, weatherData: WeatherData | null): Promise<{
     gameEvents: GameEvent[];
   }> {
     if (!gameState.player) {
@@ -56,19 +57,25 @@ export class GameLogicProcessor {
 
     // Apply skill check if present
     if (choice.skillCheck) {
-      this.processSkillCheck(gameState, choice, events);
+      this.processSkillCheck(gameState, choice, weatherData, events);
     }
 
     return { gameEvents: events };
   }
 
-  private processSkillCheck(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
+  private processSkillCheck(state: GameState, choice: StoryChoice, weatherData: WeatherData | null, events: GameEvent[]): void {
     if (!choice.skillCheck || !state.player) return;
 
     const { player } = state;
     const { skill, difficulty } = choice.skillCheck;
     
-    const result = performSkillCheck(player.skills, player.stats, skill, difficulty, player.inventory, 0, player.physiology, player.momentum);
+    // Get weather modifier for the skill check
+    const weatherMod = getWeatherModifier(skill, weatherData);
+    if (weatherMod.reason) {
+        events.push({ type: 'TEXT_EVENT', text: weatherMod.reason });
+    }
+    
+    const result = performSkillCheck(player.skills, player.stats, skill, difficulty, player.inventory, weatherMod.modifier, player.physiology, player.momentum);
     
     events.push({
       type: 'SKILL_CHECK_RESULT', skill, success: result.success, degree: result.degreeOfSuccess,
