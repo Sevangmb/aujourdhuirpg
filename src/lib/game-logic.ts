@@ -1,5 +1,6 @@
 
 
+
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import type { Enemy } from '@/modules/combat/types';
@@ -391,12 +392,78 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
             description: `Manger ${foodItem.name} pour calmer votre faim.`,
             iconName: 'Utensils',
             type: 'action',
-            mood: 'social', // Placeholder, could be 'pragmatic'
+            mood: 'social',
             energyCost: 1,
             timeCost: 5,
             consequences: [`Restaure la faim`, `Utilise 1x ${foodItem.name}`]
         });
     }
+
+    // Action to drink if thirsty
+    const drinkItem = player.inventory.find(item => item.type === 'consumable' && item.physiologicalEffects?.thirst && item.physiologicalEffects.thirst > 0);
+    if (player.physiology.basic_needs.thirst.level < 70 && drinkItem) {
+        actions.push({
+            id: `use_item_${drinkItem.instanceId}`,
+            text: `Boire: ${drinkItem.name}`,
+            description: `Boire ${drinkItem.name} pour étancher votre soif.`,
+            iconName: 'GlassWater',
+            type: 'action',
+            mood: 'social',
+            energyCost: 1,
+            timeCost: 2,
+            consequences: [`Restaure la soif`, `Utilise 1x ${drinkItem.name}`]
+        });
+    }
+
+    // Action to heal if health is not full
+    const medkitItem = player.inventory.find(item => item.type === 'consumable' && item.effects?.Sante && item.effects.Sante > 0);
+    if (player.stats.Sante.value < player.stats.Sante.max! && medkitItem) {
+         actions.push({
+            id: `use_item_${medkitItem.instanceId}`,
+            text: `Se soigner: ${medkitItem.name}`,
+            description: `Utiliser ${medkitItem.name} pour restaurer votre santé.`,
+            iconName: 'Heart',
+            type: 'action',
+            mood: 'adventurous',
+            energyCost: 2,
+            timeCost: 10,
+            consequences: [`Restaure la santé`, `Utilise 1x ${medkitItem.name}`]
+        });
+    }
+
+    // Action to read a book
+    const bookItem = player.inventory.find(item => item.id === 'generic_book_01');
+     if (bookItem) {
+         actions.push({
+            id: `use_item_${bookItem.instanceId}`,
+            text: `Lire: ${bookItem.name}`,
+            description: `Prendre un moment pour lire "${bookItem.name}".`,
+            iconName: 'BookOpen',
+            type: 'reflection',
+            mood: 'contemplative',
+            energyCost: 1,
+            timeCost: 20,
+            consequences: [`Gain de connaissances`, `Passe le temps`],
+            skillGains: { 'savoir.histoire': 10 }
+        });
+    }
+
+    // Action to use smartphone
+    const phone = player.inventory.find(item => item.id === 'smartphone_01');
+     if (phone) {
+         actions.push({
+            id: `use_item_${phone.instanceId}`,
+            text: `Consulter le smartphone`,
+            description: `Utiliser votre téléphone pour consulter les actualités ou des messages.`,
+            iconName: 'Smartphone',
+            type: 'reflection',
+            mood: 'social',
+            energyCost: 1,
+            timeCost: 10,
+            consequences: [`Informations`, `Distraction`]
+        });
+    }
+
 
     return actions;
 }

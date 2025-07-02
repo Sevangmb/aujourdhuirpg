@@ -25,7 +25,7 @@ export class AIContextPreparer {
     }
 
     const gameEventsSummary = summarizeGameEventsForAI(gameEvents);
-    const cascadeSummary = this.summarizeCascadeResults(cascadeResult);
+    const cascadeSummary = this.summarizeCascadeResultsForAI(cascadeResult);
     
     const contextualActions = [
         ...generateActionsForPOIs(gameState.nearbyPois || [], gameState.player, gameState.gameTimeInMinutes),
@@ -101,7 +101,7 @@ export class AIContextPreparer {
     };
   }
   
-  private summarizeCascadeResults(cascadeResult: CascadeResult | null): string {
+  private summarizeCascadeResultsForAI(cascadeResult: CascadeResult | null): string {
     if (!cascadeResult || !cascadeResult.results.size) {
         return "Aucune analyse contextuelle supplémentaire disponible.";
     }
@@ -109,21 +109,21 @@ export class AIContextPreparer {
     const summaries: string[] = [];
     const cuisineData = cascadeResult.results.get('cuisine')?.data;
     if (cuisineData?.cookingOpportunities?.length > 0) {
-        summaries.push(`Opportunités de Cuisine: ${cuisineData.cookingOpportunities.join(' ')}`);
+        summaries.push(`Vous avez de quoi cuisiner: ${cuisineData.cookingOpportunities[0]}`);
     }
 
     const cultureData = cascadeResult.results.get('culture_locale')?.data;
     if (cultureData?.summary && !cultureData.summary.includes('Aucune information')) {
-        summaries.push(`Contexte Culturel Local: ${cultureData.summary}`);
+        summaries.push(`En vous renseignant sur le lieu, vous apprenez ce qui suit : ${cultureData.summary}.`);
     }
 
     const livreData = cascadeResult.results.get('livre')?.data;
     if (livreData?.foundBooks?.length > 0) {
-        const bookTitles = (livreData.foundBooks as BookSearchResult[]).map(b => b.title).join(', ');
-        summaries.push(`Recherche de Livres: Des informations sur les livres suivants ont été trouvées: ${bookTitles}.`);
+        const bookTitle = (livreData.foundBooks as BookSearchResult[])[0].title;
+        summaries.push(`Votre recherche de livres a porté ses fruits : vous avez trouvé des informations sur "${bookTitle}".`);
     }
 
-    return summaries.length > 0 ? "Analyses contextuelles: " + summaries.join(" ") : "Aucune analyse contextuelle pertinente.";
+    return summaries.length > 0 ? "Informations contextuelles : " + summaries.join(" ") : "Aucune analyse contextuelle pertinente.";
   }
 
   public convertAIOutputToEvents(aiOutput: GenerateScenarioOutput): GameEvent[] {
