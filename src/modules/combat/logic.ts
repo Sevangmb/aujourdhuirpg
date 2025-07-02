@@ -5,6 +5,8 @@
 
 import type { GameState, GameEvent, Player, DegreeOfSuccess, StoryChoice } from '@/lib/types';
 import type { Enemy } from './types';
+import { performSkillCheck } from '@/lib/skill-check';
+
 
 /**
  * Calculates the damage dealt in an attack, considering stats and success degree.
@@ -14,7 +16,12 @@ import type { Enemy } from './types';
  * @param successDegree The degree of success of the attack roll.
  * @returns The final calculated damage.
  */
-export function calculateDamage(attackerStats: Player['stats'], weaponDamage: number, defenderDefense: number, successDegree: DegreeOfSuccess): number {
+export function calculateDamage(
+    attackerStats: { Force: { value: number }, Dexterite: { value: number } }, 
+    weaponDamage: number, 
+    defenderDefense: number, 
+    successDegree: DegreeOfSuccess
+): number {
     const baseAttack = (attackerStats.Force.value / 5) + (attackerStats.Dexterite.value / 10);
     const totalAttackPower = baseAttack + weaponDamage;
     
@@ -25,7 +32,7 @@ export function calculateDamage(attackerStats: Player['stats'], weaponDamage: nu
         finalDamage *= 1.5;
     }
     
-    const randomFactor = (Math.random() * 0.3) - 0.15;
+    const randomFactor = (Math.random() * 0.3) - 0.15; // +/- 15% damage variance
     finalDamage *= (1 + randomFactor);
     
     return Math.round(Math.max(1, finalDamage));
@@ -39,15 +46,19 @@ export function handleCombatStarted(state: GameState, enemy: Enemy): GameState {
     
     const newState = {
         ...state,
-        currentEnemy: enemy,
+        currentEnemy: { ...enemy, health: enemy.maxHealth },
     };
-    // Directly apply the journal entry via the reducer logic to avoid complex state management here
-    const tempStateWithJournal = gameReducer(newState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
-    return tempStateWithJournal;
+    
+    return gameReducer(newState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
 }
 
 export function handleCombatEnded(state: GameState): GameState {
-    return { ...state, currentEnemy: null };
+    const journalEntry: GameEvent = { 
+        type: 'JOURNAL_ENTRY_ADDED', 
+        payload: { type: 'event', text: `Le combat est terminé.` } 
+    };
+    const newState = { ...state, currentEnemy: null };
+    return gameReducer(newState, { type: 'APPLY_GAME_EVENTS', payload: [journalEntry] });
 }
 
 export function handleCombatAction(state: GameState, target: 'player' | 'enemy', newHealth: number): GameState {
@@ -61,8 +72,8 @@ export function handleCombatAction(state: GameState, target: 'player' | 'enemy',
     return state;
 }
 
+// A local, minimal reducer to apply journal entries within this module's logic
 function gameReducer(state: GameState, action: { type: 'APPLY_GAME_EVENTS'; payload: GameEvent[] }): GameState {
-  // A minimal reducer to apply journal entries locally, as the full reducer is in game-logic.ts
   if (!state.player) return state;
   let newState = { ...state };
   for (const event of action.payload) {
@@ -76,38 +87,50 @@ function gameReducer(state: GameState, action: { type: 'APPLY_GAME_EVENTS'; payl
   return newState;
 }
 
-export function summarizeCombatEvents(events: GameEvent[], playerName: string, enemyName: string): string {
-    const summaryLines: string[] = [];
-
-    for (const event of events) {
-        if (event.type === 'COMBAT_ACTION') {
-            const attacker = event.attacker === playerName ? 'Vous' : event.attacker;
-            const target = event.target === 'player' ? 'vous' : enemyName;
-            summaryLines.push(`${attacker} ${event.action.replace(playerName, 'vous').replace(enemyName, 'l\'ennemi')} et infligez ${event.damage} points de dégâts à ${target}.`);
-        } else if (event.type === 'TEXT_EVENT') {
-            summaryLines.push(event.text);
-        } else if (event.type === 'SKILL_CHECK_RESULT' && !event.success) {
-            summaryLines.push(`Votre tentative de ${event.skill.split('.')[1].replace(/_/g, ' ')} a échoué !`);
-        }
-    }
-    
-    return summaryLines.join('\n');
-}
-
 export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
     const events: GameEvent[] = [];
     
-    // Player action
+    // Player's Turn
     if (choice.combatActionType === 'attack') {
-        const weapon = player.inventory.find(i => i.combatStats?.damage) || { name: 'Poings', combatStats: { damage: 2 }};
-        const damageDealt = 5; // Simplified
-        events.push({ type: 'COMBAT_ACTION', attacker: player.name, target: 'enemy', damage: damageDealt, newHealth: enemy.health - damageDealt, action: `attaque ${enemy.name} avec ${weapon.name}` });
+        const weapon = player.inventory.find(i => i.type === 'weapon' && i.combatStats?.damage) || { name: 'Poings', combatStats: { damage: 2 }};
+        const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.arme_blanche', enemy.defense, player.inventory, 0, player.physiology, player.momentum);
+        events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
+
+        if (skillCheckResult.success) {
+            const damageDealt = calculateDamage(player.stats, weapon.combatStats?.damage || 2, enemy.defense, skillCheckResult.degreeOfSuccess);
+            const newEnemyHealth = Math.max(0, enemy.health - damageDealt);
+            events.push({ type: 'COMBAT_ACTION', attacker: player.name, target: 'enemy', damage: damageDealt, newHealth: newEnemyHealth, action: `attaque ${enemy.name} avec ${weapon.name}` });
+            
+            if (newEnemyHealth <= 0) {
+                events.push({ type: 'COMBAT_ENDED', winner: 'player' });
+                events.push({ type: 'XP_GAINED', amount: 50 });
+                events.push({ type: 'MONEY_CHANGED', amount: 10, description: `Butin sur ${enemy.name}` });
+                return { events };
+            }
+        } else {
+            events.push({ type: 'TEXT_EVENT', text: "Votre attaque manque sa cible !" });
+        }
+    } else if (choice.combatActionType === 'flee') {
+        const skillCheckResult = performSkillCheck(player.skills, player.stats, 'physiques.esquive', 40, [], 0, player.physiology, player.momentum);
+        events.push({ ...skillCheckResult, type: 'SKILL_CHECK_RESULT' });
+        if (skillCheckResult.success) {
+            events.push({ type: 'COMBAT_ENDED', winner: 'player' });
+            events.push({ type: 'TEXT_EVENT', text: "Vous réussissez à vous enfuir !" });
+            return { events };
+        } else {
+            events.push({ type: 'TEXT_EVENT', text: "Votre tentative de fuite échoue !" });
+        }
     }
-    // ... other combat actions
     
-    // Enemy action (simplified)
-    const damageTaken = 3; // Simplified
-    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: damageTaken, newHealth: player.stats.Sante.value - damageTaken, action: `attaque ${player.name}` });
+    // Enemy's Turn (if not defeated/escaped)
+    const enemyDamage = calculateDamage({ Force: { value: enemy.stats.Force }, Dexterite: { value: enemy.stats.Dexterite } }, enemy.attack, player.stats.Constitution.value, 'success');
+    const newPlayerHealth = Math.max(0, player.stats.Sante.value - enemyDamage);
+    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: enemyDamage, newHealth: newPlayerHealth, action: `attaque ${player.name}` });
+
+    if (newPlayerHealth <= 0) {
+        events.push({ type: 'COMBAT_ENDED', winner: 'enemy' });
+        events.push({ type: 'TEXT_EVENT', text: "Vous avez été vaincu..." });
+    }
 
     return { events };
 }

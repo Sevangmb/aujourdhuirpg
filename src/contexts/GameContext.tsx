@@ -217,43 +217,48 @@ export const GameProvider: React.FC<{
   const handleChoiceSelected = useCallback(async (choice: StoryChoice) => {
     if (isLoading || !gameState || !gameState.player) return;
     setIsLoading(true);
-
+  
     try {
-        const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, choice);
-        
-        // Create a temporary state to correctly enrich choices later
-        const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
-
-        // Dispatch the deterministic logic results to update the main state
-        dispatch({ type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
-        
-        // Generate the AI narration based on the prepared context
-        const aiOutput = await generateScenario(aiContext);
-        
-        // Convert AI proposals (new quests, items etc.) into game events
-        const aiGeneratedEvents = orchestrator.aiContextPreparer.convertAIOutputToEvents(aiOutput);
-        
-        // Apply AI-generated events to the state
-        if (aiGeneratedEvents.length > 0) {
-           dispatch({ type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
-        }
-
-        // Use the temporary state to enrich AI choices with game logic (e.g., success probability)
-        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], stateAfterLogic.player!);
-        
-        // Generate contextual choices from the game world based on the state *after* all events
-        const finalState = gameReducer(stateAfterLogic, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
-        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, finalState.player!);
-        const poiActions = generateActionsForPOIs(finalState.nearbyPois || [], finalState.player!, finalState.gameTimeInMinutes);
-        const stateBasedActions = generatePlayerStateActions(finalState.player!);
-        
-        let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
-
-        dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
-            scenarioText: aiOutput.scenarioText, 
-            choices: allChoices, 
-            aiRecommendation: aiOutput.aiRecommendation 
-        }});
+      // STEP 1: Process logic & prepare AI context
+      const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, choice);
+  
+      // STEP 2: Call AI with prepared context
+      const aiOutput = await generateScenario(aiContext);
+      
+      // STEP 3: Convert AI output to game events
+      const aiGeneratedEvents = orchestrator.aiContextPreparer.convertAIOutputToEvents(aiOutput);
+  
+      // STEP 4: Combine all events and calculate the final state for the *next* turn.
+      const allEvents = [...gameLogicResult.gameEvents, ...aiGeneratedEvents];
+      const stateAfterAllEvents = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
+  
+      // STEP 5: Dispatch all state changes at once.
+      dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
+  
+      // STEP 6: Generate all choices for the *next* turn based on the new state
+      const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], stateAfterAllEvents.player!);
+      
+      let allChoices: StoryChoice[];
+      // If combat is active, generate combat-specific choices
+      if (stateAfterAllEvents.currentEnemy) {
+          allChoices = [
+              { id: 'attack', text: 'Attaquer', description: 'Attaquer l\'ennemi avec votre meilleure arme.', iconName: 'Sword', type: 'action', mood: 'adventurous', energyCost: 10, timeCost: 0, consequences: ['Dégâts infligés'], isCombatAction: true, combatActionType: 'attack' },
+              { id: 'flee', text: 'Fuir', description: 'Tenter de s\'échapper du combat.', iconName: 'Wind', type: 'action', mood: 'adventurous', energyCost: 15, timeCost: 0, consequences: ['Évasion possible'], isCombatAction: true, combatActionType: 'flee', skillCheck: { skill: 'physiques.esquive', difficulty: 40 } },
+          ];
+      } else {
+        // Otherwise, generate standard contextual choices
+        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, stateAfterAllEvents.player!);
+        const poiActions = generateActionsForPOIs(stateAfterAllEvents.nearbyPois || [], stateAfterAllEvents.player!, stateAfterAllEvents.gameTimeInMinutes);
+        const stateBasedActions = generatePlayerStateActions(stateAfterAllEvents.player!);
+        allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
+      }
+  
+      // STEP 7: Dispatch the new scenario content for the UI
+      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
+          scenarioText: aiOutput.scenarioText, 
+          choices: allChoices, 
+          aiRecommendation: aiOutput.aiRecommendation 
+      }});
       
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";
