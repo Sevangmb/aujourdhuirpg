@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Zod schemas and TypeScript types for the Historical Contacts feature.
  */

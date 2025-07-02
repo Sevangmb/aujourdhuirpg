@@ -3,7 +3,7 @@
  * @fileOverview Contains the core business logic for the Historical module.
  */
 
-import type { GameState, HistoricalContact } from '@/modules/historical/types';
+import type { GameState, HistoricalContact } from './types';
 
 /**
  * Handles adding a new historical contact to the player's state.
