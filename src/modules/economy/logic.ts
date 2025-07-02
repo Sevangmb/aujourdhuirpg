@@ -3,7 +3,7 @@
  * @fileOverview Contains the core business logic for the Economy module.
  */
 
-import type { GameState, Player, Quest } from '@/lib/types';
+import type { GameState, Player, Quest, AdvancedSkillSystem } from '@/lib/types';
 import type { Transaction, TransactionCategory } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -58,14 +58,14 @@ export function handleMoneyChange(state: GameState, amount: number, description:
  * @param quest The quest object, which should include a 'requiredSkill' hint.
  * @returns A number representing the calculated monetary reward.
  */
-export function calculateJobReward(playerSkills: Player['skills'], quest: Pick<Quest, 'requiredSkill'>): number {
+export function calculateJobReward(playerSkills: AdvancedSkillSystem, quest: Pick<Quest, 'requiredSkill'>): number {
     const requiredSkillPath = quest.requiredSkill;
     let skillLevel = 5; // Default base level if no skill specified or found
 
     if (requiredSkillPath) {
         const pathParts = requiredSkillPath.split('.');
         if (pathParts.length === 2) {
-            const [category, skillName] = pathParts as [keyof Player['skills'], string];
+            const [category, skillName] = pathParts as [keyof AdvancedSkillSystem, string];
             const skillCategory = playerSkills[category];
             if (skillCategory && (skillCategory as any)[skillName]) {
                 skillLevel = (skillCategory as any)[skillName].level;
@@ -79,5 +79,3 @@ export function calculateJobReward(playerSkills: Player['skills'], quest: Pick<Q
     if (skillLevel >= 10) return Math.floor(Math.random() * 16) + 15; // 15-30€
     return Math.floor(Math.random() * 11) + 5; // 5-15€
 }
-
-    

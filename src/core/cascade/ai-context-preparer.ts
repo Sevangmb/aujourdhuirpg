@@ -6,7 +6,7 @@
 
 import type { GameState, GameEvent, StoryChoice, Player, BookSearchResult, EnrichedRecipe, EnhancedPOI } from '@/lib/types';
 import type { CascadeResult } from './types';
-import { generateActionsForPOIs, summarizeGameEventsForAI } from '@/lib/game-logic';
+import { summarizeGameEventsForAI, generateActionsForPOIs } from '@/lib/game-logic';
 import type { AdvancedSkillSystem, PlayerStats } from '@/lib/types/player-types';
 import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import type { Quest, PNJ } from '@/lib/types';

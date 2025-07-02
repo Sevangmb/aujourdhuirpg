@@ -235,18 +235,19 @@ export const GameProvider: React.FC<{
            dispatch({ type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
         }
 
-        // Get the final state after all events have been applied
-        // This is tricky because dispatch is async. We'll manually apply events to a temporary state for choice generation.
-        let tempState = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
-        tempState = gameReducer(tempState, { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents });
+        // Create a temporary state to correctly enrich choices
+        const stateAfterAllEvents = gameReducer(
+            gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents }),
+            { type: 'APPLY_GAME_EVENTS', payload: aiGeneratedEvents }
+        );
         
         // Enrich AI choices with game logic (e.g., success probability)
-        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], tempState.player!);
+        const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], stateAfterAllEvents.player!);
         
         // Generate contextual choices from the game world
-        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, tempState.player!);
-        const poiActions = generateActionsForPOIs(tempState.nearbyPois || [], tempState.player!, tempState.gameTimeInMinutes);
-        const stateBasedActions = generatePlayerStateActions(tempState.player!);
+        const cascadeActions = generateCascadeBasedActions(gameLogicResult.cascadeResult, stateAfterAllEvents.player!);
+        const poiActions = generateActionsForPOIs(stateAfterAllEvents.nearbyPois || [], stateAfterAllEvents.player!, stateAfterAllEvents.gameTimeInMinutes);
+        const stateBasedActions = generatePlayerStateActions(stateAfterAllEvents.player!);
         
         let allChoices = [...enrichedAIChoices, ...cascadeActions, ...poiActions, ...stateBasedActions];
 
@@ -263,7 +264,7 @@ export const GameProvider: React.FC<{
     } finally {
         setIsLoading(false);
     }
-  }, [gameState, dispatch, toast, isLoading, setIsLoading]);
+  }, [gameState, toast, isLoading]);
 
   // --- ACTION HANDLERS ---
   const handleInitiateTravel = (destination: Position) => {
@@ -286,6 +287,8 @@ export const GameProvider: React.FC<{
         type: 'action',
         iconName: 'Compass',
         mood: 'adventurous',
+        energyCost: 0, // Costs will be calculated by the logic processor
+        timeCost: 0,   // Costs will be calculated by the logic processor
         consequences: ['Changement de lieu'],
         // The orchestrator will use these properties to trigger the travel logic
         travelChoiceInfo: {

@@ -4,13 +4,11 @@
  * Calcule tous les effets déterministes des actions du joueur.
  */
 
-import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem } from '@/lib/types';
-import { applySkillXp } from '@/modules/player/logic';
-import { handleMoneyChange } from '@/modules/economy/logic';
+import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats } from '@/lib/types';
 import { performSkillCheck } from '@/lib/skill-check';
-import { processCombatTurn } from '@/lib/game-logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
+import { processCombatTurn } from '@/lib/game-logic';
 
 export class GameLogicProcessor {
   
@@ -155,7 +153,7 @@ export class GameLogicProcessor {
       events.push({ type: 'ITEM_REMOVED', itemId: item.id, itemName: item.name, quantity: 1 });
       if (item.effects) {
         Object.entries(item.effects).forEach(([stat, value]) => {
-          events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof Player['stats'], change: value as number, finalValue: state.player!.stats[stat as keyof Player['stats']].value + (value as number) });
+          events.push({ type: 'PLAYER_STAT_CHANGE', stat: stat as keyof PlayerStats, change: value as number, finalValue: state.player!.stats[stat as keyof PlayerStats].value + (value as number) });
         });
       }
       if (item.physiologicalEffects) {

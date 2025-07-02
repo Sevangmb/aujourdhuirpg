@@ -6,10 +6,10 @@
 
 import type { GameState, StoryChoice, GameEvent } from '@/lib/types';
 import type { CascadeResult, EnrichedContext } from './types';
-import { cascadeManager } from './cascade-manager';
 import { runCascadeForAction } from './cascade-system';
 import { GameLogicProcessor } from '../logic/game-logic-processor';
 import { AIContextPreparer } from './ai-context-preparer';
+import { gameReducer } from '@/lib/game-logic';
 
 export class CascadeOrchestrator {
   public gameLogicProcessor: GameLogicProcessor;
@@ -32,16 +32,16 @@ export class CascadeOrchestrator {
   ): Promise<{
     gameLogicResult: {
       gameEvents: GameEvent[];
-      cascadeResult: CascadeResult | null,
+      cascadeResult: CascadeResult | null;
     };
     aiContext: any;
   }> {
     
     // 1. LOGIQUE MÉTIER PURE (pas d'IA)
-    const gameLogicResult = await this.gameLogicProcessor.processAction(gameState, playerChoice);
+    const { gameEvents } = await this.gameLogicProcessor.processAction(gameState, playerChoice);
     
     // Apply the deterministic events to get the next state for the cascade
-    const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameLogicResult.gameEvents });
+    const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameEvents });
     
     // 2. ENRICHISSEMENT CONTEXTUEL VIA CASCADE
     // La cascade s'exécute sur l'état *après* la logique déterministe.
@@ -50,30 +50,17 @@ export class CascadeOrchestrator {
     // 3. PRÉPARATION DU CONTEXTE POUR L'IA NARRATIVE
     const aiContext = this.aiContextPreparer.prepareContext(
       stateAfterLogic,
-      gameLogicResult.gameEvents,
+      gameEvents,
       cascadeResult,
       playerChoice
     );
 
     return {
       gameLogicResult: {
-        ...gameLogicResult,
+        gameEvents,
         cascadeResult,
       },
       aiContext
     };
   }
-}
-
-// Minimal reducer to apply events for state progression within the orchestrator
-function gameReducer(state: GameState, action: { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }): GameState {
-  // This is a simplified version of the main reducer. It's sufficient for the orchestrator's needs.
-  let newState = { ...state };
-  for (const event of action.payload) {
-      if (event.type === 'PLAYER_TRAVELS' && newState.player) {
-          newState = { ...newState, player: { ...newState.player, currentLocation: event.destination } };
-      }
-      // Add other critical state changes if needed for cascade dependencies
-  }
-  return newState;
 }

@@ -5,19 +5,19 @@ import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck, calculateSuccessProbability } from './skill-check';
-import type { WeatherData } from '@/app/actions/get-current-weather';
 import { v4 as uuidv4 } from 'uuid';
-import type { CascadeResult } from '@/core/cascade/types';
-import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
-import { calculateDamage, handleCombatAction, handleCombatEnded, handleCombatStarted, summarizeCombatEvents } from '@/modules/combat/logic';
+import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { isShopOpen } from '@/lib/utils/time-utils';
+import type { CascadeResult } from '@/core/cascade/types';
+
 
 // --- Game Actions & Reducer ---
+// This reducer now directly applies the effects of GameEvents calculated by the logic layer.
 export type GameAction =
   | { type: 'APPLY_GAME_EVENTS', payload: GameEvent[] }
   | { type: 'SET_CURRENT_SCENARIO'; payload: Scenario }
@@ -258,7 +258,7 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
     return choices.map(choice => {
         const enrichedChoice = { ...choice };
 
-        if (enrichedChoice.timeCost === undefined) {
+        if (enrichedChoice.timeCost === undefined || enrichedChoice.timeCost === null) {
             switch(choice.type) {
                 case 'reflection': enrichedChoice.timeCost = 10; break;
                 case 'observation': enrichedChoice.timeCost = 15; break;
@@ -269,7 +269,7 @@ export function enrichAIChoicesWithLogic(choices: StoryChoice[], player: Player)
                 default: enrichedChoice.timeCost = 10;
             }
         }
-        if (enrichedChoice.energyCost === undefined) {
+        if (enrichedChoice.energyCost === undefined || enrichedChoice.energyCost === null) {
             switch(choice.type) {
                 case 'reflection': enrichedChoice.energyCost = 2; break;
                 case 'observation': enrichedChoice.energyCost = 5; break;
@@ -423,7 +423,7 @@ export function generatePlayerStateActions(player: Player): StoryChoice[] {
     }
     
     if (stats.Sante.value < (stats.Sante.max || 100) * 0.7) {
-        const healingItems = inventory.filter(item => item.type === 'consumable' && item.effects?.Sante && (item.effects.Sante as unknown as number) > 0);
+        const healingItems = inventory.filter(i => i.effects?.Sante && (i.effects.Sante as any) > 0);
         if (healingItems.length > 0) {
             const bestHeal = healingItems[0];
             choices.push({
@@ -489,61 +489,62 @@ export function generateCascadeBasedActions(cascadeResult: CascadeResult | null,
 
 
 // --- COMBAT LOGIC ---
-export function generateCombatActions(player: Player, enemy: Enemy): StoryChoice[] {
-    const actions: StoryChoice[] = [];
-
-    // Basic Attack
-    actions.push({
-        id: 'combat_attack',
-        text: 'Attaquer',
-        description: `Attaquer ${enemy.name} avec votre meilleure option.`,
-        iconName: 'Sword',
-        type: 'action',
-        mood: 'adventurous',
-        isCombatAction: true,
-        combatActionType: 'attack',
-        timeCost: 0,
-        energyCost: 10,
-        consequences: ['Dégâts potentiels', 'Riposte de l\'ennemi'],
-    });
-
-    // Use Healing Item
-    const healingItems = player.inventory.filter(i => i.effects?.Sante && (i.effects.Sante as any) > 0);
-    if (healingItems.length > 0) {
-        const bestHeal = healingItems.sort((a,b) => (b.effects!.Sante as any) - (a.effects!.Sante as any))[0];
-        actions.push({
-            id: `combat_use_item_${bestHeal.instanceId}`,
-            text: `Utiliser ${bestHeal.name}`,
-            description: `Utiliser un objet pour récupérer de la santé.`,
-            iconName: 'Heart',
-            type: 'action',
-            mood: 'social',
-            isCombatAction: true,
-            combatActionType: 'special',
-            timeCost: 0,
-            energyCost: 2,
-            consequences: ['Récupération de santé'],
-        });
+export function processCombatTurn(player: Player, enemy: Enemy, choice: StoryChoice): { events: GameEvent[] } {
+    const events: GameEvent[] = [];
+    
+    // Player action
+    if (choice.combatActionType === 'attack') {
+        const weapon = player.inventory.find(i => i.combatStats?.damage) || { name: 'Poings', combatStats: { damage: 2 }};
+        const damageDealt = 5; // Simplified
+        events.push({ type: 'COMBAT_ACTION', attacker: player.name, target: 'enemy', damage: damageDealt, newHealth: enemy.health - damageDealt, action: `attaque ${enemy.name} avec ${weapon.name}` });
     }
+    // ... other combat actions
+    
+    // Enemy action (simplified)
+    const damageTaken = 3; // Simplified
+    events.push({ type: 'COMBAT_ACTION', attacker: enemy.name, target: 'player', damage: damageTaken, newHealth: player.stats.Sante.value - damageTaken, action: `attaque ${player.name}` });
 
-    // Flee
-    actions.push({
-        id: 'combat_flee',
-        text: 'Fuir',
-        description: 'Tenter de s\'échapper du combat.',
-        iconName: 'Zap', // Placeholder icon
-        type: 'action',
-        mood: 'mysterious',
-        isCombatAction: true,
-        combatActionType: 'flee',
-        timeCost: 0,
-        energyCost: 15,
-        consequences: ['Fin du combat ?', 'Risque d\'attaque dans le dos'],
-        skillCheck: {
-            skill: 'physiques.esquive',
-            difficulty: 60, // Base difficulty to flee
-        },
-    });
+    return { events };
+}
 
-    return actions;
+export function summarizeGameEventsForAI(events: GameEvent[]): string {
+    if (!events || events.length === 0) return "Aucun événement particulier ne s'est produit.";
+    
+    const summaries: string[] = [];
+
+    for (const event of events) {
+        switch (event.type) {
+            case 'SKILL_CHECK_RESULT':
+                summaries.push(`A tenté une action de '${event.skill.split('.')[1].replace(/_/g, ' ')}' et a ${event.success ? 'réussi' : 'échoué'}.`);
+                break;
+            case 'TEXT_EVENT':
+                summaries.push(event.text);
+                break;
+            case 'PLAYER_STAT_CHANGE':
+                if(Math.abs(event.change) > 2) summaries.push(`Sa statistique '${event.stat}' a changé.`);
+                break;
+            case 'XP_GAINED':
+                summaries.push(`A gagné de l'expérience.`);
+                break;
+            case 'ITEM_ADDED':
+                summaries.push(`A obtenu l'objet : ${event.itemName}.`);
+                break;
+            case 'ITEM_REMOVED':
+                summaries.push(`A utilisé l'objet : ${event.itemName}.`);
+                break;
+            case 'PLAYER_TRAVELS':
+                summaries.push(`A voyagé de ${event.from} à ${event.destination.name}.`);
+                break;
+            case 'TRAVEL_EVENT':
+                summaries.push(event.narrative);
+                break;
+            case 'COMBAT_STARTED':
+                summaries.push(`A engagé le combat avec ${event.enemy.name}.`);
+                break;
+            case 'COMBAT_ENDED':
+                summaries.push(`Le combat est terminé.`);
+                break;
+        }
+    }
+    return summaries.filter(Boolean).join('. ');
 }

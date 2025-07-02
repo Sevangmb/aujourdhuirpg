@@ -20,6 +20,7 @@ import { getBookDetailsTool } from '@/ai/tools/get-book-details-tool';
 import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
+  StoryChoiceSchema,
 } from './generate-scenario-schemas';
 import type { ToneSettings, BookSearchResult, GameTone } from '@/lib/types';
 
@@ -313,7 +314,9 @@ const generateScenarioFlow = ai.defineFlow(
           iconName: "Eye",
           type: 'observation',
           mood: 'contemplative',
-          consequences: ['Nouvelles informations', 'Pas de changement majeur']
+          consequences: ['Nouvelles informations', 'Pas de changement majeur'],
+          energyCost: 0,
+          timeCost: 0,
         }];
       }
       return output;
@@ -329,7 +332,9 @@ const generateScenarioFlow = ai.defineFlow(
           iconName: 'Zap',
           type: 'action',
           mood: 'adventurous',
-          consequences: ['Peut fonctionner', 'Peut échouer à nouveau']
+          consequences: ['Peut fonctionner', 'Peut échouer à nouveau'],
+          energyCost: 0,
+          timeCost: 0,
         }],
          aiRecommendation: { focus: 'Erreur', reasoning: 'Erreur critique du modèle IA.' },
        };

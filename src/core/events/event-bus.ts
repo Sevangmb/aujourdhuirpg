@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview A simple, singleton event bus for inter-module communication.
  * This allows different parts of the game logic (e.g., combat, economy) to react to events
