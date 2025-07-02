@@ -7,7 +7,6 @@
 import type { GameState, StoryChoice, GameEvent, Player, IntelligentItem, PlayerStats, DynamicItemCreationPayload, WeatherData, EnhancedPOI } from '@/lib/types';
 import { performSkillCheck } from '@/lib/skill-check';
 import { getDistanceInKm } from '@/lib/utils/geo-utils';
-import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 import { processCombatTurn } from '@/modules/combat/logic';
 import { getMasterItemById } from '@/data/items';
 import { getWeatherModifier } from '@/lib/game-logic';
@@ -16,9 +15,9 @@ import { ESTABLISHMENT_SERVICES } from '@/data/establishment-services';
 
 export class GameLogicProcessor {
   
-  async processAction(gameState: GameState, choice: StoryChoice, weatherData: WeatherData | null): Promise<{
+  processAction(gameState: GameState, choice: StoryChoice, weatherData: WeatherData | null): {
     gameEvents: GameEvent[];
-  }> {
+  } {
     if (!gameState.player) {
       console.warn("GameLogicProcessor: processAction called without a player.");
       return { gameEvents: [] };
@@ -45,7 +44,7 @@ export class GameLogicProcessor {
     
     // Non-combat logic
     if (choice.travelChoiceInfo) {
-      await this.processTravel(gameState, choice, events);
+      this.processTravel(gameState, choice, events);
     } else if (choice.poiReference) {
       this.processPoiInteraction(gameState, choice, events);
     } else if (choice.id.startsWith('use_item_')) {
@@ -115,7 +114,7 @@ export class GameLogicProcessor {
     }
   }
   
-  private async processTravel(state: GameState, choice: StoryChoice, events: GameEvent[]): Promise<void> {
+  private processTravel(state: GameState, choice: StoryChoice, events: GameEvent[]): void {
     if (!choice.travelChoiceInfo || !state.player) return;
 
     const { destination, mode } = choice.travelChoiceInfo;
@@ -145,16 +144,6 @@ export class GameLogicProcessor {
     
     if (cost > 0) {
       events.push({ type: 'MONEY_CHANGED', amount: -cost, description: `Transport en ${mode}` });
-    }
-
-    const travelNarrativeResult = await generateTravelEvent({
-        travelMode: mode, origin, destination, gameTimeInMinutes: state.gameTimeInMinutes,
-        playerStats: player.stats as any, playerSkills: player.skills,
-    });
-    const travelNarrative = travelNarrativeResult.narrative;
-    
-    if (travelNarrative) {
-      events.push({ type: 'TRAVEL_EVENT', narrative: travelNarrative });
     }
 
     events.push({ type: 'PLAYER_TRAVELS', from: origin.name, destination: destination, mode: mode, duration: time });

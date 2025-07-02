@@ -4,13 +4,14 @@
  * et sépare clairement la logique métier de l'IA narrative.
  */
 
-import type { GameState, StoryChoice, GameEvent, WeatherData } from '@/lib/types';
+import type { GameState, StoryChoice, GameEvent, WeatherData, PlayerStats } from '@/lib/types';
 import type { CascadeResult, EnrichedContext } from './types';
 import { runCascadeForAction } from './cascade-system';
 import { GameLogicProcessor } from '../logic/game-logic-processor';
 import { AIContextPreparer } from './ai-context-preparer';
 import { gameReducer } from '@/lib/game-logic';
 import type { GameContextData } from '@/contexts/GameContext';
+import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
 
 
 export class CascadeOrchestrator {
@@ -41,20 +42,44 @@ export class CascadeOrchestrator {
   }> {
     
     // 1. LOGIQUE MÉTIER PURE (pas d'IA)
-    const { gameEvents } = await this.gameLogicProcessor.processAction(
+    // C'est maintenant un appel synchrone.
+    let { gameEvents } = this.gameLogicProcessor.processAction(
       gameState, 
       playerChoice,
-      contextualData.weather.data // Pass weather data to the logic processor
+      contextualData.weather.data
     );
+
+    // 2. ORCHESTRATION DES FLUX SECONDAIRES
+    // L'orchestrateur, et non le processeur logique, appelle les flux d'IA secondaires.
+    const travelEvent = gameEvents.find(e => e.type === 'PLAYER_TRAVELS') as Extract<GameEvent, {type: 'PLAYER_TRAVELS'}> | undefined;
+    if (travelEvent && gameState.player) {
+        // Aplatir les stats pour correspondre au schéma Zod attendu par le flux Genkit
+        const flatStats = (Object.keys(gameState.player.stats) as Array<keyof typeof gameState.player.stats>).reduce((acc, key) => {
+            acc[key] = gameState.player!.stats[key].value;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const travelNarrativeResult = await generateTravelEvent({
+            travelMode: travelEvent.mode as 'walk' | 'metro' | 'taxi',
+            origin: gameState.player.currentLocation,
+            destination: travelEvent.destination,
+            gameTimeInMinutes: gameState.gameTimeInMinutes,
+            playerStats: flatStats as any,
+            playerSkills: gameState.player.skills,
+        });
+
+        if (travelNarrativeResult.narrative) {
+            gameEvents.push({ type: 'TRAVEL_EVENT', narrative: travelNarrativeResult.narrative });
+        }
+    }
     
-    // Apply the deterministic events to get the next state for the cascade
+    // Appliquer les événements déterministes pour obtenir l'état suivant pour la cascade
     const stateAfterLogic = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: gameEvents });
     
-    // 2. ENRICHISSEMENT CONTEXTUEL VIA CASCADE
-    // La cascade s'exécute sur l'état *après* la logique déterministe.
+    // 3. ENRICHISSEMENT CONTEXTUEL VIA CASCADE
     const cascadeResult = await runCascadeForAction(stateAfterLogic, playerChoice);
 
-    // 3. PRÉPARATION DU CONTEXTE POUR L'IA NARRATIVE
+    // 4. PRÉPARATION DU CONTEXTE POUR L'IA NARRATIVE PRINCIPALE
     const aiContext = this.aiContextPreparer.prepareContext(
       stateAfterLogic,
       gameEvents,
