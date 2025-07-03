@@ -150,9 +150,11 @@ const AppMenubar: React.FC = () => {
                     <DialogTrigger asChild>
                         <MenubarItem onSelect={(e) => e.preventDefault()}><BookOpen className="mr-2 h-4 w-4" />Journal de Quêtes</MenubarItem>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh]">
+                    <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[80vh] flex flex-col">
                         <DialogHeader><DialogTitle>Journal de Quêtes</DialogTitle></DialogHeader>
-                        <ScrollArea className="max-h-[70vh] p-1"><QuestJournalDisplay player={player} /></ScrollArea>
+                        <div className="flex-grow min-h-0">
+                            <QuestJournalDisplay player={player} />
+                        </div>
                     </DialogContent>
                 </Dialog>
                 <Dialog>

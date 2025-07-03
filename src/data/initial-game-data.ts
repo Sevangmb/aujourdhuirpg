@@ -148,6 +148,7 @@ export const initialInventory: IntelligentItem[] = [
     condition: { durability: 100 },
     itemLevel: 1,
     itemXp: 0,
+    xpToNextItemLevel: masterItem.xpToNextItemLevel || 0,
     memory: {
       acquiredAt: new Date().toISOString(),
       acquisitionStory: "Fait partie de votre équipement de départ standard.",

@@ -60,5 +60,3 @@ export function handleQuestObjectiveChange(state: GameState, questId: string, ob
 
     return { ...state, player: { ...state.player, questLog: newQuestLog } };
 }
-
-    
