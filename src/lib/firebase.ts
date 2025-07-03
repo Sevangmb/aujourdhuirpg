@@ -18,50 +18,37 @@ const firebaseConfig: FirebaseOptions = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Optional
 };
 
-// Validate required environment variables in development
-if (process.env.NODE_ENV === 'development') {
-  const requiredEnvVars = [
-    'NEXT_PUBLIC_FIREBASE_API_KEY',
-    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', 
-    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
-    'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-    'NEXT_PUBLIC_FIREBASE_APP_ID'
-  ];
-  
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
-  if (missingVars.length > 0) {
-    console.warn(
-      '⚠️ Firebase Warning: Some environment variables are missing:', 
-      missingVars.join(', '),
-      '\nPlease see SECURITY_SETUP.md for instructions.'
-    );
-  }
-}
+// Check for the most critical environment variables
+const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.projectId;
 
 // Initialize Firebase
 let app;
-if (!getApps().length) {
-  try {
-    app = initializeApp(firebaseConfig);
-    console.log("✅ Firebase app initialized successfully.");
-  } catch (e) {
-    console.error("❌ Firebase Error: Failed to initialize Firebase app. Check your environment variables.", e);
-    app = null; // Ensure app is null if initialization fails
+if (isFirebaseConfigured) {
+  if (!getApps().length) {
+    try {
+      app = initializeApp(firebaseConfig);
+      console.log("✅ Firebase app initialized successfully.");
+    } catch (e) {
+      console.error("❌ Firebase Error: Failed to initialize Firebase app.", e);
+      app = null;
+    }
+  } else {
+    app = getApp();
+    console.log("✅ Firebase app already initialized.");
   }
 } else {
-  app = getApp();
-  console.log("✅ Firebase app already initialized.");
+  console.warn(
+    "⚠️ Firebase configuration is missing (likely NEXT_PUBLIC_FIREBASE_API_KEY or NEXT_PUBLIC_FIREBASE_PROJECT_ID). " +
+    "Firebase services will be disabled. See SECURITY_SETUP.md for instructions."
+  );
+  app = null;
 }
 
-// Export Firebase services with better error handling
+// Export Firebase services, which will be null if initialization failed.
 export const firebaseApp = app;
 
-// Gracefully handle service initialization
 let authService = null;
 let dbService = null;
 let storageService = null;
@@ -70,22 +57,20 @@ if (app) {
   try {
     authService = getAuth(app);
   } catch (e) {
-    console.error("❌ Firebase Error: Failed to initialize Auth service.", e);
+    console.error("❌ Firebase Auth Error: Failed to get Auth service. Is your API key correct?", e);
   }
   
   try {
     dbService = getFirestore(app);
   } catch (e) {
-    console.error("❌ Firebase Error: Failed to initialize Firestore service.", e);
+    console.error("❌ Firebase Firestore Error: Failed to get Firestore service.", e);
   }
   
   try {
     storageService = getStorage(app);
   } catch (e) {
-    console.error("❌ Firebase Error: Failed to initialize Storage service.", e);
+    console.error("❌ Firebase Storage Error: Failed to get Storage service.", e);
   }
-} else {
-  console.error("❌ Firebase services cannot be initialized because Firebase app failed to initialize.");
 }
 
 export const auth = authService;
