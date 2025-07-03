@@ -1,32 +1,66 @@
 # 🛠️ Guide de Dépannage - Aujourd'hui RPG
 
-## 🚨 Problèmes Courants et Solutions
+## 🚀 Diagnostic Automatique (NOUVEAU!)
 
-### 1. 🔑 Erreurs de Clés API
+**Utilisez d'abord notre outil de diagnostic automatique :**
+```bash
+node check-config.js
+```
+
+Cet outil vérifie automatiquement votre configuration et vous guide vers les solutions.
+
+---
+
+## 🚨 Problèmes Critiques et Solutions
+
+### 1. 🔑 **ERREUR CRITIQUE : "L'IA n'a pas pu générer de scénario"**
 
 #### Symptômes :
-- ❌ "Firebase auth is not initialized"
+- ❌ "L'IA n'a pas pu générer de scénario. Veuillez réessayer"
 - ❌ "Neither GOOGLE_API_KEY nor GEMINI_API_KEY found"
-- ❌ "L'IA n'a pas pu générer de scénario"
+- ❌ "Erreur critique du modèle IA"
+- ❌ Interface affiche un message d'erreur rouge
 
-#### Solutions :
+#### ✅ **Solution Express (5 minutes) :**
 ```bash
-# 1. Vérifiez votre fichier .env.local
+# 1. Diagnostic automatique
+node check-config.js
+
+# 2. Si .env.local manque, créez-le
 cp .env.example .env.local
 
-# 2. Remplissez toutes les clés requises
-GOOGLE_API_KEY=votre_clé_google_ai
-NEXT_PUBLIC_FIREBASE_API_KEY=votre_clé_firebase
-# ... autres clés
+# 3. Ajoutez vos clés API dans .env.local
+GOOGLE_API_KEY=votre_clé_google_ai_ici
+NEXT_PUBLIC_FIREBASE_API_KEY=votre_clé_firebase_ici
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=votre-projet-id
 
-# 3. Redémarrez le serveur
+# 4. Redémarrez le serveur
 npm run dev
 ```
 
-#### Obtenir les clés :
-- **Google AI** : [Google AI Studio](https://makersuite.google.com/app/apikey)
-- **Firebase** : [Firebase Console](https://console.firebase.google.com/)
-- **Google Maps** : [Google Cloud Console](https://console.cloud.google.com/)
+#### 🔑 **Obtenir vos clés API :**
+- **Google AI** (OBLIGATOIRE) : [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **Firebase** (OBLIGATOIRE) : [Firebase Console](https://console.firebase.google.com/) → Paramètres du projet → Config Web
+- **Google Maps** (Optionnel) : [Google Cloud Console](https://console.cloud.google.com/)
+
+#### 🔍 **Diagnostic détaillé :**
+L'application a été améliorée avec de meilleurs messages d'erreur. Si vous voyez encore des erreurs :
+
+1. **Vérification des clés :**
+   ```bash
+   # Vérifiez que vos clés sont présentes
+   grep -E "GOOGLE_API_KEY|FIREBASE" .env.local
+   ```
+
+2. **Test de la clé Google AI :**
+   - Allez sur [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Testez votre clé dans l'interface
+   - Assurez-vous qu'elle a les permissions Generative Language API
+
+3. **Logs détaillés :**
+   - Ouvrez la console navigateur (F12)
+   - Cherchez des messages détaillés d'erreur
+   - Les nouveaux messages d'erreur sont plus informatifs
 
 ### 2. 🔥 Problèmes Firebase
 
@@ -34,12 +68,17 @@ npm run dev
 - "Firebase app not initialized"
 - "Permission denied" (règles Firestore)
 - "Storage bucket not found"
+- "Auth service not available for sign in"
 
-#### Solutions :
+#### ✅ Solutions :
 ```bash
-# Vérifiez la configuration Firebase
+# Configuration Firebase complète dans .env.local
+NEXT_PUBLIC_FIREBASE_API_KEY=votre_clé_firebase
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=votre-projet.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=votre-projet-id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=votre-projet.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+NEXT_PUBLIC_FIREBASE_APP_ID=1:123:web:abc123
 ```
 
 #### Vérifiez les règles Firestore :
@@ -57,50 +96,59 @@ service cloud.firestore {
 
 ### 3. 🤖 Problèmes Genkit AI
 
-#### Erreurs TypeScript :
+#### Erreurs TypeScript/Build :
 - "loadedPlugin.initializer is not a function"
 - "Cannot resolve module '@genkit-ai/googleai'"
+- "TypeError in genkit initialization"
 
-#### Solutions :
+#### ✅ Solutions :
 ```bash
-# Réinstallez les dépendances
-npm ci
+# 1. Réinstallez les dépendances proprement
+rm -rf node_modules package-lock.json
+npm install
 
-# Vérifiez la version Node.js (requis: 20.x+)
+# 2. Vérifiez la version Node.js (requis: 20.x+)
 node --version
 
-# Redémarrez Genkit
+# 3. Redémarrez Genkit en mode watch
 npm run genkit:watch
+
+# 4. Si l'erreur persiste, vérifiez les variables d'environnement
+node check-config.js
 ```
 
-### 4. 🚀 Problèmes de Build
+### 4. 🚀 Problèmes de Build et Développement
 
 #### Erreurs communes :
 - TypeScript compilation errors
 - Module resolution failures
 - Environment variables not found
+- Hot reload ne fonctionne pas
 
-#### Solutions :
+#### ✅ Solutions :
 ```bash
 # Vérification TypeScript
 npm run typecheck
 
-# Build clean
+# Build propre
+rm -rf .next
 npm run build
 
-# Vérifiez les imports
-# Utilisez toujours @/ pour les imports locaux
+# Redémarrage complet
+npm run dev
+
+# Vérifiez les imports (utilisez toujours @/ pour les imports locaux)
 import { Component } from '@/components/Component';
 ```
 
-### 5. 🎨 Problèmes d'Interface
+### 5. 🎨 Problèmes d'Interface et Styles
 
-#### Styles ne s'appliquent pas :
+#### Styles Tailwind ne s'appliquent pas :
 ```bash
-# Vérifiez Tailwind
+# Vérifiez la configuration Tailwind
 npm run dev
 
-# Purgez le cache Next.js
+# Purgez le cache
 rm -rf .next
 npm run dev
 ```
@@ -109,27 +157,21 @@ npm run dev
 ```bash
 npx shadcn-ui@latest add button
 npx shadcn-ui@latest add dialog
-# etc.
+npx shadcn-ui@latest add alert
 ```
 
-### 6. 📱 Problèmes Responsive
+## 🔍 Outils de Debug et Diagnostic
 
-#### Tests recommandés :
-- 📱 Mobile : 375px (iPhone)
-- 📱 Tablet : 768px (iPad)
-- 💻 Desktop : 1024px+
+### 1. Script de Diagnostic Automatique
+```bash
+# Utilisez notre outil de diagnostic complet
+node check-config.js
 
-#### CSS Debug :
-```css
-/* Ajoutez temporairement pour debug */
-* {
-  border: 1px solid red !important;
-}
+# Vérification rapide des variables d'environnement
+grep -v "^#" .env.local | grep -v "^$"
 ```
 
-## 🔍 Outils de Debug
-
-### Console Logs Utiles :
+### 2. Console Logs Utiles
 ```typescript
 // Vérifiez l'état Firebase
 console.log('Firebase App:', firebaseApp);
@@ -142,60 +184,111 @@ console.log('Env Check:', {
   hasFirebase: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   nodeEnv: process.env.NODE_ENV
 });
+
+// Nouvelles vérifications IA
+console.log('AI Config:', {
+  hasApiKey: !!process.env.GOOGLE_API_KEY || !!process.env.GEMINI_API_KEY,
+  apiKeySource: process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : 
+                process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : 'none'
+});
 ```
 
-### DevTools :
+### 3. DevTools Recommandés
 - **React DevTools** : Inspect component state
 - **Firebase DevTools** : Monitor database
 - **Network Tab** : Check API calls
+- **Console** : Erreurs détaillées avec les nouvelles améliorations
 
-## 🚀 Performance
+## 🚀 Optimisation des Performances
 
-### Optimisations :
+### Code Optimizations :
 ```typescript
-// Lazy loading des composants
+// Lazy loading des composants lourds
 const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
-  loading: () => <div>Loading...</div>
+  loading: () => <div>Loading...</div>,
+  ssr: false
 });
 
 // Memoization pour éviter re-renders
 const MemoizedComponent = React.memo(Component);
+
+// Optimisation des useEffect
+useEffect(() => {
+  // logic
+}, [specific, dependencies]); // Pas de dépendances vides []
 ```
 
 ### Bundle Analysis :
 ```bash
 npm run build
-npm run analyze # Si configuré
+npm run analyze # Si configuré dans package.json
 ```
 
-## 🔒 Sécurité
+## 🔒 Sécurité et Bonnes Pratiques
 
-### ⚠️ À NE JAMAIS FAIRE :
-- ❌ Committer des clés API
-- ❌ Clés en dur dans le code
-- ❌ Variables NEXT_PUBLIC avec secrets
+### ⚠️ **À NE JAMAIS FAIRE :**
+- ❌ Committer .env.local ou des clés API
+- ❌ Clés en dur dans le code source
+- ❌ Variables NEXT_PUBLIC avec des secrets
+- ❌ Pousser des credentials sur GitHub
 
-### ✅ Bonnes pratiques :
-- ✅ Variables d'environnement
-- ✅ .env.local dans .gitignore
-- ✅ Validation côté serveur
+### ✅ **Bonnes Pratiques :**
+- ✅ Utilisez .env.local pour les variables sensibles
+- ✅ .env.local est dans .gitignore
+- ✅ Validation côté serveur pour les données critiques
+- ✅ Régénérez vos clés si elles sont compromises
 
-## 📞 Support
+### 🛡️ **Vérification de Sécurité :**
+```bash
+# Vérifiez que .env.local n'est pas tracké
+git ls-files | grep .env.local
+# Cette commande ne doit rien retourner
 
-### Avant de demander de l'aide :
-1. ✅ Suivez ce guide
-2. ✅ Vérifiez les logs console
-3. ✅ Testez avec une config minimale
-4. ✅ Décrivez l'erreur exacte
+# Vérifiez .gitignore
+grep "\.env\.local" .gitignore
+# Doit retourner .env.local
+```
 
-### Informations utiles à fournir :
-- Version Node.js : `node --version`
-- Système d'exploitation
-- Message d'erreur complet
-- Étapes pour reproduire
-- Configuration (sans les clés secrètes !)
+## 📞 Support et Aide
+
+### ✅ **Avant de demander de l'aide :**
+1. **Utilisez le diagnostic automatique :** `node check-config.js`
+2. **Vérifiez les logs console** (F12 dans le navigateur)
+3. **Testez avec une configuration minimale**
+4. **Décrivez l'erreur exacte avec screenshots**
+
+### 📋 **Informations utiles à fournir :**
+```bash
+# Informations système
+node --version
+npm --version
+echo $NODE_ENV
+
+# Vérification de la configuration (SANS révéler les clés)
+node check-config.js
+
+# État Git
+git status
+git log --oneline -5
+```
+
+### 🔗 **Ressources Supplémentaires :**
+- **Guide de Configuration :** [SECURITY_SETUP.md](./SECURITY_SETUP.md)
+- **Documentation Complète :** [README.md](./README.md)
+- **Google AI Studio :** https://makersuite.google.com/app/apikey
+- **Firebase Console :** https://console.firebase.google.com/
+
+## 🎯 Checklist de Résolution Rapide
+
+- [ ] Exécuter `node check-config.js`
+- [ ] Fichier `.env.local` créé et configuré
+- [ ] Clés API Google et Firebase ajoutées
+- [ ] Serveur redémarré (`npm run dev`)
+- [ ] Aucune erreur dans la console navigateur
+- [ ] Test de création de personnage réussi
+- [ ] Génération de scénario fonctionnelle
 
 ---
 
-**🔄 Dernière mise à jour :** Juillet 2025
-**📚 Voir aussi :** SECURITY_SETUP.md, README.md
+**🔄 Dernière mise à jour :** Juillet 2025 - Améliorations diagnostics IA
+**📚 Voir aussi :** SECURITY_SETUP.md, README.md, check-config.js
