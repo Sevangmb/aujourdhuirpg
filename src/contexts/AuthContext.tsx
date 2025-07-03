@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { User } from 'firebase/auth';
@@ -31,7 +30,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     if (!auth) { 
-      console.error("Firebase auth is not initialized. Check your Firebase config.");
+      console.warn(
+        "AuthContext Warning: Firebase auth service is not available. This is expected if Firebase environment variables are not set. Authentication features will be disabled. See SECURITY_SETUP.md for details."
+      );
       setLoadingAuth(false);
       return;
     }
