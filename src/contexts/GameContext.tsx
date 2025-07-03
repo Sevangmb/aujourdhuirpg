@@ -329,17 +329,12 @@ export const GameProvider: React.FC<{
   };
   
   const handleExamineItem = async (instanceId: string) => {
-    if (!gameState.player) return;
-
-    const itemToExamine = gameState.player.inventory.find(i => i.instanceId === instanceId);
-    if (!itemToExamine) {
-        toast({ variant: 'destructive', title: 'Erreur', description: "L'objet n'a pas été trouvé dans votre inventaire." });
-        return;
-    }
-
-    try {
-        setIsLoading(true);
-        toast({ title: 'Analyse en cours...', description: `Examen de ${itemToExamine.name}...`, duration: 2000 });
+      setIsLoading(true);
+      try {
+        const itemToExamine = gameState.player?.inventory.find(i => i.instanceId === instanceId);
+        if (!itemToExamine || !gameState.player) throw new Error("Item not found or player state missing.");
+        
+        toast({ title: 'Analyse en cours...', description: `Examen de ${itemToExamine.name}...`});
 
         const enrichedObject = await objectCascadeManager.enrichObject(
             itemToExamine,
@@ -350,11 +345,10 @@ export const GameProvider: React.FC<{
             type: 'UPDATE_INVENTORY_ITEM',
             payload: { instanceId, enrichedObject }
         });
-
-        toast({ title: 'Analyse terminée !', description: `${itemToExamine.name} a révélé ses secrets.` });
+        toast({ title: 'Analyse terminée !', description: `${itemToExamine.name} a révélé de nouveaux détails.` });
 
     } catch (error) {
-        console.error("Error during object enrichment:", error);
+        console.error("Error during object enrichment in context:", error);
         toast({ variant: 'destructive', title: "Erreur d'analyse", description: `Impossible d'examiner l'objet.` });
     } finally {
         setIsLoading(false);

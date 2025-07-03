@@ -91,5 +91,3 @@ export class NewsQuestGenerator {
     return questData;
   }
 }
-
-    

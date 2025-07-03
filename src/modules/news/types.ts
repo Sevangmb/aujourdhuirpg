@@ -6,5 +6,3 @@ export type NewsQuestType = 'INVESTIGATION' | 'CULTURAL' | 'SOCIAL' | 'DISCOVERY
 // Re-export NewsArticle type for convenience within the module
 export type { GetNewsServiceOutput as NewsServiceOutput } from '@/data-sources/news/news-api';
 export type NewsArticle = NewsServiceOutput['articles'][0];
-
-    
