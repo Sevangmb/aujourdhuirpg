@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview React Hook for Combat State Management
  * Manages combat state, actions, and UI interactions
@@ -334,8 +335,6 @@ export function useCombat(): CombatHookReturn {
     getActionSuccessProbability
   };
 }
-
-// === HELPER HOOKS ===
 
 /**
  * Hook for managing combat animations and visual effects

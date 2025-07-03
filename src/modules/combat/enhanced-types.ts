@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Type definitions for the complete Combat system
  * Enhanced combat system with tactical turn-based mechanics

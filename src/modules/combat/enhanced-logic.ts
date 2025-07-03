@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Enhanced Combat Logic System
  * Advanced tactical combat mechanics with turn management, AI, and effects
@@ -600,8 +601,8 @@ export class CombatManager {
         events.push({ 
           type: 'ITEM_ADDED', 
           itemId: lootItem.itemId, 
-          quantity: lootItem.quantity || 1,
-          source: `Butin de ${defeatedEnemy.name}`
+          itemName: lootItem.itemId, // itemName will be filled by reducer
+          quantity: lootItem.quantity || 1
         });
       }
     });
@@ -673,29 +674,4 @@ export class CombatManager {
       }
     };
   }
-}
-
-// === LEGACY COMPATIBILITY ===
-// Keep existing functions for backward compatibility
-
-export function calculateDamage(
-  attackerStats: { Force: { value: number }, Dexterite: { value: number } }, 
-  weaponDamage: number, 
-  defenderDefense: number, 
-  successDegree: DegreeOfSuccess
-): number {
-  const baseAttack = (attackerStats.Force.value / 5) + (attackerStats.Dexterite.value / 10);
-  const totalAttackPower = baseAttack + weaponDamage;
-  
-  const mitigatedDamage = Math.max(1, totalAttackPower - (defenderDefense / 2));
-  
-  let finalDamage = mitigatedDamage;
-  if (successDegree === 'critical_success') {
-    finalDamage *= 1.5;
-  }
-  
-  const randomFactor = (Math.random() * 0.3) - 0.15;
-  finalDamage *= (1 + randomFactor);
-  
-  return Math.round(Math.max(1, finalDamage));
 }

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Immersive Combat User Interface
  * Complete tactical combat interface with animations and visual feedback
@@ -65,7 +66,7 @@ export function CombatUI({ player, enemies, onCombatEnd, isOpen, onClose }: Comb
     if (isOpen && !combat.combatState) {
       combat.startCombat(player, enemies);
     }
-  }, [isOpen, combat.combatState]);
+  }, [isOpen, combat, player, enemies]);
 
   // Handle combat end conditions
   useEffect(() => {
@@ -83,7 +84,7 @@ export function CombatUI({ player, enemies, onCombatEnd, isOpen, onClose }: Comb
         onCombatEnd('victory');
       }
     }
-  }, [combat.combatState?.player.stats.health, combat.combatState?.enemies]);
+  }, [combat.combatState?.player.stats.health, combat.combatState?.enemies, combat, onCombatEnd, sounds]);
 
   if (!isOpen || !combat.combatState) {
     return null;
@@ -458,7 +459,7 @@ function CombatLogPanel({ combatLog }: CombatLogPanelProps) {
         <ScrollArea className="h-[500px] px-4">
           <div className="space-y-2">
             {combatLog.slice(-20).map((entry) => (
-              <CombatLogEntry key={entry.id} entry={entry} />
+              <CombatLogEntryComponent key={entry.id} entry={entry} />
             ))}
           </div>
         </ScrollArea>
@@ -473,7 +474,7 @@ interface CombatLogEntryProps {
   entry: CombatLogEntry;
 }
 
-function CombatLogEntry({ entry }: CombatLogEntryProps) {
+function CombatLogEntryComponent({ entry }: CombatLogEntryProps) {
   const getEntryIcon = () => {
     switch (entry.type) {
       case 'damage': return <Sword className="w-3 h-3 text-red-400" />;

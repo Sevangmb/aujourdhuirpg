@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Combat Test Button Component
  * Testing component for the complete combat system
@@ -23,7 +24,7 @@ const createTestPlayer = (): Player => ({
   age: 25,
   avatarUrl: '',
   origin: 'Paris',
-  era: 'moderne',
+  era: 'Époque Contemporaine',
   background: 'Un aventurier expérimenté pour les tests de combat',
   stats: {
     Force: { value: 70 },
@@ -104,14 +105,14 @@ const createTestPlayer = (): Player => ({
         satisfaction_quality: 90, 
         cultural_craving: 'français', 
         dietary_preferences: ['bio'], 
-        food_memories: ['croissant du matin']
+        food_memories: []
       },
       thirst: { 
         level: 90, 
         hydration_quality: 85, 
         climate_adjustment: 0, 
-        beverage_tolerance: ['café'], 
-        cultural_beverage_preference: 'café français'
+        beverage_tolerance: [], 
+        cultural_beverage_preference: 'eau'
       }
     }
   },
@@ -139,10 +140,23 @@ const createTestPlayer = (): Player => ({
       name: 'Épée Courte d\'Acier',
       description: 'Une épée bien équilibrée, parfaite pour le combat rapproché',
       type: 'weapon',
+      iconName: 'Sword',
+      stackable: false,
       quantity: 1,
+      itemLevel: 1,
+      itemXp: 0,
+      xpToNextItemLevel: 100,
       condition: { durability: 90 },
       memory: {
-        acquisitionStory: 'Héritée d\'un mentor disparu dans les rues de Paris'
+        acquiredAt: new Date().toISOString(),
+        acquisitionStory: 'Héritée d\'un mentor disparu dans les rues de Paris',
+        usageHistory: []
+      },
+      contextual_properties: {
+        local_value: 250,
+        legal_status: 'legal',
+        social_perception: 'normal',
+        utility_rating: 60
       },
       economics: {
         base_value: 250,
@@ -163,10 +177,23 @@ const createTestPlayer = (): Player => ({
       name: 'Veste de Cuir Renforcée',
       description: 'Une veste en cuir avec des plaques de métal discrètes',
       type: 'armor',
+      iconName: 'Shirt',
+      stackable: false,
       quantity: 1,
+      itemLevel: 1,
+      itemXp: 0,
+      xpToNextItemLevel: 150,
       condition: { durability: 85 },
       memory: {
-        acquisitionStory: 'Achetée dans une boutique vintage de Montmartre'
+        acquiredAt: new Date().toISOString(),
+        acquisitionStory: 'Achetée dans une boutique vintage de Montmartre',
+        usageHistory: []
+      },
+      contextual_properties: {
+        local_value: 180,
+        legal_status: 'legal',
+        social_perception: 'normal',
+        utility_rating: 50
       },
       economics: {
         base_value: 180,
@@ -185,10 +212,23 @@ const createTestPlayer = (): Player => ({
       name: 'Potion de Soin Mineure',
       description: 'Un élixir rouge qui restaure la vitalité',
       type: 'consumable',
+      iconName: 'GlassWater',
+      stackable: true,
       quantity: 3,
+      itemLevel: 1,
+      itemXp: 0,
+      xpToNextItemLevel: 0,
       condition: { durability: 100 },
       memory: {
-        acquisitionStory: 'Préparée par un herboriste du Marais'
+        acquiredAt: new Date().toISOString(),
+        acquisitionStory: 'Préparée par un herboriste du Marais',
+        usageHistory: []
+      },
+      contextual_properties: {
+        local_value: 45,
+        legal_status: 'legal',
+        social_perception: 'normal',
+        utility_rating: 80
       },
       economics: {
         base_value: 45,
@@ -207,16 +247,7 @@ const createTestPlayer = (): Player => ({
     name: 'Paris, France'
   },
   toneSettings: {
-    Horreur: false,
-    Romance: false,
-    Action: true,
-    Fantastique: false,
-    Mystere: true,
-    Humour: false,
-    Slice_of_Life: false,
-    Aventure: true,
-    Drame: false,
-    Science_Fiction: false
+    Action: true
   },
   questLog: [],
   encounteredPNJs: [],

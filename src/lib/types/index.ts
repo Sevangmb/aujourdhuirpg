@@ -18,4 +18,5 @@ export * from './book-types';
 export * from './poi-types';
 export * from '@/core/objects/object-types';
 export * from '@/modules/news/types';
+export * from '@/modules/combat/enhanced-types';
 export type { CharacterSummary, SaveSummary } from '@/services/firestore-service';

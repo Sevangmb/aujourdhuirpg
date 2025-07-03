@@ -8,16 +8,24 @@ import { Loader2 } from 'lucide-react';
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
 import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
-import CombatStatusDisplay from './CombatStatusDisplay';
-import { useIsMobile } from '@/hooks/use-mobile';
 import CombatUI from './CombatUI';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const GamePlay: React.FC = () => {
-  const { gameState, isLoading, handleChoiceSelected } = useGame();
-  const { currentEnemy, currentScenario } = gameState;
+  const { 
+    gameState, 
+    isLoading, 
+    handleChoiceSelected,
+    isCombatActive,
+    combatEnemies,
+    handleCombatEnd,
+    setIsCombatActive 
+  } = useGame();
+  
+  const { player, currentScenario } = gameState;
   const isMobile = useIsMobile();
 
-  if (!gameState || !gameState.player || !currentScenario) {
+  if (!player || !currentScenario) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -26,26 +34,32 @@ const GamePlay: React.FC = () => {
     );
   }
 
-  const availableChoices = currentEnemy 
-    ? [] // Combat choices are handled by CombatUI now
-    : currentScenario.choices || [];
+  // Combat UI takes over the entire screen if active
+  if (isCombatActive && combatEnemies.length > 0) {
+    return (
+      <CombatUI 
+        player={player}
+        enemies={combatEnemies}
+        isOpen={isCombatActive}
+        onClose={() => setIsCombatActive(false)} // Or handle flee
+        onCombatEnd={handleCombatEnd}
+      />
+    )
+  }
+
+  const availableChoices = currentScenario.choices || [];
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
       <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6">
-        {currentEnemy && <CombatStatusDisplay enemy={currentEnemy} />}
         <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
         
-        {currentEnemy ? (
-          <CombatUI />
-        ) : (
-          <ChoiceSelectionDisplay
-              choices={availableChoices}
-              onSelectChoice={handleChoiceSelected}
-              isLoading={isLoading}
-              aiRecommendation={currentScenario.aiRecommendation || null}
-            />
-        )}
+        <ChoiceSelectionDisplay
+            choices={availableChoices}
+            onSelectChoice={handleChoiceSelected}
+            isLoading={isLoading}
+            aiRecommendation={currentScenario.aiRecommendation || null}
+          />
       </div>
 
       {!isMobile && <GameSidebar />}
