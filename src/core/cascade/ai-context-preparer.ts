@@ -75,14 +75,20 @@ export class AIContextPreparer {
       background: player.background,
       stats: flatStats,
       skills: nestedSkills,
-      physiology: player.physiology,
+      physiology: {
+        basic_needs: {
+          hunger: { level: player.physiology.basic_needs.hunger.level },
+          thirst: { level: player.physiology.basic_needs.thirst.level },
+        }
+      },
       traitsMentalStates: player.traitsMentalStates,
       progression: player.progression,
       alignment: player.alignment,
       inventory: player.inventory.map(item => ({
         instanceId: item.instanceId, id: item.id, name: item.name,
         description: item.description, type: item.type, quantity: item.quantity,
-        condition: item.condition, economics: item.economics,
+        condition: item.condition, 
+        economics: item.economics,
         memory: { acquisitionStory: item.memory.acquisitionStory },
       })),
       money: player.money,
@@ -94,13 +100,14 @@ export class AIContextPreparer {
         type: player.currentLocation.zone?.name, // Map zone name to type
         tags: player.currentLocation.tags,
       },
-      encounteredPNJs: player.encounteredPNJs?.map(pnj => ({
+      encounteredPNJs: (player.encounteredPNJs || []).map(pnj => ({
         id: pnj.id,
         name: pnj.name,
         description: pnj.description,
+        relationStatus: pnj.relationStatus,
+        importance: pnj.importance,
         dispositionScore: pnj.dispositionScore,
       })),
-      toneSettings: player.toneSettings,
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
         .map(item => item.name),

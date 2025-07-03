@@ -1,7 +1,9 @@
 {
-  "name": "nextn",
+  "name": "aujourdhuirpg",
   "version": "0.1.0",
   "private": true,
+  "description": "Un jeu de rôle textuel interactif propulsé par l'IA, explorant la France à travers une architecture modulaire en cascade.",
+  "author": "Sevangmb",
   "scripts": {
     "dev": "next dev",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
@@ -66,5 +68,19 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sevangmb/aujourdhuirpg.git"
+  },
+  "keywords": [
+    "rpg",
+    "ai",
+    "typescript",
+    "nextjs",
+    "firebase",
+    "genkit",
+    "france",
+    "interactive-fiction"
+  ]
 }

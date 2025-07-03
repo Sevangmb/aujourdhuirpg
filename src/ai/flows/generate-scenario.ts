@@ -41,64 +41,64 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
 
 const toneDetails: Record<GameTone, Record<string, string>> = {
     Humoristique: {
-        style: "Langage vif, jeu de mots, exagérations, rythme rapide avec pauses comiques.",
-        ambiance: "Ambiance légère, situations absurdes, détails cocasses, caricatures.",
-        dialogues: "Sarcastiques, moqueurs, malicieux, ironie omniprésente.",
-        actions: "Proposer des quêtes farfelues, des énigmes absurdes, et des choix permettant l'improvisation ou la plaisanterie.",
+        style: "Vif, jeux de mots, ironique, exagéré.",
+        ambiance: "Légère, absurde, cocasse.",
+        dialogues: "Sarcastiques, moqueurs, pleins d'esprit.",
+        actions: "Quêtes farfelues, choix comiques, improvisation.",
     },
     Action: {
-        style: "Phrases courtes, verbes d’action, rythme haletant, parfois brutal.",
-        ambiance: "Description cinématographique, scènes vives, mouvements rapides, sons percutants.",
-        dialogues: "Directs, cris, ordres, échanges brefs.",
-        actions: "Proposer des choix qui incitent à l'action rapide (combat, sauvetage, poursuite). Si la narration mène à un conflit, utiliser le champ 'startCombat'.",
+        style: "Direct, percutant, rythme rapide, phrases courtes.",
+        ambiance: "Tension, cinématique, mouvement constant.",
+        dialogues: "Directs, ordres, concis.",
+        actions: "Combat (utiliser 'startCombat'), poursuites, sauvetages, réactions rapides.",
     },
     Romantique: {
-        style: "Langage métaphorique, images sensorielles, rythme fluide, moments calmes.",
-        ambiance: "Atmosphère intime, descriptions sensuelles, mise en valeur des sentiments.",
-        dialogues: "Doux, tendres, pleins d’émotions, souvent des silences lourds.",
-        actions: "Suggérer des choix contemplatifs, comme savourer un moment, admirer une vue, ou engager une conversation intime.",
+        style: "Métaphorique, sensoriel, poétique.",
+        ambiance: "Intime, émotionnelle, contemplative.",
+        dialogues: "Tendres, sincères, suggestifs.",
+        actions: "Conversations profondes, admiration, moments partagés.",
     },
     Dramatique: {
-        style: "Style solennel, vocabulaire lourd, rythme posé, phrases longues.",
-        ambiance: "Ambiance pesante, descriptions détaillées des émotions et conflits internes.",
-        dialogues: "Lourds, réfléchis, chargés de sentiments, parfois conflictuels.",
-        actions: "Mettre en scène des conflits moraux, des trahisons, des sacrifices, et des choix aux conséquences lourdes.",
+        style: "Solennel, vocabulaire riche, rythme posé.",
+        ambiance: "Pesante, introspective, conflits internes.",
+        dialogues: "Chargés d'émotion, sérieux, réflexions profondes.",
+        actions: "Dilemmes moraux, sacrifices, choix aux lourdes conséquences.",
     },
     Mystérieux: {
-        style: "Style elliptique, ambigu, rythme variable, phrases incomplètes ou suggestives.",
-        ambiance: "Atmosphère trouble, suspens latent, indices subtils.",
-        dialogues: "Allusifs, cryptiques, réponses évasives, questions ouvertes.",
-        actions: "Proposer des choix liés à l'enquête, au déchiffrage d’énigmes, à l'infiltration et à la recherche d’indices.",
+        style: "Elliptique, ambigu, suggestif.",
+        ambiance: "Suspense, secrets, non-dits, indices subtils.",
+        dialogues: "Cryptiques, allusifs, questions ouvertes.",
+        actions: "Enquête, recherche d'indices, infiltration, résolution d'énigmes.",
     },
     Épique: {
-        style: "Langage noble, solennel, rythme majestueux, phrases longues et rythmées.",
-        ambiance: "Panorama vaste, descriptions panoramiques et héroïques, évocations de grandeur.",
-        dialogues: "Solennels, rituels, discours héroïques, prononcés avec gravité.",
-        actions: "Orienter vers de grandes quêtes, des batailles épiques, des alliances et des actes héroïques.",
+        style: "Noble, grandiose, majestueux.",
+        ambiance: "Héroïque, panoramas vastes, souffle de grandeur.",
+        dialogues: "Solennels, prophétiques, discours marquants.",
+        actions: "Grandes quêtes, batailles, actes héroïques, alliances.",
     },
     "Science-Fiction": {
-        style: "Langage précis, parfois jargon technique, rythmé selon la scène (rapide en action, posé en réflexion).",
-        ambiance: "Décors high-tech, monde futuriste, ambiances souvent froides ou mystérieuses.",
-        dialogues: "Logiques, rationnels, parfois distants ou froids, utilisant un jargon technologique.",
-        actions: "Suggérer des choix liés à l'exploration spatiale, la résolution d’énigmes technologiques, ou des conflits interstellaires.",
+        style: "Précis, technologique, conceptuel.",
+        ambiance: "Futuriste, high-tech, étrange, merveilleux ou dystopique.",
+        dialogues: "Logiques, techniques, explorant des concepts complexes.",
+        actions: "Exploration technologique, énigmes scientifiques, conflits futuristes.",
     },
     Fantastique: {
-        style: "Langage poétique, évocateur, rythme variable, passages atmosphériques.",
-        ambiance: "Décors oniriques, détails magiques, ambiance à la fois belle et inquiétante.",
-        dialogues: "Parfois cryptiques, poétiques, évocateurs, souvent mystérieux.",
-        actions: "Proposer des quêtes magiques, des interactions avec des créatures surnaturelles, ou la résolution de malédictions.",
+        style: "Poétique, onirique, évocateur.",
+        ambiance: "Magique, surnaturelle, merveilleuse et inquiétante.",
+        dialogues: "Imagés, symboliques, parlant à des créatures.",
+        actions: "Quêtes magiques, interaction avec le surnaturel, découverte de mythes.",
     },
     Thriller: {
-        style: "Style court, incisif, rythmé, phrases nerveuses.",
-        ambiance: "Ambiance tendue, atmosphère oppressante, description des réactions psychologiques.",
-        dialogues: "Nerveux, paranoïaques, interrogatifs, parfois agressifs.",
-        actions: "Mener vers des enquêtes, des poursuites, le déjouement de complots, la manipulation ou le sabotage.",
+        style: "Incisif, rythmé, nerveux, direct.",
+        ambiance: "Tension psychologique, paranoïa, urgence, danger imminent.",
+        dialogues: "Tendres, rapides, soupçonneux.",
+        actions: "Poursuites, déjouer des complots, courses contre la montre.",
     },
     Horreur: {
-        style: "Langage sensoriel, sombre, souvent lent pour créer la tension, phrases évocatrices.",
-        ambiance: "Atmosphère oppressante, descriptions de la peur, du corps, de l’angoisse.",
-        dialogues: "Murmures, cris, voix brisées, propos désespérés, folie latente.",
-        actions: "Proposer des choix liés à la survie face à des monstres, la fuite de lieux maudits ou la résolution de mystères macabres.",
+        style: "Sensoriel, sombre, créant la tension.",
+        ambiance: "Oppressante, angoissante, macabre, dérangeante.",
+        dialogues: "Chuchotements, cris, désespoir, folie.",
+        actions: "Survie, fuite, confrontation avec des monstruosités.",
     },
 };
 
@@ -133,24 +133,19 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
   return `**Instructions de Tonalité Spécifiques :**\n${instructions.join('\n')}`;
 }
 
-const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français, dans une police de caractère serif comme 'Literata'. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.`;
+const FULL_SCENARIO_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français, dans une police de caractère serif comme 'Literata'. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.
 
-const PROMPT_CORE_TASK = `
 **TÂCHE PRINCIPALE :**
 1.  **Narrer (scenarioText) :** Basé sur \`gameEvents\`, écrivez une narration HTML immersive qui décrit le résultat de l'action du joueur. C'est votre tâche la plus importante.
 2.  **Proposer des choix (choices) :** Proposez 3-4 choix NARRATIFS et CRÉATIFS. Ne dupliquez pas les actions de \`suggestedContextualActions\`. Ne proposez jamais de choix d'attaque, utilisez \`startCombat\` à la place. Laissez les champs de coût et de gain vides, le moteur de jeu les calculera.
 3.  **Suggérer des événements (optionnel) :** Si la narration le justifie, vous pouvez utiliser les champs optionnels comme \`newPNJs\`, \`newItems\`, \`pnjUpdates\`, etc. Utilisez-les avec parcimonie.
-`;
 
-const PROMPT_GUIDING_PRINCIPLES = `
 **PRINCIPES DIRECTEURS :**
 - **FORMATAGE HTML :** Utilisez des balises \`<p>\` pour les paragraphes. Pour les dialogues, utilisez le format: \`<p><strong>Nom du PNJ :</strong> « ... »</p>\`.
 - **TONALITÉ :** Suivez les instructions de tonalité. {{{toneInstructions}}}
 - **COHÉRENCE :** Utilisez le contexte fourni (\`player\`, \`cascadeResult\`, etc.) pour une narration riche et cohérente.
 - **OUTILS :** Utilisez les outils (\`getWeatherTool\`, etc.) si nécessaire pour enrichir le récit.
-`;
 
-const PROMPT_CONTEXTUAL_INFO = `
 **Contexte de l'Action et du Monde**
 - **Joueur :** {{{player.name}}}, {{{player.gender}}}, {{{player.age}}} ans. Passé : {{{player.background}}}.
 - **Lieu :** {{{player.currentLocation.name}}}
@@ -170,11 +165,22 @@ const PROMPT_CONTEXTUAL_INFO = `
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.
 `;
 
-const FULL_PROMPT = `
-${PROMPT_INTRO}
-${PROMPT_CORE_TASK}
-${PROMPT_GUIDING_PRINCIPLES}
-${PROMPT_CONTEXTUAL_INFO}
+const FULL_PROLOGUE_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG".
+
+**TÂCHE PRINCIPALE : PROLOGUE**
+Écrivez une scène d'introduction captivante en HTML pour le personnage suivant :
+- **Personnage :** {{{player.name}}}, {{{player.gender}}} de {{{player.age}}} ans.
+- **Contexte :** Époque "{{{player.era}}}", commençant à {{{player.currentLocation.name}}}. Passé : {{{player.background}}}.
+
+Votre narration doit planter le décor, introduire le personnage, et suggérer le début d'une aventure.
+Suivez les instructions de tonalité ci-dessous.
+Proposez 3 choix narratifs initiaux dans le champ \`choices\`.
+
+**Instructions de Tonalité :**
+{{{toneInstructions}}}
+
+**Format de Sortie :**
+Assurez-vous de générer une sortie JSON valide avec les champs 'scenarioText' et 'choices'.
 `;
 
 
@@ -197,24 +203,9 @@ const scenarioPrompt = ai.definePrompt({
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
     ],
   },
-  prompt: FULL_PROMPT,
+  prompt: FULL_SCENARIO_PROMPT,
 });
 
-const PROLOGUE_PROMPT_TASK = `
-**TÂCHE PRINCIPALE : PROLOGUE**
-Écrivez une scène d'introduction captivante en HTML pour le personnage suivant :
-- **Personnage :** {{{player.name}}}, {{{player.gender}}} de {{{player.age}}} ans.
-- **Contexte :** Époque "{{{player.era}}}", commençant à {{{player.currentLocation.name}}}. Passé : {{{player.background}}}.
-
-Votre narration doit planter le décor, introduire le personnage, et suggérer le début d'une aventure.
-Suivez les instructions de tonalité.
-Proposez 3 choix narratifs initiaux dans le champ \`choices\`.
-`;
-
-const FULL_PROLOGUE_PROMPT = `
-${PROMPT_INTRO}
-${PROLOGUE_PROMPT_TASK}
-`;
 
 const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
@@ -259,10 +250,14 @@ const generateScenarioFlow = ai.defineFlow(
       }
       return output;
 
-    } catch (error) {
+    } catch (error: any) {
        console.error('Error in generateScenarioFlow calling prompt:', error);
+       let errorMessage = "Erreur critique du modèle IA.";
+       if (error.cause) {
+           errorMessage += ` Cause: ${JSON.stringify(error.cause)}`;
+       }
        return {
-         scenarioText: "<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p>",
+         scenarioText: `<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p><p class="text-xs text-muted-foreground">${errorMessage}</p>`,
          choices: [{
           id: 'retry_action',
           text: "Réessayer l'action précédente",
@@ -272,7 +267,7 @@ const generateScenarioFlow = ai.defineFlow(
           mood: 'adventurous',
           consequences: ['Peut fonctionner', 'Peut échouer à nouveau'],
         }],
-         aiRecommendation: { focus: 'Erreur', reasoning: 'Erreur critique du modèle IA.' },
+         aiRecommendation: { focus: 'Erreur', reasoning: errorMessage },
        };
     }
   }
