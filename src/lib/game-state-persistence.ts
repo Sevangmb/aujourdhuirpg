@@ -236,7 +236,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
         lastPlayed: savedPlayer.lastPlayed,
         traitsMentalStates: savedPlayer.traitsMentalStates || defaults.traitsMentalStates,
         questLog: savedPlayer.questLog || defaults.questLog,
-        encounteredPNJs: savedPlayer.encounteredPNJs || defaults.encounteredPNJs,
         decisionLog: savedPlayer.decisionLog || defaults.decisionLog,
         clues: savedPlayer.clues || defaults.clues,
         documents: savedPlayer.documents || defaults.documents,
@@ -275,6 +274,20 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
         },
         
         toneSettings: hydrateToneSettings(savedPlayer.toneSettings),
+
+        encounteredPNJs: (savedPlayer.encounteredPNJs || []).map((pnj: any) => ({
+            id: pnj.id || uuidv4(),
+            name: pnj.name || 'Inconnu',
+            description: pnj.description || '',
+            relationStatus: pnj.relationStatus || 'neutral',
+            trustLevel: typeof pnj.trustLevel === 'number' ? pnj.trustLevel : 50,
+            importance: pnj.importance || 'minor',
+            firstEncountered: pnj.firstEncountered || 'Lieu inconnu',
+            notes: pnj.notes || [],
+            lastSeen: pnj.lastSeen || new Date(0).toISOString(),
+            dispositionScore: typeof pnj.dispositionScore === 'number' ? pnj.dispositionScore : 50,
+            interactionHistory: pnj.interactionHistory || [],
+        })),
 
         inventory: (savedPlayer.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : defaults.inventory)
             .map((item: any) => {
