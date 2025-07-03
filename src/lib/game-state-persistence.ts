@@ -26,9 +26,21 @@ import {
   initialMomentum,
 } from '@/data/initial-game-data';
 import { saveGameStateToLocal } from '@/services/localStorageService';
-import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
 import { deepmerge } from 'deepmerge-ts';
 import { v4 as uuidv4 } from 'uuid';
+
+// --- UTILITIES MOVED HERE TO BREAK CIRCULAR DEPENDENCY ---
+export function calculateXpToNextLevel(level: number): number {
+  if (level <= 0) level = 1;
+  // A steeper curve: 100 base, 50 multiplier per level squared
+  return Math.floor(100 + (level -1) * 50 + Math.pow(level -1, 2.2) * 20);
+}
+
+export function getSkillUpgradeCost(currentLevel: number): number {
+  if (currentLevel <= 0) currentLevel = 1;
+  return Math.floor(20 + Math.pow(currentLevel, 1.8) * 5);
+}
+// --- END MOVED UTILITIES ---
 
 
 export interface SaveGameResult {

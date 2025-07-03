@@ -6,7 +6,7 @@ import type { PlayerStats, Position, AdvancedSkillSystem, TraitsMentalStates, Pr
 import { getMasterItemById } from './items';
 import { AVAILABLE_TONES } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/modules/player/logic';
+import { calculateXpToNextLevel, getSkillUpgradeCost } from '@/lib/game-state-persistence';
 
 const createStat = (value: number, max?: number): { value: number, max?: number } => ({ value, max });
 
