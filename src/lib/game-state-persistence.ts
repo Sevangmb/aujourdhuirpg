@@ -85,9 +85,15 @@ function hydrateSkills(savedSkills?: Partial<AdvancedSkillSystem>): AdvancedSkil
 }
 
 function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSettings {
-    const cleanSettings: ToneSettings = { ...initialToneSettings }; // All false
+    const cleanSettings: ToneSettings = {}; // Start with a completely empty object.
+    
+    // 1. Set all available tones to false by default.
+    for (const tone of AVAILABLE_TONES) {
+        (cleanSettings as any)[tone] = false;
+    }
 
-    if (!savedToneSettings) {
+    // 2. If there are no saved settings, return the defaults.
+    if (!savedToneSettings || Object.keys(savedToneSettings).length === 0) {
         return cleanSettings;
     }
 
@@ -98,27 +104,25 @@ function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSet
       'Romance': 'Romantique',
     };
     
-    // Iterate over all keys in the saved object
+    // 3. Iterate over the keys from the saved data.
     for (const savedKey in savedToneSettings) {
         if (Object.prototype.hasOwnProperty.call(savedToneSettings, savedKey)) {
-            const value = (savedToneSettings as any)[savedKey];
-            let targetKey: string | undefined = undefined;
+            let targetKey: typeof AVAILABLE_TONES[number] | undefined;
 
-            // Check if the key is directly valid
+            // Find the canonical key
             if (AVAILABLE_TONES.includes(savedKey as any)) {
-                targetKey = savedKey;
-            } 
-            // Else, check if it's a known synonym
-            else if (synonyms[savedKey]) {
+                targetKey = savedKey as any;
+            } else if (synonyms[savedKey]) {
                 targetKey = synonyms[savedKey];
             }
 
-            // If we found a valid key (direct or via synonym), process it
-            if (targetKey && AVAILABLE_TONES.includes(targetKey as any)) {
-                // Convert to boolean and assign to the clean object
+            // If a valid canonical key was found...
+            if (targetKey) {
+                const value = (savedToneSettings as any)[savedKey];
+                //...set its value in the clean object, converting numbers to booleans.
                 (cleanSettings as any)[targetKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
             }
-            // If the key is invalid and not a synonym, it is ignored and not added to cleanSettings.
+            // Invalid keys from the save are simply ignored.
         }
     }
 
@@ -126,107 +130,135 @@ function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSet
 }
 
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
-    // Manually merge physiology to prevent array concatenation issues with deepmerge
-    const savedPhysiology = savedPlayer?.physiology;
-    const physiology: AdvancedPhysiologySystem = {
-        basic_needs: {
-            hunger: {
-                ...initialPhysiology.basic_needs.hunger,
-                ...(savedPhysiology?.basic_needs?.hunger || {}),
-                dietary_preferences: savedPhysiology?.basic_needs?.hunger?.dietary_preferences && Array.isArray(savedPhysiology.basic_needs.hunger.dietary_preferences) 
-                    ? [...new Set(savedPhysiology.basic_needs.hunger.dietary_preferences)] // De-duplicate old bad data
-                    : initialPhysiology.basic_needs.hunger.dietary_preferences,
-                food_memories: savedPhysiology?.basic_needs?.hunger?.food_memories || initialPhysiology.basic_needs.hunger.food_memories,
-            },
-            thirst: {
-                ...initialPhysiology.basic_needs.thirst,
-                ...(savedPhysiology?.basic_needs?.thirst || {}),
-                beverage_tolerance: savedPhysiology?.basic_needs?.thirst?.beverage_tolerance && Array.isArray(savedPhysiology.basic_needs.thirst.beverage_tolerance)
-                    ? [...new Set(savedPhysiology.basic_needs.thirst.beverage_tolerance)]
-                    : initialPhysiology.basic_needs.thirst.beverage_tolerance,
-            }
-        }
+    // Start with a clean slate of defaults to avoid merging issues.
+    const defaults = {
+        name: 'Nouveau Joueur',
+        gender: 'Préfère ne pas préciser',
+        age: 25,
+        avatarUrl: defaultAvatarUrl,
+        origin: 'Inconnue',
+        era: 'Époque Contemporaine' as const,
+        background: '',
+        stats: initialPlayerStats,
+        skills: initialSkills,
+        physiology: initialPhysiology,
+        momentum: initialMomentum,
+        traitsMentalStates: [...initialTraitsMentalStates],
+        progression: initialProgression,
+        alignment: initialAlignment,
+        money: initialPlayerMoney,
+        inventory: initialInventory,
+        currentLocation: initialPlayerLocation,
+        toneSettings: initialToneSettings,
+        questLog: [...initialQuestLog],
+        encounteredPNJs: [...initialEncounteredPNJs],
+        decisionLog: [...initialDecisionLog],
+        clues: [...initialClues],
+        documents: [...initialDocuments],
+        investigationNotes: initialInvestigationNotes,
+        transactionLog: [...initialTransactionLog],
+        historicalContacts: [...initialHistoricalContacts],
     };
 
-
-  const player: Player = {
-    uid: savedPlayer?.uid,
-    isAnonymous: savedPlayer?.isAnonymous,
-    name: savedPlayer?.name || '',
-    gender: savedPlayer?.gender || "Préfère ne pas préciser",
-    age: savedPlayer?.age || 25,
-    avatarUrl: savedPlayer?.avatarUrl || defaultAvatarUrl,
-    origin: savedPlayer?.origin || "Inconnue",
-    background: savedPlayer?.background || '',
-    era: savedPlayer?.era || 'Époque Contemporaine',
-    startingLocationName: savedPlayer?.startingLocationName,
-    stats: hydrateStats(savedPlayer?.stats),
-    skills: hydrateSkills(savedPlayer?.skills),
-    physiology: physiology,
-    momentum: { ...initialMomentum, ...(savedPlayer?.momentum || {}) },
-    traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
-    progression: { ...initialProgression, ...(savedPlayer?.progression || {}) },
-    alignment: { ...initialAlignment, ...(savedPlayer?.alignment || {}) },
-    money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
-    inventory: [],
-    currentLocation: savedPlayer?.currentLocation || initialPlayerLocation,
-    toneSettings: hydrateToneSettings(savedPlayer?.toneSettings),
-    questLog: savedPlayer?.questLog || [...initialQuestLog],
-    encounteredPNJs: savedPlayer?.encounteredPNJs || [...initialEncounteredPNJs],
-    decisionLog: savedPlayer?.decisionLog || [...initialDecisionLog],
-    clues: savedPlayer?.clues || [...initialClues],
-    documents: savedPlayer?.documents || [...initialDocuments],
-    investigationNotes: savedPlayer?.investigationNotes || initialInvestigationNotes,
-    lastPlayed: savedPlayer?.lastPlayed,
-    transactionLog: savedPlayer?.transactionLog || [...initialTransactionLog],
-    historicalContacts: savedPlayer?.historicalContacts || [...initialHistoricalContacts],
-  };
-
-  if (!player.progression.xpToNextLevel) {
-    player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
-  }
-
-  const inventoryToHydrate = savedPlayer?.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : initialInventory;
-  player.inventory = inventoryToHydrate.map((item: any) => {
-    const masterItem = getMasterItemById(item.id || item.itemId);
-    if (!masterItem) {
-      console.warn(`Could not find master item for id ${item.id || item.itemId} during hydration.`);
-      return null;
+    if (!savedPlayer) {
+        return defaults;
     }
-    
-    const newIntelligentItem: IntelligentItem = {
-      ...masterItem,
-      ...item,
-      instanceId: item.instanceId || uuidv4(),
-      quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-      itemLevel: typeof item.itemLevel === 'number' ? item.itemLevel : 1,
-      itemXp: typeof item.itemXp === 'number' ? item.itemXp : (typeof item.experience === 'number' ? item.experience : 0),
-      xpToNextItemLevel: typeof item.xpToNextItemLevel === 'number' && item.xpToNextItemLevel > 0 ? item.xpToNextItemLevel : (masterItem.xpToNextItemLevel || 0),
-      condition: {
-        durability: typeof item.condition === 'number' ? item.condition : (item.condition?.durability ?? 100),
-      },
-      skillModifiers: item.skillModifiers || masterItem.skillModifiers,
-      memory: {
-        acquiredAt: item.acquiredAt || item.memory?.acquiredAt || new Date(0).toISOString(),
-        acquisitionStory: item.memory?.acquisitionStory || "Fait partie de votre équipement de départ standard.",
-        usageHistory: item.memory?.usageHistory || [],
-        evolution_history: item.memory?.evolution_history || [],
-      },
-      economics: {
-        ...masterItem.economics,
-        ...(item.economics || {})
-      },
-      contextual_properties: {
-        local_value: item.contextual_properties?.local_value || masterItem.economics.base_value,
-        legal_status: item.contextual_properties?.legal_status || 'legal',
-        social_perception: item.contextual_properties?.social_perception || 'normal',
-        utility_rating: item.contextual_properties?.utility_rating || 50,
-      }
+
+    // Explicitly copy and validate fields
+    const player: Player = {
+        ...defaults,
+        uid: savedPlayer.uid,
+        isAnonymous: savedPlayer.isAnonymous,
+        name: savedPlayer.name || defaults.name,
+        gender: savedPlayer.gender || defaults.gender,
+        age: savedPlayer.age || defaults.age,
+        avatarUrl: savedPlayer.avatarUrl || defaults.avatarUrl,
+        origin: savedPlayer.origin || defaults.origin,
+        era: savedPlayer.era || defaults.era,
+        background: savedPlayer.background || defaults.background,
+        startingLocationName: savedPlayer.startingLocationName,
+        money: typeof savedPlayer.money === 'number' ? savedPlayer.money : defaults.money,
+        currentLocation: savedPlayer.currentLocation || defaults.currentLocation,
+        lastPlayed: savedPlayer.lastPlayed,
+        traitsMentalStates: savedPlayer.traitsMentalStates || defaults.traitsMentalStates,
+        questLog: savedPlayer.questLog || defaults.questLog,
+        encounteredPNJs: savedPlayer.encounteredPNJs || defaults.encounteredPNJs,
+        decisionLog: savedPlayer.decisionLog || defaults.decisionLog,
+        clues: savedPlayer.clues || defaults.clues,
+        documents: savedPlayer.documents || defaults.documents,
+        investigationNotes: savedPlayer.investigationNotes || defaults.investigationNotes,
+        transactionLog: savedPlayer.transactionLog || defaults.transactionLog,
+        historicalContacts: savedPlayer.historicalContacts || defaults.historicalContacts,
+
+        // Use robust hydrators for complex nested objects
+        stats: hydrateStats(savedPlayer.stats),
+        skills: hydrateSkills(savedPlayer.skills),
+        progression: { ...initialProgression, ...(savedPlayer.progression || {}) },
+        alignment: { ...initialAlignment, ...(savedPlayer.alignment || {}) },
+        momentum: { ...initialMomentum, ...(savedPlayer.momentum || {}) },
+        
+        // --- FIXED PHYSIOLOGY HYDRATION ---
+        physiology: {
+            basic_needs: {
+                hunger: {
+                    level: savedPlayer.physiology?.basic_needs?.hunger?.level ?? initialPhysiology.basic_needs.hunger.level,
+                    satisfaction_quality: savedPlayer.physiology?.basic_needs?.hunger?.satisfaction_quality ?? initialPhysiology.basic_needs.hunger.satisfaction_quality,
+                    cultural_craving: savedPlayer.physiology?.basic_needs?.hunger?.cultural_craving ?? initialPhysiology.basic_needs.hunger.cultural_craving,
+                    dietary_preferences: Array.isArray(savedPlayer.physiology?.basic_needs?.hunger?.dietary_preferences) 
+                        ? [...new Set(savedPlayer.physiology.basic_needs.hunger.dietary_preferences)]
+                        : initialPhysiology.basic_needs.hunger.dietary_preferences,
+                    food_memories: savedPlayer.physiology?.basic_needs?.hunger?.food_memories || initialPhysiology.basic_needs.hunger.food_memories,
+                },
+                thirst: {
+                    level: savedPlayer.physiology?.basic_needs?.thirst?.level ?? initialPhysiology.basic_needs.thirst.level,
+                    hydration_quality: savedPlayer.physiology?.basic_needs?.thirst?.hydration_quality ?? initialPhysiology.basic_needs.thirst.hydration_quality,
+                    climate_adjustment: savedPlayer.physiology?.basic_needs?.thirst?.climate_adjustment ?? initialPhysiology.basic_needs.thirst.climate_adjustment,
+                    beverage_tolerance: Array.isArray(savedPlayer.physiology?.basic_needs?.thirst?.beverage_tolerance)
+                        ? [...new Set(savedPlayer.physiology.basic_needs.thirst.beverage_tolerance)]
+                        : initialPhysiology.basic_needs.thirst.beverage_tolerance,
+                    cultural_beverage_preference: savedPlayer.physiology?.basic_needs?.thirst?.cultural_beverage_preference ?? initialPhysiology.basic_needs.thirst.cultural_beverage_preference,
+                }
+            }
+        },
+        
+        // --- FIXED TONE SETTINGS HYDRATION ---
+        toneSettings: hydrateToneSettings(savedPlayer.toneSettings),
+
+        // --- FIXED INVENTORY HYDRATION ---
+        inventory: (savedPlayer.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : defaults.inventory)
+            .map((item: any) => {
+                const masterItem = getMasterItemById(item.id || item.itemId);
+                if (!masterItem) return null; // Filter out invalid items
+                
+                return {
+                    ...masterItem,
+                    ...item,
+                    instanceId: item.instanceId || uuidv4(),
+                    quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+                    itemLevel: typeof item.itemLevel === 'number' ? item.itemLevel : 1,
+                    itemXp: typeof item.itemXp === 'number' ? item.itemXp : 0,
+                    xpToNextItemLevel: typeof item.xpToNextItemLevel === 'number' ? item.xpToNextItemLevel : (masterItem.xpToNextItemLevel || 0),
+                    condition: { durability: item.condition?.durability ?? 100 },
+                    memory: {
+                        acquiredAt: item.memory?.acquiredAt || new Date(0).toISOString(),
+                        acquisitionStory: item.memory?.acquisitionStory || "Objet de départ.",
+                        usageHistory: item.memory?.usageHistory || [],
+                        evolution_history: item.memory?.evolution_history || [],
+                    },
+                    contextual_properties: item.contextual_properties || {
+                        local_value: masterItem.economics.base_value,
+                        legal_status: 'legal',
+                        social_perception: 'normal',
+                        utility_rating: 50,
+                    },
+                };
+            }).filter((item): item is IntelligentItem => item !== null),
     };
-
-    return newIntelligentItem;
-  }).filter((item): item is IntelligentItem => item !== null);
-
-
-  return player;
+    
+    // Final check on XP to next level to prevent bad data
+    if (!player.progression.xpToNextLevel || player.progression.xpToNextLevel <= player.progression.xp) {
+        player.progression.xpToNextLevel = calculateXpToNextLevel(player.progression.level);
+    }
+  
+    return player;
 }
