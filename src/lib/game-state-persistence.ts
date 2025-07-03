@@ -73,41 +73,39 @@ function hydrateSkills(savedSkills?: Partial<AdvancedSkillSystem>): AdvancedSkil
 }
 
 function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSettings {
-    const finalSettings: ToneSettings = { ...initialToneSettings };
+    const cleanSettings: ToneSettings = { ...initialToneSettings }; // Start with a clean slate of valid keys set to false
 
     if (!savedToneSettings) {
-        return finalSettings;
+        return cleanSettings;
     }
 
-    // This handles both old numeric data and new boolean data, and filters out invalid keys.
-    for (const key of AVAILABLE_TONES) {
-        if (Object.prototype.hasOwnProperty.call(savedToneSettings, key)) {
-            const value = (savedToneSettings as any)[key];
-            // If the saved value is a boolean, use it. If it's a number, check if it's > 0.
-            finalSettings[key] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
-        }
-    }
-    
-    // Handle common synonyms/old keys to migrate old data gracefully
     const synonyms: Record<string, typeof AVAILABLE_TONES[number]> = {
       'Mystère': 'Mystérieux',
+      'Science Fiction': 'Science-Fiction',
       'Humour': 'Humoristique',
       'Romance': 'Romantique',
-      'Science Fiction': 'Science-Fiction',
     };
 
-    for(const oldKey in synonyms) {
-        if (Object.prototype.hasOwnProperty.call(savedToneSettings, oldKey)) {
-            const newKey = synonyms[oldKey];
-            const value = (savedToneSettings as any)[oldKey];
-            // Only set if the correct key isn't already set to true, to avoid overwriting good data.
-            if(!finalSettings[newKey]) {
-               finalSettings[newKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
-            }
+    for (const key in savedToneSettings) {
+        const value = (savedToneSettings as any)[key];
+        let targetKey: typeof AVAILABLE_TONES[number] | undefined = undefined;
+
+        // Is it a valid key?
+        if (AVAILABLE_TONES.includes(key as any)) {
+            targetKey = key as typeof AVAILABLE_TONES[number];
+        } 
+        // Is it a known synonym?
+        else if (key in synonyms) {
+            targetKey = synonyms[key];
+        }
+
+        // If we found a valid target key, set its value
+        if (targetKey) {
+            cleanSettings[targetKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
         }
     }
 
-    return finalSettings;
+    return cleanSettings;
 }
 
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
@@ -126,7 +124,9 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
             thirst: {
                 ...initialPhysiology.basic_needs.thirst,
                 ...(savedPhysiology?.basic_needs?.thirst || {}),
-                beverage_tolerance: savedPhysiology?.basic_needs?.thirst?.beverage_tolerance || initialPhysiology.basic_needs.thirst.beverage_tolerance,
+                beverage_tolerance: savedPhysiology?.basic_needs?.thirst?.beverage_tolerance && Array.isArray(savedPhysiology.basic_needs.thirst.beverage_tolerance)
+                    ? [...new Set(savedPhysiology.basic_needs.thirst.beverage_tolerance)]
+                    : initialPhysiology.basic_needs.thirst.beverage_tolerance,
             }
         }
     };

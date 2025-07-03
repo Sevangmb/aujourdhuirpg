@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AVAILABLE_TONES } from './tone-types';
 import type { IntelligentItem } from './item-types';
 import type { Quest } from '@/modules/quests/types';
-import type { PNJ } from './pnj-types';
+import { PNJInteractionSchema as PNJInputSchema } from './pnj-types';
 import type { MajorDecision } from './decision-types';
 import type { Clue, GameDocument } from './evidence-types';
 import type { ToneSettings } from './tone-types';
@@ -222,14 +222,6 @@ export const ToneSettingsSchema = z.object(
     return acc;
   }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodBoolean>)
 ).partial();
-
-
-const PNJInputSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  dispositionScore: z.number(),
-});
 
 // A comprehensive player schema for AI input
 export const PlayerInputSchema = z.object({
