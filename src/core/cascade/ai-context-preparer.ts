@@ -98,6 +98,8 @@ export class AIContextPreparer {
         id: pnj.id,
         name: pnj.name,
         description: pnj.description,
+        relationStatus: pnj.relationStatus,
+        importance: pnj.importance,
         dispositionScore: pnj.dispositionScore,
       })),
       toneSettings: player.toneSettings,
