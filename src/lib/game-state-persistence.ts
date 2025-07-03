@@ -26,7 +26,6 @@ import {
   initialMomentum,
 } from '@/data/initial-game-data';
 import { saveGameStateToLocal } from '@/services/localStorageService';
-import { deepmerge } from 'deepmerge-ts';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- UTILITIES MOVED HERE TO BREAK CIRCULAR DEPENDENCY ---
@@ -70,30 +69,86 @@ export async function saveGameState(uid: string, characterId: string, state: Gam
 }
 
 function hydrateStats(savedStats?: Partial<PlayerStats>): PlayerStats {
-    if (!savedStats || Object.keys(savedStats).length < 12) {
-        return { ...initialPlayerStats };
+    const newStats = JSON.parse(JSON.stringify(initialPlayerStats));
+    if (!savedStats) {
+        return newStats;
     }
-    return deepmerge(initialPlayerStats, savedStats);
+
+    for (const key in savedStats) {
+        if (Object.prototype.hasOwnProperty.call(newStats, key)) {
+            const statKey = key as keyof PlayerStats;
+            const savedStat = savedStats[statKey];
+
+            if (typeof savedStat === 'number') {
+                newStats[statKey].value = savedStat;
+                // If max is not defined for this stat in initial stats, it remains undefined.
+                // If it is defined (like for Sante), it keeps the default max.
+                if (newStats[statKey].max) {
+                    newStats[statKey].value = Math.min(savedStat, newStats[statKey].max!);
+                }
+            } else if (typeof savedStat === 'object' && savedStat !== null && typeof savedStat.value === 'number') {
+                newStats[statKey].value = savedStat.value;
+                if (typeof savedStat.max === 'number') {
+                    newStats[statKey].max = savedStat.max;
+                }
+            }
+        }
+    }
+    return newStats;
 }
 
 
 function hydrateSkills(savedSkills?: Partial<AdvancedSkillSystem>): AdvancedSkillSystem {
-    if (!savedSkills || !savedSkills.physiques?.arme_a_feu) { // A quick check for the old format
-        return { ...initialSkills };
+    const newSkills = JSON.parse(JSON.stringify(initialSkills));
+
+    if (!savedSkills) {
+        return newSkills;
     }
-    return deepmerge(initialSkills, savedSkills);
+
+    // Iterate over each category in the saved skills
+    for (const category in savedSkills) {
+        if (Object.prototype.hasOwnProperty.call(newSkills, category)) {
+            const savedCategorySkills = (savedSkills as any)[category];
+            const newCategorySkills = (newSkills as any)[category];
+
+            // Iterate over each skill in the category
+            for (const skillName in savedCategorySkills) {
+                if (Object.prototype.hasOwnProperty.call(newCategorySkills, skillName)) {
+                    const savedSkill = savedCategorySkills[skillName];
+                    
+                    // The old format might just be a number for the level
+                    if (typeof savedSkill === 'number') {
+                        newCategorySkills[skillName].level = savedSkill;
+                        // We can't know the XP, so we'll reset it based on the new level.
+                        newCategorySkills[skillName].xp = 0;
+                        newCategorySkills[skillName].xpToNext = getSkillUpgradeCost(savedSkill);
+                    } 
+                    // The new format is an object with a 'level' property
+                    else if (typeof savedSkill === 'object' && savedSkill !== null && typeof savedSkill.level === 'number') {
+                        // Safely merge the new object format
+                        const currentLevel = savedSkill.level || newCategorySkills[skillName].level;
+                        newCategorySkills[skillName].level = currentLevel;
+                        newCategorySkills[skillName].xp = savedSkill.xp || 0;
+                        // Recalculate xpToNext to be safe
+                        newCategorySkills[skillName].xpToNext = savedSkill.xpToNext || getSkillUpgradeCost(currentLevel);
+                    }
+                }
+            }
+        }
+    }
+
+    return newSkills;
 }
 
 function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSettings {
-    const cleanSettings: ToneSettings = {}; // Start with a completely empty object.
+    const cleanSettings: ToneSettings = {};
     
-    // 1. Set all available tones to false by default.
+    // Set all available tones to false by default.
     for (const tone of AVAILABLE_TONES) {
         (cleanSettings as any)[tone] = false;
     }
 
-    // 2. If there are no saved settings, return the defaults.
-    if (!savedToneSettings || Object.keys(savedToneSettings).length === 0) {
+    if (!savedToneSettings) {
         return cleanSettings;
     }
 
@@ -104,7 +159,7 @@ function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSet
       'Romance': 'Romantique',
     };
     
-    // 3. Iterate over the keys from the saved data.
+    // Iterate over the keys from the saved data.
     for (const savedKey in savedToneSettings) {
         if (Object.prototype.hasOwnProperty.call(savedToneSettings, savedKey)) {
             let targetKey: typeof AVAILABLE_TONES[number] | undefined;
@@ -122,7 +177,6 @@ function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSet
                 //...set its value in the clean object, converting numbers to booleans.
                 (cleanSettings as any)[targetKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
             }
-            // Invalid keys from the save are simply ignored.
         }
     }
 
@@ -197,7 +251,6 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
         alignment: { ...initialAlignment, ...(savedPlayer.alignment || {}) },
         momentum: { ...initialMomentum, ...(savedPlayer.momentum || {}) },
         
-        // --- FIXED PHYSIOLOGY HYDRATION ---
         physiology: {
             basic_needs: {
                 hunger: {
@@ -221,10 +274,8 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
             }
         },
         
-        // --- FIXED TONE SETTINGS HYDRATION ---
         toneSettings: hydrateToneSettings(savedPlayer.toneSettings),
 
-        // --- FIXED INVENTORY HYDRATION ---
         inventory: (savedPlayer.inventory && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : defaults.inventory)
             .map((item: any) => {
                 const masterItem = getMasterItemById(item.id || item.itemId);
