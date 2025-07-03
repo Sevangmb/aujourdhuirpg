@@ -202,7 +202,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           case 'PNJ_RELATION_CHANGED': {
             const pnjToUpdate = player.encounteredPNJs.find(p => p.id === event.pnjId);
             if(pnjToUpdate) {
-                const finalDisposition = pnjToUpdate.dispositionScore + event.change;
+                const finalDisposition = (pnjToUpdate.dispositionScore || 50) + event.change;
                 const newNote = event.note;
 
                 const newPNJs = player.encounteredPNJs.map(p =>
