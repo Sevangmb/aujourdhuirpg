@@ -542,7 +542,13 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
   
     for (const poi of pois.slice(0, 8)) { // Limit total POIs considered
       let actionsForThisPoi = 0;
-      for (const service of poi.services) {
+      
+      // Defensive check to ensure poi.services is a valid array
+      if (!Array.isArray(poi.services)) {
+        continue;
+      }
+
+      for (const service of poi.services) { 
         if (actionsForThisPoi >= 1) break; // Limit actions to 1 per POI for clarity
   
         if (service.cost.min > player.money) {
