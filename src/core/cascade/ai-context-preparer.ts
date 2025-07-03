@@ -39,11 +39,16 @@ export class AIContextPreparer {
         type: action.type,
         estimatedCost: action.economicImpact?.cost,
     }));
+
+    const sanitizedPreviousScenario = (gameState.currentScenario?.scenarioText || "L'aventure commence.")
+      .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+      .replace(/\s\s+/g, ' ')   // Collapse whitespace
+      .substring(0, 1000);    // Truncate to 1000 chars
     
     return {
       player: this.preparePlayerContext(gameState.player),
       playerChoiceText: playerChoice.text,
-      previousScenarioText: gameState.currentScenario?.scenarioText || "L'aventure commence.",
+      previousScenarioText: sanitizedPreviousScenario,
       gameEvents: gameEventsSummary,
       cascadeResult: cascadeSummary,
       suggestedContextualActions,
@@ -96,8 +101,8 @@ export class AIContextPreparer {
         latitude: player.currentLocation.latitude,
         longitude: player.currentLocation.longitude,
         name: player.currentLocation.name,
-        description: player.currentLocation.summary, // Map summary to description
-        type: player.currentLocation.zone?.name, // Map zone name to type
+        description: player.currentLocation.summary || '',
+        type: player.currentLocation.zone?.name,
         tags: player.currentLocation.tags,
       },
       encounteredPNJs: (player.encounteredPNJs || []).map(pnj => ({
@@ -118,6 +123,7 @@ export class AIContextPreparer {
         needsRest: player.stats.Energie.value < 30,
         isThirsty: player.physiology.basic_needs.thirst.level < 40
       },
+      toneSettings: player.toneSettings,
     };
   }
   
