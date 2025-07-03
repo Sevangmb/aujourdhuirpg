@@ -12,12 +12,12 @@ import { getStorage } from "firebase/storage";
 
 // Firebase configuration using environment variables
 const firebaseConfig: FirebaseOptions = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCfXSVcVuVxcl3Hd2swFjAa4Zzvstyyo_8",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "aujourdhui-rpg.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "aujourdhui-rpg",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "aujourdhui-rpg.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "528666135142",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:528666135142:web:7098ab95fea27f536bfba7",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Optional
 };
 
@@ -38,11 +38,8 @@ if (process.env.NODE_ENV === 'development') {
     console.warn(
       '⚠️ Firebase Warning: Some environment variables are missing:', 
       missingVars.join(', '),
-      '\nUsing fallback hardcoded values for development. Please add these to your .env.local file:'
+      '\nPlease see SECURITY_SETUP.md for instructions.'
     );
-    missingVars.forEach(varName => {
-      console.warn(`${varName}=your_value_here`);
-    });
   }
 }
 
@@ -53,7 +50,7 @@ if (!getApps().length) {
     app = initializeApp(firebaseConfig);
     console.log("✅ Firebase app initialized successfully.");
   } catch (e) {
-    console.error("❌ Firebase Error: Failed to initialize Firebase app.", e);
+    console.error("❌ Firebase Error: Failed to initialize Firebase app. Check your environment variables.", e);
     app = null; // Ensure app is null if initialization fails
   }
 } else {
