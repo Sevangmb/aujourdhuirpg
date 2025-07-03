@@ -75,7 +75,12 @@ export class AIContextPreparer {
       background: player.background,
       stats: flatStats,
       skills: nestedSkills,
-      physiology: player.physiology,
+      physiology: {
+        basic_needs: {
+          hunger: { level: player.physiology.basic_needs.hunger.level },
+          thirst: { level: player.physiology.basic_needs.thirst.level },
+        }
+      },
       traitsMentalStates: player.traitsMentalStates,
       progression: player.progression,
       alignment: player.alignment,
@@ -83,7 +88,7 @@ export class AIContextPreparer {
         instanceId: item.instanceId, id: item.id, name: item.name,
         description: item.description, type: item.type, quantity: item.quantity,
         condition: item.condition, 
-        economics: item.economics, // This field was missing
+        economics: item.economics,
         memory: { acquisitionStory: item.memory.acquisitionStory },
       })),
       money: player.money,
