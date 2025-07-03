@@ -7,7 +7,7 @@ import { hydratePlayer } from '@/lib/game-state-persistence';
 import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
 import { clearGameState as clearLocalGameState } from '@/services/localStorageService';
-import { getPositionData } from '@/services/position-service';
+import { getPositionData } from '@/app/actions/get-position-data';
 import GameScreen from '@/components/GameScreen';
 import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen';
 import LoadingState from './LoadingState';
