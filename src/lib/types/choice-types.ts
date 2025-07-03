@@ -16,7 +16,7 @@ export type MoodType = (typeof MOOD_TYPES)[number];
 export const CHOICE_ICON_NAMES = [
   "Eye", "Search", "Compass", "Map", // Exploration/Observation
   "MessageSquare", "Users", "Heart", "GlassWater", // Social & Needs
-  "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", "Smartphone", // Action
+  "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", "Smartphone", "Sparkles", // Action
   "Brain", "BookOpen", "Wind", "Feather", "Drama", "NotebookPen" // Reflection & Investigation
 ] as const;
 export type ChoiceIconName = (typeof CHOICE_ICON_NAMES)[number];

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 
-import type { GameState, CharacterSummary } from '@/lib/types';
+import type { GameState, CharacterSummary, StoryChoice } from '@/lib/types';
 import { hydratePlayer } from '@/lib/game-state-persistence';
 import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +13,7 @@ import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen'
 import LoadingState from './LoadingState';
 import type { FullCharacterFormData } from './CharacterCreationForm';
 import { generateScenario } from '@/ai/flows/generate-scenario';
-import { prepareAIInput } from '@/lib/game-logic';
+import { AIContextPreparer } from '@/core/cascade/ai-context-preparer';
 import { GameProvider } from '@/contexts/GameContext';
 
 
@@ -87,7 +87,25 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null,
       };
       
-      const aiInput = prepareAIInput(tempStateForPrologue, { text: "[COMMENCER L'AVENTURE]" });
+      const aiContextPreparer = new AIContextPreparer();
+      const prologueChoice: StoryChoice = {
+        id: 'prologue',
+        text: "[COMMENCER L'AVENTURE]",
+        description: "Lancer le prologue du jeu.",
+        iconName: 'Sparkles',
+        type: 'action',
+        mood: 'adventurous',
+        energyCost: 0,
+        timeCost: 0,
+        consequences: [],
+      };
+      const aiInput = aiContextPreparer.prepareContext(
+        tempStateForPrologue,
+        [], // No game events for prologue
+        null, // No cascade result for prologue
+        prologueChoice
+      );
+
       if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
 
       const prologueResult = await generateScenario(aiInput);
