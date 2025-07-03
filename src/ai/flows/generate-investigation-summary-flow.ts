@@ -11,6 +11,11 @@ export type GenerateInvestigationSummaryInput = z.infer<typeof GenerateInvestiga
 export type GenerateInvestigationSummaryOutput = z.infer<typeof GenerateInvestigationSummaryOutputSchema>;
 
 export async function generateInvestigationSummary(input: GenerateInvestigationSummaryInput): Promise<GenerateInvestigationSummaryOutput> {
+  // Check for API key in the wrapper function for consistency
+  if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
+    console.warn("Genkit API key is not set. Investigation summary generation is disabled.");
+    return { summary: "Synthèse IA indisponible. Clé API manquante." };
+  }
   return generateInvestigationSummaryFlow(input);
 }
 
@@ -70,10 +75,6 @@ const generateInvestigationSummaryFlow = ai.defineFlow(
     outputSchema: GenerateInvestigationSummaryOutputSchema,
   },
   async (input) => {
-    if (!process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
-      return { summary: "Synthèse IA indisponible. Clé API manquante." };
-    }
-    
     try {
       const { output } = await generateSummaryPrompt(input);
       return output || { summary: "L'IA n'a pas pu générer de résumé pour cette enquête." };
