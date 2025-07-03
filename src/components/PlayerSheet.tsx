@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Player, AdvancedSkillSystem, SkillCategory } from '@/lib/types';
@@ -7,6 +8,7 @@ import { Shield, Sparkles, TrendingUp, Dumbbell, UserCog, Landmark, Users, Book,
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 interface PlayerSheetProps {
   player: Player;

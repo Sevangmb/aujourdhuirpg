@@ -202,7 +202,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           case 'PNJ_RELATION_CHANGED': {
             const pnjToUpdate = player.encounteredPNJs.find(p => p.id === event.pnjId);
             if(pnjToUpdate) {
-                const finalDisposition = pnjToUpdate.dispositionScore + event.change;
+                const finalDisposition = (pnjToUpdate.dispositionScore || 50) + event.change;
                 const newNote = event.note;
 
                 const newPNJs = player.encounteredPNJs.map(p =>
@@ -542,7 +542,13 @@ export function generateActionsForPOIs(pois: EnhancedPOI[], player: Player, game
   
     for (const poi of pois.slice(0, 8)) { // Limit total POIs considered
       let actionsForThisPoi = 0;
-      for (const service of poi.services) {
+      
+      // Defensive check to ensure poi.services is a valid array
+      if (!Array.isArray(poi.services)) {
+        continue;
+      }
+
+      for (const service of poi.services) { 
         if (actionsForThisPoi >= 1) break; // Limit actions to 1 per POI for clarity
   
         if (service.cost.min > player.money) {

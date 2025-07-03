@@ -47,7 +47,7 @@ Cette section vous guidera pour configurer et lancer Aujourd'hui RPG localement.
 *   **Node.js** : Assurez-vous d'avoir Node.js installé (version 20.x ou ultérieure recommandée).
 *   **npm** : npm (Node Package Manager) est inclus avec Node.js.
 
-### Installation
+### Installation & Configuration
 
 1.  **Cloner le dépôt :**
     ```bash
@@ -58,6 +58,10 @@ Cette section vous guidera pour configurer et lancer Aujourd'hui RPG localement.
     ```bash
     npm install
     ```
+3.  **Configurer les Clés API (Important!)**
+    Ce projet nécessite plusieurs clés API pour fonctionner. Veuillez suivre les instructions détaillées dans le fichier `SECURITY_SETUP.md` pour configurer votre fichier `.env.local` de manière sécurisée.
+    
+    ➡️ **[Lire le Guide de Configuration de Sécurité](SECURITY_SETUP.md)**
 
 ### Running the Development Server
 
@@ -76,32 +80,7 @@ L'application se compose de deux parties principales : le frontend Next.js et le
     ```
     Cela démarre le serveur de développement Genkit, qui se recharge automatiquement lorsque vous modifiez les fichiers liés à l'IA.
 
-### Environment Variables
-
-Ce projet nécessite la configuration de certaines variables d'environnement.
-
-1.  Créez un fichier `.env` à la racine du projet.
-2.  Ajoutez les variables d'environnement nécessaires. La configuration Firebase est actuellement codée en dur dans `src/lib/firebase.ts` pour la simplicité de ce projet de démonstration.
-
-    *   **Google AI / Genkit Configuration:**
-        ```
-        GOOGLE_API_KEY=your_google_ai_api_key
-        ```
-        *(\*\*Requis\*\* pour toutes les fonctionnalités d'IA générative. Obtenez-le depuis Google AI Studio.)*
-
-    *   **Google Maps Configuration:**
-        ```
-        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-        ```
-        *(\*\*Requis\*\* pour le composant d'affichage de la carte. Obtenez-le depuis la Google Cloud Console.)*
-    
-    *   **NewsAPI Configuration (Optionnel):**
-        ```
-        NEWS_API_KEY=your_newsapi_org_key
-        ```
-        *(Optionnel. Utilisé par un outil d'IA pour récupérer les titres d'actualités. Obtenez une clé sur newsapi.org.)*
-
-**Important** : N'ajoutez pas votre fichier `.env` au contrôle de version.
+**Important** : Ne commitez jamais votre fichier `.env.local` contenant vos clés API.
 
 ## 🎨 Style Guidelines
 
