@@ -1,5 +1,5 @@
 
-import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem, SkillDetail } from '@/lib/types';
+import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem, SkillDetail, AVAILABLE_TONES } from '@/lib/types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -71,8 +71,66 @@ function hydrateSkills(savedSkills?: Partial<AdvancedSkillSystem>): AdvancedSkil
     return deepmerge(initialSkills, savedSkills);
 }
 
+function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSettings {
+    const finalSettings: ToneSettings = { ...initialToneSettings };
+
+    if (!savedToneSettings) {
+        return finalSettings;
+    }
+
+    // This handles both old numeric data and new boolean data, and filters out invalid keys.
+    for (const key of AVAILABLE_TONES) {
+        if (Object.prototype.hasOwnProperty.call(savedToneSettings, key)) {
+            const value = (savedToneSettings as any)[key];
+            // If the saved value is a boolean, use it. If it's a number, check if it's > 0.
+            finalSettings[key] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
+        }
+    }
+    
+    // Handle common synonyms/old keys to migrate old data gracefully
+    const synonyms: Record<string, typeof AVAILABLE_TONES[number]> = {
+      'Mystère': 'Mystérieux',
+      'Humour': 'Humoristique',
+      'Romance': 'Romantique',
+      'Science Fiction': 'Science-Fiction',
+    };
+
+    for(const oldKey in synonyms) {
+        if (Object.prototype.hasOwnProperty.call(savedToneSettings, oldKey)) {
+            const newKey = synonyms[oldKey];
+            const value = (savedToneSettings as any)[oldKey];
+            // Only set if the correct key isn't already set to true, to avoid overwriting good data.
+            if(!finalSettings[newKey]) {
+               finalSettings[newKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
+            }
+        }
+    }
+
+    return finalSettings;
+}
 
 export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
+    // Manually merge physiology to prevent array concatenation issues with deepmerge
+    const savedPhysiology = savedPlayer?.physiology;
+    const physiology: AdvancedPhysiologySystem = {
+        basic_needs: {
+            hunger: {
+                ...initialPhysiology.basic_needs.hunger,
+                ...(savedPhysiology?.basic_needs?.hunger || {}),
+                dietary_preferences: savedPhysiology?.basic_needs?.hunger?.dietary_preferences && Array.isArray(savedPhysiology.basic_needs.hunger.dietary_preferences) 
+                    ? [...new Set(savedPhysiology.basic_needs.hunger.dietary_preferences)] // De-duplicate old bad data
+                    : initialPhysiology.basic_needs.hunger.dietary_preferences,
+                food_memories: savedPhysiology?.basic_needs?.hunger?.food_memories || initialPhysiology.basic_needs.hunger.food_memories,
+            },
+            thirst: {
+                ...initialPhysiology.basic_needs.thirst,
+                ...(savedPhysiology?.basic_needs?.thirst || {}),
+                beverage_tolerance: savedPhysiology?.basic_needs?.thirst?.beverage_tolerance || initialPhysiology.basic_needs.thirst.beverage_tolerance,
+            }
+        }
+    };
+
+
   const player: Player = {
     uid: savedPlayer?.uid,
     isAnonymous: savedPlayer?.isAnonymous,
@@ -86,7 +144,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     startingLocationName: savedPlayer?.startingLocationName,
     stats: hydrateStats(savedPlayer?.stats),
     skills: hydrateSkills(savedPlayer?.skills),
-    physiology: deepmerge(initialPhysiology, savedPlayer?.physiology || {}),
+    physiology: physiology,
     momentum: { ...initialMomentum, ...(savedPlayer?.momentum || {}) },
     traitsMentalStates: savedPlayer?.traitsMentalStates || [...initialTraitsMentalStates],
     progression: { ...initialProgression, ...(savedPlayer?.progression || {}) },
@@ -94,7 +152,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
     money: typeof savedPlayer?.money === 'number' ? savedPlayer.money : initialPlayerMoney,
     inventory: [],
     currentLocation: savedPlayer?.currentLocation || initialPlayerLocation,
-    toneSettings: { ...initialToneSettings, ...(savedPlayer?.toneSettings || {}) },
+    toneSettings: hydrateToneSettings(savedPlayer?.toneSettings),
     questLog: savedPlayer?.questLog || [...initialQuestLog],
     encounteredPNJs: savedPlayer?.encounteredPNJs || [...initialEncounteredPNJs],
     decisionLog: savedPlayer?.decisionLog || [...initialDecisionLog],
@@ -132,7 +190,7 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
       skillModifiers: item.skillModifiers || masterItem.skillModifiers,
       memory: {
         acquiredAt: item.acquiredAt || item.memory?.acquiredAt || new Date(0).toISOString(),
-        acquisitionStory: item.memory?.acquisitionStory || "Fait partie de votre équipement de départ.",
+        acquisitionStory: item.memory?.acquisitionStory || "Fait partie de votre équipement de départ standard.",
         usageHistory: item.memory?.usageHistory || [],
         evolution_history: item.memory?.evolution_history || [],
       },
