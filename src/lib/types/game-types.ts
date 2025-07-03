@@ -4,7 +4,7 @@ import type { ToneSettings } from './tone-types';
 import type { StoryChoice, ActionType } from './choice-types';
 import type { Quest, PNJ, DynamicItemCreationPayload, MajorDecision } from '.';
 import type { HistoricalContact } from '../modules/historical/types';
-import type { Enemy } from '@/modules/combat/types';
+import type { Enemy, EnemyTemplate, CombatResult } from '@/modules/combat/enhanced-types';
 import type { EnhancedPOI } from './poi-types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import type { GeoIntelligence } from './geo-intelligence-types';
@@ -48,9 +48,6 @@ export type GameEvent =
   | { type: 'QUEST_OBJECTIVE_CHANGED'; questId: string; objectiveId: string; completed: boolean; }
   | { type: 'PNJ_ENCOUNTERED'; pnj: Omit<PNJ, 'id' | 'firstEncountered' | 'lastSeen'>; }
   | { type: 'PNJ_RELATION_CHANGED'; pnjId: string; change: number; note?: string; }
-  | { type: 'COMBAT_STARTED'; enemy: Enemy; }
-  | { type: 'COMBAT_ENDED'; winner: 'player' | 'enemy'; }
-  | { type: 'COMBAT_ACTION'; attacker: string; target: 'player' | 'enemy'; damage: number; newHealth: number; action: string; }
   | { type: 'MONEY_CHANGED'; amount: number; description: string; }
   | { type: 'PLAYER_TRAVELS'; from: string; destination: Position; mode: string; duration: number; }
   | { type: 'TRAVEL_EVENT'; narrative: string; }
@@ -64,7 +61,6 @@ export type GameEvent =
 export type GameState = {
   player: Player | null;
   currentScenario: Scenario | null;
-  currentEnemy?: Enemy | null;
   nearbyPois: EnhancedPOI[] | null;
   gameTimeInMinutes: number;
   journal: JournalEntry[];
@@ -120,3 +116,4 @@ export type Position = {
 // Re-exporting for use in GameContext, etc.
 export type { WeatherData };
 export type { GeoIntelligence };
+export type { Enemy, EnemyTemplate, CombatResult };

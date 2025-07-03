@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
-import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI, Clue, GameDocument } from '@/lib/types';
+import type { GameState, GameAction, Position, GeoIntelligence, StoryChoice, GameEvent, Quest, PNJ, IntelligentItem, EnrichedObject, EnhancedPOI, Clue, GameDocument, CombatResult, Enemy, EnemyTemplate } from '@/lib/types';
 import type { AdaptedContact } from '@/modules/historical/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
 import { gameReducer, enrichAIChoicesWithLogic } from '@/lib/game-logic';
@@ -47,6 +47,12 @@ interface GameContextType {
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   user: User;
 
+  // Combat State & Handlers
+  isCombatActive: boolean;
+  combatEnemies: Enemy[];
+  setIsCombatActive: React.Dispatch<React.SetStateAction<boolean>>;
+  handleCombatEnd: (result: CombatResult) => void;
+
   handleManualSave: () => void;
   handleExitToSelection: () => void;
   handleSignOut: () => void;
@@ -86,6 +92,8 @@ export const GameProvider: React.FC<{
   const [encounter, setEncounter] = useState<AdaptedContact | null>(null);
   const [travelDestination, setTravelDestination] = useState<Position | null>(null);
   const [isLoading, setIsLoading] = useState(false); // Generic loading state for async context actions
+  const [isCombatActive, setIsCombatActive] = useState(false);
+  const [combatEnemies, setCombatEnemies] = useState<Enemy[]>([]);
 
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -240,6 +248,30 @@ export const GameProvider: React.FC<{
           aiRecommendation: aiOutput.aiRecommendation 
       }});
       
+      if (aiOutput.startCombat && aiOutput.startCombat.length > 0) {
+        const enemiesToFight: Enemy[] = aiOutput.startCombat.map((template: EnemyTemplate) => ({
+            ...template,
+            instanceId: uuidv4(),
+            currentStats: {
+                health: Math.floor(template.baseStats.Constitution * 1.5),
+                maxHealth: Math.floor(template.baseStats.Constitution * 1.5),
+                stamina: 100,
+                maxStamina: 100,
+                armor: template.naturalArmor.defense,
+                position: 'melee',
+                stance: 'aggressive',
+                statusEffects: [],
+            },
+            ai_state: {
+                lastAction: null,
+                target_priority: 'player',
+                turns_since_special: 0
+            }
+        }));
+        setCombatEnemies(enemiesToFight);
+        setIsCombatActive(true);
+      }
+      
     } catch (error) {
       let errorMessage = "Impossible de générer le prochain scénario.";
       if (error instanceof Error) { errorMessage += ` Détail: ${error.message}`; }
@@ -358,6 +390,26 @@ export const GameProvider: React.FC<{
   const handleUpdateInvestigationNotes = (newSummary: string) => {
     dispatch({ type: 'UPDATE_PLAYER_DATA', payload: { investigationNotes: newSummary } });
   };
+  
+  const handleCombatEnd = (result: CombatResult) => {
+    const events: GameEvent[] = [];
+    if (result.outcome === 'victory') {
+        events.push({ type: 'XP_GAINED', amount: result.rewards.xp });
+        events.push({ type: 'MONEY_CHANGED', amount: result.rewards.money, description: "Butin de combat" });
+        result.rewards.items.forEach(itemId => {
+            const masterItem = getMasterItemById(itemId);
+            events.push({ type: 'ITEM_ADDED', itemId: itemId, itemName: masterItem?.name || itemId, quantity: 1 });
+        });
+        events.push({ type: 'JOURNAL_ENTRY_ADDED', payload: { type: 'event', text: 'Vous avez remporté la victoire !' }});
+    } else if (result.outcome === 'defeat') {
+        events.push({ type: 'TEXT_EVENT', text: "Vous avez été vaincu..." });
+    } else if (result.outcome === 'flee') {
+         events.push({ type: 'TEXT_EVENT', text: "Vous avez réussi à fuir." });
+    }
+    dispatch({ type: 'APPLY_GAME_EVENTS', payload: events });
+    setIsCombatActive(false);
+    setCombatEnemies([]);
+  };
 
 
   const value: GameContextType = {
@@ -367,6 +419,10 @@ export const GameProvider: React.FC<{
     isLoading,
     setIsLoading,
     user,
+    isCombatActive,
+    combatEnemies,
+    setIsCombatActive,
+    handleCombatEnd,
     handleManualSave: () => handleSaveGame('manual'),
     handleExitToSelection: onExitToSelection,
     handleSignOut: onSignOut,

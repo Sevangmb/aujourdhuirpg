@@ -180,14 +180,8 @@ export class AIContextPreparer {
         aiOutput.newTransactions.forEach(txData => events.push({ type: 'MONEY_CHANGED', amount: txData.amount, description: txData.description }));
     }
 
-    if (aiOutput.startCombat) {
-      if (aiOutput.startCombat.length > 0) {
-        // For simplicity, we only start combat with the first enemy proposed by the AI
-        const enemy = { ...aiOutput.startCombat[0], health: aiOutput.startCombat[0].maxHealth };
-        events.push({ type: 'COMBAT_STARTED', enemy });
-      }
-    }
-
+    // Combat start is handled by the GameContext now, not by converting to an event here.
+    
     return events;
   }
 }

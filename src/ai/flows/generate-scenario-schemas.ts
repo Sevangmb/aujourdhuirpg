@@ -12,7 +12,7 @@ import { MajorDecisionSchema } from '@/lib/types/decision-types';
 import { ClueInputSchema, DocumentInputSchema } from '@/lib/types/evidence-types';
 import { NewTransactionSchema } from '@/modules/economy/types';
 import { DynamicItemCreationPayloadSchema } from '@/lib/types/item-types';
-import { EnemySchema } from '@/modules/combat/types';
+import { EnemyTemplateSchema } from '@/modules/combat/enhanced-types';
 
 const SuggestedActionSchema = z.object({
   text: z.string(),
@@ -85,5 +85,5 @@ export const GenerateScenarioOutputSchema = z.object({
   newClues: z.array(ClueInputSchema).optional().describe("Génère de nouveaux indices pour le dossier d'enquête."),
   newDocuments: z.array(DocumentInputSchema).optional().describe("Génère de nouveaux documents à ajouter au dossier d'enquête."),
   majorDecisions: z.array(MajorDecisionSchema).optional().describe("Enregistre une décision majeure prise par le joueur."),
-  startCombat: z.array(EnemySchema).optional().describe("Introduit un ou plusieurs ennemis pour commencer un combat."),
+  startCombat: z.array(EnemyTemplateSchema).optional().describe("Introduit un ou plusieurs modèles d'ennemis pour commencer un combat."),
 }).describe("Schéma de sortie pour le flux generateScenario. L'IA génère la narration, les choix, et peut proposer des changements d'état du jeu.");

@@ -1,7 +1,6 @@
 
-import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe } from './types';
+import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe, EnemyTemplate, Enemy } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
-import type { Enemy } from '@/modules/combat/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
 import { getMasterItemById } from '@/data/items';
 import { performSkillCheck, calculateSuccessProbability } from './skill-check';
@@ -221,18 +220,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               const newDecision: MajorDecision = { ...event.decision, id: uuidv4(), dateMade: new Date().toISOString() };
               player = { ...player, decisionLog: [...(player.decisionLog || []), newDecision] };
               break;
-          case 'COMBAT_STARTED':
-            nextState = handleCombatStarted(nextState, event.enemy);
-            player = nextState.player!;
-            break;
-          case 'COMBAT_ENDED':
-            nextState = handleCombatEnded(nextState);
-            player = nextState.player!;
-            break;
-          case 'COMBAT_ACTION':
-            nextState = handleCombatAction(nextState, event.target, event.newHealth);
-            player = nextState.player!;
-            break;
           case 'GAME_TIME_PROGRESSED':
             nextState = { ...nextState, gameTimeInMinutes: nextState.gameTimeInMinutes + event.minutes };
             player = nextState.player!;
@@ -377,15 +364,6 @@ export function summarizeGameEventsForAI(events: GameEvent[]): string {
       case 'PLAYER_TRAVELS':
         summaries.push(`Vous êtes arrivé à ${event.destination.name}.`);
         break;
-      case 'COMBAT_STARTED':
-         summaries.push(`Un combat a commencé contre ${event.enemy.name}.`);
-         break;
-      case 'COMBAT_ACTION':
-         summaries.push(`${event.attacker} a attaqué, infligeant ${event.damage} dégâts.`);
-         break;
-      case 'COMBAT_ENDED':
-         summaries.push(`Le combat est terminé. Le vainqueur est : ${event.winner}.`);
-         break;
       // Other cases can be added as needed. Default is to not summarize.
     }
   }
