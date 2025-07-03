@@ -37,9 +37,81 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# genkit
 .genkit/*
-.env*
 
-# firebase
+# Environment variables (SECURITY CRITICAL)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.production
+.env.test
+
+# Firebase
 firebase-debug.log
 firestore-debug.log
+ui-debug.log
+firebase-debug.*.log
+
+# IDE
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# API Keys and secrets (DOUBLE PROTECTION)
+**/secrets/**
+**/keys/**
+**/*key*
+**/*secret*
+**/*password*
+**/*token*
+*.pem
+*.key
+*.crt
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# User-generated content (if applicable)
+/uploads/
+/public/uploads/
+
+# Test artifacts
+coverage/
+nyc_output/
+junit.xml
+
+# Package manager
+package-lock.json.backup
+yarn.lock.backup
+
+# Local configuration
+.local
+.config/local
