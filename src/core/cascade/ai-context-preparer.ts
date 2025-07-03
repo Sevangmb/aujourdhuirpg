@@ -86,7 +86,14 @@ export class AIContextPreparer {
         memory: { acquisitionStory: item.memory.acquisitionStory },
       })),
       money: player.money,
-      currentLocation: player.currentLocation,
+      currentLocation: {
+        latitude: player.currentLocation.latitude,
+        longitude: player.currentLocation.longitude,
+        name: player.currentLocation.name,
+        description: player.currentLocation.summary, // Map summary to description
+        type: player.currentLocation.zone?.name, // Map zone name to type
+        tags: player.currentLocation.tags,
+      },
       encounteredPNJs: player.encounteredPNJs?.map(pnj => ({
         id: pnj.id,
         name: pnj.name,
