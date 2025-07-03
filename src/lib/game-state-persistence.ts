@@ -261,16 +261,20 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
         inventory: (Array.isArray(savedPlayer.inventory) && savedPlayer.inventory.length > 0 ? savedPlayer.inventory : defaults.inventory)
             .map((item: any) => {
                 const masterItem = getMasterItemById(item.id || item.itemId);
-                if (!masterItem) return null;
+                if (!masterItem) return null; // Filter out unknown items
                 
-                return {
-                    ...masterItem,
-                    ...item,
+                // This is a safer way to merge, ensuring critical nested objects are not null/undefined
+                const hydratedItem: IntelligentItem = {
+                    ...masterItem, // Start with a valid template
+                    ...item,      // Apply saved data, which might have missing/null fields
                     instanceId: item.instanceId || uuidv4(),
                     quantity: typeof item.quantity === 'number' ? item.quantity : 1,
                     itemLevel: typeof item.itemLevel === 'number' ? item.itemLevel : 1,
                     itemXp: typeof item.itemXp === 'number' ? item.itemXp : 0,
                     xpToNextItemLevel: typeof item.xpToNextItemLevel === 'number' ? item.xpToNextItemLevel : (masterItem.xpToNextItemLevel || 0),
+                    
+                    // Explicitly ensure critical nested objects are valid
+                    economics: item.economics || masterItem.economics,
                     condition: { durability: item.condition?.durability ?? 100 },
                     memory: {
                         acquiredAt: item.memory?.acquiredAt || new Date(0).toISOString(),
@@ -279,12 +283,13 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
                         evolution_history: Array.isArray(item.memory?.evolution_history) ? item.memory.evolution_history : [],
                     },
                     contextual_properties: item.contextual_properties || {
-                        local_value: masterItem.economics.base_value,
+                        local_value: (item.economics || masterItem.economics).base_value, // Use the now-guaranteed economics object
                         legal_status: 'legal',
                         social_perception: 'normal',
                         utility_rating: 50,
                     },
                 };
+                return hydratedItem;
             }).filter((item): item is IntelligentItem => item !== null),
     };
     
