@@ -3,7 +3,7 @@
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe, EnemyTemplate, Enemy } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
-import { getMasterItemById } from './items';
+import { getMasterItemById } from '@/data/items';
 import { calculateSuccessProbability } from './skill-check';
 import { v4 as uuidv4 } from 'uuid';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
