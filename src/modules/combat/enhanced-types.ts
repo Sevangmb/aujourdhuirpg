@@ -202,6 +202,37 @@ export interface CombatResult {
 
 // === ZOD SCHEMAS FOR AI ===
 
+const DamageTypeSchema = z.enum(['physical', 'mental', 'magical', 'environmental']);
+
+const WeaponStatsSchema = z.object({
+  damage: z.number().describe("Dégâts de base de l'arme naturelle (griffes, poings...)."),
+  accuracy: z.number().describe("Précision de base."),
+  criticalChance: z.number().describe("Chance de coup critique de base (%)."),
+  stamina_cost: z.number().describe("Coût en endurance pour utiliser."),
+  range: z.array(z.enum(['melee', 'ranged', 'cover'])).describe("Portée."),
+  damage_type: DamageTypeSchema.describe("Type de dégâts."),
+}).describe("Les statistiques de l'arme naturelle de l'ennemi.");
+
+const ArmorStatsSchema = z.object({
+  defense: z.number().describe("Valeur de défense de base."),
+  damage_reduction: z.record(DamageTypeSchema, z.number()).optional().describe("Réduction de dégâts par type."),
+  mobility_penalty: z.number().describe("Pénalité de mobilité."),
+  special_properties: z.array(z.string()).optional().describe("Propriétés spéciales de l'armure."),
+}).describe("Les statistiques de l'armure naturelle de l'ennemi (peau, carapace...).");
+
+const LootSchema = z.object({
+    money: z.object({
+        min: z.number(),
+        max: z.number(),
+    }).describe("Argent lâché par l'ennemi."),
+    items: z.array(z.object({
+        itemId: z.string().describe("ID de l'objet de la base de données d'objets."),
+        chance: z.number().min(0).max(1).describe("Chance de drop (0 à 1)."),
+        quantity: z.number().optional().describe("Quantité (1 par défaut)."),
+    })).describe("Liste des objets potentiellement lâchés."),
+}).describe("Le butin laissé par l'ennemi à sa mort.");
+
+
 export const EnemyTemplateSchema = z.object({
   name: z.string().describe("Nom de l'ennemi"),
   description: z.string().describe("Description de l'ennemi et de son apparence"),
@@ -218,6 +249,9 @@ export const EnemyTemplateSchema = z.object({
     preferredActions: z.array(z.enum(['attack', 'defend', 'flee', 'special', 'use_item', 'analyze', 'intimidate', 'feint'])).describe("Actions préférées de l'ennemi"),
     fleeThreshold: z.number().min(0).max(100).describe("Seuil de santé pour fuir (pourcentage)"),
   }),
+  naturalWeapons: WeaponStatsSchema,
+  naturalArmor: ArmorStatsSchema,
+  loot: LootSchema,
   xpReward: z.number().min(10).max(500).describe("Points d'expérience accordés en cas de victoire"),
 });
 
