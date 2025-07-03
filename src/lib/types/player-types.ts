@@ -1,6 +1,5 @@
 
 import { z } from 'zod';
-import { AVAILABLE_TONES } from './tone-types';
 import type { IntelligentItem } from './item-types';
 import type { Quest } from '@/modules/quests/types';
 import { PNJInteractionSchema as PNJInputSchema } from './pnj-types';
@@ -215,13 +214,6 @@ export const IntelligentItemInputSchema = z.object({
   }).describe("Les propriétés économiques de base de l'objet."),
 });
 
-
-export const ToneSettingsSchema = z.object(
-  AVAILABLE_TONES.reduce((acc, tone) => {
-    acc[tone] = z.boolean();
-    return acc;
-  }, {} as Record<typeof AVAILABLE_TONES[number], z.ZodBoolean>)
-).partial();
 
 // A comprehensive player schema for AI input
 export const PlayerInputSchema = z.object({

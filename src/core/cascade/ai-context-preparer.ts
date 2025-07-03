@@ -94,7 +94,7 @@ export class AIContextPreparer {
         type: player.currentLocation.zone?.name, // Map zone name to type
         tags: player.currentLocation.tags,
       },
-      encounteredPNJs: player.encounteredPNJs?.map(pnj => ({
+      encounteredPNJs: (player.encounteredPNJs || []).map(pnj => ({
         id: pnj.id,
         name: pnj.name,
         description: pnj.description,
@@ -102,7 +102,6 @@ export class AIContextPreparer {
         importance: pnj.importance,
         dispositionScore: pnj.dispositionScore,
       })),
-      toneSettings: player.toneSettings,
       keyInventoryItems: player.inventory
         .filter(item => item.type !== 'misc' && item.type !== 'key' && item.type !== 'quest')
         .map(item => item.name),

@@ -133,24 +133,19 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
   return `**Instructions de Tonalité Spécifiques :**\n${instructions.join('\n')}`;
 }
 
-const PROMPT_INTRO = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français, dans une police de caractère serif comme 'Literata'. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.`;
+const FULL_SCENARIO_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français, dans une police de caractère serif comme 'Literata'. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.
 
-const PROMPT_CORE_TASK = `
 **TÂCHE PRINCIPALE :**
 1.  **Narrer (scenarioText) :** Basé sur \`gameEvents\`, écrivez une narration HTML immersive qui décrit le résultat de l'action du joueur. C'est votre tâche la plus importante.
 2.  **Proposer des choix (choices) :** Proposez 3-4 choix NARRATIFS et CRÉATIFS. Ne dupliquez pas les actions de \`suggestedContextualActions\`. Ne proposez jamais de choix d'attaque, utilisez \`startCombat\` à la place. Laissez les champs de coût et de gain vides, le moteur de jeu les calculera.
 3.  **Suggérer des événements (optionnel) :** Si la narration le justifie, vous pouvez utiliser les champs optionnels comme \`newPNJs\`, \`newItems\`, \`pnjUpdates\`, etc. Utilisez-les avec parcimonie.
-`;
 
-const PROMPT_GUIDING_PRINCIPLES = `
 **PRINCIPES DIRECTEURS :**
 - **FORMATAGE HTML :** Utilisez des balises \`<p>\` pour les paragraphes. Pour les dialogues, utilisez le format: \`<p><strong>Nom du PNJ :</strong> « ... »</p>\`.
 - **TONALITÉ :** Suivez les instructions de tonalité. {{{toneInstructions}}}
 - **COHÉRENCE :** Utilisez le contexte fourni (\`player\`, \`cascadeResult\`, etc.) pour une narration riche et cohérente.
 - **OUTILS :** Utilisez les outils (\`getWeatherTool\`, etc.) si nécessaire pour enrichir le récit.
-`;
 
-const PROMPT_CONTEXTUAL_INFO = `
 **Contexte de l'Action et du Monde**
 - **Joueur :** {{{player.name}}}, {{{player.gender}}}, {{{player.age}}} ans. Passé : {{{player.background}}}.
 - **Lieu :** {{{player.currentLocation.name}}}
@@ -170,11 +165,22 @@ const PROMPT_CONTEXTUAL_INFO = `
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.
 `;
 
-const FULL_PROMPT = `
-${PROMPT_INTRO}
-${PROMPT_CORE_TASK}
-${PROMPT_GUIDING_PRINCIPLES}
-${PROMPT_CONTEXTUAL_INFO}
+const FULL_PROLOGUE_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG".
+
+**TÂCHE PRINCIPALE : PROLOGUE**
+Écrivez une scène d'introduction captivante en HTML pour le personnage suivant :
+- **Personnage :** {{{player.name}}}, {{{player.gender}}} de {{{player.age}}} ans.
+- **Contexte :** Époque "{{{player.era}}}", commençant à {{{player.currentLocation.name}}}. Passé : {{{player.background}}}.
+
+Votre narration doit planter le décor, introduire le personnage, et suggérer le début d'une aventure.
+Suivez les instructions de tonalité ci-dessous.
+Proposez 3 choix narratifs initiaux dans le champ \`choices\`.
+
+**Instructions de Tonalité :**
+{{{toneInstructions}}}
+
+**Format de Sortie :**
+Assurez-vous de générer une sortie JSON valide avec les champs 'scenarioText' et 'choices'.
 `;
 
 
@@ -197,24 +203,9 @@ const scenarioPrompt = ai.definePrompt({
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
     ],
   },
-  prompt: FULL_PROMPT,
+  prompt: FULL_SCENARIO_PROMPT,
 });
 
-const PROLOGUE_PROMPT_TASK = `
-**TÂCHE PRINCIPALE : PROLOGUE**
-Écrivez une scène d'introduction captivante en HTML pour le personnage suivant :
-- **Personnage :** {{{player.name}}}, {{{player.gender}}} de {{{player.age}}} ans.
-- **Contexte :** Époque "{{{player.era}}}", commençant à {{{player.currentLocation.name}}}. Passé : {{{player.background}}}.
-
-Votre narration doit planter le décor, introduire le personnage, et suggérer le début d'une aventure.
-Suivez les instructions de tonalité.
-Proposez 3 choix narratifs initiaux dans le champ \`choices\`.
-`;
-
-const FULL_PROLOGUE_PROMPT = `
-${PROMPT_INTRO}
-${PROLOGUE_PROMPT_TASK}
-`;
 
 const prologuePrompt = ai.definePrompt({
   name: 'generateProloguePrompt',
@@ -259,10 +250,14 @@ const generateScenarioFlow = ai.defineFlow(
       }
       return output;
 
-    } catch (error) {
+    } catch (error: any) {
        console.error('Error in generateScenarioFlow calling prompt:', error);
+       let errorMessage = "Erreur critique du modèle IA.";
+       if (error.cause) {
+           errorMessage += ` Cause: ${JSON.stringify(error.cause)}`;
+       }
        return {
-         scenarioText: "<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p>",
+         scenarioText: `<p>Erreur critique: L'IA n'a pas pu générer de scénario. Veuillez réessayer ou vérifier la configuration du serveur.</p><p class="text-xs text-muted-foreground">${errorMessage}</p>`,
          choices: [{
           id: 'retry_action',
           text: "Réessayer l'action précédente",
@@ -272,7 +267,7 @@ const generateScenarioFlow = ai.defineFlow(
           mood: 'adventurous',
           consequences: ['Peut fonctionner', 'Peut échouer à nouveau'],
         }],
-         aiRecommendation: { focus: 'Erreur', reasoning: 'Erreur critique du modèle IA.' },
+         aiRecommendation: { focus: 'Erreur', reasoning: errorMessage },
        };
     }
   }
