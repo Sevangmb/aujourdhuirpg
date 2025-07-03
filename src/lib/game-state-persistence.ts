@@ -263,30 +263,41 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
                 const masterItem = getMasterItemById(item.id || item.itemId);
                 if (!masterItem) return null; // Filter out unknown items
                 
-                // This is a safer way to merge, ensuring critical nested objects are not null/undefined
+                // Rebuild the economics object defensively
+                const economics = (item.economics && typeof item.economics.base_value === 'number')
+                    ? item.economics 
+                    : masterItem.economics;
+
+                // Rebuild the contextual properties defensively
+                const contextual_properties = (item.contextual_properties && typeof item.contextual_properties.local_value === 'number')
+                    ? item.contextual_properties
+                    : {
+                        local_value: economics.base_value,
+                        legal_status: 'legal',
+                        social_perception: 'normal',
+                        utility_rating: 50,
+                    };
+
+                // Reconstruct the item from a valid base, overlay saved data, then enforce valid nested objects.
                 const hydratedItem: IntelligentItem = {
-                    ...masterItem, // Start with a valid template
-                    ...item,      // Apply saved data, which might have missing/null fields
+                    ...masterItem,
+                    ...(item as Partial<IntelligentItem>), // Overlay saved data
                     instanceId: item.instanceId || uuidv4(),
                     quantity: typeof item.quantity === 'number' ? item.quantity : 1,
                     itemLevel: typeof item.itemLevel === 'number' ? item.itemLevel : 1,
                     itemXp: typeof item.itemXp === 'number' ? item.itemXp : 0,
                     xpToNextItemLevel: typeof item.xpToNextItemLevel === 'number' ? item.xpToNextItemLevel : (masterItem.xpToNextItemLevel || 0),
                     
-                    // Explicitly ensure critical nested objects are valid
-                    economics: item.economics || masterItem.economics,
+                    economics: economics, // Enforce valid economics object
+                    contextual_properties: contextual_properties, // Enforce valid contextual object
+
                     condition: { durability: item.condition?.durability ?? 100 },
+                    
                     memory: {
                         acquiredAt: item.memory?.acquiredAt || new Date(0).toISOString(),
                         acquisitionStory: item.memory?.acquisitionStory || "Objet de départ.",
                         usageHistory: Array.isArray(item.memory?.usageHistory) ? item.memory.usageHistory : [],
                         evolution_history: Array.isArray(item.memory?.evolution_history) ? item.memory.evolution_history : [],
-                    },
-                    contextual_properties: item.contextual_properties || {
-                        local_value: (item.economics || masterItem.economics).base_value, // Use the now-guaranteed economics object
-                        legal_status: 'legal',
-                        social_perception: 'normal',
-                        utility_rating: 50,
                     },
                 };
                 return hydratedItem;
@@ -299,3 +310,5 @@ export function hydratePlayer(savedPlayer?: Partial<Player>): Player {
   
     return player;
 }
+
+  
