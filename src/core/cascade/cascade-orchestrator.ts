@@ -59,13 +59,25 @@ export class CascadeOrchestrator {
             return acc;
         }, {} as Record<string, number>);
 
+        // Aplatir les compétences pour correspondre au schéma Zod attendu (z.record(z.record(z.number())))
+        const flatSkills = (Object.keys(gameState.player.skills) as Array<keyof typeof gameState.player.skills>).reduce((acc, category) => {
+            const skillsInCategory = gameState.player!.skills[category];
+            const subSkills: Record<string, number> = {};
+            for (const skillName in skillsInCategory) {
+                subSkills[skillName] = skillsInCategory[skillName].level;
+            }
+            acc[category] = subSkills;
+            return acc;
+        }, {} as Record<string, Record<string, number>>);
+
+
         const travelNarrativeResult = await generateTravelEvent({
             travelMode: travelEvent.mode as 'walk' | 'metro' | 'taxi',
             origin: gameState.player.currentLocation,
             destination: travelEvent.destination,
             gameTimeInMinutes: gameState.gameTimeInMinutes,
             playerStats: flatStats as any,
-            playerSkills: gameState.player.skills,
+            playerSkills: flatSkills as any,
         });
 
         if (travelNarrativeResult.narrative) {
