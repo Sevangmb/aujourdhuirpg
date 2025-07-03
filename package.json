@@ -11,7 +11,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next out",
+    "dev:all": "concurrently \"npm run dev\" \"npm run genkit:watch\"",
+    "test": "echo \"No tests specified\" && exit 0",
+    "validate": "npm run typecheck && npm run lint",
+    "setup": "npm install && cp .env.example .env.local",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.8.0",
@@ -64,6 +71,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^9.0.8",
+    "concurrently": "^8.2.2",
     "genkit-cli": "^1.8.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
@@ -81,6 +89,17 @@
     "firebase",
     "genkit",
     "france",
-    "interactive-fiction"
-  ]
+    "interactive-fiction",
+    "gaming",
+    "storytelling"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "homepage": "https://github.com/Sevangmb/aujourdhuirpg#readme",
+  "bugs": {
+    "url": "https://github.com/Sevangmb/aujourdhuirpg/issues"
+  },
+  "license": "MIT"
 }
