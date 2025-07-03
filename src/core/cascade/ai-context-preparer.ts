@@ -82,7 +82,8 @@ export class AIContextPreparer {
       inventory: player.inventory.map(item => ({
         instanceId: item.instanceId, id: item.id, name: item.name,
         description: item.description, type: item.type, quantity: item.quantity,
-        condition: item.condition, economics: item.economics,
+        condition: item.condition, 
+        economics: item.economics, // This field was missing
         memory: { acquisitionStory: item.memory.acquisitionStory },
       })),
       money: player.money,
