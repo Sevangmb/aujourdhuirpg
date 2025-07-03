@@ -246,7 +246,6 @@ export const PlayerInputSchema = z.object({
   money: z.number(),
   currentLocation: LocationSchema,
   encounteredPNJs: z.array(PNJInputSchema).optional().describe("Liste des PNJ déjà rencontrés et leur disposition actuelle envers vous."),
-  toneSettings: ToneSettingsSchema,
   keyInventoryItems: z.array(z.string()).optional().describe("Liste des objets clés actuellement dans l'inventaire du joueur."),
   recentActionTypes: z.array(z.string()).optional().describe("Les types des 3 dernières actions du joueur, pour éviter la répétition."),
   physiologicalState: z.object({
