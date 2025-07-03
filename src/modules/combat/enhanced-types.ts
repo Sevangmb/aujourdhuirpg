@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Type definitions for the complete Combat system
  * Enhanced combat system with tactical turn-based mechanics
@@ -215,10 +214,16 @@ const WeaponStatsSchema = z.object({
 
 const ArmorStatsSchema = z.object({
   defense: z.number().describe("Valeur de défense de base."),
-  damage_reduction: z.record(DamageTypeSchema, z.number()).optional().describe("Réduction de dégâts par type."),
+  damage_reduction: z.object({
+      physical: z.number().optional(),
+      magical: z.number().optional(),
+      mental: z.number().optional(),
+      environmental: z.number().optional()
+  }).optional().describe("Réduction de dégâts par type. Chaque clé est un type de dégât, sa valeur est le montant de la réduction."),
   mobility_penalty: z.number().describe("Pénalité de mobilité."),
   special_properties: z.array(z.string()).optional().describe("Propriétés spéciales de l'armure."),
 }).describe("Les statistiques de l'armure naturelle de l'ennemi (peau, carapace...).");
+
 
 const LootSchema = z.object({
     money: z.object({
