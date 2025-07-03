@@ -2,161 +2,156 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGame } from '@/contexts/GameContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const ModernAppMenubar: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { gameState, isGameActive } = useGame();
+// Import des composants modulaires (T2.2-T2.5)
+import { PlayerStatusBar } from './menu/PlayerStatusBar';
+import { QuickActionsBar } from './menu/QuickActionsBar';
+import { MenuSections } from './menu/MenuSections';
+import { SystemActions } from './menu/SystemActions';
 
-  // Gestion fermeture avec ESC
+interface ModernAppMenubarProps {
+  className?: string;
+}
+
+const ModernAppMenubar: React.FC<ModernAppMenubarProps> = ({ className }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('personnage');
+  const { gameState } = useGame();
+  const { user, signOutUser } = useAuth();
+
+  // Fermer le menu avec ESC
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsMenuOpen(false);
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false);
       }
     };
 
-    if (isMenuOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      // Prevent body scroll when menu is open
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // Prévenir le scroll du body quand le menu est ouvert
+  useEffect(() => {
+    if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isMenuOpen]);
+  }, [isOpen]);
 
   const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+    setIsOpen(!isOpen);
   };
 
   const closeMenu = () => {
-    setIsMenuOpen(false);
+    setIsOpen(false);
   };
-
-  // Ne pas afficher si pas de données joueur
-  if (!gameState?.player) return null;
 
   return (
     <>
-      {/* Bouton Menu Hamburger - Position fixe en haut à gauche */}
+      {/* Bouton Hamburger Fixe */}
       <button
         onClick={toggleMenu}
-        className="fixed top-4 left-4 z-50 bg-slate-800/95 backdrop-blur-sm rounded-lg p-3 
-                 hover:bg-slate-700/95 transition-all duration-200 shadow-lg border border-slate-700
-                 hover:scale-105 active:scale-95"
-        aria-label={isMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+        className={cn(
+          "fixed top-4 left-4 z-50 p-3 rounded-lg",
+          "bg-background/80 backdrop-blur-md border border-border",
+          "hover:bg-background/90 hover:scale-105",
+          "active:scale-95 transition-all duration-200",
+          "shadow-lg hover:shadow-xl",
+          className
+        )}
+        aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
       >
-        <div className="relative w-5 h-5">
-          {/* Animation croisée Menu <-> X */}
+        <div className="w-6 h-6 relative">
           <Menu 
-            className={`absolute w-5 h-5 text-white transition-all duration-300 ${
-              isMenuOpen ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'
-            }`}
+            className={cn(
+              "absolute inset-0 transition-all duration-300",
+              isOpen ? "rotate-180 opacity-0 scale-0" : "rotate-0 opacity-100 scale-100"
+            )}
           />
           <X 
-            className={`absolute w-5 h-5 text-white transition-all duration-300 ${
-              isMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'
-            }`}
+            className={cn(
+              "absolute inset-0 transition-all duration-300",
+              isOpen ? "rotate-0 opacity-100 scale-100" : "rotate-180 opacity-0 scale-0"
+            )}
           />
         </div>
       </button>
 
-      {/* Overlay avec backdrop blur */}
-      {isMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-all duration-300"
-          onClick={closeMenu}
-          aria-hidden="true"
-        />
+      {/* Overlay et Menu Coulissant */}
+      {isOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+            onClick={closeMenu}
+            aria-hidden="true"
+          />
+
+          {/* Menu Container */}
+          <div
+            className={cn(
+              "fixed left-0 top-0 h-full z-40",
+              "w-full sm:w-80 md:w-80", // Fullscreen mobile, 320px desktop
+              "bg-background/95 backdrop-blur-md border-r border-border",
+              "transform transition-transform duration-300 ease-out",
+              "overflow-hidden flex flex-col",
+              "shadow-2xl"
+            )}
+            role="navigation"
+          >
+            {/* HEADER du Menu */}
+            <div className="pt-20 pb-4 px-6 border-b border-border shrink-0">
+              {/* Titre */}
+              <div className="mb-4">
+                <h1 className="text-xl font-bold text-foreground">
+                  🎮 Aujourd'hui RPG
+                </h1>
+                {gameState.player && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {gameState.player.name}
+                  </p>
+                )}
+              </div>
+
+              {/* T2.2 - Status Bar du Joueur */}
+              {gameState.player && (
+                <PlayerStatusBar player={gameState.player} compact />
+              )}
+
+              {/* T2.3 - Actions Rapides */}
+              <QuickActionsBar onAction={closeMenu} />
+            </div>
+
+            {/* CONTENU PRINCIPAL - T2.4 - Sections Organisées */}
+            <div className="flex-1 overflow-hidden">
+              <MenuSections 
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                player={gameState.player}
+                gameState={gameState}
+              />
+            </div>
+
+            {/* FOOTER - T2.5 - Actions Système */}
+            <div className="shrink-0 border-t border-border">
+              <SystemActions 
+                user={user}
+                signOutUser={signOutUser}
+                onAction={closeMenu}
+              />
+            </div>
+          </div>
+        </>
       )}
-
-      {/* Menu Principal Coulissant */}
-      <div 
-        className={`fixed top-0 left-0 h-full bg-slate-900/98 backdrop-blur-md z-40 
-                   border-r border-slate-700 shadow-2xl transition-all duration-300 ease-out
-                   ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-                   ${/* Responsive width */}
-                   w-80 md:w-80 sm:w-full`}
-        role="navigation"
-        aria-label="Menu principal"
-      >
-        <div className="h-full flex flex-col">
-          {/* Header avec espace pour le bouton hamburger */}
-          <div className="pt-20 px-4 pb-4">
-            {/* Titre du menu */}
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-white mb-1">
-                🎮 Aujourd'hui RPG
-              </h1>
-              <p className="text-slate-400 text-sm">
-                Menu principal - {gameState.player.name}
-              </p>
-            </div>
-
-            {/* Placeholder pour Status Bar (T2.2) */}
-            <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700">
-              <div className="text-center text-slate-400 text-sm">
-                📊 Status du joueur
-                <br />
-                <span className="text-xs">(À implémenter dans T2.2)</span>
-              </div>
-            </div>
-
-            {/* Placeholder pour Actions Rapides (T2.3) */}
-            <div className="bg-slate-800/30 rounded-lg p-4 mb-4 border border-slate-600">
-              <div className="text-center text-slate-400 text-sm">
-                ⚡ Actions rapides
-                <br />
-                <span className="text-xs">(À implémenter dans T2.3)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Contenu principal scrollable */}
-          <div className="flex-1 overflow-y-auto px-4">
-            {/* Placeholder pour Sections Menu (T2.4) */}
-            <div className="space-y-3 mb-4">
-              {[
-                '👤 Personnage',
-                '🎒 Équipement', 
-                '📖 Aventure',
-                '🌍 Monde',
-                '👥 Social',
-                '💰 Économie'
-              ].map((section, index) => (
-                <div 
-                  key={index}
-                  className="bg-slate-800/30 rounded-lg p-3 border border-slate-600
-                           hover:bg-slate-700/40 transition-colors cursor-pointer"
-                >
-                  <div className="text-slate-300 text-sm">
-                    {section}
-                    <span className="text-slate-500 text-xs block">
-                      (À implémenter dans T2.4)
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer avec Actions Système (T2.5) */}
-          <div className="p-4 border-t border-slate-700">
-            <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-600">
-              <div className="text-center text-slate-400 text-sm">
-                ⚙️ Actions système
-                <br />
-                <span className="text-xs">(À implémenter dans T2.5)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </>
   );
 };
