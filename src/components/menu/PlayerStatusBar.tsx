@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -29,82 +30,74 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   };
 
   const getPhysiologyColor = (level: number) => {
-    if (level >= 80) return 'text-red-500';
-    if (level >= 60) return 'text-orange-500';
+    if (level < 25) return 'text-red-500';
+    if (level < 50) return 'text-orange-500';
     return 'text-green-500';
+  };
+  
+  const getEnergyColor = (current: number, max: number) => {
+    const percentage = (current / max) * 100;
+    if (percentage <= 25) return 'text-red-500';
+    if (percentage <= 50) return 'text-orange-500';
+    return 'text-yellow-500';
   };
 
   if (compact) {
     return (
       <TooltipProvider>
-        <div className={cn("flex flex-wrap gap-2 text-sm", className)}>
-          {/* Santé */}
+        <div className={cn("flex flex-wrap gap-x-3 gap-y-1 text-sm", className)}>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                <Heart className={cn("w-4 h-4", getHealthColor(stats.Santé.value, stats.Santé.max))} />
+                <Heart className={cn("w-4 h-4", getHealthColor(stats.Sante.value, stats.Sante.max))} />
                 <span className="font-medium">
-                  {stats.Santé.value}/{stats.Santé.max}
+                  {stats.Sante.value}/{stats.Sante.max}
                 </span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Santé: {stats.Santé.value}/{stats.Santé.max}</p>
-            </TooltipContent>
+            <TooltipContent><p>Santé</p></TooltipContent>
           </Tooltip>
 
-          {/* Énergie */}
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                <Zap className={cn("w-4 h-4", getHealthColor(stats.Énergie.value, stats.Énergie.max))} />
+                <Zap className={cn("w-4 h-4", getEnergyColor(stats.Energie.value, stats.Energie.max))} />
                 <span className="font-medium">
-                  {stats.Énergie.value}/{stats.Énergie.max}
+                  {stats.Energie.value}/{stats.Energie.max}
                 </span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Énergie: {stats.Énergie.value}/{stats.Énergie.max}</p>
-            </TooltipContent>
+            <TooltipContent><p>Énergie</p></TooltipContent>
           </Tooltip>
 
-          {/* Faim */}
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                <Utensils className={cn("w-4 h-4", getPhysiologyColor(physiology.hunger))} />
-                <span className="font-medium">{physiology.hunger}%</span>
+                <Utensils className={cn("w-4 h-4", getPhysiologyColor(physiology.basic_needs.hunger.level))} />
+                <span className="font-medium">{Math.round(physiology.basic_needs.hunger.level)}%</span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Faim: {physiology.hunger}%</p>
-            </TooltipContent>
+            <TooltipContent><p>Faim</p></TooltipContent>
           </Tooltip>
 
-          {/* Soif */}
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                <GlassWater className={cn("w-4 h-4", getPhysiologyColor(physiology.thirst))} />
-                <span className="font-medium">{physiology.thirst}%</span>
+                <GlassWater className={cn("w-4 h-4", getPhysiologyColor(physiology.basic_needs.thirst.level))} />
+                <span className="font-medium">{Math.round(physiology.basic_needs.thirst.level)}%</span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Soif: {physiology.thirst}%</p>
-            </TooltipContent>
+            <TooltipContent><p>Soif</p></TooltipContent>
           </Tooltip>
-
-          {/* Argent */}
+          
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                <Euro className="w-4 h-4 text-yellow-500" />
+                <Euro className="w-4 h-4 text-green-500" />
                 <span className="font-medium">{money.toFixed(2)}</span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Argent: {money.toFixed(2)} €</p>
-            </TooltipContent>
+            <TooltipContent><p>Argent</p></TooltipContent>
           </Tooltip>
         </div>
       </TooltipProvider>
@@ -114,83 +107,48 @@ export const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   // Version complète (non-compact)
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Santé */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Heart className={cn("w-4 h-4", getHealthColor(stats.Santé.value, stats.Santé.max))} />
+            <Heart className={cn("w-4 h-4", getHealthColor(stats.Sante.value, stats.Sante.max))} />
             <span className="text-sm font-medium">Santé</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {stats.Santé.value}/{stats.Santé.max}
-          </span>
+          <span className="text-sm text-muted-foreground">{stats.Sante.value}/{stats.Sante.max}</span>
         </div>
-        <Progress 
-          value={(stats.Santé.value / stats.Santé.max) * 100} 
-          className="h-2"
-        />
+        <Progress value={(stats.Sante.value / stats.Sante.max) * 100} className="h-2" />
       </div>
 
-      {/* Énergie */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Zap className={cn("w-4 h-4", getHealthColor(stats.Énergie.value, stats.Énergie.max))} />
+            <Zap className={cn("w-4 h-4", getEnergyColor(stats.Energie.value, stats.Energie.max))} />
             <span className="text-sm font-medium">Énergie</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {stats.Énergie.value}/{stats.Énergie.max}
-          </span>
+          <span className="text-sm text-muted-foreground">{stats.Energie.value}/{stats.Energie.max}</span>
         </div>
-        <Progress 
-          value={(stats.Énergie.value / stats.Énergie.max) * 100} 
-          className="h-2"
-        />
+        <Progress value={(stats.Energie.value / stats.Energie.max) * 100} className="h-2" />
       </div>
 
-      {/* Faim */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Utensils className={cn("w-4 h-4", getPhysiologyColor(physiology.hunger))} />
+            <Utensils className={cn("w-4 h-4", getPhysiologyColor(physiology.basic_needs.hunger.level))} />
             <span className="text-sm font-medium">Faim</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {physiology.hunger}%
-          </span>
+          <span className="text-sm text-muted-foreground">{Math.round(physiology.basic_needs.hunger.level)}%</span>
         </div>
-        <Progress 
-          value={physiology.hunger} 
-          className="h-2"
-        />
+        <Progress value={physiology.basic_needs.hunger.level} className="h-2" />
       </div>
 
-      {/* Soif */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <GlassWater className={cn("w-4 h-4", getPhysiologyColor(physiology.thirst))} />
+            <GlassWater className={cn("w-4 h-4", getPhysiologyColor(physiology.basic_needs.thirst.level))} />
             <span className="text-sm font-medium">Soif</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {physiology.thirst}%
-          </span>
+          <span className="text-sm text-muted-foreground">{Math.round(physiology.basic_needs.thirst.level)}%</span>
         </div>
-        <Progress 
-          value={physiology.thirst} 
-          className="h-2"
-        />
-      </div>
-
-      {/* Argent */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Euro className="w-4 h-4 text-yellow-500" />
-          <span className="text-sm font-medium">Argent</span>
-        </div>
-        <span className="text-sm font-medium">
-          {money.toFixed(2)} €
-        </span>
+        <Progress value={physiology.basic_needs.thirst.level} className="h-2" />
       </div>
     </div>
   );

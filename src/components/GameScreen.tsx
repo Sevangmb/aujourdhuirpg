@@ -4,7 +4,7 @@
 import React from 'react';
 import { useGame } from '@/contexts/GameContext';
 import GamePlay from '@/components/GamePlay';
-import AppMenubar from '@/components/AppMenubar';
+import ModernAppMenubar from '@/components/ModernAppMenubar';
 import { Loader2 } from 'lucide-react';
 
 const GameScreen: React.FC = () => {
@@ -13,8 +13,8 @@ const GameScreen: React.FC = () => {
   if (isGameActive) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
-        <AppMenubar />
-        <div className="flex-grow">
+        <ModernAppMenubar />
+        <div className="flex-grow md:pl-20">
           <GamePlay />
         </div>
       </div>
