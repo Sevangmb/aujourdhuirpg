@@ -1,6 +1,6 @@
 
 import type { GameState, Player, IntelligentItem, ToneSettings, Position, JournalEntry, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, Transaction, HistoricalContact, AdvancedSkillSystem, AdvancedPhysiologySystem, SkillDetail } from '@/lib/types';
-import { AVAILABLE_TONES } from '@/lib/types';
+import { AVAILABLE_TONES } from './types/tone-types';
 import { getMasterItemById } from '@/data/items';
 import { saveCharacter } from '@/services/firestore-service';
 import {
@@ -73,7 +73,7 @@ function hydrateSkills(savedSkills?: Partial<AdvancedSkillSystem>): AdvancedSkil
 }
 
 function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSettings {
-    const cleanSettings: ToneSettings = { ...initialToneSettings }; // Start with a clean slate of valid keys set to false
+    const cleanSettings: ToneSettings = { ...initialToneSettings }; // All false
 
     if (!savedToneSettings) {
         return cleanSettings;
@@ -85,23 +85,28 @@ function hydrateToneSettings(savedToneSettings?: Partial<ToneSettings>): ToneSet
       'Humour': 'Humoristique',
       'Romance': 'Romantique',
     };
+    
+    // Iterate over all keys in the saved object
+    for (const savedKey in savedToneSettings) {
+        if (Object.prototype.hasOwnProperty.call(savedToneSettings, savedKey)) {
+            const value = (savedToneSettings as any)[savedKey];
+            let targetKey: string | undefined = undefined;
 
-    for (const key in savedToneSettings) {
-        const value = (savedToneSettings as any)[key];
-        let targetKey: typeof AVAILABLE_TONES[number] | undefined = undefined;
+            // Check if the key is directly valid
+            if (AVAILABLE_TONES.includes(savedKey as any)) {
+                targetKey = savedKey;
+            } 
+            // Else, check if it's a known synonym
+            else if (synonyms[savedKey]) {
+                targetKey = synonyms[savedKey];
+            }
 
-        // Is it a valid key?
-        if (AVAILABLE_TONES.includes(key as any)) {
-            targetKey = key as typeof AVAILABLE_TONES[number];
-        } 
-        // Is it a known synonym?
-        else if (key in synonyms) {
-            targetKey = synonyms[key];
-        }
-
-        // If we found a valid target key, set its value
-        if (targetKey) {
-            cleanSettings[targetKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
+            // If we found a valid key (direct or via synonym), process it
+            if (targetKey && AVAILABLE_TONES.includes(targetKey as any)) {
+                // Convert to boolean and assign to the clean object
+                (cleanSettings as any)[targetKey] = typeof value === 'boolean' ? value : (typeof value === 'number' && value > 0);
+            }
+            // If the key is invalid and not a synonym, it is ignored and not added to cleanSettings.
         }
     }
 
