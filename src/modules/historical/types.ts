@@ -71,9 +71,6 @@ export const GenerateHistoricalContactInputSchema = z.object({
 });
 export type GenerateHistoricalContactInput = z.infer<typeof GenerateHistoricalContactInputSchema>;
 
-export const GenerateHistoricalContactOutputSchema = ContactKnowledgeSchema;
-export type GenerateHistoricalContactOutput = z.infer<typeof GenerateHistoricalContactOutputSchema>;
-
 // Type for the combined object passed to components and context
 export type AdaptedContact = { 
     historical: HistoricalPersonality; 

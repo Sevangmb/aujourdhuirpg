@@ -3,11 +3,10 @@
 import type { GameState, Scenario, Player, ToneSettings, Position, JournalEntry, GameNotification, PlayerStats, Progression, Quest, PNJ, MajorDecision, Clue, GameDocument, QuestUpdate, IntelligentItem, Transaction, StoryChoice, AdvancedSkillSystem, QuestObjective, ItemUsageRecord, DynamicItemCreationPayload, GameEvent, EnrichedObject, MomentumSystem, EnhancedPOI, POIService, ActionType, ChoiceIconName, BookSearchResult, EnrichedRecipe, EnemyTemplate, Enemy } from './types';
 import type { HistoricalContact } from '@/modules/historical/types';
 import { addItemToInventory, removeItemFromInventory, updateItemContextualProperties, grantXpToItem } from '@/modules/inventory/logic';
-import { getMasterItemById } from '@/data/items';
-import { performSkillCheck, calculateSuccessProbability } from './skill-check';
+import { getMasterItemById } from './items';
+import { calculateSuccessProbability } from './skill-check';
 import { v4 as uuidv4 } from 'uuid';
 import { addPlayerXp, getSkillXp, applySkillXp } from '@/modules/player/logic';
-import { handleCombatAction, handleCombatEnded, handleCombatStarted } from '@/modules/combat/logic';
 import { handleAddQuest, handleQuestStatusChange, handleQuestObjectiveChange } from '@/modules/quests/logic';
 import { handleMoneyChange } from '@/modules/economy/logic';
 import { handleAddHistoricalContact } from '@/modules/historical/logic';
@@ -15,7 +14,6 @@ import { getDistanceInKm } from '@/lib/utils/geo-utils';
 import { isShopOpen } from '@/lib/utils/time-utils';
 import type { CascadeResult } from '@/core/cascade/types';
 import type { WeatherData } from '@/app/actions/get-current-weather';
-import type { GenerateScenarioOutput } from '@/ai/flows/generate-scenario';
 
 // --- Game Actions & Reducer ---
 // This reducer now directly applies the effects of GameEvents calculated by the logic layer.

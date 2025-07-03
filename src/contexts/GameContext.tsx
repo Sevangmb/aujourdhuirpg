@@ -228,26 +228,34 @@ export const GameProvider: React.FC<{
     setIsLoading(true);
   
     try {
+      // The orchestrator now handles all deterministic logic and context prep
       const { gameLogicResult, aiContext } = await orchestrator.processPlayerAction(gameState, contextualData, choice);
   
+      // The context then calls the primary AI flow
       const aiOutput = await generateScenario(aiContext);
       
+      // Convert AI proposals into game events
       const aiGeneratedEvents = orchestrator.aiContextPreparer.convertAIOutputToEvents(aiOutput);
   
+      // Combine all events and apply them to get the state as the AI *should* see it for choice enrichment
       const allEvents = [...gameLogicResult.gameEvents, ...aiGeneratedEvents];
-
       const finalStateForTurn = gameReducer(gameState, { type: 'APPLY_GAME_EVENTS', payload: allEvents });
 
+      // Enrich AI choices with calculated logic (success chance, etc.) based on the final state of the turn
       const enrichedAIChoices = enrichAIChoicesWithLogic(aiOutput.choices || [], finalStateForTurn.player!);
 
+      // Dispatch final events and the new scenario from the AI to update the UI
       dispatch({ type: 'APPLY_GAME_EVENTS', payload: allEvents });
-
-      dispatch({ type: 'SET_CURRENT_SCENARIO', payload: { 
+      dispatch({ 
+        type: 'SET_CURRENT_SCENARIO', 
+        payload: { 
           scenarioText: aiOutput.scenarioText, 
           choices: enrichedAIChoices, 
           aiRecommendation: aiOutput.aiRecommendation 
-      }});
+        }
+      });
       
+      // Handle combat start if the AI triggered it
       if (aiOutput.startCombat && aiOutput.startCombat.length > 0) {
         const enemiesToFight: Enemy[] = aiOutput.startCombat.map((template: EnemyTemplate) => ({
             ...template,

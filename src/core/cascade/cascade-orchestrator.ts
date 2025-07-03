@@ -4,15 +4,14 @@
  * et sépare clairement la logique métier de l'IA narrative.
  */
 
-import type { GameState, StoryChoice, GameEvent, WeatherData, PlayerStats } from '@/lib/types';
-import type { CascadeResult, EnrichedContext } from './types';
+import type { GameState, StoryChoice, GameEvent } from '@/lib/types';
+import type { CascadeResult } from './types';
 import { runCascadeForAction } from './cascade-system';
 import { GameLogicProcessor } from '../logic/game-logic-processor';
 import { AIContextPreparer } from './ai-context-preparer';
 import { gameReducer } from '@/lib/game-logic';
 import type { GameContextData } from '@/contexts/GameContext';
 import { generateTravelEvent } from '@/ai/flows/generate-travel-event-flow';
-
 
 export class CascadeOrchestrator {
   public gameLogicProcessor: GameLogicProcessor;
@@ -42,24 +41,20 @@ export class CascadeOrchestrator {
   }> {
     
     // 1. LOGIQUE MÉTIER PURE (pas d'IA)
-    // C'est maintenant un appel synchrone.
     let { gameEvents } = this.gameLogicProcessor.processAction(
       gameState, 
       playerChoice,
       contextualData.weather.data
     );
 
-    // 2. ORCHESTRATION DES FLUX SECONDAIRES
-    // L'orchestrateur, et non le processeur logique, appelle les flux d'IA secondaires.
+    // 2. ORCHESTRATION DES FLUX SECONDAIRES (ex: événements de voyage)
     const travelEvent = gameEvents.find(e => e.type === 'PLAYER_TRAVELS') as Extract<GameEvent, {type: 'PLAYER_TRAVELS'}> | undefined;
     if (travelEvent && gameState.player) {
-        // Aplatir les stats pour correspondre au schéma Zod attendu par le flux Genkit
         const flatStats = (Object.keys(gameState.player.stats) as Array<keyof typeof gameState.player.stats>).reduce((acc, key) => {
             acc[key] = gameState.player!.stats[key].value;
             return acc;
         }, {} as Record<string, number>);
 
-        // Aplatir les compétences pour correspondre au schéma Zod attendu (z.record(z.record(z.number())))
         const flatSkills = (Object.keys(gameState.player.skills) as Array<keyof typeof gameState.player.skills>).reduce((acc, category) => {
             const skillsInCategory = gameState.player!.skills[category];
             const subSkills: Record<string, number> = {};
