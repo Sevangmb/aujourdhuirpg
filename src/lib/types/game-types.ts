@@ -68,7 +68,6 @@ export type GameState = {
   nearbyPois: EnhancedPOI[] | null;
   gameTimeInMinutes: number;
   journal: JournalEntry[];
-  toneSettings: ToneSettings;
   lastPlayed?: any; // For Firestore server timestamp
 };
 

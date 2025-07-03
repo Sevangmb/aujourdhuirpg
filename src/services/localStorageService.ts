@@ -1,6 +1,7 @@
+
 import type { GameState, Player } from '@/lib/types';
 import { hydratePlayer } from '@/lib/game-state-persistence';
-import { getInitialScenario } from '@/data/initial-game-data';
+import { initialPlayerStats } from '@/data/initial-game-data';
 
 export const LOCAL_STORAGE_KEY = 'aujourdhuiRPGGameState';
 
@@ -11,14 +12,16 @@ export function loadGameStateFromLocal(): GameState | null {
       try {
         const parsedState = JSON.parse(savedStateString) as Partial<GameState>;
         if (!parsedState.player) return null;
+        
         const hydratedPlayer = hydratePlayer(parsedState.player);
+        
+        // Return a clean GameState object without redundant top-level properties
         return {
           player: hydratedPlayer,
-          currentScenario: parsedState.currentScenario || getInitialScenario(hydratedPlayer),
+          currentScenario: parsedState.currentScenario || { scenarioText: '', choices: [] },
           nearbyPois: parsedState.nearbyPois || null,
           gameTimeInMinutes: parsedState.gameTimeInMinutes || 0,
           journal: parsedState.journal || [],
-          toneSettings: parsedState.toneSettings || hydratedPlayer.toneSettings,
         };
       } catch (error) {
         console.error('LocalStorage Error: Error parsing game state:', error);

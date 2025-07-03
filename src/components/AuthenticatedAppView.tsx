@@ -52,7 +52,13 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
     const loadedState = await loadSpecificSave(user.uid, characterId, saveId);
     if (loadedState) {
       const hydratedPlayer = hydratePlayer(loadedState.player);
-      setInitialGameState({ ...loadedState, player: hydratedPlayer });
+      // Construct the GameState object correctly, without redundant top-level properties
+      const finalGameState: GameState = { 
+        ...loadedState, 
+        player: hydratedPlayer 
+      };
+      
+      setInitialGameState(finalGameState);
       setSelectedCharacterId(characterId);
       setAppMode('playing');
     } else {
@@ -78,7 +84,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
       const tempStateForPrologue: GameState = {
         currentScenario: { scenarioText: "<p>Création du monde en cours...</p>", choices: [] },
-        player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null, toneSettings: hydratedPlayer.toneSettings,
+        player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null,
       };
       
       const aiInput = prepareAIInput(tempStateForPrologue, { text: "[COMMENCER L'AVENTURE]" });
