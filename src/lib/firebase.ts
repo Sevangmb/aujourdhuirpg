@@ -13,9 +13,9 @@ import { getStorage } from "firebase/storage";
 // Firebase configuration using environment variables
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCfXSVcVuVxcl3Hd2swFjAa4Zzvstyyo_8",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "aujourdhui-rpg.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "aujourdhui-rpg",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "aujourdhui-rpg.firebasestorage.app",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "aujourdhui-rpg.firebaseapp.com", // Keeping this as fallback for now
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "aujourdhui-rpg", // Keeping this as fallback for now
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "aujourdhui-rpg.firebasestorage.app", // Keeping this as fallback for now
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "528666135142",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:528666135142:web:7098ab95fea27f536bfba7",
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Optional
