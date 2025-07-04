@@ -5,7 +5,7 @@ import type { StoryChoice } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Clock, Zap, HelpCircle, Target, TrendingUp, Utensils, GlassWater, TrendingDown } from 'lucide-react';
+import { Clock, Zap, Target, TrendingUp, Utensils, GlassWater, TrendingDown } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 
@@ -33,7 +33,7 @@ const skillPathToLabel = (path: string): string => {
 
 
 const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onSelect, disabled }) => {
-  const Icon = (LucideIcons as any)[choice.iconName] || HelpCircle;
+  const Icon = (LucideIcons as any)[choice.iconName] || LucideIcons.Zap;
 
   return (
     <Card

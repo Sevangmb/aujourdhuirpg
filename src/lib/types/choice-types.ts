@@ -16,15 +16,15 @@ export type MoodType = (typeof MOOD_TYPES)[number];
 // NEW, CURATED LIST of reliable icon names for the AI to choose from.
 export const CHOICE_ICON_NAMES = [
   // Observation & Exploration
-  "Eye", "Search", "Compass", "MapPin", 
+  "Eye", "Search", "Compass", "MapPin", "Map",
   // Social & Interaction
   "MessageSquare", "Users", "Heart", 
   // Action & Utility
-  "Zap", "Sword", "Wrench", "Briefcase", "KeyRound",
+  "Zap", "Sword", "Wrench", "Briefcase", "KeyRound", "Shield", "Feather", "Drama",
   // Needs & Consumables
   "Utensils", "ShoppingCart", "ChefHat", "GlassWater",
   // Knowledge & Magic
-  "BookOpen", "Sparkles", "Wind",
+  "BookOpen", "Sparkles", "Brain", "Wind",
   // Misc
   "Smartphone", "Camera", "NotebookPen"
 ] as const;
