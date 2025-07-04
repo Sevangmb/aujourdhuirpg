@@ -29,8 +29,8 @@ export interface StoryChoice {
   iconName: ChoiceIconName;
   type: ActionType;
   mood: MoodType;
-  energyCost: number;
-  timeCost: number; // in minutes
+  energyCost?: number | null;
+  timeCost?: number | null; // in minutes
   consequences: string[];
   isCombatAction?: boolean;
   combatActionType?: 'attack' | 'defend' | 'flee' | 'special' | 'use_item';
