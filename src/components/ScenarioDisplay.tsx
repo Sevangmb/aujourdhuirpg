@@ -9,6 +9,11 @@ interface ScenarioDisplayProps {
 }
 
 const ScenarioDisplay: React.FC<ScenarioDisplayProps> = ({ scenarioHTML, isLoading }) => {
+  // Sanitize and format the HTML string to ensure it renders correctly.
+  // This will replace newline characters with <br> tags so they are displayed,
+  // which is crucial for making error messages readable.
+  const formattedHTML = (scenarioHTML || "").replace(/\n/g, '<br />');
+
   return (
     <div className="scenario-html-content bg-background p-4 md:p-6 rounded-lg border shadow-sm">
       {isLoading ? (
@@ -17,7 +22,7 @@ const ScenarioDisplay: React.FC<ScenarioDisplayProps> = ({ scenarioHTML, isLoadi
           <p className="ml-4 text-lg">Chargement du prochain scénario...</p>
         </div>
       ) : (
-        <div dangerouslySetInnerHTML={{ __html: scenarioHTML }} />
+        <div dangerouslySetInnerHTML={{ __html: formattedHTML }} />
       )}
     </div>
   );
