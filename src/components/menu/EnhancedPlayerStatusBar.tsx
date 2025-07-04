@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { Heart, Zap, Utensils, Droplets, TrendingUp, Shield } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Player } from '@/lib/types';
@@ -25,46 +24,30 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
     const percentage = max > 0 ? (current / max) * 100 : 0;
     if (percentage <= 25) return { 
       text: 'text-red-500', 
-      bg: 'bg-red-500',
-      progress: 'bg-gradient-to-r from-red-500 to-red-400'
     };
     if (percentage <= 50) return { 
       text: 'text-orange-500', 
-      bg: 'bg-orange-500',
-      progress: 'bg-gradient-to-r from-orange-500 to-orange-400'
     };
     if (percentage <= 75) return { 
       text: 'text-yellow-500', 
-      bg: 'bg-yellow-500',
-      progress: 'bg-gradient-to-r from-yellow-500 to-yellow-400'
     };
     return { 
       text: 'text-green-500', 
-      bg: 'bg-green-500',
-      progress: 'bg-gradient-to-r from-green-500 to-green-400'
     };
   };
 
   const getPhysiologyColor = (level: number) => {
     if (level < 25) return { 
       text: 'text-red-500', 
-      bg: 'bg-red-500',
-      progress: 'bg-gradient-to-r from-red-500 to-red-400'
     };
     if (level < 50) return { 
       text: 'text-orange-500', 
-      bg: 'bg-orange-500',
-      progress: 'bg-gradient-to-r from-orange-500 to-orange-400'
     };
     if (level < 75) return { 
       text: 'text-blue-500', 
-      bg: 'bg-blue-500',
-      progress: 'bg-gradient-to-r from-blue-500 to-blue-400'
     };
     return { 
       text: 'text-green-500', 
-      bg: 'bg-green-500',
-      progress: 'bg-gradient-to-r from-green-500 to-green-400'
     };
   };
 
@@ -113,42 +96,32 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
     return (
       <TooltipProvider>
         <div className={cn("flex flex-wrap gap-3", className)}>
-          {statItems.map((item) => {
-            const percentage = item.max > 0 ? (item.current / item.max) * 100 : 0;
-            
-            return (
-              <Tooltip key={item.id}>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
-                    <item.icon className={cn("h-4 w-4", item.colors.text)} />
-                    <span className="text-sm font-medium text-white">
-                      {item.isPhysiology 
-                        ? `${Math.round(item.current)}${item.unit}`
-                        : `${item.current}/${item.max}`
-                      }
-                    </span>
-                    <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
-                      <div 
-                        className={cn("h-full transition-all duration-300", item.colors.progress)}
-                        style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
-                      />
-                    </div>
+          {statItems.map((item) => (
+            <Tooltip key={item.id}>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                  <item.icon className={cn("h-4 w-4", item.colors.text)} />
+                  <span className="text-sm font-medium text-white">
+                    {item.isPhysiology 
+                      ? `${Math.round(item.current)}${item.unit}`
+                      : `${item.current}/${item.max}`
+                    }
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-center">
+                  <div className="font-medium">{item.label}</div>
+                  <div className="text-sm text-slate-400">
+                    {item.isPhysiology 
+                      ? `${Math.round(item.current)}% / 100%`
+                      : `${item.current} / ${item.max} ${item.unit}`
+                    }
                   </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="text-center">
-                    <div className="font-medium">{item.label}</div>
-                    <div className="text-sm text-slate-400">
-                      {item.isPhysiology 
-                        ? `${Math.round(item.current)}% / 100%`
-                        : `${item.current} / ${item.max} ${item.unit}`
-                      }
-                    </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          ))}
         </div>
       </TooltipProvider>
     );
@@ -160,9 +133,8 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
         <div className="grid grid-cols-2 gap-4">
           {statItems.map((item) => {
             const percentage = item.max > 0 ? (item.current / item.max) * 100 : 0;
-            
             return (
-              <div key={item.id} className="space-y-2">
+              <div key={item.id}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={cn(
@@ -185,20 +157,6 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
                         }
                       </div>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <Progress 
-                    value={Math.min(100, Math.max(0, percentage))} 
-                    className="h-2"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>0</span>
-                    <span className={cn("font-medium", item.colors.text)}>
-                      {Math.round(percentage)}%
-                    </span>
-                    <span>{item.isPhysiology ? '100%' : item.max}</span>
                   </div>
                 </div>
               </div>
