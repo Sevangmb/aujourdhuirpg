@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -14,7 +13,7 @@ const GameScreen: React.FC = () => {
     return (
       <div className="flex flex-col min-h-screen bg-background">
         <ModernAppMenubar />
-        <div className="flex-grow md:pl-20">
+        <div className="flex-grow pt-28">
           <GamePlay />
         </div>
       </div>
