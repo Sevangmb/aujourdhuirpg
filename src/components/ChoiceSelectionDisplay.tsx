@@ -6,7 +6,7 @@ import ChoiceCard from './ChoiceCard';
 import { Button } from './ui/button';
 import AIRecommendationDisplay from './AIRecommendationDisplay';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Eye, Compass, MessageSquare, Zap, Brain, Briefcase } from 'lucide-react';
+import { Eye, Compass, MessageSquare, Sword, BookOpen, Briefcase } from 'lucide-react';
 
 interface ChoiceSelectionDisplayProps {
   choices: StoryChoice[];
@@ -19,8 +19,8 @@ const actionTypeConfig: Record<ActionType, { label: string; icon: React.ElementT
   observation: { label: "Observation & Analyse", icon: Eye },
   exploration: { label: "Exploration", icon: Compass },
   social: { label: "Actions Sociales", icon: MessageSquare },
-  action: { label: "Actions Directes", icon: Zap },
-  reflection: { label: "Réflexion & Introspection", icon: Brain },
+  action: { label: "Actions Directes", icon: Sword },
+  reflection: { label: "Réflexion & Introspection", icon: BookOpen },
   job: { label: "Opportunités & Jobs", icon: Briefcase },
 };
 
@@ -54,11 +54,12 @@ const ChoiceSelectionDisplay: React.FC<ChoiceSelectionDisplayProps> = ({ choices
             return null;
           }
           const config = actionTypeConfig[category as ActionType];
+          const Icon = config.icon || Eye; // Fallback icon
           return (
             <AccordionItem value={category} key={category}>
               <AccordionTrigger className="text-base font-semibold hover:no-underline">
                 <div className="flex items-center gap-2">
-                   <config.icon className="w-5 h-5 text-primary/80"/> 
+                   <Icon className="w-5 h-5 text-primary/80"/> 
                    <span>{config.label}</span>
                    <span className="text-sm font-normal text-muted-foreground">({groupedChoices[category].length})</span>
                 </div>

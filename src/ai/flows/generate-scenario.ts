@@ -21,7 +21,7 @@ import {
   GenerateScenarioInputSchema,
   GenerateScenarioOutputSchema,
 } from './generate-scenario-schemas';
-import type { ToneSettings, GameTone } from '@/lib/types';
+import type { ToneSettings, GameTone, StoryChoice } from '@/lib/types';
 
 
 export type GenerateScenarioInput = z.infer<typeof GenerateScenarioInputSchema>;
@@ -81,7 +81,6 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
   try {
     const toneInstructions = generateToneInstructions(input.player?.toneSettings);
     
-    // Use the combined prompt for both prologue and regular scenarios
     const { output } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
         prompt: FULL_SCENARIO_PROMPT,
@@ -288,7 +287,7 @@ const FULL_SCENARIO_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur cr�
 - **FORMATAGE HTML :** Utilisez des balises \`<p>\` pour les paragraphes. Pour les dialogues, utilisez le format: \`<p><strong>Nom du PNJ :</strong> « ... »</p>\`.
 - **TONALITÉ :** Suivez les instructions de tonalité. {{{toneInstructions}}}
 - **COHÉRENCE :** Utilisez le contexte fourni (\`player\`, \`cascadeResult\`, etc.) pour une narration riche et cohérente.
-- **ICÔNES :** Pour \`iconName\`, utilisez UNIQUEMENT une valeur de la liste suivante : Eye, Search, Compass, Map, MessageSquare, Users, Heart, GlassWater, Zap, Camera, Wrench, Briefcase, Utensils, ShoppingCart, ChefHat, Sword, Smartphone, Sparkles, BookOpen, Wind, Feather, Drama, NotebookPen.
+- **ICÔNES :** Pour \`iconName\`, utilisez UNIQUEMENT une valeur de la liste suivante : Eye, Search, Compass, MapPin, MessageSquare, Users, Heart, Zap, Wrench, Briefcase, KeyRound, Utensils, ShoppingCart, ChefHat, Sword, Smartphone, Sparkles, BookOpen, Wind, Camera, NotebookPen.
 - **OUTILS :** Utilisez les outils (\`getWeatherTool\`, etc.) si nécessaire pour enrichir le récit.
 
 **Contexte de l'Action et du Monde**

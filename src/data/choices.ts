@@ -1,6 +1,5 @@
 
 import type { StoryChoice } from '@/lib/types';
-import { Eye, Search, Building, Wind, Drama, MessageSquare, ShoppingCart, BookOpen, Utensils, Compass } from 'lucide-react';
 
 export const montmartreInitialChoices: StoryChoice[] = [
   {
@@ -76,7 +75,7 @@ export const montmartreInitialChoices: StoryChoice[] = [
     id: 'montmartre_remember_past',
     text: 'Se remémorer son passé',
     description: "Trouver un banc à l'écart et tenter de rassembler les fragments de mémoire de sa vie d'avant, dans cette époque ou une autre.",
-    iconName: "Drama",
+    iconName: "BookOpen",
     type: 'reflection',
     mood: 'contemplative',
     energyCost: 2,

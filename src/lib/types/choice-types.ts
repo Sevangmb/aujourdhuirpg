@@ -13,11 +13,20 @@ export type ActionType = (typeof ACTION_TYPES)[number];
 export const MOOD_TYPES = ["contemplative", "adventurous", "social", "artistic", "mysterious"] as const;
 export type MoodType = (typeof MOOD_TYPES)[number];
 
-// List of icon names for AI to choose from, matching the guide
+// NEW, CURATED LIST of reliable icon names for the AI to choose from.
 export const CHOICE_ICON_NAMES = [
-  "Eye", "Search", "Compass", "Map", // Exploration/Observation
-  "MessageSquare", "Users", "Heart", "GlassWater", // Social & Needs
-  "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", "Smartphone", "Sparkles", "BookOpen", "Wind", "Feather", "Drama", "NotebookPen" // Action & Reflection. Removed Brain as it's not a standard lucide icon.
+  // Observation & Exploration
+  "Eye", "Search", "Compass", "MapPin", 
+  // Social & Interaction
+  "MessageSquare", "Users", "Heart", 
+  // Action & Utility
+  "Zap", "Sword", "Wrench", "Briefcase", "KeyRound",
+  // Needs & Consumables
+  "Utensils", "ShoppingCart", "ChefHat", "GlassWater",
+  // Knowledge & Magic
+  "BookOpen", "Sparkles", "Wind",
+  // Misc
+  "Smartphone", "Camera", "NotebookPen"
 ] as const;
 export type ChoiceIconName = (typeof CHOICE_ICON_NAMES)[number];
 
