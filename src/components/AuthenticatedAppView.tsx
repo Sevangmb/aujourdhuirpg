@@ -84,11 +84,12 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
       // Use a deterministic prologue template instead of an AI call
       const createPrologue = (player: Player): string => {
+        const title = player.gender === 'Femme' ? 'Madame' : 'Monsieur';
         const template = `
-          <p>L'année est ${player.era}, et le soleil couchant dore les toits de pierre de la charmante ville de ${player.currentLocation.name}. Vous, ${player.name}, ${player.age} ans, avec un passé de "${player.background}", vous vous trouvez assis à une terrasse de café, observant la vie qui s'écoule autour de vous. Le parfum du café chaud mêlé à celui des fleurs des jardinières vous enveloppe dans une atmosphère paisible, malgré les traits de ${player.traitsMentalStates.join(', ')} qui marquent votre visage.</p>
-          <p>Un léger vent frais caresse votre peau tandis que vous observez un groupe d'artistes peignant des scènes pittoresques de la ville. Une mélodie douce, issue d'un accordéoniste de rue, se faufile dans l'air. Soudain, un homme étrangement vêtu, son visage caché par un large chapeau, s'approche de votre table. Il laisse tomber un petit paquet enveloppé dans un tissu brun avant de s'éloigner à toute vitesse.</p>
-          <p><strong>Inconnu :</strong> « Prenez ça... et ne posez pas de questions... »</p>
-          <p>Intrigué, vous vous penchez sur le paquet. Le tissu semble usé par le temps et exhale une odeur de poussière et de myrrhe. Vous sentez une profonde intuition que ce paquet pourrait être le début d'une aventure extraordinaire.</p>
+          <p>L’année est ${player.era}, et le soleil couchant dore les toits de tuiles rouges de ${player.currentLocation.name}. Une douce brise marine caresse votre visage tandis que vous, ${player.name}, ${player.age} ans, contemplez la scène depuis la terrasse d’un café. Votre passé de "${player.background}" vous a façonné, forgeant en vous les traits de personnalité suivants : ${player.traitsMentalStates.join(', ')}.</p>
+          <p>Le parfum du café chaud et des croissants fraîchement sortis du four chatouille vos narines. Vous savourez un moment de calme avant de vous lancer dans… l’aventure ?</p>
+          <p>Une femme, élégante et mystérieuse, assise à une table voisine, vous observe du coin de l’œil. Ses yeux, sombres et perçants, semblent lire en vous comme un livre ouvert. Un sourire discret joue sur ses lèvres.</p>
+          <p><strong>Femme mystérieuse :</strong> « Excusez-moi, ${title} ${player.name}, mais votre air… intrigué… me semble familier. »</p>
         `;
         return template.trim();
       };
