@@ -3,7 +3,7 @@
 
 import { searchWikipedia, fetchPersonDetails } from '@/data-sources/culture/wikipedia-api';
 import type { HistoricalPersonality, ModernIdentity, ContactKnowledge, GameEra, AdaptedContact } from './types';
-import { generateHistoricalContact } from './flows/generate-historical-contact-flow';
+import { generateHistoricalContact } from '@/ai/flows/generate-historical-contact-flow';
 import { ERA_YEARS } from '@/lib/types/era-types';
 
 // Simple in-memory cache for this serverless function's lifecycle
