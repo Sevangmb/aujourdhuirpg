@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 
-import type { GameState, CharacterSummary, StoryChoice } from '@/lib/types';
+import type { GameState, CharacterSummary, Player } from '@/lib/types';
 import { hydratePlayer } from '@/lib/game-state-persistence';
 import { listCharacters, loadSpecificSave, createNewCharacter, deleteCharacter } from '@/services/firestore-service';
 import { useToast } from '@/hooks/use-toast';
@@ -12,9 +12,9 @@ import GameScreen from '@/components/GameScreen';
 import { CharacterSelectionScreen } from '@/components/CharacterSelectionScreen';
 import LoadingState from './LoadingState';
 import type { FullCharacterFormData } from './CharacterCreationForm';
-import { generateScenario } from '@/ai/flows/generate-scenario';
-import { AIContextPreparer } from '@/core/cascade/ai-context-preparer';
 import { GameProvider } from '@/contexts/GameContext';
+import { montmartreInitialChoices } from '@/data/choices';
+import { enrichAIChoicesWithLogic } from '@/lib/game-logic';
 
 
 interface AuthenticatedAppViewProps {
@@ -82,37 +82,30 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       };
       hydratedPlayer.startingLocationName = locationData.name;
 
-      const tempStateForPrologue: GameState = {
-        currentScenario: { scenarioText: "<p>Création du monde en cours...</p>", choices: [] },
-        player: hydratedPlayer, gameTimeInMinutes: 0, journal: [], nearbyPois: null,
+      // Use a deterministic prologue template instead of an AI call
+      const createPrologue = (player: Player): string => {
+        const template = `
+          <p>Le soleil couchant projette de longues ombres sur les toits de pierre de ${player.currentLocation.name}, en cette année de ${player.era}. L’air est frais, empli du parfum des pâtisseries d'un boulanger voisin et d'une légère odeur de bois brûlé qui provient de la forge au loin. Vous, ${player.name}, un(e) ${player.age} ans ${player.gender} au passé de "${player.background}", vous sentez le vent de l'aventure vous caresser le visage. Vos traits de caractère, si différents les uns des autres, vous prédisposent à ce que la vie vous réserve : ${player.traitsMentalStates.join(', ')}.</p>
+          <p>Alors que vous vous apprêtez à savourer un délicieux croissant au beurre, un cri perçant vous interrompt. De l’autre côté de la rue, un homme à l'air désespéré se précipite hors d'une auberge, le visage tuméfié et les vêtements déchirés.</p>
+          <p><strong>Homme :</strong> « Au secours ! On a volé les plans royaux ! Il faut que vous m'aidiez ! »</p>
+        `;
+        return template.trim();
       };
       
-      const aiContextPreparer = new AIContextPreparer();
-      const prologueChoice: StoryChoice = {
-        id: 'prologue',
-        text: "[COMMENCER L'AVENTURE]",
-        description: "Lancer le prologue du jeu.",
-        iconName: 'Sparkles',
-        type: 'action',
-        mood: 'adventurous',
-        energyCost: 0,
-        timeCost: 0,
-        consequences: [],
-      };
-      const aiInput = aiContextPreparer.prepareContext(
-        tempStateForPrologue,
-        [], // No game events for prologue
-        null, // No cascade result for prologue
-        prologueChoice
-      );
+      const prologueText = createPrologue(hydratedPlayer);
 
-      if (!aiInput) throw new Error("Could not prepare AI input for prologue.");
+      // Enrich predefined choices with current player context
+      const initialChoices = enrichAIChoicesWithLogic(montmartreInitialChoices, hydratedPlayer);
 
-      const prologueResult = await generateScenario(aiInput);
-      
       const finalGameState: GameState = {
-        ...tempStateForPrologue,
-        currentScenario: { scenarioText: prologueResult.scenarioText, choices: prologueResult.choices }
+        player: hydratedPlayer,
+        currentScenario: { 
+          scenarioText: prologueText, 
+          choices: initialChoices
+        },
+        gameTimeInMinutes: 0,
+        journal: [],
+        nearbyPois: null,
       };
 
       const newCharacterId = await createNewCharacter(user.uid, finalGameState);
@@ -130,6 +123,7 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       setAppMode('character_management'); // Return to management screen on error
     }
   }, [user, toast]);
+
 
   const handleDeleteCharacter = useCallback(async (characterId: string) => {
     setIsDeletingCharacter(characterId);
