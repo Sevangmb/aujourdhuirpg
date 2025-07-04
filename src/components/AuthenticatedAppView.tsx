@@ -85,9 +85,10 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       // Use a deterministic prologue template instead of an AI call
       const createPrologue = (player: Player): string => {
         const template = `
-          <p>Le soleil couchant projette de longues ombres sur les toits de pierre de ${player.currentLocation.name}, en cette année de ${player.era}. L’air est frais, empli du parfum des pâtisseries d'un boulanger voisin et d'une légère odeur de bois brûlé qui provient de la forge au loin. Vous, ${player.name}, un(e) ${player.age} ans ${player.gender} au passé de "${player.background}", vous sentez le vent de l'aventure vous caresser le visage. Vos traits de caractère, si différents les uns des autres, vous prédisposent à ce que la vie vous réserve : ${player.traitsMentalStates.join(', ')}.</p>
-          <p>Alors que vous vous apprêtez à savourer un délicieux croissant au beurre, un cri perçant vous interrompt. De l’autre côté de la rue, un homme à l'air désespéré se précipite hors d'une auberge, le visage tuméfié et les vêtements déchirés.</p>
-          <p><strong>Homme :</strong> « Au secours ! On a volé les plans royaux ! Il faut que vous m'aidiez ! »</p>
+          <p>L'année est ${player.era}, et le soleil couchant dore les toits de pierre de la charmante ville de ${player.currentLocation.name}. Vous, ${player.name}, ${player.age} ans, avec un passé de "${player.background}", vous vous trouvez assis à une terrasse de café, observant la vie qui s'écoule autour de vous. Le parfum du café chaud mêlé à celui des fleurs des jardinières vous enveloppe dans une atmosphère paisible, malgré les traits de ${player.traitsMentalStates.join(', ')} qui marquent votre visage.</p>
+          <p>Un léger vent frais caresse votre peau tandis que vous observez un groupe d'artistes peignant des scènes pittoresques de la ville. Une mélodie douce, issue d'un accordéoniste de rue, se faufile dans l'air. Soudain, un homme étrangement vêtu, son visage caché par un large chapeau, s'approche de votre table. Il laisse tomber un petit paquet enveloppé dans un tissu brun avant de s'éloigner à toute vitesse.</p>
+          <p><strong>Inconnu :</strong> « Prenez ça... et ne posez pas de questions... »</p>
+          <p>Intrigué, vous vous penchez sur le paquet. Le tissu semble usé par le temps et exhale une odeur de poussière et de myrrhe. Vous sentez une profonde intuition que ce paquet pourrait être le début d'une aventure extraordinaire.</p>
         `;
         return template.trim();
       };
