@@ -15,8 +15,12 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next out",
     "dev:all": "concurrently \"npm run dev\" \"npm run genkit:watch\"",
-    "test": "echo \"No tests specified\" && exit 0",
-    "validate": "npm run typecheck && npm run lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:ai": "tsx test-ai-logic.ts",
+    "validate": "npm run typecheck && npm run lint && npm run test",
     "setup": "npm install && cp .env.example .env.local",
     "postinstall": "patch-package"
   },
@@ -67,12 +71,19 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^9.0.8",
+    "babel-jest": "^29.7.0",
     "concurrently": "^8.2.2",
     "genkit-cli": "^1.8.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
@@ -91,7 +102,9 @@
     "france",
     "interactive-fiction",
     "gaming",
-    "storytelling"
+    "storytelling",
+    "testing",
+    "jest"
   ],
   "engines": {
     "node": ">=20.0.0",
