@@ -1,4 +1,5 @@
 
+
 import type { ElementType } from 'react';
 import * as LucideIcons from 'lucide-react';
 import type { AdvancedSkillSystem, PlayerStats, Position } from './';
@@ -16,8 +17,7 @@ export type MoodType = (typeof MOOD_TYPES)[number];
 export const CHOICE_ICON_NAMES = [
   "Eye", "Search", "Compass", "Map", // Exploration/Observation
   "MessageSquare", "Users", "Heart", "GlassWater", // Social & Needs
-  "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", "Smartphone", "Sparkles", // Action
-  "Brain", "BookOpen", "Wind", "Feather", "Drama", "NotebookPen" // Reflection & Investigation
+  "Zap", "Camera", "Wrench", "Briefcase", "Utensils", "ShoppingCart", "ChefHat", "Sword", "Smartphone", "Sparkles", "BookOpen", "Wind", "Feather", "Drama", "NotebookPen" // Action & Reflection. Removed Brain as it's not a standard lucide icon.
 ] as const;
 export type ChoiceIconName = (typeof CHOICE_ICON_NAMES)[number];
 

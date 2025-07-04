@@ -47,8 +47,8 @@ export const StoryChoiceSchema = z.object({
   }).optional().describe("Un test de compétence optionnel associé à cette action."),
   
   // These fields are now optional for the AI. The game engine will calculate them.
-  energyCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
-  timeCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
+  energyCost: z.number().nullable().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
+  timeCost: z.number().nullable().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
   skillGains: z.record(z.number()).optional().describe("LAISSER VIDE. Le moteur de jeu attribuera l'XP."),
   
   physiologicalEffects: z.object({ 
@@ -71,7 +71,7 @@ export const GenerateScenarioOutputSchema = z.object({
   
   aiRecommendation: z.object({
     focus: z.string().describe("Un ou deux mots résumant l'axe recommandé, ex: 'Gagner de l'argent' ou 'Enquêter sur la piste'."),
-    reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'"),
+    reasoning: z.string().describe("Une brève explication en une phrase pour la recommandation, ex: 'Vos fonds sont bas et une opportunité de job s'est présentée.'."),
   }).optional().describe("La recommandation stratégique de l'IA pour guider le joueur vers une action pertinente."),
 
   choices: z.array(StoryChoiceSchema).optional().describe("Une liste de 3-4 choix riches et contextuels que le joueur peut faire ensuite."),
