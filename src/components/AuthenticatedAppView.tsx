@@ -84,12 +84,19 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
 
       // Use a deterministic prologue template instead of an AI call
       const createPrologue = (player: Player): string => {
-        const title = player.gender === 'Femme' ? 'Madame' : 'Monsieur';
+        const getCivility = (gender: string): string => {
+            if (gender === 'Femme') return 'Madame';
+            if (gender === 'Homme') return 'Monsieur';
+            return ''; // Return empty string for neutral or unspecified gender
+        };
+        const title = getCivility(player.gender);
+        const titleWithSpace = title ? title + ' ' : '';
+        
         const template = `
           <p>L’année est ${player.era}, et le soleil couchant dore les toits de tuiles rouges de ${player.currentLocation.name}. Une douce brise marine caresse votre visage tandis que vous, ${player.name}, ${player.age} ans, contemplez la scène depuis la terrasse d’un café. Votre passé de "${player.background}" vous a façonné, forgeant en vous les traits de personnalité suivants : ${player.traitsMentalStates.join(', ')}.</p>
           <p>Le parfum du café chaud et des croissants fraîchement sortis du four chatouille vos narines. Vous savourez un moment de calme avant de vous lancer dans… l’aventure ?</p>
           <p>Une femme, élégante et mystérieuse, assise à une table voisine, vous observe du coin de l’œil. Ses yeux, sombres et perçants, semblent lire en vous comme un livre ouvert. Un sourire discret joue sur ses lèvres.</p>
-          <p><strong>Femme mystérieuse :</strong> « Excusez-moi, ${title} ${player.name}, mais votre air… intrigué… me semble familier. »</p>
+          <p><strong>Femme mystérieuse :</strong> « Excusez-moi, ${titleWithSpace}${player.name}, mais votre air… intrigué… me semble familier. »</p>
         `;
         return template.trim();
       };

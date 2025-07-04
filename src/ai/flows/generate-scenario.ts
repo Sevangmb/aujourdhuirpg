@@ -287,6 +287,7 @@ const FULL_SCENARIO_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur cr�
 - **FORMATAGE HTML :** Utilisez des balises \`<p>\` pour les paragraphes. Pour les dialogues, utilisez le format: \`<p><strong>Nom du PNJ :</strong> « ... »</p>\`.
 - **TONALITÉ :** Suivez les instructions de tonalité. {{{toneInstructions}}}
 - **COHÉRENCE :** Utilisez le contexte fourni (\`player\`, \`cascadeResult\`, etc.) pour une narration riche et cohérente.
+- **IMPORTANT :** Ne JAMAIS inclure la syntaxe \`{{{...}}}\` dans votre sortie. Remplacez toujours les variables par leurs valeurs réelles.
 - **ICÔNES :** Pour \`iconName\`, utilisez UNIQUEMENT une valeur de la liste suivante : Eye, Search, Compass, MapPin, Map, MessageSquare, Users, Heart, Zap, Sword, Wrench, Briefcase, KeyRound, Shield, Feather, Drama, Utensils, ShoppingCart, ChefHat, GlassWater, BookOpen, Sparkles, Brain, Wind, Smartphone, Camera, NotebookPen.
 - **OUTILS :** Utilisez les outils (\`getWeatherTool\`, etc.) si nécessaire pour enrichir le récit.
 
