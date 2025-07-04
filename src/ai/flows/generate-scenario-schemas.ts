@@ -36,33 +36,30 @@ export const StoryChoiceSchema = z.object({
   id: z.string().describe("Un identifiant unique pour le choix (ex: 'explorer_crypte')."),
   text: z.string().describe("Le texte court et actionnable pour le bouton du choix (ex: 'Explorer la crypte')."),
   description: z.string().describe("Une description un peu plus longue de l'action, pour le contenu de la carte."),
-  iconName: z.string()
-    .transform((val) => {
-      if ((CHOICE_ICON_NAMES as readonly string[]).includes(val)) {
-        return val as (typeof CHOICE_ICON_NAMES)[number];
+  iconName: z.preprocess((val) => {
+      if (typeof val === 'string' && (CHOICE_ICON_NAMES as readonly string[]).includes(val)) {
+        return val;
       }
-      console.warn(`[Schema Transform] Invalid iconName "${val}" detected. Correcting to 'Zap'.`);
+      console.warn(`[Schema Preprocess] Invalid iconName "${val}" detected. Correcting to 'Zap'.`);
       return 'Zap';
-    })
-    .describe("Le nom d'une icône Lucide-React valide pour représenter le choix."),
-  type: z.string()
-    .transform((val) => {
-        if ((ACTION_TYPES as readonly string[]).includes(val)) {
-            return val as (typeof ACTION_TYPES)[number];
-        }
-        console.warn(`[Schema Transform] Invalid type "${val}" detected. Correcting to 'action'.`);
-        return 'action';
-    })
-    .describe("La catégorie de l'action."),
-  mood: z.string()
-    .transform((val) => {
-        if ((MOOD_TYPES as readonly string[]).includes(val)) {
-            return val as (typeof MOOD_TYPES)[number];
-        }
-        console.warn(`[Schema Transform] Invalid mood "${val}" detected. Correcting to 'adventurous'.`);
-        return 'adventurous';
-    })
-    .describe("L'ambiance générale de ce choix."),
+    }, z.enum(CHOICE_ICON_NAMES).describe("Le nom d'une icône Lucide-React valide pour représenter le choix.")
+  ),
+  type: z.preprocess((val) => {
+      if (typeof val === 'string' && (ACTION_TYPES as readonly string[]).includes(val)) {
+        return val;
+      }
+      console.warn(`[Schema Preprocess] Invalid type "${val}" detected. Correcting to 'action'.`);
+      return 'action';
+    }, z.enum(ACTION_TYPES).describe("La catégorie de l'action.")
+  ),
+  mood: z.preprocess((val) => {
+      if (typeof val === 'string' && (MOOD_TYPES as readonly string[]).includes(val)) {
+        return val;
+      }
+      console.warn(`[Schema Preprocess] Invalid mood "${val}" detected. Correcting to 'adventurous'.`);
+      return 'adventurous';
+    }, z.enum(MOOD_TYPES).describe("L'ambiance générale de ce choix.")
+  ),
   consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
   
   skillCheck: z.object({
