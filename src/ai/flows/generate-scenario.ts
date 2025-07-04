@@ -80,13 +80,11 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
   
   try {
     const toneInstructions = generateToneInstructions(input.player?.toneSettings);
-    const promptTemplate = input.playerChoiceText === "[COMMENCER L'AVENTURE]" 
-      ? FULL_PROLOGUE_PROMPT 
-      : FULL_SCENARIO_PROMPT;
-
+    
+    // Use the combined prompt for both prologue and regular scenarios
     const { output } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
-        prompt: promptTemplate,
+        prompt: FULL_SCENARIO_PROMPT,
         input: { ...input, toneInstructions },
         output: { schema: GenerateScenarioOutputSchema },
         tools: [getWeatherTool, getWikipediaInfoTool, getNearbyPoisTool, getNewsTool, getRecipesTool, getBookDetailsTool],
@@ -139,38 +137,41 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
             </svg>
             <h3 class="text-red-800 font-bold text-lg">🚨 Erreur Critique IA</h3>
           </div>
-          <p class="text-red-700 mb-4">L'IA n'a pas pu générer de scénario. Vérifiez votre clé API dans <code>.env.local</code> et la configuration de votre projet Google Cloud.</p>
+          <p class="text-red-700 mb-4">L'IA n'a pas pu générer de scénario. **Vérifiez votre clé API dans <code>.env.local</code> et la configuration de votre projet Google Cloud.**</p>
           <div class="bg-white rounded-lg p-4 border border-red-200 mb-4">
             <p class="text-red-800 font-semibold mb-2">🔧 Solutions possibles :</p>
             <ul class="list-disc list-inside text-red-700 space-y-1 text-sm">
               <li>Vérifiez votre connexion internet</li>
               <li>Redémarrez le serveur (npm run dev)</li>
               <li>Vérifiez que votre clé API est valide sur <a href="https://makersuite.google.com/app/apikey" target="_blank" class="underline">Google AI Studio</a></li>
-              <li>Vérifiez les logs de la console pour plus de détails</li>
+              <li>Assurez-vous que l'API "Generative Language" est activée dans votre projet Google Cloud.</li>
+              <li>Vérifiez les logs de la console pour plus de détails techniques.</li>
             </ul>
           </div>
-          <div class="bg-red-100 rounded-lg p-3 border border-red-200">
-            <p class="text-red-800 font-medium text-sm mb-1">🔍 Détails techniques :</p>
-            <code class="text-red-700 text-xs bg-white p-2 rounded block break-all whitespace-pre-wrap">${technicalDetails}</code>
-          </div>
+          <details class="bg-red-100 rounded-lg border border-red-200">
+            <summary class="text-red-800 font-medium text-sm p-3 cursor-pointer">🔍 Détails techniques</summary>
+            <div class="p-3 pt-0">
+              <code class="text-red-700 text-xs bg-white p-2 rounded block break-all whitespace-pre-wrap">${technicalDetails}</code>
+            </div>
+          </details>
         </div>
       `,
       choices: [{
        id: 'retry_action',
        text: "🔄 Réessayer l'action précédente",
        description: "Tenter de relancer la dernière action pour voir si l'IA répond cette fois.",
-       iconName: 'Zap',
-       type: 'action',
-       mood: 'adventurous',
+       iconName: 'Zap', // VALID ICON
+       type: 'action', // VALID TYPE
+       mood: 'adventurous', // VALID MOOD
        consequences: ['Nouvelle tentative', 'Peut fonctionner si problème temporaire'],
      }, {
-       id: 'basic_continue',
-       text: "➡️ Continuer sans IA",
-       description: "Continuer le jeu avec des fonctionnalités de base",
-       iconName: 'Compass',
-       type: 'exploration',
-       mood: 'contemplative',
-       consequences: ['Mode dégradé activé', 'Fonctionnalités limitées'],
+       id: 'view_setup_guide',
+       text: '📖 Voir le guide de configuration',
+       description: 'Consulter la documentation complète sur la configuration des clés API.',
+       iconName: 'BookOpen', // VALID ICON
+       type: 'reflection', // VALID TYPE
+       mood: 'contemplative', // VALID MOOD
+       consequences: ['Documentation affichée', 'Instructions détaillées']
      }],
       aiRecommendation: { focus: 'Erreur', reasoning: `Erreur critique du modèle IA. (${technicalDetails})` },
     };
@@ -274,14 +275,20 @@ function generateToneInstructions(toneSettings: ToneSettings | undefined): strin
 const FULL_SCENARIO_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG", un jeu de rôle textuel se déroulant en France à l'époque suivante : **{{{player.era}}}**. Votre écriture doit être en français, dans une police de caractère serif comme 'Literata'. Votre rôle est de raconter, pas de décider. Votre texte doit être aéré, avec des paragraphes (<p>) et des dialogues pertinents.
 
 **TÂCHE PRINCIPALE :**
-1.  **Narrer (scenarioText) :** Basé sur \`gameEvents\`, écrivez une narration HTML immersive qui décrit le résultat de l'action du joueur. C'est votre tâche la plus importante.
-2.  **Proposer des choix (choices) :** Proposez 3-4 choix NARRATIFS et CRÉATIFS. Ne dupliquez pas les actions de \`suggestedContextualActions\`. Ne proposez jamais de choix d'attaque, utilisez \`startCombat\` à la place. Utilisez UNIQUEMENT les noms d'icônes de la liste suivante : Eye, Search, Compass, Map, MessageSquare, Users, Heart, GlassWater, Zap, Camera, Wrench, Briefcase, Utensils, ShoppingCart, ChefHat, Sword, Smartphone, Sparkles, Brain, BookOpen, Wind, Feather, Drama, NotebookPen.
-3.  **Suggérer des événements (optionnel) :** Si la narration le justifie, vous pouvez utiliser les champs optionnels comme \`newPNJs\`, \`newItems\`, \`pnjUpdates\`, etc. Utilisez-les avec parcimonie.
+{{#if (eq playerChoiceText "[COMMENCER L'AVENTURE]")}}
+  **PROLOGUE :** Écrivez une scène d'introduction captivante pour le personnage suivant. Plantez le décor, introduisez le personnage, et suggérez le début d'une aventure. Proposez 3 choix narratifs initiaux dans le champ \`choices\`.
+{{else}}
+  **NARRATION :**
+  1.  **Raconter (scenarioText) :** Basé sur \`gameEvents\`, écrivez une narration HTML immersive qui décrit le résultat de l'action du joueur. C'est votre tâche la plus importante.
+  2.  **Proposer des choix (choices) :** Proposez 3-4 choix NARRATIFS et CRÉATIFS. Ne dupliquez pas les actions de \`suggestedContextualActions\`. Ne proposez jamais de choix d'attaque, utilisez \`startCombat\` à la place.
+  3.  **Suggérer des événements (optionnel) :** Si la narration le justifie, vous pouvez utiliser les champs optionnels comme \`newPNJs\`, \`newItems\`, \`pnjUpdates\`, etc. Utilisez-les avec parcimonie.
+{{/if}}
 
 **PRINCIPES DIRECTEURS :**
 - **FORMATAGE HTML :** Utilisez des balises \`<p>\` pour les paragraphes. Pour les dialogues, utilisez le format: \`<p><strong>Nom du PNJ :</strong> « ... »</p>\`.
 - **TONALITÉ :** Suivez les instructions de tonalité. {{{toneInstructions}}}
 - **COHÉRENCE :** Utilisez le contexte fourni (\`player\`, \`cascadeResult\`, etc.) pour une narration riche et cohérente.
+- **ICÔNES :** Pour \`iconName\`, utilisez UNIQUEMENT une valeur de la liste suivante : Eye, Search, Compass, Map, MessageSquare, Users, Heart, GlassWater, Zap, Camera, Wrench, Briefcase, Utensils, ShoppingCart, ChefHat, Sword, Smartphone, Sparkles, BookOpen, Wind, Feather, Drama, NotebookPen.
 - **OUTILS :** Utilisez les outils (\`getWeatherTool\`, etc.) si nécessaire pour enrichir le récit.
 
 **Contexte de l'Action et du Monde**
@@ -301,22 +308,4 @@ const FULL_SCENARIO_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur cr�
 - **Résumé des Événements Déterministes à Raconter :** {{{gameEvents}}}
 
 Sur la base de tout ce qui précède, générez la sortie JSON complète, incluant le 'scenarioText' et les 'choices'.
-`;
-
-const FULL_PROLOGUE_PROMPT = `Vous êtes un maître de jeu (MJ) et narrateur créatif pour "Aujourd'hui RPG".
-
-**TÂCHE PRINCIPALE : PROLOGUE**
-Écrivez une scène d'introduction captivante en HTML pour le personnage suivant :
-- **Personnage :** {{{player.name}}}, {{{player.gender}}} de {{{player.age}}} ans.
-- **Contexte :** Époque "{{{player.era}}}", commençant à {{{player.currentLocation.name}}}. Passé : {{{player.background}}}. Traits : {{{player.traitsMentalStates.join ', '}}}.
-
-Votre narration doit planter le décor, introduire le personnage, et suggérer le début d'une aventure.
-Suivez les instructions de tonalité ci-dessous.
-Proposez 3 choix narratifs initiaux dans le champ \`choices\`. Utilisez UNIQUEMENT les noms d'icônes de la liste suivante : Eye, Search, Compass, Map, MessageSquare, Users, Heart, GlassWater, Zap, Camera, Wrench, Briefcase, Utensils, ShoppingCart, ChefHat, Sword, Smartphone, Sparkles, Brain, BookOpen, Wind, Feather, Drama, NotebookPen.
-
-**Instructions de Tonalité :**
-{{{toneInstructions}}}
-
-**Format de Sortie :**
-Assurez-vous de générer une sortie JSON valide avec les champs 'scenarioText' et 'choices'.
 `;

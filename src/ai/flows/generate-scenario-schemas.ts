@@ -46,7 +46,6 @@ export const StoryChoiceSchema = z.object({
       difficulty: z.number().describe("La difficulté cible pour le test (ex: 60)."),
   }).optional().describe("Un test de compétence optionnel associé à cette action."),
   
-  // These fields are now optional for the AI. The game engine will calculate them.
   energyCost: z.number().nullable().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
   timeCost: z.number().nullable().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
   skillGains: z.record(z.number()).optional().describe("LAISSER VIDE. Le moteur de jeu attribuera l'XP."),
@@ -56,7 +55,41 @@ export const StoryChoiceSchema = z.object({
       thirst: z.number().optional() 
   }).optional().describe("Effets physiologiques si le choix implique de manger/boire."),
   statEffects: z.record(z.number()).optional().describe("Effets sur les statistiques du joueur après l'action. Ex: {'Energie': 5, 'Stress': -10}"),
-}).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.");
+}).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.")
+.transform((choice) => {
+    // This transform function runs after initial validation and cleans up the data.
+    // It makes the system more resilient to minor AI mistakes.
+
+    const correctedChoice = { ...choice };
+
+    // 1. Correct null costs to be 0 for game logic processing
+    if (correctedChoice.energyCost === null) {
+        correctedChoice.energyCost = 0;
+    }
+    if (correctedChoice.timeCost === null) {
+        correctedChoice.timeCost = 0;
+    }
+
+    // 2. Correct invalid iconName to a safe default
+    if (!CHOICE_ICON_NAMES.includes(correctedChoice.iconName as any)) {
+      console.warn(`[Schema Transform] Invalid iconName "${correctedChoice.iconName}" detected. Correcting to 'Zap'.`);
+      correctedChoice.iconName = 'Zap';
+    }
+
+    // 3. Correct invalid action type to a safe default
+    if (!ACTION_TYPES.includes(correctedChoice.type as any)) {
+      console.warn(`[Schema Transform] Invalid type "${correctedChoice.type}" detected. Correcting to 'action'.`);
+      correctedChoice.type = 'action';
+    }
+
+    // 4. Correct invalid mood to a safe default
+    if (!MOOD_TYPES.includes(correctedChoice.mood as any)) {
+      console.warn(`[Schema Transform] Invalid mood "${correctedChoice.mood}" detected. Correcting to 'adventurous'.`);
+      correctedChoice.mood = 'adventurous';
+    }
+
+    return correctedChoice;
+});
 
 
 export const PNJUpdateSchema = z.object({

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -20,9 +21,8 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
 }) => {
   const { stats, physiology } = player;
 
-  // Fonction pour déterminer la couleur selon le niveau
   const getStatusColor = (current: number, max: number) => {
-    const percentage = (current / max) * 100;
+    const percentage = max > 0 ? (current / max) * 100 : 0;
     if (percentage <= 25) return { 
       text: 'text-red-500', 
       bg: 'bg-red-500',
@@ -73,27 +73,27 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
       id: 'health',
       icon: Heart,
       label: 'Santé',
-      current: stats?.health || 0,
-      max: stats?.maxHealth || 100,
-      colors: getStatusColor(stats?.health || 0, stats?.maxHealth || 100),
+      current: stats?.Sante?.value || 0,
+      max: stats?.Sante?.max || 100,
+      colors: getStatusColor(stats?.Sante?.value || 0, stats?.Sante?.max || 100),
       unit: 'PV'
     },
     {
       id: 'energy',
       icon: Zap,
       label: 'Énergie',
-      current: stats?.energy || 0,
-      max: stats?.maxEnergy || 100,
-      colors: getStatusColor(stats?.energy || 0, stats?.maxEnergy || 100),
+      current: stats?.Energie?.value || 0,
+      max: stats?.Energie?.max || 100,
+      colors: getStatusColor(stats?.Energie?.value || 0, stats?.Energie?.max || 100),
       unit: 'EN'
     },
     {
       id: 'hunger',
       icon: Utensils,
       label: 'Faim',
-      current: physiology?.hunger || 0,
+      current: physiology?.basic_needs?.hunger?.level || 0,
       max: 100,
-      colors: getPhysiologyColor(physiology?.hunger || 0),
+      colors: getPhysiologyColor(physiology?.basic_needs?.hunger?.level || 0),
       unit: '%',
       isPhysiology: true
     },
@@ -101,9 +101,9 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
       id: 'thirst',
       icon: Droplets,
       label: 'Soif',
-      current: physiology?.thirst || 0,
+      current: physiology?.basic_needs?.thirst?.level || 0,
       max: 100,
-      colors: getPhysiologyColor(physiology?.thirst || 0),
+      colors: getPhysiologyColor(physiology?.basic_needs?.thirst?.level || 0),
       unit: '%',
       isPhysiology: true
     }
@@ -114,9 +114,7 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
       <TooltipProvider>
         <div className={cn("flex flex-wrap gap-3", className)}>
           {statItems.map((item) => {
-            const percentage = item.isPhysiology 
-              ? item.current 
-              : (item.current / item.max) * 100;
+            const percentage = item.max > 0 ? (item.current / item.max) * 100 : 0;
             
             return (
               <Tooltip key={item.id}>
@@ -161,9 +159,7 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
       <div className={cn("space-y-4", className)}>
         <div className="grid grid-cols-2 gap-4">
           {statItems.map((item) => {
-            const percentage = item.isPhysiology 
-              ? item.current 
-              : (item.current / item.max) * 100;
+            const percentage = item.max > 0 ? (item.current / item.max) * 100 : 0;
             
             return (
               <div key={item.id} className="space-y-2">
@@ -210,8 +206,7 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
           })}
         </div>
 
-        {/* Statistiques additionnelles si niveau > 1 */}
-        {(stats?.level || 1) > 1 && (
+        {(player.progression?.level || 1) > 1 && (
           <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
             <div className="grid grid-cols-3 gap-3 text-center">
               <Tooltip>
@@ -219,7 +214,7 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
                   <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3">
                     <TrendingUp className="h-5 w-5 text-blue-500 mx-auto mb-1" />
                     <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                      {stats?.level || 1}
+                      {player.progression?.level || 1}
                     </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400">
                       Niveau
@@ -236,7 +231,7 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
                   <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3">
                     <Shield className="h-5 w-5 text-purple-500 mx-auto mb-1" />
                     <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                      {stats?.defense || 0}
+                      {0}
                     </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400">
                       Défense
@@ -253,7 +248,7 @@ export const EnhancedPlayerStatusBar: React.FC<EnhancedPlayerStatusBarProps> = (
                   <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3">
                     <Heart className="h-5 w-5 text-red-500 mx-auto mb-1" />
                     <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                      {stats?.attack || 0}
+                     {0}
                     </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400">
                       Attaque
