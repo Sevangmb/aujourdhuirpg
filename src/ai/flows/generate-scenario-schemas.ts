@@ -47,8 +47,8 @@ export const StoryChoiceSchema = z.object({
   }).optional().describe("Un test de compétence optionnel associé à cette action."),
   
   // These fields are now optional for the AI. The game engine will calculate them.
-  energyCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
-  timeCost: z.number().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
+  energyCost: z.number().nullable().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
+  timeCost: z.number().nullable().optional().describe("LAISSER VIDE. Le moteur de jeu calculera ce coût."),
   skillGains: z.record(z.number()).optional().describe("LAISSER VIDE. Le moteur de jeu attribuera l'XP."),
   
   physiologicalEffects: z.object({ 
