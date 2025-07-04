@@ -1,54 +1,50 @@
-
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
+import { aiConfig, config } from '../lib/config';
 
-// Check for API key availability with better error messages
-const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-const apiKeyFound = !!googleApiKey;
-
-if (!apiKeyFound) {
+// Validation de la configuration AI
+if (!aiConfig.hasApiKey) {
   console.error(
-    "❌ CRITICAL ERROR in src/ai/genkit.ts: Neither GOOGLE_API_KEY nor GEMINI_API_KEY found in environment variables.\n" +
-    "🔧 To fix this issue:\n" +
-    "  1. Create a .env.local file in your project root\n" +
-    "  2. Add: GOOGLE_API_KEY=your_google_ai_api_key\n" +
-    "  3. Get your API key from: https://makersuite.google.com/app/apikey\n" +
-    "  4. Ensure the key has permissions for the Generative Language API (Gemini)\n\n" +
-    "⚠️  WARNING: The googleAI() plugin initialization may fail, causing errors like:\n" +
-    "   'TypeError: loadedPlugin.initializer is not a function'\n\n" +
-    "🛑 AI features will not work until this is resolved."
+    "❌ CRITICAL ERROR in src/ai/genkit.ts: Aucune clé API Google AI trouvée.\n" +
+    "🔧 Pour corriger ce problème:\n" +
+    "  1. Créez un fichier .env.local à la racine du projet\n" +
+    "  2. Ajoutez: GOOGLE_API_KEY=votre_cle_google_ai\n" +
+    "  3. Obtenez votre clé API depuis: https://makersuite.google.com/app/apikey\n" +
+    "  4. Assurez-vous que la clé a les permissions pour l'API Generative Language (Gemini)\n\n" +
+    "⚠️  ATTENTION: Les fonctionnalités IA ne fonctionneront pas tant que ce problème n'est pas résolu.\n" +
+    "   Erreurs possibles: 'TypeError: loadedPlugin.initializer is not a function'\n\n" +
+    "🛑 L'application peut fonctionner en mode dégradé sans IA."
   );
 } else {
-  console.log("✅ src/ai/genkit.ts: Google API Key found in environment. Initializing googleAI() plugin...");
+  console.log(`✅ src/ai/genkit.ts: Clé API Google AI trouvée (source: ${aiConfig.apiKeySource}). Initialisation du plugin googleAI()...`);
 }
 
 // Initialize Genkit with proper error handling
 export const ai = genkit({
   plugins: [
     // Only initialize googleAI if we have an API key
-    ...(apiKeyFound ? [googleAI()] : []),
+    ...(aiConfig.hasApiKey ? [googleAI()] : []),
   ],
   // Log configuration status
-  logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
+  logLevel: config.isDevelopment ? 'debug' : 'info',
 });
 
 // Export a helper to check if AI is properly configured
-export const isAIConfigured = () => apiKeyFound;
+export const isAIConfigured = () => aiConfig.hasApiKey;
 
 // Export configuration status for other modules
-export const aiConfig = {
-  hasApiKey: apiKeyFound,
-  apiKeySource: process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : 
-                process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : 'none',
-};
+export const getAIConfig = () => ({
+  hasApiKey: aiConfig.hasApiKey,
+  apiKeySource: aiConfig.apiKeySource,
+  isConfigured: aiConfig.hasApiKey,
+});
 
-if (!apiKeyFound) {
+// Log final status
+if (!aiConfig.hasApiKey) {
   console.warn(
     "⚠️  AI module initialized without Google API key. " +
     "AI-powered features will be disabled until configuration is fixed."
   );
 } else {
-  console.log(
-    `✅ AI module successfully initialized with API key from: ${aiConfig.apiKeySource}`
-  );
+  console.log("✅ AI module successfully configured and ready.");
 }
