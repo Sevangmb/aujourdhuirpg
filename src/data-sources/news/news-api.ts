@@ -2,10 +2,10 @@
 /**
  * @fileOverview Service for fetching recent news headlines using NewsAPI.org.
  */
-import { z } from 'genkit'; // For type consistency
+import { z } from 'genkit';
+import { newsConfig } from '@/lib/config';
 
 // Re-using schema definitions from the tool for consistency in data structure.
-// These are not exported from the service itself.
 const NewsArticleSchemaInternal = z.object({
   title: z.string().describe('The headline of the news article.'),
   description: z.string().nullable().describe('A brief description or snippet of the article content.'),
@@ -20,6 +20,7 @@ const GetNewsInputSchemaInternal = z.object({
   keywords: z.string().optional().describe('Keywords or a phrase to search for in the news articles.'),
   pageSize: z.number().min(1).max(20).optional().default(5).describe('The number of results to return per page (default 5, max 20 for developer plan).'),
 });
+
 export type GetNewsServiceInput = z.infer<typeof GetNewsInputSchemaInternal>;
 
 export type GetNewsServiceOutput = {
@@ -29,58 +30,86 @@ export type GetNewsServiceOutput = {
 };
 
 const NEWS_API_BASE_URL = 'https://newsapi.org/v2/top-headlines';
-const NEWS_API_KEY = process.env.NEWS_API_KEY; // Service will access the env var
 
 export async function fetchTopHeadlines(
   { country = 'fr', category, keywords, pageSize = 5 }: GetNewsServiceInput
 ): Promise<GetNewsServiceOutput> {
-  if (!NEWS_API_KEY) {
-    console.warn('NEWS_API_KEY is not set in environment variables. News service will not function.');
-    return { articles: [], status: 'error', message: 'NEWS_API_KEY is not configured for the service.' };
+  // Vérification de la configuration NewsAPI
+  if (!newsConfig.hasApiKey) {
+    console.warn('NewsAPI: NEWS_API_KEY is not set in environment variables. News service will not function.');
+    return { 
+      articles: [], 
+      status: 'error', 
+      message: 'NewsAPI key is not configured. Add NEWS_API_KEY to your .env.local file.' 
+    };
   }
 
   const params = new URLSearchParams({
     country,
     pageSize: String(pageSize),
-    apiKey: NEWS_API_KEY,
+    apiKey: newsConfig.apiKey!,
   });
 
   if (category) params.append('category', category);
   if (keywords) params.append('q', keywords);
 
   try {
+    console.log(`📰 NewsAPI: Fetching headlines for country=${country}, category=${category || 'all'}, keywords=${keywords || 'none'}`);
+    
     const response = await fetch(`${NEWS_API_BASE_URL}?${params.toString()}`, {
-      headers: { 'User-Agent': 'AujourdhuiRPG/0.1 (Firebase Studio App Service)' }
+      method: 'GET',
+      headers: {
+        'User-Agent': 'AujourdhuiRPG/1.0'
+      }
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      console.error(`NewsAPI error (news-service): ${response.status}`, errorData);
+      const errorText = await response.text();
+      console.error(`NewsAPI Error: ${response.status} ${response.statusText}`, errorText);
+      
       return {
         articles: [],
         status: 'error',
-        message: `Failed to fetch news from NewsAPI (service): ${errorData.message || response.statusText}`,
+        message: `NewsAPI request failed: ${response.status} ${response.statusText}`
       };
     }
 
     const data = await response.json();
 
     if (data.status !== 'ok') {
-      return { articles: [], status: 'error', message: data.message || 'Unknown NewsAPI error (service)' };
+      console.error('NewsAPI Error:', data);
+      return {
+        articles: [],
+        status: 'error',
+        message: data.message || 'Unknown NewsAPI error'
+      };
     }
 
-    const articles: NewsArticleInternal[] = data.articles.map((article: any) => ({
-      title: article.title,
-      description: article.description,
-      url: article.url,
-      sourceName: article.source?.name || 'Unknown Source',
-    }));
+    // Transform and validate articles
+    const articles: NewsArticleInternal[] = (data.articles || [])
+      .filter((article: any) => article.title && article.url) // Filter out articles without title or URL
+      .map((article: any): NewsArticleInternal => ({
+        title: article.title,
+        description: article.description || null,
+        url: article.url,
+        sourceName: article.source?.name || 'Unknown Source',
+      }))
+      .slice(0, pageSize); // Ensure we don't exceed requested page size
 
-    return { articles, status: 'ok' };
-  } catch (error: any) {
-    console.error('Error in fetchTopHeadlines (news-service):', error);
-    return { articles: [], status: 'error', message: `An unexpected error occurred while fetching news (service): ${error.message}` };
+    console.log(`✅ NewsAPI: Successfully fetched ${articles.length} articles`);
+
+    return {
+      articles,
+      status: 'ok'
+    };
+
+  } catch (error) {
+    console.error('NewsAPI Fetch Error:', error);
+    
+    return {
+      articles: [],
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown fetch error'
+    };
   }
 }
-
-    

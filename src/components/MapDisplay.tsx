@@ -1,25 +1,23 @@
-
 "use client";
 
 import React from 'react';
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import { MapPin, AlertTriangle, Loader2, MousePointerClick } from 'lucide-react';
+import { mapsConfig } from '@/lib/config';
 import type { Position } from '@/lib/types/game-types';
 
 interface MapDisplayProps {
   currentLocation: Position;
   nearbyPois?: Position[];
   visitedLocations?: Position[];
-  onPoiClick?: (poi: Position) => void; // Make travel interactive
+  onPoiClick?: (poi: Position) => void;
   zoom?: number;
 }
-
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 const mapContainerStyle = {
   height: '100%',
   width: '100%',
-  cursor: 'default', // Set a default cursor
+  cursor: 'default',
 };
 
 const MapDisplay: React.FC<MapDisplayProps> = ({
@@ -32,8 +30,28 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   const mapRef = React.useRef<google.maps.Map | null>(null);
   const containerHeight = "h-[150px] sm:h-[170px] md:h-[200px]";
 
+  // Vérification de la configuration Google Maps
+  if (!mapsConfig.hasApiKey) {
+    return (
+      <div className={`${containerHeight} bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 dark:border-gray-600`}>
+        <AlertTriangle className="w-8 h-8 text-amber-500 mb-2" />
+        <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+          Carte non disponible
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-500 text-center mt-1">
+          Clé API Google Maps manquante
+        </p>
+        {process.env.NODE_ENV === 'development' && (
+          <p className="text-xs text-red-500 mt-2 text-center">
+            Ajoutez NEXT_PUBLIC_GOOGLE_MAPS_API_KEY à votre .env.local
+          </p>
+        )}
+      </div>
+    );
+  }
+
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: API_KEY || "",
+    googleMapsApiKey: mapsConfig.apiKey!,
   });
 
   const onLoadMap = React.useCallback((map: google.maps.Map) => {
@@ -48,123 +66,156 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       }
       
       [...(nearbyPois || []), ...(visitedLocations || [])].forEach(pos => {
-         if (pos?.latitude && pos?.longitude) {
-           bounds.extend({ lat: pos.latitude, lng: pos.longitude });
-         }
+        if (pos?.latitude && pos?.longitude) {
+          bounds.extend({ lat: pos.latitude, lng: pos.longitude });
+        }
       });
 
       if (!bounds.isEmpty()) {
-        mapRef.current.fitBounds(bounds, 50); // Add padding
-        const currentMapZoom = mapRef.current.getZoom();
-        if (currentMapZoom && currentMapZoom > 15 && nearbyPois.length === 0 && visitedLocations.length === 0) {
-            mapRef.current.setZoom(15);
-        } else if (currentMapZoom && currentMapZoom > 18) { 
-            mapRef.current.setZoom(18);
+        mapRef.current.fitBounds(bounds);
+        const finalZoom = mapRef.current.getZoom();
+        if (finalZoom && finalZoom > zoom) {
+          mapRef.current.setZoom(zoom);
         }
-      } else if (currentLocation?.latitude && currentLocation?.longitude) {
-        mapRef.current.setCenter({ lat: currentLocation.latitude, lng: currentLocation.longitude });
-        mapRef.current.setZoom(zoom);
       }
     }
   }, [isLoaded, currentLocation, nearbyPois, visitedLocations, zoom]);
 
-
-  if (!API_KEY) {
-    return (
-      <div className={`p-2 md:p-3 bg-destructive/10 rounded-lg ${containerHeight} flex flex-col items-center justify-center border border-destructive`}>
-        <MapPin className="w-6 h-6 md:w-8 md:h-8 text-destructive mb-1 md:mb-2" />
-        <p className="text-xs md:text-sm text-destructive font-semibold">Google Maps API Key manquant.</p>
-        <p className="text-xs text-destructive/80 mt-1 text-center">
-          Configurez NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.
-        </p>
-      </div>
-    );
-  }
-
-  const loadingElement = (
-    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-      <Loader2 className="w-6 h-6 md:w-8 md:h-8 text-primary/90 animate-spin mb-1 md:mb-2" />
-      <p className="text-xs md:text-sm">Chargement de Google Maps...</p>
-      {currentLocation?.name && <p className="text-xs mt-1">pour {currentLocation.name}</p>}
-    </div>
-  );
-
   if (loadError) {
     return (
-      <div className={`p-2 md:p-3 bg-destructive/10 rounded-lg ${containerHeight} flex flex-col items-center justify-center border border-destructive text-center`}>
-        <AlertTriangle className="w-6 h-6 md:w-8 md:h-8 text-destructive mb-1 md:mb-2" />
-        <p className="text-xs md:text-sm text-destructive font-semibold">Erreur de chargement de la carte</p>
-        <p className="text-xs text-destructive/80 mt-1 truncate">
-          {loadError.message}
+      <div className={`${containerHeight} bg-red-50 dark:bg-red-900/20 rounded-lg flex flex-col items-center justify-center p-4 border border-red-200 dark:border-red-800`}>
+        <AlertTriangle className="w-8 h-8 text-red-500 mb-2" />
+        <p className="text-sm text-red-600 dark:text-red-400 text-center">
+          Erreur de chargement de la carte
+        </p>
+        <p className="text-xs text-red-500 dark:text-red-500 text-center mt-1">
+          Vérifiez votre clé API Google Maps
         </p>
       </div>
     );
   }
 
-  const renderLoadedMap = () => {
-    // Because this is only called when isLoaded is true, 'google' will be defined.
-    const clickableIcon = {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 5,
-      fillColor: "blue",
-      fillOpacity: 0.8,
-      strokeWeight: 2,
-      strokeColor: "white",
-    };
-
+  if (!isLoaded) {
     return (
+      <div className={`${containerHeight} bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center p-4`}>
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-2" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Chargement de la carte...
+        </p>
+      </div>
+    );
+  }
+
+  if (!currentLocation?.latitude || !currentLocation?.longitude) {
+    return (
+      <div className={`${containerHeight} bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 dark:border-gray-600`}>
+        <MapPin className="w-8 h-8 text-gray-400 mb-2" />
+        <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+          Position non disponible
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${containerHeight} rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm`}>
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        center={currentLocation?.latitude && currentLocation?.longitude ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : { lat: 0, lng: 0 }}
+        center={{
+          lat: currentLocation.latitude,
+          lng: currentLocation.longitude,
+        }}
+        zoom={zoom}
         onLoad={onLoadMap}
         options={{
+          zoomControl: true,
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: false,
-          clickableIcons: false,
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "off" }]
+            }
+          ]
         }}
       >
-        {currentLocation?.latitude && currentLocation?.longitude && (
-          <MarkerF
-            position={{ lat: currentLocation.latitude, lng: currentLocation.longitude }}
-            title={currentLocation.name}
-          />
-        )}
-        {(nearbyPois || []).map((poi) => (
-           poi?.latitude && poi?.longitude && (
+        {/* Current Location Marker */}
+        <MarkerF
+          position={{
+            lat: currentLocation.latitude,
+            lng: currentLocation.longitude,
+          }}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#3B82F6",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#FFFFFF",
+          }}
+          title={currentLocation.name || "Position actuelle"}
+        />
+
+        {/* Nearby POIs */}
+        {nearbyPois.map((poi, index) => (
+          poi?.latitude && poi?.longitude && (
             <MarkerF
-              key={`poi-${poi.latitude}-${poi.longitude}-${poi.name}`}
-              position={{ lat: poi.latitude, lng: poi.longitude }}
-              onClick={() => onPoiClick && onPoiClick(poi)}
-              title={`Voyager vers ${poi.name}`}
-              options={{
-                icon: onPoiClick ? clickableIcon : undefined,
-                label: {
-                  text: " ", // Empty label to provide a larger click area
-                  color: "transparent",
-                  fontSize: "24px",
-                },
+              key={`poi-${index}`}
+              position={{
+                lat: poi.latitude,
+                lng: poi.longitude,
               }}
-              cursor={onPoiClick ? 'pointer' : 'default'}
+              icon={{
+                path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                scale: 6,
+                fillColor: "#10B981",
+                fillOpacity: 0.8,
+                strokeWeight: 1,
+                strokeColor: "#FFFFFF",
+              }}
+              title={poi.name || `Point d'intérêt ${index + 1}`}
+              onClick={() => onPoiClick?.(poi)}
+              options={{
+                cursor: onPoiClick ? 'pointer' : 'default',
+              }}
+            />
+          )
+        ))}
+
+        {/* Visited Locations */}
+        {visitedLocations.map((location, index) => (
+          location?.latitude && location?.longitude && (
+            <MarkerF
+              key={`visited-${index}`}
+              position={{
+                lat: location.latitude,
+                lng: location.longitude,
+              }}
+              icon={{
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 4,
+                fillColor: "#8B5CF6",
+                fillOpacity: 0.6,
+                strokeWeight: 1,
+                strokeColor: "#FFFFFF",
+              }}
+              title={location.name || `Lieu visité ${index + 1}`}
             />
           )
         ))}
       </GoogleMap>
-    );
-  };
 
-  return (
-    <div className={`p-2 md:p-3 bg-background/50 rounded-lg ${containerHeight} flex flex-col`}>
-      <div className="text-xs md:text-sm font-headline flex items-center text-primary/90 mb-1 md:mb-1.5">
-        <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-1.5 shrink-0" />
-        <span className="truncate">{currentLocation?.name || "Localisation actuelle"}</span>
-      </div>
-      <div className="flex-grow rounded-md overflow-hidden border border-border">
-        {!isLoaded ? loadingElement : renderLoadedMap()}
-      </div>
-      {isLoaded && onPoiClick && <p className="text-[10px] text-muted-foreground mt-1 text-center truncate flex items-center justify-center gap-1">
-        <MousePointerClick className="w-2.5 h-2.5" />Cliquez sur un point pour voyager.
-      </p>}
+      {/* Interactive Hint */}
+      {onPoiClick && nearbyPois.length > 0 && (
+        <div className="absolute bottom-2 left-2 bg-white dark:bg-gray-800 px-2 py-1 rounded shadow-lg border border-gray-200 dark:border-gray-600">
+          <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+            <MousePointerClick className="w-3 h-3 mr-1" />
+            <span>Cliquez sur les marqueurs verts</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
