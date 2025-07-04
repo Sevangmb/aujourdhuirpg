@@ -184,15 +184,6 @@ const ModernAppMenubar: React.FC<ModernAppMenubarProps> = ({ className }) => {
                 </div>
               </div>
             </div>
-
-            {/* Barre de statut compacte */}
-            <div className="px-4 pb-2">
-              <EnhancedPlayerStatusBar 
-                player={gameState.player} 
-                compact={true}
-                className="bg-slate-800 rounded-lg p-3"
-              />
-            </div>
           </div>
         )}
 
