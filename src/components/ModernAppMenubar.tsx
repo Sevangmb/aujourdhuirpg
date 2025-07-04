@@ -199,7 +199,7 @@ const ModernAppMenubar: React.FC<ModernAppMenubarProps> = ({ className }) => {
         {/* Menu complet ouvert */}
         {isOpen && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50">
-            <div className="bg-white dark:bg-slate-900 min-h-screen w-full max-w-md shadow-2xl relative">
+            <div className="bg-white dark:bg-slate-900 h-screen w-full max-w-md shadow-2xl relative flex flex-col">
               
               {/* En-tête avec gradient */}
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6 relative overflow-hidden">
@@ -237,7 +237,7 @@ const ModernAppMenubar: React.FC<ModernAppMenubarProps> = ({ className }) => {
                   </div>
                   <div>
                     <div className="text-xl font-semibold">{gameState.player.name}</div>
-                    <div className="text-sm opacity-80">Niveau {gameState.player.stats?.level || 1}</div>
+                    <div className="text-sm opacity-80">Niveau {gameState.player.progression?.level || 1}</div>
                   </div>
                 </div>
 
