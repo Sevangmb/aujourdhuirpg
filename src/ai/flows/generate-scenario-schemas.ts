@@ -36,9 +36,33 @@ export const StoryChoiceSchema = z.object({
   id: z.string().describe("Un identifiant unique pour le choix (ex: 'explorer_crypte')."),
   text: z.string().describe("Le texte court et actionnable pour le bouton du choix (ex: 'Explorer la crypte')."),
   description: z.string().describe("Une description un peu plus longue de l'action, pour le contenu de la carte."),
-  iconName: z.enum(CHOICE_ICON_NAMES).describe("Le nom d'une icône Lucide-React valide pour représenter le choix."),
-  type: z.enum(ACTION_TYPES).describe("La catégorie de l'action."),
-  mood: z.enum(MOOD_TYPES).describe("L'ambiance générale de ce choix."),
+  iconName: z.string()
+    .transform((val) => {
+      if ((CHOICE_ICON_NAMES as readonly string[]).includes(val)) {
+        return val as (typeof CHOICE_ICON_NAMES)[number];
+      }
+      console.warn(`[Schema Transform] Invalid iconName "${val}" detected. Correcting to 'Zap'.`);
+      return 'Zap';
+    })
+    .describe("Le nom d'une icône Lucide-React valide pour représenter le choix."),
+  type: z.string()
+    .transform((val) => {
+        if ((ACTION_TYPES as readonly string[]).includes(val)) {
+            return val as (typeof ACTION_TYPES)[number];
+        }
+        console.warn(`[Schema Transform] Invalid type "${val}" detected. Correcting to 'action'.`);
+        return 'action';
+    })
+    .describe("La catégorie de l'action."),
+  mood: z.string()
+    .transform((val) => {
+        if ((MOOD_TYPES as readonly string[]).includes(val)) {
+            return val as (typeof MOOD_TYPES)[number];
+        }
+        console.warn(`[Schema Transform] Invalid mood "${val}" detected. Correcting to 'adventurous'.`);
+        return 'adventurous';
+    })
+    .describe("L'ambiance générale de ce choix."),
   consequences: z.array(z.string()).describe("Une liste de 2-3 conséquences probables ou mots-clés (ex: ['Révélation', 'Danger potentiel'])."),
   
   skillCheck: z.object({
@@ -55,41 +79,7 @@ export const StoryChoiceSchema = z.object({
       thirst: z.number().optional() 
   }).optional().describe("Effets physiologiques si le choix implique de manger/boire."),
   statEffects: z.record(z.number()).optional().describe("Effets sur les statistiques du joueur après l'action. Ex: {'Energie': 5, 'Stress': -10}"),
-}).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.")
-.transform((choice) => {
-    // This transform function runs after initial validation and cleans up the data.
-    // It makes the system more resilient to minor AI mistakes.
-
-    const correctedChoice = { ...choice };
-
-    // 1. Correct null costs to be 0 for game logic processing
-    if (correctedChoice.energyCost === null) {
-        correctedChoice.energyCost = 0;
-    }
-    if (correctedChoice.timeCost === null) {
-        correctedChoice.timeCost = 0;
-    }
-
-    // 2. Correct invalid iconName to a safe default
-    if (!CHOICE_ICON_NAMES.includes(correctedChoice.iconName as any)) {
-      console.warn(`[Schema Transform] Invalid iconName "${correctedChoice.iconName}" detected. Correcting to 'Zap'.`);
-      correctedChoice.iconName = 'Zap';
-    }
-
-    // 3. Correct invalid action type to a safe default
-    if (!ACTION_TYPES.includes(correctedChoice.type as any)) {
-      console.warn(`[Schema Transform] Invalid type "${correctedChoice.type}" detected. Correcting to 'action'.`);
-      correctedChoice.type = 'action';
-    }
-
-    // 4. Correct invalid mood to a safe default
-    if (!MOOD_TYPES.includes(correctedChoice.mood as any)) {
-      console.warn(`[Schema Transform] Invalid mood "${correctedChoice.mood}" detected. Correcting to 'adventurous'.`);
-      correctedChoice.mood = 'adventurous';
-    }
-
-    return correctedChoice;
-});
+}).describe("Un choix guidé et riche pour le joueur. Seuls les champs narratifs sont obligatoires.");
 
 
 export const PNJUpdateSchema = z.object({
