@@ -175,7 +175,7 @@ export const newsConfig = {
   apiKey: config.newsApiKey,
 };
 
-// Log automatique en développement
-if (config.isDevelopment) {
+// Log automatique en développement, mais seulement côté serveur
+if (config.isDevelopment && typeof window === 'undefined') {
   logConfigurationStatus();
 }
