@@ -9,6 +9,10 @@ import GeoIntelligenceDisplay from '@/components/GeoIntelligenceDisplay';
 import { UNKNOWN_STARTING_PLACE_NAME } from '@/data/initial-game-data';
 import { BrainCircuit } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import MapDisplay from '@/components/MapDisplay';
+import WeatherDisplay from '@/components/WeatherDisplay';
+import LocationImageDisplay from '@/components/LocationImageDisplay';
+import { useGame } from '@/contexts/GameContext';
 
 interface SectionProps {
   player: Player;
@@ -16,11 +20,36 @@ interface SectionProps {
 }
 
 export const MondeSection: React.FC<SectionProps> = ({ player, gameState }) => {
+  const { handleInitiateTravel } = useGame();
+  const { contextualData } = gameState;
+  const { weather, locationImage, pois } = contextualData;
+
   const [isGeoIntelOpen, setIsGeoIntelOpen] = React.useState(false);
-  const geoIntelligence = gameState.contextualData.geoIntelligence;
+
+  const currentLocation = player.currentLocation;
+  const currentLocationName = currentLocation?.name || UNKNOWN_STARTING_PLACE_NAME;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
+      <WeatherDisplay
+        weatherData={weather.data}
+        isLoading={weather.loading}
+        error={weather.error}
+        placeName={currentLocationName}
+        gameTimeInMinutes={gameState.gameTimeInMinutes}
+      />
+      <MapDisplay
+        currentLocation={currentLocation}
+        nearbyPois={pois.data || []}
+        onPoiClick={handleInitiateTravel}
+      />
+      <LocationImageDisplay
+        imageUrl={locationImage.url}
+        placeName={currentLocationName}
+        isLoading={locationImage.loading}
+        error={locationImage.error}
+        era={player.era}
+      />
       <Button variant="outline" className="w-full justify-start" onClick={() => setIsGeoIntelOpen(true)}>
         <BrainCircuit className="mr-2" /> Analyse Géospatiale
       </Button>
@@ -30,20 +59,15 @@ export const MondeSection: React.FC<SectionProps> = ({ player, gameState }) => {
             <ScrollArea className="-m-6 mt-0 p-1 pt-0">
                 <div className="p-6">
                     <GeoIntelligenceDisplay
-                        data={geoIntelligence.data}
-                        isLoading={geoIntelligence.loading}
-                        error={geoIntelligence.error}
+                        data={gameState.contextualData.geoIntelligence.data}
+                        isLoading={gameState.contextualData.geoIntelligence.loading}
+                        error={gameState.contextualData.geoIntelligence.error}
                         placeName={player.currentLocation?.name || UNKNOWN_STARTING_PLACE_NAME}
                     />
                 </div>
             </ScrollArea>
         </DialogContent>
       </Dialog>
-      {/* Placeholder for map */}
-      <div className="p-4 text-center border-2 border-dashed rounded-lg text-muted-foreground">
-        <p className="font-semibold">Carte du Monde</p>
-        <p className="text-xs">Bientôt disponible (T3)</p>
-      </div>
     </div>
   );
 };

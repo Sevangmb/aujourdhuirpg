@@ -6,10 +6,8 @@ import type { StoryChoice } from '@/lib/types';
 import ScenarioDisplay from './ScenarioDisplay';
 import { Loader2 } from 'lucide-react';
 import ChoiceSelectionDisplay from './ChoiceSelectionDisplay';
-import GameSidebar from './GameSidebar';
 import { useGame } from '@/contexts/GameContext';
 import CombatUI from './CombatUI';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const GamePlay: React.FC = () => {
   const { 
@@ -23,7 +21,6 @@ const GamePlay: React.FC = () => {
   } = useGame();
   
   const { player, currentScenario } = gameState;
-  const isMobile = useIsMobile();
 
   if (!player || !currentScenario) {
     return (
@@ -50,24 +47,15 @@ const GamePlay: React.FC = () => {
   const availableChoices = currentScenario.choices || [];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen">
-      <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6">
-        <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
-        
-        <ChoiceSelectionDisplay
-            choices={availableChoices}
-            onSelectChoice={handleChoiceSelected}
-            isLoading={isLoading}
-            aiRecommendation={currentScenario.aiRecommendation || null}
-          />
-      </div>
-
-      {!isMobile && <GameSidebar />}
-      {isMobile && (
-        <div className="md:hidden sticky bottom-0 z-10">
-          <GameSidebar />
-        </div>
-      )}
+    <div className="flex-grow flex flex-col p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full">
+      <ScenarioDisplay scenarioHTML={currentScenario.scenarioText} isLoading={isLoading} />
+      
+      <ChoiceSelectionDisplay
+          choices={availableChoices}
+          onSelectChoice={handleChoiceSelected}
+          isLoading={isLoading}
+          aiRecommendation={currentScenario.aiRecommendation || null}
+        />
     </div>
   );
 };
