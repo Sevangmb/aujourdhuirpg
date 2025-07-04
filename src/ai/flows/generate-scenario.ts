@@ -160,17 +160,17 @@ export async function generateScenario(input: GenerateScenarioInput): Promise<Ge
        id: 'retry_action',
        text: "🔄 Réessayer l'action précédente",
        description: "Tenter de relancer la dernière action pour voir si l'IA répond cette fois.",
-       iconName: 'Zap', // VALID ICON
-       type: 'action', // VALID TYPE
-       mood: 'adventurous', // VALID MOOD
+       iconName: 'Zap',
+       type: 'action',
+       mood: 'adventurous',
        consequences: ['Nouvelle tentative', 'Peut fonctionner si problème temporaire'],
      }, {
        id: 'view_setup_guide',
        text: '📖 Voir le guide de configuration',
        description: 'Consulter la documentation complète sur la configuration des clés API.',
-       iconName: 'BookOpen', // VALID ICON
-       type: 'reflection', // VALID TYPE
-       mood: 'contemplative', // VALID MOOD
+       iconName: 'BookOpen',
+       type: 'reflection',
+       mood: 'contemplative',
        consequences: ['Documentation affichée', 'Instructions détaillées']
      }],
       aiRecommendation: { focus: 'Erreur', reasoning: `Erreur critique du modèle IA. (${technicalDetails})` },
