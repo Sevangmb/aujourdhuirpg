@@ -42,6 +42,7 @@ const geoIntelligencePrompt = ai.definePrompt({
     2.  **Analysez le quartier :** Si le lieu est un commerce spécifique (comme "Pomme de Pain", un café, etc.), basez votre analyse sur le quartier général où il se trouve, en utilisant les informations des outils pour le contexte.
     3.  **Plan de secours :** Si les outils ne retournent aucune information utile ou si le lieu est très générique, utilisez vos connaissances générales sur les villes françaises pour fournir une analyse plausible et crédible. Ne laissez PAS la réponse vide.
     4.  **Formatage :** Produisez une réponse JSON structurée qui suit précisément le schéma de sortie fourni, sans aucune exception.
+    5.  **RÈGLE ABSOLUE :** Votre sortie ne doit JAMAIS contenir de syntaxe de template comme {{{...}}} ou {{...}}.
 
     **Champs à remplir :**
 

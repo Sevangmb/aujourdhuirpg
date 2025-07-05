@@ -54,6 +54,7 @@ const generateHistoricalContactPrompt = ai.definePrompt({
         - Le ton doit être immersif et mystérieux.
         - Si le contact est la personnalité historique elle-même (lien "self"), les secrets et faits doivent sonner comme des souvenirs personnels. Sinon, ils doivent être présentés comme des connaissances héritées ou découvertes.
         - Assurez-vous que la sortie est un objet JSON valide qui correspond parfaitement au schéma de sortie.
+        - RÈGLE ABSOLUE : Votre sortie ne doit JAMAIS contenir de syntaxe de template comme {{{...}}} ou {{...}}.
     `,
 });
 

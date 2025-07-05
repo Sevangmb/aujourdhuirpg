@@ -83,22 +83,11 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
       hydratedPlayer.startingLocationName = locationData.name;
 
       const createPrologue = (player: Player): string => {
-        const salutationMarin = (gender: string): string => {
-          if (gender === 'Femme') return 'jeune aventurière';
-          if (gender === 'Homme') return 'jeune aventurier';
-          return 'jeune aventurier(e)';
-        };
-        
-        const introPhrase = (gender: string): string => {
-          if (gender === 'Femme') return `une ${gender.toLowerCase()}`;
-          if (gender === 'Homme') return `un ${gender.toLowerCase()}`;
-          return `un(e) ${gender.toLowerCase()}`;
-        };
-    
+        // This function now takes the player object and interpolates its values into the prologue text.
+        // It's a deterministic way to generate the intro, avoiding AI hallucinations for the first scene.
         const template = `
-<p>Vous êtes ${introPhrase(player.gender)} au passé de ${player.background}. Votre esprit, empreint de ${player.traitsMentalStates.join(', ')}, est en quête d'aventure.</p>
-<p>Une odeur de sel et de poisson frais vous parvient du petit port animé. Des conversations animées s’élèvent au-dessus du bruit des mouettes. Sur le quai, un vieux marin à la barbe blanche vous observe d'un air mystérieux. Son regard perçant semble vous connaître.</p>
-<p><strong>Marin :</strong> « Salut, ${salutationMarin(player.gender)}. Ce vent du large vous porte bien. Il souffle des nouvelles étranges aujourd’hui… Des trésors engloutis, dit-on… »</p>
+<p>L’année est <strong>${player.era}</strong>. Un brouillard épais, à la fois doux et menaçant, enveloppe les rues pavées de Montmartre. Vous, <strong>${player.name}</strong>, ${player.age} ans, avec le passé chargé de <em>"${player.background}"</em>, vous trouvez assis(e) à une terrasse du Lapin Agile, un verre de vin rouge à la main.</p>
+<p>Le parfum du café et du tabac se mêle à la douce mélancolie du soir. Vos traits reflètent votre état d'esprit actuel : <strong>${player.traitsMentalStates.join(', ')}</strong>.</p>
         `.trim();
     
         return template;
