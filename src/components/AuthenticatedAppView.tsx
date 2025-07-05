@@ -86,8 +86,10 @@ const AuthenticatedAppView: React.FC<AuthenticatedAppViewProps> = ({ user, signO
         // This function now takes the player object and interpolates its values into the prologue text.
         // It's a deterministic way to generate the intro, avoiding AI hallucinations for the first scene.
         const template = `
-<p>L’année est <strong>${player.era}</strong>. Un brouillard épais, à la fois doux et menaçant, enveloppe les rues pavées de Montmartre. Vous, <strong>${player.name}</strong>, ${player.age} ans, avec le passé chargé de <em>"${player.background}"</em>, vous trouvez assis(e) à une terrasse du Lapin Agile, un verre de vin rouge à la main.</p>
-<p>Le parfum du café et du tabac se mêle à la douce mélancolie du soir. Vos traits reflètent votre état d'esprit actuel : <strong>${player.traitsMentalStates.join(', ')}</strong>.</p>
+<p>L’année est <strong>${player.era}</strong>. Un brouillard épais, à la fois doux et menaçant, enveloppe les rues pavées de Montmartre. Vous, <strong>${player.name}</strong>, ${player.age} ans, avec le passé chargé de <em>"${player.background}"</em>, vous trouvez assis(e) à une terrasse du Lapin Agile, un verre de vin rouge à la main. Le parfum du café et du tabac se mêle à la douce mélancolie du soir. Vos traits reflètent votre état d'esprit actuel : <strong>${player.traitsMentalStates.join(', ')}</strong>.</p>
+<p>Autour de vous, la vie parisienne palpite : des artistes en pleine discussion animée, des couples amoureux chuchotant des secrets, et le léger tintamarre des voitures anciennes qui passent. Mais il y a quelque chose d'étrange dans l’air, une tension palpable qui transperce la douce atmosphère. Vous sentez un regard sur vous, perçant, presque hostile. Vous vous tournez, mais il n’y a personne.</p>
+<p>Soudain, un homme au visage buriné, vêtu d’un long manteau sombre, s’approche de votre table. Il vous fixe avec des yeux perçants et vous glisse un papier plié dans la main.</p>
+<p><strong>Homme mystérieux :</strong> « Ceci vous concerne. Soyez prudent... »</p>
         `.trim();
     
         return template;
