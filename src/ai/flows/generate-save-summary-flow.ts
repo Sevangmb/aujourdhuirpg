@@ -40,6 +40,7 @@ const generateSaveSummaryPrompt = ai.definePrompt({
     {{/each}}
 
     Generate the summary.
+    IMPORTANT: Your output must NEVER contain template syntax like {{{...}}}. Always replace variables with their actual values.
   `,
 });
 

@@ -56,7 +56,7 @@ const generateTravelEventPrompt = ai.definePrompt({
 
     **IMPORTANT :** Il y a 70% de chance qu'AUCUN événement ne se produise. Dans ce cas, le champ "narrative" DOIT être une chaîne vide : "". N'écrivez PAS de texte comme "Le trajet se déroule sans incident.". Retournez simplement une chaîne vide.
 
-    Générez la sortie. La sortie DOIT être un objet JSON valide correspondant au schéma fourni.
+    Générez la sortie. La sortie DOIT être un objet JSON valide correspondant au schéma fourni. Votre sortie ne doit JAMAIS contenir de syntaxe de template comme {{{...}}} ou {{...}}.
   `,
 });
 

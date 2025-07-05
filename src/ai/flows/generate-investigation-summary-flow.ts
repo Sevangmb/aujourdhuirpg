@@ -65,6 +65,7 @@ const generateSummaryPrompt = ai.definePrompt({
     3.  **Posez les Bonnes Questions :** Formulez 2-3 questions clés qui devraient guider les prochaines actions de l'enquêteur.
     4.  **Suggérez des Pistes :** Proposez une ou deux pistes d'investigation concrètes (ex: "Interroger à nouveau le témoin X sur son alibi", "Fouiller le lieu Y pour trouver l'objet Z").
     5.  **Soyez bref et percutant.** Le texte doit être formaté pour être lisible, avec des paragraphes et des listes si nécessaire.
+    6.  **RÈGLE ABSOLUE :** Votre sortie ne doit JAMAIS contenir de syntaxe de template comme {{{...}}} ou {{...}}.
   `,
 });
 
